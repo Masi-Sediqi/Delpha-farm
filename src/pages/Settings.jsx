@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import {
   Banknote,
+  CalendarDays,
   Building2,
   Database,
   Download,
@@ -65,11 +66,19 @@ function Settings() {
   const current = settings[0] || {};
 
   const [activeTab, setActiveTab] = useState("identity");
+  const [language, setLanguage] = useState(() => localStorage.getItem("afghan-power-language") || "en");
   const [companyName, setCompanyName] = useState(defaultSystemName);
   const [systemSubtitle, setSystemSubtitle] = useState(defaultSystemSubtitle);
   const [companyAddress, setCompanyAddress] = useState("");
   const [companyPhone, setCompanyPhone] = useState("");
   const [currency, setCurrency] = useState("AFN");
+  const [reportDateCalendar, setReportDateCalendar] = useState("gregorian");
+  const [currencyDecimals, setCurrencyDecimals] = useState({
+    AFN: 2,
+    USD: 2,
+    EUR: 2,
+    PKR: 2,
+  });
   const [securityPassword, setSecurityPassword] = useState("");
   const [logo, setLogo] = useState("");
   const [autoBackupMode, setAutoBackupMode] = useState("off");
@@ -81,11 +90,64 @@ function Settings() {
   const [clearConfirm, setClearConfirm] = useState("");
 
   useEffect(() => {
+    const syncLanguage = () => setLanguage(localStorage.getItem("afghan-power-language") || "en");
+    window.addEventListener("app-language-updated", syncLanguage);
+    return () => window.removeEventListener("app-language-updated", syncLanguage);
+  }, []);
+
+  const settingsText = {
+    en: {
+      reportDateTab: "Report Date", decimalsTab: "Currency Decimals",
+      reportDateTitle: "Report Date Calendar",
+      reportDateDescription: "Choose whether report dates are shown in Solar Hijri (Jalali) or Gregorian format.",
+      jalali: "Solar Hijri (Jalali)", jalaliDescription: "Shamsi / Solar Hijri calendar",
+      gregorian: "Gregorian", gregorianDescription: "Gregorian calendar",
+      saveReportDate: "Save Report Date",
+      decimalsTitle: "Currency Decimal Places",
+      decimalsDescription: "Set how many digits after the decimal point are allowed for each currency.",
+      afn: "Afghani", usd: "US Dollar", eur: "Euro", pkr: "Pakistani Rupee",
+      decimalPlaces: "Decimal places", preview: "Preview", saveDecimals: "Save Decimal Settings",
+    },
+    fa: {
+      reportDateTab: "تاریخ راپور", decimalsTab: "اعشار اسعار",
+      reportDateTitle: "تاریخ راپور",
+      reportDateDescription: "انتخاب کنید تاریخ راپورها به شکل شمسی یا میلادی نمایش داده شود.",
+      jalali: "شمسی", jalaliDescription: "تقویم هجری شمسی",
+      gregorian: "میلادی", gregorianDescription: "تقویم میلادی",
+      saveReportDate: "ذخیره تاریخ راپور",
+      decimalsTitle: "خانه‌های اعشاری اسعار",
+      decimalsDescription: "تعداد رقم‌های بعد از ممیز را برای هر واحد پول مشخص کنید.",
+      afn: "افغانی", usd: "دالر", eur: "یورو", pkr: "کلدار",
+      decimalPlaces: "خانه اعشاری", preview: "نمونه نمایش", saveDecimals: "ذخیره تنظیمات اعشار",
+    },
+    ps: {
+      reportDateTab: "د راپور نېټه", decimalsTab: "د اسعارو اعشار",
+      reportDateTitle: "د راپور نېټه",
+      reportDateDescription: "وټاکئ چې د راپورونو نېټې په شمسي یا میلادي بڼه ښکاره شي.",
+      jalali: "شمسي", jalaliDescription: "هجري شمسي کلیزه",
+      gregorian: "میلادي", gregorianDescription: "میلادي کلیزه",
+      saveReportDate: "د راپور نېټه خوندي کړئ",
+      decimalsTitle: "د اسعارو اعشاري خانې",
+      decimalsDescription: "د هرې پیسې لپاره له اعشاریې وروسته د شمېرو شمېر وټاکئ.",
+      afn: "افغانۍ", usd: "ډالر", eur: "یورو", pkr: "کلدار",
+      decimalPlaces: "اعشاري خانې", preview: "بېلګه", saveDecimals: "د اعشاریو تنظیمات خوندي کړئ",
+    },
+  };
+  const st = settingsText[language] || settingsText.en;
+
+  useEffect(() => {
     setCompanyName(current.companyName || defaultSystemName);
     setSystemSubtitle(current.systemSubtitle || defaultSystemSubtitle);
     setCompanyAddress(current.companyAddress || "");
     setCompanyPhone(current.companyPhone || "");
     setCurrency(current.currency || "AFN");
+    setReportDateCalendar(current.reportDateCalendar || "gregorian");
+    setCurrencyDecimals({
+      AFN: Number.isInteger(Number(current.currencyDecimals?.AFN)) ? Number(current.currencyDecimals.AFN) : 2,
+      USD: Number.isInteger(Number(current.currencyDecimals?.USD)) ? Number(current.currencyDecimals.USD) : 2,
+      EUR: Number.isInteger(Number(current.currencyDecimals?.EUR)) ? Number(current.currencyDecimals.EUR) : 2,
+      PKR: Number.isInteger(Number(current.currencyDecimals?.PKR)) ? Number(current.currencyDecimals.PKR) : 2,
+    });
     setSecurityPassword(current.securityPassword || "");
     setLogo(current.logo || "");
     setAutoBackupMode(current.autoBackupMode || "off");
@@ -97,6 +159,8 @@ function Settings() {
     current.companyAddress,
     current.companyPhone,
     current.currency,
+    current.reportDateCalendar,
+    current.currencyDecimals,
     current.securityPassword,
     current.systemSubtitle,
     current.logo,
@@ -133,6 +197,8 @@ function Settings() {
         companyAddress: companyAddress.trim(),
         companyPhone: companyPhone.trim(),
         currency,
+        reportDateCalendar,
+        currencyDecimals,
         securityPassword,
         logo,
         autoBackupMode,
@@ -255,6 +321,22 @@ function Settings() {
         >
           <Banknote size={16} />
           واحد پول
+        </button>
+        <button
+          type="button"
+          className={activeTab === "report-date" ? "active" : ""}
+          onClick={() => setActiveTab("report-date")}
+        >
+          <CalendarDays size={16} />
+          {st.reportDateTab}
+        </button>
+        <button
+          type="button"
+          className={activeTab === "currency-decimals" ? "active" : ""}
+          onClick={() => setActiveTab("currency-decimals")}
+        >
+          <Banknote size={16} />
+          {st.decimalsTab}
         </button>
         <button
           type="button"
@@ -420,6 +502,67 @@ function Settings() {
               <Save size={16} />
               Save Currency
             </button>
+          </section>
+        </form>
+      )}
+
+      {activeTab === "report-date" && (
+        <form className="settings-card settings-card-single settings-full-width-card" onSubmit={save}>
+          <section className="settings-panel settings-full-width-panel">
+            <div className="settings-section-title">
+              <h3>{st.reportDateTitle}</h3>
+              <p>{st.reportDateDescription}</p>
+            </div>
+            <div className="settings-report-date-options settings-wide-options">
+              {[
+                { key: "jalali", title: st.jalali, description: st.jalaliDescription },
+                { key: "gregorian", title: st.gregorian, description: st.gregorianDescription },
+              ].map((item) => (
+                <button type="button" key={item.key} className={reportDateCalendar === item.key ? "active" : ""} onClick={() => setReportDateCalendar(item.key)}>
+                  <CalendarDays size={20} />
+                  <div><strong>{item.title}</strong><span>{item.description}</span></div>
+                </button>
+              ))}
+            </div>
+            <button type="submit" className="settings-save settings-save-full"><Save size={16} />{st.saveReportDate}</button>
+          </section>
+        </form>
+      )}
+
+      {activeTab === "currency-decimals" && (
+        <form className="settings-card settings-card-single settings-full-width-card" onSubmit={save}>
+          <section className="settings-panel settings-full-width-panel">
+            <div className="settings-section-title">
+              <h3>{st.decimalsTitle}</h3>
+              <p>{st.decimalsDescription}</p>
+            </div>
+            <div className="settings-decimal-grid settings-decimal-grid-full">
+              {[
+                { key: "AFN", title: st.afn, code: "AFN" },
+                { key: "USD", title: st.usd, code: "USD" },
+                { key: "EUR", title: st.eur, code: "EUR" },
+                { key: "PKR", title: st.pkr, code: "PKR" },
+              ].map((item) => (
+                <label className="settings-decimal-card" key={item.key}>
+                  <div><strong>{item.title}</strong><span>{item.code}</span></div>
+                  <input type="number" min="0" max="6" step="1" value={currencyDecimals[item.key]} onChange={(event) => {
+                    const value = Math.min(6, Math.max(0, Number.parseInt(event.target.value || "0", 10)));
+                    setCurrencyDecimals((previous) => ({ ...previous, [item.key]: value }));
+                  }} aria-label={`${item.title} ${st.decimalPlaces}`} />
+                  <small>{st.decimalPlaces}</small>
+                </label>
+              ))}
+            </div>
+            <div className="settings-format-preview settings-format-preview-full">
+              <strong>{st.preview}</strong>
+              <div>
+                <span>{st.afn}: {(1234.56789).toFixed(currencyDecimals.AFN)}</span>
+                <span>{st.usd}: {(1234.56789).toFixed(currencyDecimals.USD)}</span>
+                <span>{st.eur}: {(1234.56789).toFixed(currencyDecimals.EUR)}</span>
+                <span>{st.pkr}: {(1234.56789).toFixed(currencyDecimals.PKR)}</span>
+              </div>
+            </div>
+            <button type="submit" className="settings-save settings-save-full"><Save size={16} />{st.saveDecimals}</button>
           </section>
         </form>
       )}

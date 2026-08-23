@@ -63,6 +63,7 @@ const TowerAssets = lazy(() => import("./pages/TowerAssets"));
 const TowerInsight = lazy(() => import("./pages/TowerInsight"));
 const Customers = lazy(() => import("./pages/Customers"));
 const Products = lazy(() => import("./pages/Products"));
+const Purchasing = lazy(() => import("./pages/Purchasing"));
 const CustomerInsight = lazy(() => import("./pages/CustomerInsight"));
 const CustomerDetails = lazy(() => import("./pages/CustomerDetails"));
 const Accounts = lazy(() => import("./pages/Accounts"));
@@ -112,6 +113,7 @@ const shellLabels = {
     dashboard: "Dashboard",
     companies: "Companies",
     products: "Products",
+    purchasing: "Purchasing",
     approvals: "Approvals",
     loans: "Receivables",
     stock: "Stock",
@@ -125,6 +127,7 @@ const shellLabels = {
     dashboard: "داشبورد",
     companies: "شرکت‌ها",
     products: "محصولات",
+    purchasing: "خریداری",
     approvals: "تاییدات",
     loans: "طلبات",
     stock: "موجودی",
@@ -138,6 +141,7 @@ const shellLabels = {
     dashboard: "ډشبورد",
     companies: "شرکتونه",
     products: "محصولات",
+    purchasing: "پېرود",
     approvals: "تاییدات",
     loans: "پورونه",
     stock: "موجودي",
@@ -479,6 +483,12 @@ function App() {
     icon: ReceiptText,
   },
   {
+    to: "/purchasing",
+    label: labels.purchasing,
+    moduleKey: "suppliers",
+    icon: ShoppingCart,
+  },
+  {
     to: "/approvals",
     label: labels.approvals,
     moduleKey: "deviceTransfer",
@@ -732,6 +742,7 @@ function App() {
               <Route path="/assets/:assetId/details/audit-trail" element={protect("assets", <AssetAuditTrail />)} />
               <Route path="/main-stock" element={protect("mainStock", <MainStock />)} />
               <Route path="/products" element={protect("customers", <Products />)} />
+              <Route path="/purchasing" element={protect("suppliers", <Purchasing />)} />
               <Route path="/sales" element={protect("customers", <Products />)} />
               <Route path="/approvals" element={protect("deviceTransfer", <DeviceTransferManagement />)} />
               <Route
