@@ -33,6 +33,7 @@ import {
   Settings as SettingsIcon,
   ShieldCheck,
   ShoppingCart,
+  Building2,
   Truck,
   Users,
   Warehouse,
@@ -52,6 +53,7 @@ import { canViewModule } from "./utils/permissions";
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const DashboardInsight = lazy(() => import("./pages/DashboardInsight"));
 const Suppliers = lazy(() => import("./pages/Suppliers"));
+const Companies = lazy(() => import("./pages/Companies"));
 const SupplierDetails = lazy(() => import("./pages/SupplierDetails"));
 const AssetInventory = lazy(() => import("./pages/AssetInventory"));
 const AssetInventoryInsight = lazy(() => import("./pages/AssetInventoryInsight"));
@@ -60,6 +62,7 @@ const DeviceTransferManagement = lazy(() => import("./pages/DeviceTransferManage
 const TowerAssets = lazy(() => import("./pages/TowerAssets"));
 const TowerInsight = lazy(() => import("./pages/TowerInsight"));
 const Customers = lazy(() => import("./pages/Customers"));
+const Products = lazy(() => import("./pages/Products"));
 const CustomerInsight = lazy(() => import("./pages/CustomerInsight"));
 const CustomerDetails = lazy(() => import("./pages/CustomerDetails"));
 const Accounts = lazy(() => import("./pages/Accounts"));
@@ -107,8 +110,8 @@ const rtlLanguages = new Set(["fa", "ps"]);
 const shellLabels = {
   en: {
     dashboard: "Dashboard",
-    purchasing: "Purchasing",
-    sales: "Sales",
+    companies: "Companies",
+    products: "Products",
     approvals: "Approvals",
     loans: "Receivables",
     stock: "Stock",
@@ -120,8 +123,8 @@ const shellLabels = {
   },
   fa: {
     dashboard: "داشبورد",
-    purchasing: "خریداری",
-    sales: "فروشات",
+    companies: "شرکت‌ها",
+    products: "محصولات",
     approvals: "تاییدات",
     loans: "طلبات",
     stock: "موجودی",
@@ -133,8 +136,8 @@ const shellLabels = {
   },
   ps: {
     dashboard: "ډشبورد",
-    purchasing: "پېرودنه",
-    sales: "خرڅلاو",
+    companies: "شرکتونه",
+    products: "محصولات",
     approvals: "تاییدات",
     loans: "پورونه",
     stock: "موجودي",
@@ -464,14 +467,14 @@ function App() {
     icon: LayoutDashboard,
   },
   {
-    to: "/suppliers",
-    label: labels.purchasing,
+    to: "/companies",
+    label: labels.companies,
     moduleKey: "suppliers",
-    icon: ShoppingCart,
+    icon: Building2,
   },
   {
-    to: "/sales",
-    label: labels.sales,
+    to: "/products",
+    label: labels.products,
     moduleKey: "customers",
     icon: ReceiptText,
   },
@@ -718,6 +721,7 @@ function App() {
               <Route path="/search-results" element={protect("dashboard", <SearchResults />)} />
               <Route path="/dashboard/insights/:insightType" element={protect("dashboard", <DashboardInsight />)} />
 
+              <Route path="/companies" element={protect("suppliers", <Companies />)} />
               <Route path="/suppliers" element={protect("suppliers", <Suppliers currentUser={currentUser} />)} />
               <Route path="/suppliers/:id" element={protect("suppliers", <SupplierDetails />)} />
 
@@ -727,7 +731,8 @@ function App() {
               <Route path="/assets/:assetId/audit-trail/*" element={protect("assets", <AssetAuditTrail />)} />
               <Route path="/assets/:assetId/details/audit-trail" element={protect("assets", <AssetAuditTrail />)} />
               <Route path="/main-stock" element={protect("mainStock", <MainStock />)} />
-              <Route path="/sales" element={protect("customers", <Customers />)} />
+              <Route path="/products" element={protect("customers", <Products />)} />
+              <Route path="/sales" element={protect("customers", <Products />)} />
               <Route path="/approvals" element={protect("deviceTransfer", <DeviceTransferManagement />)} />
               <Route
                 path="/loans"

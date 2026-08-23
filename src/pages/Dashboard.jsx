@@ -476,7 +476,7 @@ function BarGraph({ data, dataKey, onItemClick }) {
 
   return (
     <div className="dashboard-chart-box">
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height={260}>
         <BarChart data={data} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} />
           <XAxis dataKey="name" tickLine={false} axisLine={false} />
@@ -505,7 +505,7 @@ function LineGraph({ data, onDateClick }) {
 
   return (
     <div className="dashboard-chart-box">
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height={260}>
         <LineChart
           data={data}
           margin={{ top: 8, right: 16, left: -18, bottom: 0 }}

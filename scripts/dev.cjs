@@ -26,10 +26,20 @@ function checkBackend() {
 }
 
 function run(name, command, args) {
-  const child = spawn(command, args, {
+  const commandArgs =
+    command === "vite"
+      ? [path.join(process.cwd(), "node_modules", "vite", "bin", "vite.js"), ...args]
+      : args;
+
+  const executable =
+    command === "node" || command === "vite"
+      ? process.execPath
+      : command;
+
+  const child = spawn(executable, commandArgs, {
     cwd: process.cwd(),
     env: process.env,
-    shell: process.platform === "win32",
+    shell: false,
     stdio: ["inherit", "pipe", "pipe"],
   });
 
