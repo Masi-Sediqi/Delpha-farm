@@ -33,9 +33,19 @@ const translations = {
     supplier: "Supplier",
     sales: "Sales",
     both: "Supplier & Sales",
-    retail: "Retail",
-    wholesale: "Wholesale",
-    mixed: "Retail & Wholesale",
+    pharmacy: "Pharmacy",
+    drugstore: "Drugstore",
+    dostHajiZaman: "Dost Haji Zaman",
+    dostHajiSharif: "Dost Haji Sharif",
+    company: "Company",
+    wholesaleType: "Wholesale",
+    pharmacist: "Pharmacist",
+    unknown: "Unknown",
+    inventory: "Inventory",
+    representative: "Representative",
+    usd: "Dollar",
+    afn: "Afghani",
+    pkr: "Kaldar",
     save: "Save Company",
     update: "Update Company",
     cancel: "Cancel",
@@ -70,9 +80,19 @@ const translations = {
     supplier: "تأمین‌کننده",
     sales: "فروش",
     both: "تأمین‌کننده و فروش",
-    retail: "پرچون",
-    wholesale: "عمده",
-    mixed: "پرچون و عمده",
+    pharmacy: "پرچون",
+    drugstore: "درملتون",
+    dostHajiZaman: "دوست حاجی زمان",
+    dostHajiSharif: "دوست حاجی شریف",
+    company: "شرکت",
+    wholesaleType: "عمده",
+    pharmacist: "فارمسست",
+    unknown: "مجهول",
+    inventory: "موجودی",
+    representative: "نماینده",
+    usd: "دالر",
+    afn: "افغانی",
+    pkr: "کلدار",
     save: "ذخیره شرکت",
     update: "ثبت تغییرات",
     cancel: "لغو",
@@ -107,9 +127,19 @@ const translations = {
     supplier: "عرضه کوونکی",
     sales: "خرڅلاو",
     both: "عرضه او خرڅلاو",
-    retail: "پرچون",
-    wholesale: "عمده",
-    mixed: "پرچون او عمده",
+    pharmacy: "پرچون",
+    drugstore: "درملتون",
+    dostHajiZaman: "د حاجي زمان دوست",
+    dostHajiSharif: "د حاجي شریف دوست",
+    company: "شرکت",
+    wholesaleType: "عمده",
+    pharmacist: "فارمسست",
+    unknown: "نامعلوم",
+    inventory: "موجودي",
+    representative: "استازی",
+    usd: "ډالر",
+    afn: "افغانۍ",
+    pkr: "کلدار",
     save: "شرکت ذخیره کول",
     update: "بدلونونه ثبتول",
     cancel: "لغوه",
@@ -316,9 +346,16 @@ export default function Companies() {
                 <label>{t.type}</label>
                 <select value={form.type} onChange={(e) => updateField("type", e.target.value)}>
                   <option value="">{t.selectType}</option>
-                  <option value={t.supplier}>{t.supplier}</option>
-                  <option value={t.sales}>{t.sales}</option>
-                  <option value={t.both}>{t.both}</option>
+                  <option value="retail">{t.pharmacy}</option>
+                  <option value="drugstore">{t.drugstore}</option>
+                  <option value="dost_haji_zaman">{t.dostHajiZaman}</option>
+                  <option value="dost_haji_sharif">{t.dostHajiSharif}</option>
+                  <option value="company">{t.company}</option>
+                  <option value="wholesale">{t.wholesaleType}</option>
+                  <option value="pharmacist">{t.pharmacist}</option>
+                  <option value="unknown">{t.unknown}</option>
+                  <option value="inventory">{t.inventory}</option>
+                  <option value="representative">{t.representative}</option>
                 </select>
               </div>
 
@@ -326,9 +363,9 @@ export default function Companies() {
                 <label>{t.priceType}</label>
                 <select value={form.priceType} onChange={(e) => updateField("priceType", e.target.value)}>
                   <option value="">{t.selectPriceType}</option>
-                  <option value={t.retail}>{t.retail}</option>
-                  <option value={t.wholesale}>{t.wholesale}</option>
-                  <option value={t.mixed}>{t.mixed}</option>
+                  <option value="USD">{t.usd}</option>
+                  <option value="AFN">{t.afn}</option>
+                  <option value="PKR">{t.pkr}</option>
                 </select>
               </div>
 
