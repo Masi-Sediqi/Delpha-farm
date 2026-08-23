@@ -29,6 +29,7 @@ const languages = [
 const headerLabels = {
   en: {
     accounts: "Accounts",
+    currency: "Currency",
     search: "Search any system data...",
     language: "Language",
     notifications: "Notifications",
@@ -38,6 +39,7 @@ const headerLabels = {
   },
   fa: {
     accounts: "حساب‌ها",
+    currency: "واحد پول",
     search: "جستجو در تمام معلومات سیستم...",
     language: "زبان",
     notifications: "خبرتیاها",
@@ -47,6 +49,7 @@ const headerLabels = {
   },
   ps: {
     accounts: "حسابونه",
+    currency: "د پیسو واحد",
     search: "د سیستم په معلوماتو کې لټون...",
     language: "ژبه",
     notifications: "خبرتیاوې",
@@ -82,6 +85,9 @@ function HeaderActions({ currentUser, onLogout, compact = false }) {
     () => localStorage.getItem(LANGUAGE_STATE_KEY) || "en"
   );
   const [notificationState, setNotificationState] = useState(readNotificationState);
+  const [settings, setSettings] = useJsonCollection("settings");
+  const currentSettings = settings[0] || {};
+  const currency = currentSettings.currency || "AFN";
 
   const [assets] = useJsonCollection("assets");
   const [towerAssets] = useJsonCollection("towerAssets");
@@ -230,6 +236,14 @@ function HeaderActions({ currentUser, onLogout, compact = false }) {
   const activeLanguage = languages.find((item) => item.key === language) || languages[2];
   const t = headerLabels[language] || headerLabels.en;
 
+  const changeCurrency = async (event) => {
+    const nextCurrency = event.target.value;
+    const saved = await setSettings([
+      { ...currentSettings, currency: nextCurrency, updatedAt: new Date().toISOString() },
+    ]);
+    if (saved) window.dispatchEvent(new Event("company-settings-updated"));
+  };
+
   if (compact) {
     return (
       <div className="header-menu mobile-brand-actions">
@@ -301,10 +315,14 @@ function HeaderActions({ currentUser, onLogout, compact = false }) {
 
   return (
     <div className="top-actions">
-        <Link className="header-account-link" to="/accounts">
-          <Users size={19} strokeWidth={1.9} />
-          {t.accounts}
-        </Link>
+        <label className="header-account-link header-currency-control" title={t.currency}>
+          <CreditCard size={19} strokeWidth={1.9} />
+          <select value={currency} onChange={changeCurrency} aria-label={t.currency}>
+            <option value="AFN">AFN</option>
+            <option value="USD">USD</option>
+            <option value="INR">INR</option>
+          </select>
+        </label>
 
         <div className="header-menu">
           <button

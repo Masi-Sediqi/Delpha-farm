@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Edit3, PackagePlus, Plus, Search, Trash2, X } from "lucide-react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import { notify } from "../utils/notify";
@@ -464,7 +465,7 @@ function Products() {
         </div>
       </div>
 
-      {showModal && (
+      {showModal && createPortal((
         <div className="sales-product-modal-layer" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) closeModal(); }}>
           <section className="sales-product-modal" role="dialog" aria-modal="true" aria-labelledby="sales-product-modal-title" dir={direction}>
             <div className="sales-product-modal-header">
@@ -551,7 +552,7 @@ function Products() {
             </form>
           </section>
         </div>
-      )}
+      ), document.body)}
     </div>
   );
 }

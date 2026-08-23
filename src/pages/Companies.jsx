@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Building2, Edit3, Plus, Search, Trash2, X } from "lucide-react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import { notify } from "../utils/notify";
@@ -233,16 +234,15 @@ export default function Companies() {
         </button>
       </div>
 
-      <div className="companies-stat-card">
-        <span>{t.total}</span>
-        <strong>{companies.length}</strong>
-      </div>
-
       <div className="companies-card">
         <div className="companies-toolbar">
           <div className="companies-search">
             <Search size={17} />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t.search} />
+          </div>
+          <div className="companies-total" dir={direction}>
+            <span>{t.total}</span>
+            <strong>{companies.length}</strong>
           </div>
         </div>
 
@@ -283,9 +283,21 @@ export default function Companies() {
         </div>
       </div>
 
-      {showModal && (
-        <div className="company-modal-backdrop" role="presentation">
-          <div className="company-modal" role="dialog" aria-modal="true" dir={direction}>
+      {showModal && createPortal((
+        <div
+          className="company-modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeModal();
+          }}
+        >
+          <div
+            className="company-modal"
+            role="dialog"
+            aria-modal="true"
+            dir={direction}
+            onMouseDown={(event) => event.stopPropagation()}
+          >
             <div className="company-modal-header">
               <div>
                 <h2>{editingId ? t.editTitle : t.addTitle}</h2>
@@ -357,7 +369,7 @@ export default function Companies() {
             </form>
           </div>
         </div>
-      )}
+      ), document.body)}
     </div>
   );
 }

@@ -120,6 +120,11 @@ const shellLabels = {
     repair: "Repair",
     reports: "Reports",
     settings: "Settings",
+    helpCenter: "Help Center",
+    developer: "Developer",
+    faq: "FAQ",
+    userGuide: "User Guide",
+    termsPrivacy: "Terms & Privacy",
   },
   fa: {
     dashboard: "داشبورد",
@@ -133,6 +138,11 @@ const shellLabels = {
     repair: "اصلاح",
     reports: "گزارشات",
     settings: "تنظیمات",
+    helpCenter: "مرکز راهنما",
+    developer: "توسعه‌دهنده",
+    faq: "سوالات متداول",
+    userGuide: "راهنمای کاربر",
+    termsPrivacy: "شرایط و حریم خصوصی",
   },
   ps: {
     dashboard: "ډشبورد",
@@ -146,6 +156,11 @@ const shellLabels = {
     repair: "ترمیم",
     reports: "راپورونه",
     settings: "تنظیمات",
+    helpCenter: "د مرستې مرکز",
+    developer: "پراختیاکوونکی",
+    faq: "عامې پوښتنې",
+    userGuide: "د کارونکي لارښود",
+    termsPrivacy: "شرایط او محرمیت",
   },
 };
 
@@ -284,6 +299,7 @@ function App() {
   const labels = shellLabels[appLanguage] || shellLabels.en;
   const systemName = company.companyName || "ISP Assets";
   const systemSubtitle = company.systemSubtitle || "Asset & Inventory Management";
+  const systemLogo = company.logo || appLogo;
   const effectiveAccounts = accounts.some((account) => String(account.id) === "default-admin")
     ? accounts
     : [defaultAdminAccount, ...accounts];
@@ -531,31 +547,31 @@ function App() {
     const sidebarInfoLinks = [
     {
       key: "help-center",
-      label: "Help Center",
+      label: labels.helpCenter,
       icon: HelpCircle,
       to: "/help-center",
     },
     {
       key: "developer",
-      label: "Developer",
+      label: labels.developer,
       icon: Code2,
       to: "/developer",
     },
     {
       key: "faq",
-      label: "FAQ",
+      label: labels.faq,
       icon: CircleHelp,
       to: "/faq",
     },
     {
       key: "user-guide",
-      label: "User Guide",
+      label: labels.userGuide,
       icon: BookOpen,
       to: "/user-guide",
     },
     {
       key: "terms-privacy",
-      label: "Terms & Privacy",
+      label: labels.termsPrivacy,
       icon: ShieldCheck,
       to: "/terms-privacy",
     },
@@ -620,11 +636,11 @@ function App() {
           </button>
 
           <div className="brand-logo">
-            <img src={appLogo} alt="Afghan Power Logo" />
+            <img src={systemLogo} alt={`${systemName} logo`} />
           </div>
 
           <div>
-            <h2>Afghan Power</h2>
+            <h2>{systemName}</h2>
             <p>{systemSubtitle}</p>
           </div>
 

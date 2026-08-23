@@ -64,9 +64,53 @@
 }
 
 .sales-products-stat-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   min-height: 94px;
-  border-radius: 15px;
-  padding: 17px;
+  border-radius: 20px;
+  padding: 19px 20px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .07);
+  transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+}
+
+.sales-products-stat-card::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 92px;
+  height: 92px;
+  inset-block-start: -42px;
+  inset-inline-end: -30px;
+  border-radius: 50%;
+  background: var(--stat-glow, rgba(99, 102, 241, .15));
+  transition: transform .28s ease;
+}
+
+.sales-products-stat-card:nth-child(1) { --stat-accent: #6d5dfc; --stat-glow: rgba(109, 93, 252, .18); }
+.sales-products-stat-card:nth-child(2) { --stat-accent: #0ea5e9; --stat-glow: rgba(14, 165, 233, .18); }
+.sales-products-stat-card:nth-child(3) { --stat-accent: #10b981; --stat-glow: rgba(16, 185, 129, .18); }
+.sales-products-stat-card:nth-child(4) { --stat-accent: #f59e0b; --stat-glow: rgba(245, 158, 11, .20); }
+
+.sales-products-stat-card::after {
+  content: "";
+  position: absolute;
+  inset-block: 18px;
+  inset-inline-start: 0;
+  width: 4px;
+  border-radius: 0 8px 8px 0;
+  background: var(--stat-accent);
+}
+
+.sales-products-stat-card:hover {
+  transform: translateY(-5px);
+  border-color: color-mix(in srgb, var(--stat-accent) 35%, #eeeae2);
+  box-shadow: 0 18px 38px rgba(15, 23, 42, .14);
+}
+
+.sales-products-stat-card:hover::before {
+  transform: scale(1.35);
 }
 
 .sales-products-stat-card span {
@@ -81,6 +125,7 @@
   display: block;
   color: #111827;
   font-size: 25px;
+  color: var(--stat-accent);
   line-height: 1;
   font-weight: 900;
 }

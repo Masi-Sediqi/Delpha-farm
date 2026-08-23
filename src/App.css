@@ -5899,6 +5899,112 @@ td {
   padding: 16px !important;
 }
 
+/* Physical shell placement by language. Grid areas avoid direction-dependent
+   auto-placement and keep Dari/Pashto on the right on desktop. */
+@media (min-width: 861px) {
+  .app[data-language="en"] {
+    grid-template-areas: "sidebar main" !important;
+  }
+
+  .app[data-language="fa"],
+  .app[data-language="ps"] {
+    grid-template-areas: "main sidebar" !important;
+  }
+
+  .app[data-language] > .sidebar {
+    grid-area: sidebar !important;
+  }
+
+  .app[data-language] > .main {
+    grid-area: main !important;
+  }
+
+  .app[data-language="en"][data-direction="ltr"] > .sidebar {
+    grid-column: 1 !important;
+  }
+
+  .app[data-language="en"][data-direction="ltr"] > .main {
+    grid-column: 2 !important;
+  }
+
+  .app[data-language="fa"][data-direction="rtl"] > .main,
+  .app[data-language="ps"][data-direction="rtl"] > .main {
+    grid-column: 1 !important;
+  }
+
+  .app[data-language="fa"][data-direction="rtl"] > .sidebar,
+  .app[data-language="ps"][data-direction="rtl"] > .sidebar {
+    grid-column: 2 !important;
+  }
+}
+
+/* A collapsed sidebar shows navigation only; company branding stays hidden. */
+.app.sidebar-collapsed .brand-logo,
+.app.sidebar-collapsed .brand > div:not(.brand-logo) {
+  display: none !important;
+}
+
+/* Final physical sidebar placement. The language picker updates body.dir
+   synchronously, so this rule does not depend on a delayed React re-render. */
+@media (min-width: 861px) {
+  body[dir="ltr"] .app {
+    direction: ltr !important;
+    grid-template-columns: var(--shell-sidebar-width) minmax(0, 1fr) !important;
+  }
+
+  body[dir="ltr"] .app > .sidebar {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+  }
+
+  body[dir="ltr"] .app > .main {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+  }
+
+  body[dir="rtl"] .app {
+    direction: ltr !important;
+    grid-template-columns: minmax(0, 1fr) var(--shell-sidebar-width) !important;
+  }
+
+  body[dir="rtl"] .app > .main {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+  }
+
+  body[dir="rtl"] .app > .sidebar {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    direction: rtl !important;
+  }
+}
+
+/* Keep every sidebar add/edit form sharp while softening the app behind it. */
+[class$="-modal-backdrop"],
+[class*="-modal-backdrop "],
+[class$="-modal-layer"],
+[class*="-modal-layer "] {
+  background-color: rgba(0, 0, 0, 0.58) !important;
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+
+/* Companies and Products dialogs share the same desktop geometry. */
+.company-modal-backdrop,
+.sales-product-modal-layer {
+  align-items: flex-start !important;
+  justify-content: center !important;
+  box-sizing: border-box;
+  padding: 40px 20px !important;
+}
+
+.company-modal,
+.sales-product-modal {
+  width: min(820px, 100%) !important;
+  max-height: calc(100dvh - 80px) !important;
+  margin: 0 !important;
+}
+
 [class$="-modal"],
 [class*="-modal "],
 [class$="-dialog"],
@@ -6093,7 +6199,7 @@ body.dark-mode .language-dropdown button.active {
   background: #f1f0eb !important;
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 860px) {
   .app[dir="rtl"],
   .app[dir="ltr"],
   .app[dir="rtl"].sidebar-collapsed,
@@ -6744,4 +6850,349 @@ body[data-direction="ltr"] :is(.app-confirm-modal, .app-toast, .dropdown) {
   .app[data-direction="ltr"] .menu {
     direction: ltr !important;
   }
+}
+
+/* Highest-priority shell placement based on the direction set by Header. */
+@media (min-width: 861px) {
+  body[dir="ltr"] .app {
+    direction: ltr !important;
+    grid-template-columns: var(--shell-sidebar-width) minmax(0, 1fr) !important;
+  }
+
+  body[dir="ltr"] .app > .sidebar {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+  }
+
+  body[dir="ltr"] .app > .main {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+  }
+
+  body[dir="rtl"] .app {
+    direction: ltr !important;
+    grid-template-columns: minmax(0, 1fr) var(--shell-sidebar-width) !important;
+  }
+
+  body[dir="rtl"] .app > .main {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+  }
+
+  body[dir="rtl"] .app > .sidebar {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    direction: rtl !important;
+  }
+}
+
+/* Black & White must keep modal backdrops translucent and sidebar navigation readable. */
+body[data-theme="black-white"].dark-mode [class$="-modal-backdrop"],
+body[data-theme="black-white"].dark-mode [class*="-modal-backdrop "],
+body[data-theme="black-white"].dark-mode [class$="-modal-layer"],
+body[data-theme="black-white"].dark-mode [class*="-modal-layer "],
+body[data-theme="black-white"].dark-mode .app-confirm-backdrop {
+  background: rgba(0, 0, 0, 0.56) !important;
+  -webkit-backdrop-filter: blur(2px) !important;
+  backdrop-filter: blur(2px) !important;
+}
+
+body[data-theme="black-white"].dark-mode .sidebar .menu .sidebar-main-link,
+body[data-theme="black-white"].dark-mode .sidebar .sidebar-simple-dropdown-link {
+  color: #e5e7eb !important;
+}
+
+body[data-theme="black-white"].dark-mode .sidebar .menu .sidebar-main-link > svg,
+body[data-theme="black-white"].dark-mode .sidebar .sidebar-simple-dropdown-link > svg {
+  color: #d1d5db !important;
+  stroke: currentColor;
+}
+
+body[data-theme="black-white"].dark-mode .sidebar .menu .sidebar-main-link:hover,
+body[data-theme="black-white"].dark-mode .sidebar .menu .sidebar-main-link.active,
+body[data-theme="black-white"].dark-mode .sidebar .sidebar-simple-dropdown-link:hover {
+  background: #ffffff !important;
+  color: #050505 !important;
+}
+
+body[data-theme="black-white"].dark-mode .sidebar .menu .sidebar-main-link:hover > svg,
+body[data-theme="black-white"].dark-mode .sidebar .menu .sidebar-main-link.active > svg,
+body[data-theme="black-white"].dark-mode .sidebar .sidebar-simple-dropdown-link:hover > svg {
+  color: #050505 !important;
+}
+
+/* ========================================================================== 
+   Midnight Blue — replaces the former Black & White theme.
+   ========================================================================== */
+body[data-theme="black-white"].dark-mode,
+body[data-theme="black-white"].dark-mode #root,
+body[data-theme="black-white"].dark-mode .app {
+  --midnight-bg: #05071a;
+  --midnight-shell: #080b22;
+  --midnight-surface: #0c112d;
+  --midnight-surface-2: #11183a;
+  --midnight-border: rgba(104, 132, 255, 0.22);
+  --midnight-text: #f7f9ff;
+  --midnight-muted: #929bb9;
+  --midnight-blue: #3f75ff;
+  --midnight-blue-soft: rgba(63, 117, 255, 0.16);
+  background:
+    radial-gradient(circle at 52% 0%, rgba(46, 95, 255, 0.22), transparent 34%),
+    radial-gradient(circle at 90% 85%, rgba(27, 64, 210, 0.13), transparent 30%),
+    var(--midnight-bg) !important;
+  color: var(--midnight-text) !important;
+}
+
+body[data-theme="black-white"].dark-mode .main,
+body[data-theme="black-white"].dark-mode .sidebar,
+body[data-theme="black-white"].dark-mode .topbar {
+  background: rgba(8, 11, 34, 0.94) !important;
+  border-color: var(--midnight-border) !important;
+  color: var(--midnight-text) !important;
+}
+
+body[data-theme="black-white"].dark-mode .sidebar {
+  box-shadow: 18px 0 60px rgba(0, 0, 0, 0.22), inset -1px 0 rgba(86, 116, 255, 0.08) !important;
+}
+
+body[data-theme="black-white"].dark-mode :is(
+  .card,
+  .stat,
+  .table-card,
+  [class$="-card"],
+  [class*="-card "],
+  [class$="-panel"],
+  [class*="-panel "],
+  [class$="-section"],
+  [class*="-section "],
+  [class$="-modal"],
+  [class*="-modal "]
+) {
+  background: linear-gradient(145deg, rgba(17, 24, 58, 0.96), rgba(8, 12, 35, 0.98)) !important;
+  border-color: var(--midnight-border) !important;
+  color: var(--midnight-text) !important;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22), inset 0 1px rgba(255, 255, 255, 0.025) !important;
+}
+
+body[data-theme="black-white"].dark-mode :is(h1, h2, h3, h4, strong, label, th) {
+  color: var(--midnight-text) !important;
+}
+
+body[data-theme="black-white"].dark-mode :is(p, small, td, .muted, [class*="subtitle"], [class*="description"]) {
+  color: var(--midnight-muted) !important;
+}
+
+body[data-theme="black-white"].dark-mode :is(input, select, textarea, .header-search, .search-input, .search-box) {
+  background: rgba(5, 8, 28, 0.88) !important;
+  border-color: rgba(104, 132, 255, 0.24) !important;
+  color: var(--midnight-text) !important;
+  box-shadow: inset 0 1px 8px rgba(0, 0, 0, 0.16) !important;
+}
+
+body[data-theme="black-white"].dark-mode :is(input, textarea)::placeholder {
+  color: #727d9e !important;
+}
+
+body[data-theme="black-white"].dark-mode .sidebar .menu .sidebar-main-link,
+body[data-theme="black-white"].dark-mode .sidebar .sidebar-simple-dropdown-link {
+  color: #aeb7d3 !important;
+  border: 1px solid transparent;
+}
+
+body[data-theme="black-white"].dark-mode .sidebar .menu .sidebar-main-link > svg,
+body[data-theme="black-white"].dark-mode .sidebar .sidebar-simple-dropdown-link > svg {
+  color: #7181ad !important;
+}
+
+body[data-theme="black-white"].dark-mode .sidebar .menu .sidebar-main-link:hover,
+body[data-theme="black-white"].dark-mode .sidebar .menu .sidebar-main-link.active,
+body[data-theme="black-white"].dark-mode .sidebar .sidebar-simple-dropdown-link:hover {
+  background: linear-gradient(90deg, rgba(63, 117, 255, 0.22), rgba(63, 117, 255, 0.08)) !important;
+  border-color: rgba(86, 126, 255, 0.3) !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 24px rgba(37, 84, 255, 0.12) !important;
+}
+
+body[data-theme="black-white"].dark-mode .sidebar .menu .sidebar-main-link:hover > svg,
+body[data-theme="black-white"].dark-mode .sidebar .menu .sidebar-main-link.active > svg,
+body[data-theme="black-white"].dark-mode .sidebar .sidebar-simple-dropdown-link:hover > svg {
+  color: #5f8cff !important;
+}
+
+body[data-theme="black-white"].dark-mode :is(button.primary, button[type="submit"], .settings-save, [class*="save-btn"], [class*="add-btn"]) {
+  background: linear-gradient(135deg, #4f7fff, #315eea) !important;
+  border-color: #658dff !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 26px rgba(49, 94, 234, 0.3) !important;
+}
+
+body[data-theme="black-white"].dark-mode :is(table, thead, tbody, tr, th, td) {
+  border-color: rgba(104, 132, 255, 0.14) !important;
+}
+
+body[data-theme="black-white"].dark-mode th {
+  background: rgba(21, 30, 68, 0.92) !important;
+}
+
+body[data-theme="black-white"].dark-mode tbody tr {
+  background: rgba(9, 13, 37, 0.72) !important;
+}
+
+body[data-theme="black-white"].dark-mode tbody tr:hover {
+  background: rgba(54, 91, 206, 0.13) !important;
+}
+
+body[data-theme="black-white"].dark-mode [class$="-modal-backdrop"],
+body[data-theme="black-white"].dark-mode [class*="-modal-backdrop "],
+body[data-theme="black-white"].dark-mode [class$="-modal-layer"],
+body[data-theme="black-white"].dark-mode [class*="-modal-layer "] {
+  background: rgba(2, 4, 17, 0.68) !important;
+  -webkit-backdrop-filter: blur(3px) !important;
+  backdrop-filter: blur(3px) !important;
+}
+
+.header-currency-control {
+  cursor: default;
+}
+
+.header-currency-control select {
+  width: auto !important;
+  min-width: 62px;
+  height: 100% !important;
+  padding: 0 22px 0 2px !important;
+  border: 0 !important;
+  outline: 0;
+  background: transparent !important;
+  color: inherit !important;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: none !important;
+}
+
+/* Soft Sky — replaces Clay Minimalism. */
+body[data-theme="clay-minimalism"],
+body[data-theme="clay-minimalism"] #root,
+body[data-theme="clay-minimalism"] .app {
+  background: #e4f0ff !important;
+}
+
+body[data-theme="clay-minimalism"] :is(.main, .sidebar, .topbar) {
+  background: rgba(244, 249, 255, 0.94) !important;
+  border-color: #c5daf4 !important;
+}
+
+body[data-theme="clay-minimalism"] :is(.card, .stat, .table-card, [class$="-card"], [class*="-card "], [class$="-panel"], [class*="-panel "]) {
+  background: #f7fbff !important;
+  border-color: #c9dcf3 !important;
+  box-shadow: 0 12px 30px rgba(70, 112, 160, 0.11) !important;
+}
+
+body[data-theme="clay-minimalism"] :is(input, select, textarea, .header-search, .search-input, .search-box) {
+  background: #edf6ff !important;
+  border-color: #bfd4ee !important;
+}
+
+/* Desktop Light — replaces Glassmorphism. */
+body[data-theme="glassmorphism"],
+body[data-theme="glassmorphism"] #root,
+body[data-theme="glassmorphism"] .app {
+  background:
+    radial-gradient(circle at 50% 24%, rgba(111, 130, 151, 0.42) 0 19%, transparent 19.2%),
+    linear-gradient(145deg, #a8b9ca, #91a5ba) !important;
+  background-attachment: fixed !important;
+}
+
+body[data-theme="glassmorphism"] :is(.main, .sidebar, .topbar) {
+  background: rgba(239, 245, 250, 0.88) !important;
+  border-color: rgba(70, 88, 108, 0.2) !important;
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+body[data-theme="glassmorphism"] :is(.card, .stat, .table-card, [class$="-card"], [class*="-card "], [class$="-panel"], [class*="-panel "]) {
+  background: rgba(244, 248, 252, 0.82) !important;
+  border-color: rgba(93, 113, 135, 0.2) !important;
+  box-shadow: 0 18px 42px rgba(48, 64, 82, 0.14) !important;
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+/* Dashboard metric cards use the same expressive system as Products. */
+.dashboard-modern-card {
+  --dashboard-card-accent: #6d5dfc;
+  --dashboard-card-glow: rgba(109, 93, 252, 0.18);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 104px;
+  padding: 19px 20px !important;
+  border-radius: 20px !important;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.07) !important;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease !important;
+}
+
+.dashboard-modern-card:nth-child(4n + 1) {
+  --dashboard-card-accent: #6d5dfc;
+  --dashboard-card-glow: rgba(109, 93, 252, 0.18);
+}
+
+.dashboard-modern-card:nth-child(4n + 2) {
+  --dashboard-card-accent: #0ea5e9;
+  --dashboard-card-glow: rgba(14, 165, 233, 0.18);
+}
+
+.dashboard-modern-card:nth-child(4n + 3) {
+  --dashboard-card-accent: #10b981;
+  --dashboard-card-glow: rgba(16, 185, 129, 0.18);
+}
+
+.dashboard-modern-card:nth-child(4n) {
+  --dashboard-card-accent: #f59e0b;
+  --dashboard-card-glow: rgba(245, 158, 11, 0.2);
+}
+
+.dashboard-modern-card::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 96px;
+  height: 96px;
+  inset-block-start: -43px;
+  inset-inline-end: -30px;
+  border-radius: 50%;
+  background: var(--dashboard-card-glow);
+  transition: transform 0.28s ease;
+}
+
+.dashboard-modern-card::after {
+  content: "";
+  position: absolute;
+  inset-block: 18px;
+  inset-inline-start: 0;
+  width: 4px;
+  border-radius: 0 8px 8px 0;
+  background: var(--dashboard-card-accent);
+}
+
+.dashboard-modern-card strong {
+  color: var(--dashboard-card-accent) !important;
+}
+
+.dashboard-modern-card em {
+  background: var(--dashboard-card-glow) !important;
+  color: var(--dashboard-card-accent) !important;
+  border: 1px solid color-mix(in srgb, var(--dashboard-card-accent) 22%, transparent);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.28);
+}
+
+.dashboard-modern-card:hover {
+  transform: translateY(-5px) !important;
+  border-color: color-mix(in srgb, var(--dashboard-card-accent) 35%, #e8ecf2) !important;
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.14) !important;
+}
+
+.dashboard-modern-card:hover::before {
+  transform: scale(1.35);
 }

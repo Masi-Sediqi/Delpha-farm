@@ -24,6 +24,39 @@ import "./Settings.css";
 const defaultSystemName = "ISP Assets";
 const defaultSystemSubtitle = "Asset & Inventory Management";
 const themeStorageKey = "afghan-power-theme";
+const languageStorageKey = "afghan-power-language";
+const settingsLabels = {
+  en: {
+    company: "Company",
+    currency: "Currency",
+    companyName: "Company Name",
+    address: "Address",
+    phone: "Phone Number",
+    logo: "Company Logo",
+    currencyTitle: "Currency",
+    currencies: { AFN: "Afghani", USD: "US Dollar", INR: "Indian Rupee" },
+  },
+  fa: {
+    company: "کمپنی",
+    currency: "واحد پول",
+    companyName: "نام کمپنی",
+    address: "آدرس",
+    phone: "شماره تماس",
+    logo: "لوگوی کمپنی",
+    currencyTitle: "واحد پول",
+    currencies: { AFN: "افغانی", USD: "دالر", INR: "کلدار هندی" },
+  },
+  ps: {
+    company: "شرکت",
+    currency: "د پیسو واحد",
+    companyName: "د شرکت نوم",
+    address: "پته",
+    phone: "د اړیکې شمېره",
+    logo: "د شرکت لوګو",
+    currencyTitle: "د پیسو واحد",
+    currencies: { AFN: "افغانۍ", USD: "امریکایي ډالر", INR: "هندي روپۍ" },
+  },
+};
 const themeOptions = [
   {
     key: "minimalism",
@@ -32,18 +65,18 @@ const themeOptions = [
   },
   {
     key: "clay-minimalism",
-    title: "Clay Minimalism",
-    description: "Soft, rounded, clay-style depth",
+    title: "Soft Sky",
+    description: "A calm light-blue workspace based on #e4f0ff",
   },
   {
     key: "glassmorphism",
-    title: "Glassmorphism",
-    description: "Frosted glass with blur & transparency",
+    title: "Desktop Light",
+    description: "Blue-gray desktop style with soft circular depth",
   },
   {
     key: "black-white",
-    title: "Black & White",
-    description: "Pure black & white high contrast",
+    title: "Midnight Blue",
+    description: "Deep navy surfaces with luminous blue accents",
   },
   {
     key: "neon",
@@ -79,6 +112,20 @@ function Settings() {
   );
   const [appDataBusy, setAppDataBusy] = useState(false);
   const [clearConfirm, setClearConfirm] = useState("");
+  const [language, setLanguage] = useState(
+    () => localStorage.getItem(languageStorageKey) || "en"
+  );
+  const t = settingsLabels[language] || settingsLabels.en;
+
+  useEffect(() => {
+    const syncLanguage = () => setLanguage(localStorage.getItem(languageStorageKey) || "en");
+    window.addEventListener("app-language-updated", syncLanguage);
+    window.addEventListener("storage", syncLanguage);
+    return () => {
+      window.removeEventListener("app-language-updated", syncLanguage);
+      window.removeEventListener("storage", syncLanguage);
+    };
+  }, []);
 
   useEffect(() => {
     setCompanyName(current.companyName || defaultSystemName);
@@ -246,7 +293,7 @@ function Settings() {
           onClick={() => setActiveTab("identity")}
         >
           <Building2 size={16} />
-          کمپنی
+          {t.company}
         </button>
         <button
           type="button"
@@ -254,7 +301,7 @@ function Settings() {
           onClick={() => setActiveTab("currency")}
         >
           <Banknote size={16} />
-          واحد پول
+          {t.currency}
         </button>
         <button
           type="button"
@@ -320,13 +367,13 @@ function Settings() {
           <div className="settings-form">
             <section className="settings-panel">
               <div className="settings-section-title">
-                <h3>کمپنی</h3>
+                <h3>{t.company}</h3>
                 <p>Company information used across receipts, reports, login and print layouts.</p>
               </div>
 
               <div className="settings-form-grid">
                 <label>
-                  نام کمپنی
+                  {t.companyName}
                   <input
                     value={companyName}
                     onChange={(event) => setCompanyName(event.target.value)}
@@ -344,7 +391,7 @@ function Settings() {
                 </label>
 
                 <label>
-                  آدرس
+                  {t.address}
                   <input
                     value={companyAddress}
                     onChange={(event) => setCompanyAddress(event.target.value)}
@@ -353,7 +400,7 @@ function Settings() {
                 </label>
 
                 <label>
-                  شماره تماس
+                  {t.phone}
                   <input
                     value={companyPhone}
                     onChange={(event) => setCompanyPhone(event.target.value)}
@@ -362,7 +409,7 @@ function Settings() {
                 </label>
 
                 <label>
-                  لوگو کمپنی
+                  {t.logo}
                   <span className="settings-file-control">
                     <Image size={16} />
                     <input type="file" accept="image/*" onChange={handleLogoChange} />
@@ -394,15 +441,15 @@ function Settings() {
         <form className="settings-card settings-card-single" onSubmit={save}>
           <section className="settings-panel">
             <div className="settings-section-title">
-              <h3>واحد پول</h3>
+              <h3>{t.currencyTitle}</h3>
               <p>Select the default currency used in billing, sales, reports and print views.</p>
             </div>
 
             <div className="settings-choice-grid">
               {[
-                { key: "AFN", title: "افغانی", description: "Afghan Afghani" },
-                { key: "USD", title: "دالر", description: "US Dollar" },
-                { key: "INR", title: "کلدار هندی", description: "Indian Rupee" },
+                { key: "AFN", title: t.currencies.AFN, description: "Afghan Afghani" },
+                { key: "USD", title: t.currencies.USD, description: "US Dollar" },
+                { key: "INR", title: t.currencies.INR, description: "Indian Rupee" },
               ].map((item) => (
                 <button
                   type="button"
