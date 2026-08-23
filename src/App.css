@@ -7196,3 +7196,464 @@ body[data-theme="glassmorphism"] :is(.card, .stat, .table-card, [class$="-card"]
 .dashboard-modern-card:hover::before {
   transform: scale(1.35);
 }
+
+/* ========================================================================== 
+   Obsidian Glass — replaces the former Neon theme.
+   ========================================================================== */
+body[data-theme="neon"].dark-mode,
+body[data-theme="neon"].dark-mode #root,
+body[data-theme="neon"].dark-mode .app {
+  --obsidian-bg: #050505;
+  --obsidian-shell: rgba(9, 9, 10, 0.96);
+  --obsidian-surface: rgba(20, 20, 22, 0.9);
+  --obsidian-surface-2: rgba(29, 29, 32, 0.88);
+  --obsidian-border: rgba(255, 255, 255, 0.13);
+  --obsidian-text: #fafafa;
+  --obsidian-muted: #96969f;
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(255, 255, 255, 0.14), transparent 35%),
+    radial-gradient(ellipse at 12% 80%, rgba(255, 255, 255, 0.05), transparent 32%),
+    linear-gradient(145deg, #0b0b0c, #020203 68%) !important;
+  color: var(--obsidian-text) !important;
+}
+
+body[data-theme="neon"].dark-mode :is(.main, .sidebar, .topbar) {
+  background: var(--obsidian-shell) !important;
+  border-color: var(--obsidian-border) !important;
+  color: var(--obsidian-text) !important;
+  -webkit-backdrop-filter: blur(22px);
+  backdrop-filter: blur(22px);
+}
+
+body[data-theme="neon"].dark-mode .sidebar {
+  box-shadow: 20px 0 70px rgba(0, 0, 0, 0.42), inset -1px 0 rgba(255, 255, 255, 0.035) !important;
+}
+
+body[data-theme="neon"].dark-mode :is(
+  .card,
+  .stat,
+  .table-card,
+  [class$="-card"],
+  [class*="-card "],
+  [class$="-panel"],
+  [class*="-panel "],
+  [class$="-section"],
+  [class*="-section "],
+  [class$="-modal"],
+  [class*="-modal "]
+) {
+  background: linear-gradient(145deg, rgba(29, 29, 32, 0.94), rgba(13, 13, 15, 0.97)) !important;
+  border-color: var(--obsidian-border) !important;
+  color: var(--obsidian-text) !important;
+  box-shadow: 0 22px 56px rgba(0, 0, 0, 0.34), inset 0 1px rgba(255, 255, 255, 0.055) !important;
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+body[data-theme="neon"].dark-mode :is(h1, h2, h3, h4, strong, label, th) {
+  color: var(--obsidian-text) !important;
+}
+
+body[data-theme="neon"].dark-mode :is(p, small, td, .muted, [class*="subtitle"], [class*="description"]) {
+  color: var(--obsidian-muted) !important;
+}
+
+body[data-theme="neon"].dark-mode :is(input, select, textarea, .header-search, .search-input, .search-box) {
+  background: rgba(8, 8, 9, 0.9) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  color: #fafafa !important;
+  box-shadow: inset 0 1px 10px rgba(0, 0, 0, 0.3) !important;
+}
+
+body[data-theme="neon"].dark-mode .sidebar :is(.sidebar-main-link, .sidebar-simple-dropdown-link) {
+  color: #aaaab3 !important;
+  border: 1px solid transparent;
+}
+
+body[data-theme="neon"].dark-mode .sidebar :is(.sidebar-main-link, .sidebar-simple-dropdown-link) > svg {
+  color: #7e7e87 !important;
+}
+
+body[data-theme="neon"].dark-mode .sidebar :is(.sidebar-main-link, .sidebar-simple-dropdown-link):hover,
+body[data-theme="neon"].dark-mode .sidebar .sidebar-main-link.active {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.045)) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28) !important;
+}
+
+body[data-theme="neon"].dark-mode .sidebar :is(.sidebar-main-link, .sidebar-simple-dropdown-link):hover > svg,
+body[data-theme="neon"].dark-mode .sidebar .sidebar-main-link.active > svg {
+  color: #ffffff !important;
+}
+
+body[data-theme="neon"].dark-mode :is(button.primary, button[type="submit"], .settings-save, [class*="save-btn"], [class*="add-btn"]) {
+  background: linear-gradient(145deg, #ffffff, #d7d7da) !important;
+  border-color: #ffffff !important;
+  color: #080808 !important;
+  box-shadow: 0 12px 30px rgba(255, 255, 255, 0.1) !important;
+}
+
+body[data-theme="neon"].dark-mode th {
+  background: rgba(34, 34, 37, 0.96) !important;
+}
+
+body[data-theme="neon"].dark-mode tbody tr {
+  background: rgba(13, 13, 15, 0.82) !important;
+}
+
+body[data-theme="neon"].dark-mode tbody tr:hover {
+  background: rgba(255, 255, 255, 0.055) !important;
+}
+
+body[data-theme="neon"].dark-mode [class$="-modal-backdrop"],
+body[data-theme="neon"].dark-mode [class*="-modal-backdrop "],
+body[data-theme="neon"].dark-mode [class$="-modal-layer"],
+body[data-theme="neon"].dark-mode [class*="-modal-layer "] {
+  background: rgba(0, 0, 0, 0.7) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+/* ========================================================================== 
+   Obsidian & Pearl — final black + white treatment across the entire app.
+   ========================================================================== */
+body[data-theme="neon"].dark-mode,
+body[data-theme="neon"].dark-mode #root,
+body[data-theme="neon"].dark-mode .app {
+  --mono-black: #080808;
+  --mono-charcoal: #151515;
+  --mono-white: #ffffff;
+  --mono-paper: #f7f7f5;
+  --mono-line: #dededb;
+  --mono-muted: #71717a;
+  background: linear-gradient(135deg, #090909 0 18%, #ececea 18% 100%) !important;
+  color: #151515 !important;
+}
+
+body[data-theme="neon"].dark-mode .sidebar {
+  background: linear-gradient(165deg, #050505, #181818) !important;
+  border-color: #2d2d2d !important;
+  color: #ffffff !important;
+  box-shadow: 18px 0 55px rgba(0, 0, 0, 0.22) !important;
+}
+
+body[data-theme="neon"].dark-mode .main {
+  background: #f1f1ef !important;
+  border-color: #d7d7d3 !important;
+  color: #161616 !important;
+}
+
+body[data-theme="neon"].dark-mode .topbar {
+  background: rgba(255, 255, 255, 0.94) !important;
+  border-color: var(--mono-line) !important;
+  color: #111111 !important;
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+body[data-theme="neon"].dark-mode :is(
+  .card, .stat, .table-card, [class$="-card"], [class*="-card "],
+  [class$="-panel"], [class*="-panel "], [class$="-section"], [class*="-section "]
+) {
+  background: linear-gradient(145deg, #ffffff, #f5f5f3) !important;
+  border-color: var(--mono-line) !important;
+  color: #171717 !important;
+  box-shadow: 0 14px 36px rgba(10, 10, 10, 0.08), inset 0 1px #ffffff !important;
+}
+
+body[data-theme="neon"].dark-mode .main :is(h1, h2, h3, h4, strong, label, th) {
+  color: #111111 !important;
+}
+
+body[data-theme="neon"].dark-mode .main :is(p, small, td, .muted, [class*="subtitle"], [class*="description"]) {
+  color: var(--mono-muted) !important;
+}
+
+body[data-theme="neon"].dark-mode :is(input, select, textarea, .header-search, .search-input, .search-box) {
+  background: #ffffff !important;
+  border-color: #d4d4d1 !important;
+  color: #111111 !important;
+  box-shadow: inset 0 1px 5px rgba(0, 0, 0, 0.035) !important;
+}
+
+body[data-theme="neon"].dark-mode :is(input, textarea)::placeholder {
+  color: #99999f !important;
+}
+
+body[data-theme="neon"].dark-mode .sidebar :is(.sidebar-main-link, .sidebar-simple-dropdown-link) {
+  color: #bdbdc2 !important;
+}
+
+body[data-theme="neon"].dark-mode .sidebar :is(.sidebar-main-link, .sidebar-simple-dropdown-link):hover,
+body[data-theme="neon"].dark-mode .sidebar .sidebar-main-link.active {
+  background: #ffffff !important;
+  border-color: #ffffff !important;
+  color: #080808 !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25) !important;
+}
+
+body[data-theme="neon"].dark-mode .sidebar :is(.sidebar-main-link, .sidebar-simple-dropdown-link):hover > svg,
+body[data-theme="neon"].dark-mode .sidebar .sidebar-main-link.active > svg {
+  color: #080808 !important;
+}
+
+body[data-theme="neon"].dark-mode :is(.settings-tabs, [class*="-tabs"], [role="tablist"]) {
+  background: #e8e8e5 !important;
+  border-color: #d0d0cc !important;
+}
+
+body[data-theme="neon"].dark-mode :is(.settings-tabs button, [role="tab"]) {
+  color: #66666c !important;
+}
+
+body[data-theme="neon"].dark-mode :is(.settings-tabs button.active, [role="tab"][aria-selected="true"]) {
+  background: #0a0a0a !important;
+  color: #ffffff !important;
+  border-color: #0a0a0a !important;
+}
+
+body[data-theme="neon"].dark-mode :is(button.primary, button[type="submit"], .settings-save, [class*="save-btn"], [class*="add-btn"]) {
+  background: #0a0a0a !important;
+  border-color: #0a0a0a !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18) !important;
+}
+
+body[data-theme="neon"].dark-mode :is([class$="-modal"], [class*="-modal "]) {
+  background: #ffffff !important;
+  border-color: #d5d5d2 !important;
+  color: #111111 !important;
+}
+
+body[data-theme="neon"].dark-mode th {
+  background: #ececea !important;
+  color: #151515 !important;
+}
+
+body[data-theme="neon"].dark-mode td,
+body[data-theme="neon"].dark-mode tbody tr {
+  background: #ffffff !important;
+  color: #55555b !important;
+  border-color: #e3e3df !important;
+}
+
+body[data-theme="neon"].dark-mode tbody tr:hover {
+  background: #f0f0ed !important;
+}
+
+/* ========================================================================== 
+   Graphite Mist — replaces Soft Sky across menus, tabs, data and forms.
+   ========================================================================== */
+body[data-theme="clay-minimalism"],
+body[data-theme="clay-minimalism"] #root,
+body[data-theme="clay-minimalism"] .app {
+  --graphite-deep: #404142;
+  --graphite-mid: #727475;
+  --graphite-mist: #d4d5d3;
+  --graphite-paper: #ededeb;
+  --graphite-line: rgba(45, 46, 47, 0.18);
+  background:
+    radial-gradient(ellipse at 17% 18%, rgba(255, 255, 255, 0.16), transparent 30%),
+    linear-gradient(145deg, #8c8e8e, #666868 48%, #9b9d9c) !important;
+  background-attachment: fixed !important;
+  color: #202122 !important;
+}
+
+body[data-theme="clay-minimalism"] .sidebar {
+  background: linear-gradient(165deg, #3f4141, #555757) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+  box-shadow: 18px 0 50px rgba(37, 38, 38, 0.24) !important;
+}
+
+body[data-theme="clay-minimalism"] :is(.main, .topbar) {
+  background: rgba(232, 233, 231, 0.92) !important;
+  border-color: var(--graphite-line) !important;
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+body[data-theme="clay-minimalism"] :is(
+  .card, .stat, .table-card, [class$="-card"], [class*="-card "],
+  [class$="-panel"], [class*="-panel "], [class$="-section"], [class*="-section "],
+  [class$="-modal"], [class*="-modal "]
+) {
+  background: linear-gradient(145deg, rgba(247, 247, 245, 0.94), rgba(213, 214, 211, 0.92)) !important;
+  border-color: rgba(57, 58, 58, 0.18) !important;
+  color: #222323 !important;
+  box-shadow: 0 16px 38px rgba(43, 44, 44, 0.15), inset 0 1px rgba(255, 255, 255, 0.7) !important;
+}
+
+body[data-theme="clay-minimalism"] .sidebar :is(.sidebar-main-link, .sidebar-simple-dropdown-link) {
+  color: #e1e2e1 !important;
+}
+
+body[data-theme="clay-minimalism"] .sidebar :is(.sidebar-main-link, .sidebar-simple-dropdown-link):hover,
+body[data-theme="clay-minimalism"] .sidebar .sidebar-main-link.active {
+  background: rgba(255, 255, 255, 0.92) !important;
+  color: #343535 !important;
+  border-color: rgba(255, 255, 255, 0.7) !important;
+}
+
+body[data-theme="clay-minimalism"] :is(.settings-tabs, [class*="-tabs"], [role="tablist"]) {
+  background: rgba(87, 89, 89, 0.13) !important;
+  border-color: rgba(55, 56, 56, 0.2) !important;
+}
+
+body[data-theme="clay-minimalism"] :is(.settings-tabs button.active, [role="tab"][aria-selected="true"]) {
+  background: #474949 !important;
+  color: #ffffff !important;
+}
+
+body[data-theme="clay-minimalism"] :is(input, select, textarea, .header-search, .search-input, .search-box) {
+  background: rgba(249, 249, 247, 0.9) !important;
+  border-color: rgba(56, 57, 57, 0.2) !important;
+  color: #252626 !important;
+}
+
+body[data-theme="clay-minimalism"] th {
+  background: rgba(91, 93, 93, 0.16) !important;
+  color: #2c2d2d !important;
+}
+
+body[data-theme="clay-minimalism"] td,
+body[data-theme="clay-minimalism"] tbody tr {
+  background: rgba(244, 244, 242, 0.82) !important;
+  border-color: rgba(65, 66, 66, 0.13) !important;
+}
+
+body[data-theme="clay-minimalism"] tbody tr:hover {
+  background: rgba(205, 206, 203, 0.9) !important;
+}
+
+/* ========================================================================== 
+   Neon — restored as the final treatment for the neon theme key.
+   ========================================================================== */
+body[data-theme="neon"].dark-mode,
+body[data-theme="neon"].dark-mode #root,
+body[data-theme="neon"].dark-mode .app {
+  --neon-bg: #050716;
+  --neon-shell: #090d20;
+  --neon-surface: #0d1229;
+  --neon-surface-2: #111936;
+  --neon-cyan: #22d3ee;
+  --neon-violet: #8b5cf6;
+  --neon-blue: #3b82f6;
+  --neon-text: #f4fbff;
+  --neon-muted: #8fa4bd;
+  --neon-border: rgba(34, 211, 238, 0.28);
+  background:
+    radial-gradient(circle at 12% 8%, rgba(34, 211, 238, 0.16), transparent 30%),
+    radial-gradient(circle at 88% 88%, rgba(139, 92, 246, 0.14), transparent 34%),
+    linear-gradient(145deg, #070a19, #03040d) !important;
+  color: var(--neon-text) !important;
+}
+
+body[data-theme="neon"].dark-mode :is(.main, .sidebar, .topbar) {
+  background: rgba(9, 13, 32, 0.95) !important;
+  border-color: rgba(34, 211, 238, 0.2) !important;
+  color: var(--neon-text) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.025) !important;
+}
+
+body[data-theme="neon"].dark-mode .sidebar {
+  box-shadow: 18px 0 60px rgba(0, 0, 0, 0.32), inset -1px 0 rgba(34, 211, 238, 0.1) !important;
+}
+
+body[data-theme="neon"].dark-mode :is(
+  .card, .stat, .table-card, [class$="-card"], [class*="-card "],
+  [class$="-panel"], [class*="-panel "], [class$="-section"], [class*="-section "],
+  [class$="-modal"], [class*="-modal "]
+) {
+  background: linear-gradient(145deg, rgba(17, 25, 54, 0.96), rgba(8, 12, 31, 0.98)) !important;
+  border-color: var(--neon-border) !important;
+  color: var(--neon-text) !important;
+  box-shadow: 0 0 28px rgba(34, 211, 238, 0.08), 0 20px 48px rgba(0, 0, 0, 0.25) !important;
+}
+
+body[data-theme="neon"].dark-mode :is(h1, h2, h3, h4, strong, label, th) {
+  color: var(--neon-text) !important;
+}
+
+body[data-theme="neon"].dark-mode :is(p, small, td, .muted, [class*="subtitle"], [class*="description"]) {
+  color: var(--neon-muted) !important;
+}
+
+body[data-theme="neon"].dark-mode :is(input, select, textarea, .header-search, .search-input, .search-box) {
+  background: rgba(4, 8, 24, 0.9) !important;
+  border-color: rgba(34, 211, 238, 0.26) !important;
+  color: var(--neon-text) !important;
+  box-shadow: inset 0 0 14px rgba(34, 211, 238, 0.035) !important;
+}
+
+body[data-theme="neon"].dark-mode :is(input, textarea):focus {
+  border-color: var(--neon-cyan) !important;
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.12), 0 0 22px rgba(34, 211, 238, 0.08) !important;
+}
+
+body[data-theme="neon"].dark-mode .sidebar :is(.sidebar-main-link, .sidebar-simple-dropdown-link) {
+  color: #9cb0c9 !important;
+}
+
+body[data-theme="neon"].dark-mode .sidebar :is(.sidebar-main-link, .sidebar-simple-dropdown-link) > svg {
+  color: #5e7693 !important;
+}
+
+body[data-theme="neon"].dark-mode .sidebar :is(.sidebar-main-link, .sidebar-simple-dropdown-link):hover,
+body[data-theme="neon"].dark-mode .sidebar .sidebar-main-link.active {
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.19), rgba(139, 92, 246, 0.1)) !important;
+  border-color: rgba(34, 211, 238, 0.34) !important;
+  color: #eaffff !important;
+  box-shadow: 0 0 24px rgba(34, 211, 238, 0.11) !important;
+}
+
+body[data-theme="neon"].dark-mode .sidebar :is(.sidebar-main-link, .sidebar-simple-dropdown-link):hover > svg,
+body[data-theme="neon"].dark-mode .sidebar .sidebar-main-link.active > svg {
+  color: var(--neon-cyan) !important;
+  filter: drop-shadow(0 0 5px rgba(34, 211, 238, 0.5));
+}
+
+body[data-theme="neon"].dark-mode :is(.settings-tabs, [class*="-tabs"], [role="tablist"]) {
+  background: rgba(8, 13, 35, 0.92) !important;
+  border-color: rgba(34, 211, 238, 0.2) !important;
+}
+
+body[data-theme="neon"].dark-mode :is(.settings-tabs button.active, [role="tab"][aria-selected="true"]) {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.25), rgba(139, 92, 246, 0.22)) !important;
+  border-color: var(--neon-cyan) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 20px rgba(34, 211, 238, 0.14) !important;
+}
+
+body[data-theme="neon"].dark-mode :is(button.primary, button[type="submit"], .settings-save, [class*="save-btn"], [class*="add-btn"]) {
+  background: linear-gradient(135deg, #0891b2, #4f46e5) !important;
+  border-color: #22d3ee !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 24px rgba(34, 211, 238, 0.2) !important;
+}
+
+body[data-theme="neon"].dark-mode th {
+  background: rgba(17, 28, 58, 0.96) !important;
+  color: #dffcff !important;
+}
+
+body[data-theme="neon"].dark-mode td,
+body[data-theme="neon"].dark-mode tbody tr {
+  background: rgba(7, 12, 31, 0.82) !important;
+  color: #a9bad0 !important;
+  border-color: rgba(34, 211, 238, 0.12) !important;
+}
+
+body[data-theme="neon"].dark-mode tbody tr:hover {
+  background: rgba(34, 211, 238, 0.075) !important;
+}
+
+body[data-theme="neon"].dark-mode [class$="-modal-backdrop"],
+body[data-theme="neon"].dark-mode [class*="-modal-backdrop "],
+body[data-theme="neon"].dark-mode [class$="-modal-layer"],
+body[data-theme="neon"].dark-mode [class*="-modal-layer "] {
+  background: rgba(1, 3, 12, 0.7) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  backdrop-filter: blur(4px) !important;
+}
