@@ -33,6 +33,7 @@ import {
   Settings as SettingsIcon,
   ShieldCheck,
   ShoppingCart,
+  ShoppingBag,
   Building2,
   Truck,
   Users,
@@ -64,6 +65,9 @@ const TowerInsight = lazy(() => import("./pages/TowerInsight"));
 const Customers = lazy(() => import("./pages/Customers"));
 const Products = lazy(() => import("./pages/Products"));
 const Purchasing = lazy(() => import("./pages/Purchasing"));
+const CustomersRegistry = lazy(() => import("./pages/CustomersRegistry"));
+const CustomerDetail = lazy(() => import("./pages/CustomerDetail"));
+const SalesRegister = lazy(() => import("./pages/SalesRegister"));
 const CustomerInsight = lazy(() => import("./pages/CustomerInsight"));
 const CustomerDetails = lazy(() => import("./pages/CustomerDetails"));
 const Accounts = lazy(() => import("./pages/Accounts"));
@@ -114,6 +118,8 @@ const shellLabels = {
     companies: "Companies",
     products: "Products",
     purchasing: "Purchasing",
+    customerRegistry: "Customers",
+    salesRegister: "Sales",
     approvals: "Approvals",
     loans: "Receivables",
     stock: "Stock",
@@ -128,6 +134,8 @@ const shellLabels = {
     companies: "شرکت‌ها",
     products: "محصولات",
     purchasing: "خریداری",
+    customerRegistry: "مشتریان",
+    salesRegister: "فروشات",
     approvals: "تاییدات",
     loans: "طلبات",
     stock: "موجودی",
@@ -142,6 +150,8 @@ const shellLabels = {
     companies: "شرکتونه",
     products: "محصولات",
     purchasing: "پېرود",
+    customerRegistry: "پېرودونکي",
+    salesRegister: "خرڅلاو",
     approvals: "تاییدات",
     loans: "پورونه",
     stock: "موجودي",
@@ -489,6 +499,18 @@ function App() {
     icon: ShoppingCart,
   },
   {
+    to: "/customer-registry",
+    label: labels.customerRegistry,
+    moduleKey: "customers",
+    icon: Users,
+  },
+  {
+    to: "/sales-register",
+    label: labels.salesRegister,
+    moduleKey: "customers",
+    icon: ShoppingBag,
+  },
+  {
     to: "/approvals",
     label: labels.approvals,
     moduleKey: "deviceTransfer",
@@ -743,7 +765,10 @@ function App() {
               <Route path="/main-stock" element={protect("mainStock", <MainStock />)} />
               <Route path="/products" element={protect("customers", <Products />)} />
               <Route path="/purchasing" element={protect("suppliers", <Purchasing />)} />
-              <Route path="/sales" element={protect("customers", <Products />)} />
+              <Route path="/customer-registry" element={protect("customers", <CustomersRegistry />)} />
+              <Route path="/customer-detail/:customerId" element={protect("customers", <CustomerDetail />)} />
+              <Route path="/sales-register" element={protect("customers", <SalesRegister />)} />
+              <Route path="/sales" element={protect("customers", <SalesRegister />)} />
               <Route path="/approvals" element={protect("deviceTransfer", <DeviceTransferManagement />)} />
               <Route
                 path="/loans"
