@@ -2,7 +2,6 @@ import {
   lazy,
   Suspense,
   useEffect,
-  useRef,
   useState,
 } from "react";
 
@@ -14,31 +13,17 @@ import {
   useNavigate,
 } from "react-router-dom";
 import {
-  AlertTriangle,
-  BadgeDollarSign,
-  BookOpen,
-  CircleHelp,
-  Code2,
-  CreditCard,
+  Building2,
   FileBarChart,
-  HelpCircle,
-  Info,
   LayoutDashboard,
   MoreHorizontal,
-  PackageCheck,
   PanelLeftClose,
   PanelLeftOpen,
   ReceiptText,
-  RadioTower,
   Settings as SettingsIcon,
-  ShieldCheck,
-  ShoppingCart,
   ShoppingBag,
-  Building2,
-  Truck,
+  ShoppingCart,
   Users,
-  Warehouse,
-  Wrench,
 } from "lucide-react";
 import appLogo from "./assets/logo.png";
 import Header from "./components/Header";
@@ -52,47 +37,19 @@ import { notify } from "./utils/notify";
 import { canViewModule } from "./utils/permissions";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-const DashboardInsight = lazy(() => import("./pages/DashboardInsight"));
-const Suppliers = lazy(() => import("./pages/Suppliers"));
 const Companies = lazy(() => import("./pages/Companies"));
-const SupplierDetails = lazy(() => import("./pages/SupplierDetails"));
-const AssetInventory = lazy(() => import("./pages/AssetInventory"));
-const AssetInventoryInsight = lazy(() => import("./pages/AssetInventoryInsight"));
-const MainStock = lazy(() => import("./pages/MainStock"));
-const DeviceTransferManagement = lazy(() => import("./pages/DeviceTransferManagement"));
-const TowerAssets = lazy(() => import("./pages/TowerAssets"));
-const TowerInsight = lazy(() => import("./pages/TowerInsight"));
-const Customers = lazy(() => import("./pages/Customers"));
 const Products = lazy(() => import("./pages/Products"));
 const Purchasing = lazy(() => import("./pages/Purchasing"));
 const CustomersRegistry = lazy(() => import("./pages/CustomersRegistry"));
 const CustomerDetail = lazy(() => import("./pages/CustomerDetail"));
 const SalesRegister = lazy(() => import("./pages/SalesRegister"));
-const CustomerInsight = lazy(() => import("./pages/CustomerInsight"));
-const CustomerDetails = lazy(() => import("./pages/CustomerDetails"));
-const Accounts = lazy(() => import("./pages/Accounts"));
 const Reports = lazy(() => import("./pages/Reports"));
-const Repair = lazy(() => import("./pages/Repair"));
 const Settings = lazy(() => import("./pages/Settings"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
-const Agent = lazy(() => import("./pages/Agent"));
+const Accounts = lazy(() => import("./pages/Accounts"));
 const SearchResults = lazy(() => import("./pages/SearchResults"));
 const Login = lazy(() => import("./pages/Login"));
 const License = lazy(() => import("./pages/License"));
-const AssetFullInformation = lazy(() => import("./pages/AssetFullInformation"));
-const AssetAuditTrail = lazy(() => import("./pages/AssetAuditTrail"));
-const AssetInsightDetails = lazy(() => import("./pages/AssetInsightDetails"));
-const TowerLinks = lazy(() => import("./pages/TowerLinks"));
-const CustomerIssueDevice = lazy(() => import("./pages/CustomerIssueDevice"));
-const TowerAssetDetails = lazy(() => import("./pages/TowerAssetDetails"));
-const HelpCenter = lazy(() => import("./pages/HelpCenter"));
-const Developer = lazy(() => import("./pages/Developer"));
-const TermsPrivacy = lazy(
-  () => import("./pages/TermsPrivacy")
-);
-const FAQ = lazy(() => import("./pages/FAQ"));
-const UserGuide = lazy(() => import("./pages/UserGuide"));
-
 
 
 const defaultAdminAccount = {
@@ -120,19 +77,8 @@ const shellLabels = {
     purchasing: "Purchasing",
     customerRegistry: "Customers",
     salesRegister: "Sales",
-    approvals: "Approvals",
-    loans: "Receivables",
-    stock: "Stock",
-    expiry: "Expiry Date",
-    cash: "Cash",
-    repair: "Repair",
     reports: "Reports",
     settings: "Settings",
-    helpCenter: "Help Center",
-    developer: "Developer",
-    faq: "FAQ",
-    userGuide: "User Guide",
-    termsPrivacy: "Terms & Privacy",
   },
   fa: {
     dashboard: "داشبورد",
@@ -141,19 +87,8 @@ const shellLabels = {
     purchasing: "خریداری",
     customerRegistry: "مشتریان",
     salesRegister: "فروشات",
-    approvals: "تاییدات",
-    loans: "طلبات",
-    stock: "موجودی",
-    expiry: "تاریخ انقضا",
-    cash: "نقدی",
-    repair: "اصلاح",
     reports: "گزارشات",
     settings: "تنظیمات",
-    helpCenter: "مرکز راهنما",
-    developer: "توسعه‌دهنده",
-    faq: "سوالات متداول",
-    userGuide: "راهنمای کاربر",
-    termsPrivacy: "شرایط و حریم خصوصی",
   },
   ps: {
     dashboard: "ډشبورد",
@@ -162,19 +97,8 @@ const shellLabels = {
     purchasing: "پېرود",
     customerRegistry: "پېرودونکي",
     salesRegister: "خرڅلاو",
-    approvals: "تاییدات",
-    loans: "پورونه",
-    stock: "موجودي",
-    expiry: "د ختمېدو نېټه",
-    cash: "نغدي",
-    repair: "ترمیم",
     reports: "راپورونه",
     settings: "تنظیمات",
-    helpCenter: "د مرستې مرکز",
-    developer: "پراختیاکوونکی",
-    faq: "عامې پوښتنې",
-    userGuide: "د کارونکي لارښود",
-    termsPrivacy: "شرایط او محرمیت",
   },
 };
 
@@ -270,10 +194,8 @@ function ProtectedModule({ currentUser, moduleKey, children }) {
 function App() {
   const [settings, , loadSettings] = useJsonCollection("settings");
   const [accounts, setAccounts, , accountsLoaded] = useJsonCollection("accounts");
-    const [sidebarInfoOpen, setSidebarInfoOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const sidebarInfoRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
   const [licenseStatus, setLicenseStatus] = useState(null);
@@ -432,38 +354,6 @@ function App() {
     };
   }, [company.autoBackupCustomDays, company.autoBackupMode, currentUser]);
 
-    useEffect(() => {
-    const closeSidebarInfo = (event) => {
-      if (
-        sidebarInfoRef.current &&
-        !sidebarInfoRef.current.contains(event.target)
-      ) {
-        setSidebarInfoOpen(false);
-      }
-    };
-
-    const closeWithEscape = (event) => {
-      if (event.key === "Escape") {
-        setSidebarInfoOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", closeSidebarInfo);
-    document.addEventListener("keydown", closeWithEscape);
-
-    return () => {
-      document.removeEventListener(
-        "mousedown",
-        closeSidebarInfo
-      );
-
-      document.removeEventListener(
-        "keydown",
-        closeWithEscape
-      );
-    };
-  }, []);
-
   useEffect(() => {
     if (!accountsLoaded) return;
     if (accounts.some((account) => String(account.id) === "default-admin")) return;
@@ -490,123 +380,14 @@ function App() {
   };
 
   const menuItems = [
-  {
-    to: "/",
-    label: labels.dashboard,
-    moduleKey: "dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    to: "/companies",
-    label: labels.companies,
-    moduleKey: "suppliers",
-    icon: Building2,
-  },
-  {
-    to: "/products",
-    label: labels.products,
-    moduleKey: "customers",
-    icon: ReceiptText,
-  },
-  {
-    to: "/purchasing",
-    label: labels.purchasing,
-    moduleKey: "suppliers",
-    icon: ShoppingCart,
-  },
-  {
-    to: "/customer-registry",
-    label: labels.customerRegistry,
-    moduleKey: "customers",
-    icon: Users,
-  },
-  {
-    to: "/sales-register",
-    label: labels.salesRegister,
-    moduleKey: "customers",
-    icon: ShoppingBag,
-  },
-  {
-    to: "/approvals",
-    label: labels.approvals,
-    moduleKey: "deviceTransfer",
-    icon: PackageCheck,
-  },
-  {
-    to: "/loans",
-    label: labels.loans,
-    moduleKey: "customers",
-    icon: BadgeDollarSign,
-  },
-  {
-    to: "/main-stock",
-    label: labels.stock,
-    moduleKey: "mainStock",
-    icon: Warehouse,
-  },
-  {
-    to: "/expiry",
-    label: labels.expiry,
-    moduleKey: "mainStock",
-    icon: AlertTriangle,
-  },
-  {
-    to: "/cash",
-    label: labels.cash,
-    moduleKey: "userManagement",
-    icon: CreditCard,
-  },
-  {
-    to: "/repair",
-    label: labels.repair,
-    moduleKey: "repair",
-    icon: Wrench,
-  },
-  {
-    to: "/reports",
-    label: labels.reports,
-    moduleKey: "reports",
-    icon: FileBarChart,
-  },
-  {
-    to: "/settings",
-    label: labels.settings,
-    moduleKey: "settings",
-    icon: SettingsIcon,
-  },
-];
-
-    const sidebarInfoLinks = [
-    {
-      key: "help-center",
-      label: labels.helpCenter,
-      icon: HelpCircle,
-      to: "/help-center",
-    },
-    {
-      key: "developer",
-      label: labels.developer,
-      icon: Code2,
-      to: "/developer",
-    },
-    {
-      key: "faq",
-      label: labels.faq,
-      icon: CircleHelp,
-      to: "/faq",
-    },
-    {
-      key: "user-guide",
-      label: labels.userGuide,
-      icon: BookOpen,
-      to: "/user-guide",
-    },
-    {
-      key: "terms-privacy",
-      label: labels.termsPrivacy,
-      icon: ShieldCheck,
-      to: "/terms-privacy",
-    },
+    { to: "/", label: labels.dashboard, moduleKey: "dashboard", icon: LayoutDashboard },
+    { to: "/companies", label: labels.companies, moduleKey: "suppliers", icon: Building2 },
+    { to: "/products", label: labels.products, moduleKey: "customers", icon: ReceiptText },
+    { to: "/purchasing", label: labels.purchasing, moduleKey: "suppliers", icon: ShoppingCart },
+    { to: "/customer-registry", label: labels.customerRegistry, moduleKey: "customers", icon: Users },
+    { to: "/sales-register", label: labels.salesRegister, moduleKey: "customers", icon: ShoppingBag },
+    { to: "/reports", label: labels.reports, moduleKey: "reports", icon: FileBarChart },
+    { to: "/settings", label: labels.settings, moduleKey: "settings", icon: SettingsIcon },
   ];
 
   const protect = (moduleKey, element) => (
@@ -710,51 +491,11 @@ function App() {
       );
     })}
 </nav>
-        <div
-  className="sidebar-version-area"
-  ref={sidebarInfoRef}
->
-  <div className="sidebar-version-row">
-   <span className="sidebar-version-label">
-  v0.0.1 • ISP Asset Inventory
-</span>
-
-    <button
-      type="button"
-      className={`sidebar-version-info-btn ${
-        sidebarInfoOpen ? "active" : ""
-      }`}
-      onClick={() =>
-        setSidebarInfoOpen((previous) => !previous)
-      }
-      aria-label="Open information menu"
-      aria-expanded={sidebarInfoOpen}
-      title="Information"
-    >
-      <Info size={16} />
-    </button>
-  </div>
-
-  {sidebarInfoOpen && (
-    <div className="sidebar-simple-dropdown">
-      {sidebarInfoLinks.map((item) => {
-        const Icon = item.icon;
-
-        return (
-          <NavLink
-            key={item.key}
-            to={item.to}
-            className="sidebar-simple-dropdown-link"
-            onClick={() => setSidebarInfoOpen(false)}
-          >
-            <Icon size={16} />
-            <span>{item.label}</span>
-          </NavLink>
-        );
-      })}
-    </div>
-  )}
-</div>
+        <div className="sidebar-version-area">
+          <div className="sidebar-version-row">
+            <span className="sidebar-version-label">v0.0.1 • Business Management</span>
+          </div>
+        </div>
         </aside>
 
         <main className="main">
@@ -767,58 +508,16 @@ function App() {
             <Routes>
               <Route path="/" element={protect("dashboard", <Dashboard />)} />
               <Route path="/search-results" element={protect("dashboard", <SearchResults />)} />
-              <Route path="/dashboard/insights/:insightType" element={protect("dashboard", <DashboardInsight />)} />
 
               <Route path="/companies" element={protect("suppliers", <Companies />)} />
-              <Route path="/suppliers" element={protect("suppliers", <Suppliers currentUser={currentUser} />)} />
-              <Route path="/suppliers/:id" element={protect("suppliers", <SupplierDetails />)} />
-
-              <Route path="/assets" element={protect("assets", <AssetInventory />)} />
-              <Route path="/assets/insights/:insightType" element={protect("assets", <AssetInventoryInsight />)} />
-              <Route path="/assets/:assetId/audit-trail" element={protect("assets", <AssetAuditTrail />)} />
-              <Route path="/assets/:assetId/audit-trail/*" element={protect("assets", <AssetAuditTrail />)} />
-              <Route path="/assets/:assetId/details/audit-trail" element={protect("assets", <AssetAuditTrail />)} />
-              <Route path="/main-stock" element={protect("mainStock", <MainStock />)} />
               <Route path="/products" element={protect("customers", <Products />)} />
               <Route path="/purchasing" element={protect("suppliers", <Purchasing />)} />
               <Route path="/customer-registry" element={protect("customers", <CustomersRegistry />)} />
               <Route path="/customer-detail/:customerId" element={protect("customers", <CustomerDetail />)} />
               <Route path="/sales-register" element={protect("customers", <SalesRegister />)} />
               <Route path="/sales" element={protect("customers", <SalesRegister />)} />
-              <Route path="/approvals" element={protect("deviceTransfer", <DeviceTransferManagement />)} />
-              <Route
-                path="/loans"
-                element={protect(
-                  "customers",
-                  <ModulePlaceholder title="طلبات" description="Customer loan and receivable records." />
-                )}
-              />
-              <Route
-                path="/expiry"
-                element={protect(
-                  "mainStock",
-                  <ModulePlaceholder title="تاریخ انقضا" description="Expiry date monitoring page." />
-                )}
-              />
-              <Route
-                path="/cash"
-                element={protect(
-                  "userManagement",
-                  <ModulePlaceholder title="نقدی" description="Cash records and daily cash flow." />
-                )}
-              />
-              <Route path="/device-transfer-management" element={protect("deviceTransfer", <DeviceTransferManagement />)} />
-
-              <Route path="/customers" element={protect("customers", <Customers />)} />
-              <Route path="/customers/insights/:insightType" element={protect("customers", <CustomerInsight />)} />
-              <Route path="/customers/:id" element={protect("customers", <CustomerDetails />)} />
-
-              <Route path="/tower-assets" element={protect("towerAssets", <TowerAssets />)} />
-              <Route path="/tower-assets/insights/:insightType" element={protect("towerAssets", <TowerInsight />)} />
-              <Route path="/tower-links" element={protect("towerAssets", <TowerLinks />)} />
               <Route path="/reports" element={protect("reports", <Reports />)} />
-              <Route path="/repair" element={protect("repair", <Repair />)} />
-              <Route path="/agent" element={protect("agent", <Agent />)} />
+
               <Route
                 path="/user-management"
                 element={protect(
@@ -831,107 +530,6 @@ function App() {
                 )}
               />
               <Route path="/settings" element={protect("settings", <Settings />)} />
-              
-              <Route path="/customers/:id/issue-device" element={protect("customers", <CustomerIssueDevice />)} />
-              <Route path="/customers/:id/issue-device/:viewMode" element={protect("customers", <CustomerIssueDevice />)} />
-              <Route
-                  path="/tower-assets/:towerId/details"
-                  element={protect("towerAssets", <TowerAssetDetails />)}
-                />
-                <Route
-                  path="/assets/:assetId/details"
-                  element={protect("assets", <AssetFullInformation />)}
-                />
-                <Route
-                  path="/assets/:assetId/details/insights/:insightType"
-                  element={protect("assets", <AssetInsightDetails />)}
-                />
-              <Route
-                path="/device-history"
-                element={
-                  <ModulePlaceholder
-                    title="Device History & Audit Trail"
-                    description="Search any device by MAC address, serial number, or asset ID."
-                    items={[
-                      "Purchase history",
-                      "Stock entry",
-                      "Tower assignment",
-                      "Customer assignment",
-                      "Return to stock",
-                      "Current status",
-                    ]}
-                  />
-                }
-              />
-
-              <Route
-                path="/disconnections"
-                element={
-                  <ModulePlaceholder
-                    title="Customer Disconnection Management"
-                    description="Manage inactive customers and device recovery status."
-                    items={[
-                      "Inactive customers",
-                      "Collected devices",
-                      "Pending collection",
-                      "Recovery status",
-                    ]}
-                  />
-                }
-              />
-
-              <Route
-                path="/security-deposits"
-                element={
-                  <ModulePlaceholder
-                    title="Security Deposit Management"
-                    description="Manage deposits, refunds, held balances, and outstanding amounts."
-                    items={[
-                      "Deposit amount",
-                      "Refund status",
-                      "Held balance",
-                      "Outstanding balance",
-                    ]}
-                  />
-                }
-              />
-
-             <Route
-  path="/help-center"
-  element={<HelpCenter />}
-/>
-
-<Route
-  path="/developer"
-  element={<Developer />}
-/>
-
-<Route
-  path="/faq"
-  element={<FAQ />}
-/>
-
-<Route
-  path="/user-guide"
-  element={<UserGuide />}
-/>
-
-<Route
-  path="/terms-privacy"
-  element={<TermsPrivacy />}
-/>
-
-              <Route
-                path="/employees"
-                element={
-                  <ModulePlaceholder
-                    title="Employees"
-                    description="Employee management module will be added later."
-                    items={["Employee records", "Roles", "Permissions"]}
-                  />
-                }
-              />
-
               <Route
                 path="/accounts"
                 element={protect(
@@ -949,7 +547,7 @@ function App() {
                 element={
                   <ModulePlaceholder
                     title="Page Not Found"
-                    description="The requested page does not exist in the current ISP system."
+                    description="The requested page does not exist in the current system."
                   />
                 }
               />

@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
+import { confirmAction } from "../utils/confirmDialog";
 import { notify } from "../utils/notify";
 import "./SalesRegister.css";
 
@@ -70,6 +71,10 @@ const translations = {
     insufficientStock: "Insufficient stock for",
     invalidPaid: "Paid amount cannot be greater than the total amount.",
     saved: "Sale saved successfully.",
+    actions: "Actions",
+    delete: "Delete",
+    deleted: "Sale deleted successfully.",
+    confirmDelete: "Delete this sale?",
   },
   fa: {
     title: "فروشات",
@@ -122,6 +127,10 @@ const translations = {
     insufficientStock: "موجودی کافی نیست برای",
     invalidPaid: "مقدار پرداخت نمی‌تواند بیشتر از جمله باشد.",
     saved: "فروش با موفقیت ذخیره شد.",
+    actions: "عملیات",
+    delete: "حذف",
+    deleted: "فروش با موفقیت حذف شد.",
+    confirmDelete: "این فروش حذف شود؟",
   },
   ps: {
     title: "خرڅلاو",
@@ -174,6 +183,10 @@ const translations = {
     insufficientStock: "کافي موجودي نشته د",
     invalidPaid: "ورکړل شوی مبلغ له ټول مبلغ څخه زیات نه شي کېدای.",
     saved: "خرڅلاو په بریالیتوب ثبت شو.",
+    actions: "عملیات",
+    delete: "حذف",
+    deleted: "خرڅلاو په بریالیتوب سره حذف شو.",
+    confirmDelete: "دا خرڅلاو حذف شي؟",
   },
 };
 
@@ -329,6 +342,33 @@ export default function SalesRegister() {
     closeModal();
   };
 
+  const deleteSale = async (sale) => {
+    const confirmed = await confirmAction({
+      title: t.confirmDelete,
+      message: sale.invoiceNumber || sale.customerName || t.confirmDelete,
+      confirmText: t.delete,
+      cancelText: t.cancel,
+    });
+    if (!confirmed) return;
+
+    const saved = await setSales(sales.filter((item) => String(item.id) !== String(sale.id)));
+    if (!saved) return;
+
+    const nextProducts = products.map((product) => {
+      const soldItem = sale.items?.find((item) => String(item.productId) === String(product.id));
+      if (!soldItem) return product;
+
+      return {
+        ...product,
+        currentStock: getStock(product) + numeric(soldItem.quantity),
+        updatedAt: new Date().toISOString(),
+      };
+    });
+
+    await setProducts(nextProducts);
+    notify(t.deleted, "success");
+  };
+
   const filteredSales = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return sales;
@@ -365,7 +405,7 @@ export default function SalesRegister() {
         </div>
         <div className="sales-register-table-wrap">
           <table>
-            <thead><tr><th>{t.invoiceNo}</th><th>{t.customer}</th><th>{t.items}</th><th>{t.total}</th><th>{t.paid}</th><th>{t.due}</th><th>{t.paymentType}</th><th>{t.date}</th></tr></thead>
+            <thead><tr><th>{t.invoiceNo}</th><th>{t.customer}</th><th>{t.items}</th><th>{t.total}</th><th>{t.paid}</th><th>{t.due}</th><th>{t.paymentType}</th><th>{t.date}</th><th>{t.actions}</th></tr></thead>
             <tbody>
               {filteredSales.map((sale) => (
                 <tr key={sale.id}>
@@ -377,17 +417,18 @@ export default function SalesRegister() {
                   <td className={numeric(sale.remainingAmount) > 0 ? "sales-register-due" : ""}>{money(sale.remainingAmount)}</td>
                   <td>{sale.paymentMode === "installment" ? t.installment : t.cash}</td>
                   <td>{sale.saleDate || (sale.createdAt ? new Date(sale.createdAt).toLocaleDateString() : "—")}</td>
+                  <td><button type="button" className="sales-register-row-delete" onClick={() => deleteSale(sale)} title={t.delete}><Trash2 size={15} /></button></td>
                 </tr>
               ))}
-              {!filteredSales.length && <tr><td colSpan="8" className="sales-register-empty">{t.noSales}</td></tr>}
+              {!filteredSales.length && <tr><td colSpan="9" className="sales-register-empty">{t.noSales}</td></tr>}
             </tbody>
           </table>
         </div>
       </section>
 
       {showModal && (
-        <div className="sales-register-overlay" onMouseDown={(e) => e.currentTarget === e.target && closeModal()}>
-          <form className="sales-register-modal" onSubmit={saveSale}>
+        <div className="sales-register-overlay" onClick={(e) => e.currentTarget === e.target && closeModal()}>
+          <form className="sales-register-modal" onSubmit={saveSale} onClick={(event) => event.stopPropagation()}>
             <header className="sales-register-modal-head">
               <div><h2><ShoppingBag size={22} />{t.modalTitle}</h2><p>{t.modalHint}</p></div>
               <button type="button" className="sales-register-icon" onClick={closeModal}><X size={20} /></button>

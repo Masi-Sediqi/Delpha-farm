@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { Building2, Edit3, Mail, MapPin, Phone, Plus, Search, Trash2, UserRound, X } from "lucide-react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
+import { confirmAction } from "../utils/confirmDialog";
 import { notify } from "../utils/notify";
 import "./CustomersRegistry.css";
 
@@ -284,7 +285,13 @@ export default function CustomersRegistry() {
   };
 
   const removeCustomer = async (item) => {
-    if (!window.confirm(t.confirmDelete)) return;
+    const confirmed = await confirmAction({
+      title: t.confirmDelete,
+      message: item.fullName || item.companyName || t.confirmDelete,
+      confirmText: t.delete || "Delete",
+      cancelText: t.cancel,
+    });
+    if (!confirmed) return;
     const ok = await setCustomers((current) => current.filter((row) => row.id !== item.id));
     if (ok !== false) notify(t.deleted, "success");
   };
@@ -353,8 +360,8 @@ export default function CustomersRegistry() {
 
       {isOpen && createPortal(
         <div className="customer-modal-layer" role="dialog" aria-modal="true">
-          <div className="customer-modal-backdrop" onMouseDown={closeModal} />
-          <div className="customer-modal" dir={isRtl ? "rtl" : "ltr"}>
+          <div className="customer-modal-backdrop" onClick={closeModal} />
+          <div className="customer-modal" dir={isRtl ? "rtl" : "ltr"} onClick={(event) => event.stopPropagation()}>
             <div className="customer-modal-head">
               <div><h2>{editingId ? t.modalEditTitle : t.modalTitle}</h2><p>{t.modalSubtitle}</p></div>
               <button type="button" className="customer-close-btn" onClick={closeModal}><X size={20} /></button>

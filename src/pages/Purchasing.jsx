@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
+import { confirmAction } from "../utils/confirmDialog";
 import { notify } from "../utils/notify";
 import "./Purchasing.css";
 
@@ -67,6 +68,10 @@ const translations = {
     invalidPaid: "Paid amount cannot be greater than the total amount.",
     saved: "Purchase saved successfully.",
     remove: "Remove",
+    actions: "Actions",
+    delete: "Delete",
+    deleted: "Purchase deleted successfully.",
+    confirmDelete: "Delete this purchase?",
   },
   fa: {
     title: "خریداری",
@@ -118,6 +123,10 @@ const translations = {
     invalidPaid: "مقدار پرداخت نمی‌تواند بیشتر از جمله مقدار باشد.",
     saved: "خریداری با موفقیت ذخیره شد.",
     remove: "حذف",
+    actions: "عملیات",
+    delete: "حذف",
+    deleted: "خریداری با موفقیت حذف شد.",
+    confirmDelete: "این خریداری حذف شود؟",
   },
   ps: {
     title: "پېرود",
@@ -169,6 +178,10 @@ const translations = {
     invalidPaid: "ورکړل شوی مبلغ له ټول مبلغ څخه زیات نه شي کېدای.",
     saved: "پېرود په بریالیتوب سره ذخیره شو.",
     remove: "حذف",
+    actions: "عملیات",
+    delete: "حذف",
+    deleted: "پېرود په بریالیتوب سره حذف شو.",
+    confirmDelete: "دا پېرود حذف شي؟",
   },
 };
 
@@ -313,6 +326,34 @@ function Purchasing() {
     closeModal();
   };
 
+  const deletePurchase = async (purchase) => {
+    const confirmed = await confirmAction({
+      title: t.confirmDelete,
+      message: purchase.billNumber || purchase.companyName || t.confirmDelete,
+      confirmText: t.delete,
+      cancelText: t.cancel,
+    });
+    if (!confirmed) return;
+
+    const saved = await setPurchases(purchases.filter((item) => String(item.id) !== String(purchase.id)));
+    if (!saved) return;
+
+    const nextProducts = products.map((product) => {
+      const purchasedItem = purchase.items?.find((item) => String(item.productId) === String(product.id));
+      if (!purchasedItem) return product;
+
+      const purchasedQuantity = numeric(purchasedItem.quantity) + numeric(purchasedItem.bonus);
+      return {
+        ...product,
+        currentStock: Math.max(getStock(product) - purchasedQuantity, 0),
+        updatedAt: new Date().toISOString(),
+      };
+    });
+
+    await setProducts(nextProducts);
+    notify(t.deleted, "success");
+  };
+
   const filteredPurchases = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return purchases;
@@ -344,20 +385,20 @@ function Purchasing() {
         <div className="purchasing-card-title"><h2>{t.purchases}</h2><div className="purchasing-search"><Search size={17} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t.search} /></div></div>
         <div className="purchasing-table-wrap">
           <table>
-            <thead><tr><th>{t.billNo}</th><th>{t.company}</th><th>{t.items}</th><th>{t.total}</th><th>{t.paid}</th><th>{t.remaining}</th><th>{t.paymentType}</th><th>{t.date}</th></tr></thead>
+            <thead><tr><th>{t.billNo}</th><th>{t.company}</th><th>{t.items}</th><th>{t.total}</th><th>{t.paid}</th><th>{t.remaining}</th><th>{t.paymentType}</th><th>{t.date}</th><th>{t.actions}</th></tr></thead>
             <tbody>
               {filteredPurchases.map((item) => (
-                <tr key={item.id}><td>{item.billNumber}</td><td>{item.companyName || companyName(item.companyId)}</td><td>{item.items?.length || 0}</td><td>{numeric(item.totalAmount).toFixed(2)}</td><td>{numeric(item.paidAmount).toFixed(2)}</td><td>{numeric(item.remainingAmount).toFixed(2)}</td><td>{item.paymentMode === "installment" ? t.installment : t.cash}</td><td>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "—"}</td></tr>
+                <tr key={item.id}><td>{item.billNumber}</td><td>{item.companyName || companyName(item.companyId)}</td><td>{item.items?.length || 0}</td><td>{numeric(item.totalAmount).toFixed(2)}</td><td>{numeric(item.paidAmount).toFixed(2)}</td><td>{numeric(item.remainingAmount).toFixed(2)}</td><td>{item.paymentMode === "installment" ? t.installment : t.cash}</td><td>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "—"}</td><td><button type="button" className="purchasing-row-delete" onClick={() => deletePurchase(item)} title={t.delete}><Trash2 size={15} /></button></td></tr>
               ))}
-              {!filteredPurchases.length && <tr><td colSpan="8" className="purchasing-empty">{t.noPurchases}</td></tr>}
+              {!filteredPurchases.length && <tr><td colSpan="9" className="purchasing-empty">{t.noPurchases}</td></tr>}
             </tbody>
           </table>
         </div>
       </section>
 
       {showModal && (
-        <div className="purchasing-modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && closeModal()}>
-          <form className="purchasing-modal" onSubmit={savePurchase}>
+        <div className="purchasing-modal-overlay" onClick={(e) => e.target === e.currentTarget && closeModal()}>
+          <form className="purchasing-modal" onSubmit={savePurchase} onClick={(event) => event.stopPropagation()}>
             <header className="purchasing-modal-header">
               <div><h2><ShoppingCart size={22} />{t.modalTitle}</h2><p>{t.modalHint}</p></div>
               <button type="button" className="purchasing-icon-btn" onClick={closeModal}><X size={20} /></button>

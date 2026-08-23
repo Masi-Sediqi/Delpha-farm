@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Edit3, PackagePlus, Plus, Search, Trash2, X } from "lucide-react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
+import { confirmAction } from "../utils/confirmDialog";
 import { notify } from "../utils/notify";
 import "./Products.css";
 
@@ -388,7 +389,13 @@ function Products() {
   };
 
   const deleteProduct = async (product) => {
-    if (!window.confirm(t.confirmDelete)) return;
+    const confirmed = await confirmAction({
+      title: t.confirmDelete,
+      message: product.productName || t.confirmDelete,
+      confirmText: t.delete,
+      cancelText: t.cancel,
+    });
+    if (!confirmed) return;
     const saved = await setProducts(products.filter((item) => String(item.id) !== String(product.id)));
     if (saved) notify(t.deleted);
   };
@@ -466,8 +473,8 @@ function Products() {
       </div>
 
       {showModal && createPortal((
-        <div className="sales-product-modal-layer" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) closeModal(); }}>
-          <section className="sales-product-modal" role="dialog" aria-modal="true" aria-labelledby="sales-product-modal-title" dir={direction}>
+        <div className="sales-product-modal-layer" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}>
+          <section className="sales-product-modal" role="dialog" aria-modal="true" aria-labelledby="sales-product-modal-title" dir={direction} onClick={(e) => e.stopPropagation()}>
             <div className="sales-product-modal-header">
               <div>
                 <h2 id="sales-product-modal-title">{editingId ? t.editTitle : t.addTitle}</h2>

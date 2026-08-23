@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Building2, Edit3, Plus, Search, Trash2, X } from "lucide-react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
+import { confirmAction } from "../utils/confirmDialog";
 import { notify } from "../utils/notify";
 import "./Companies.css";
 
@@ -242,10 +243,16 @@ export default function Companies() {
     closeModal();
   };
 
-  const removeCompany = (item) => {
-    if (!window.confirm(t.confirmDelete)) return;
-    setCompanies(companies.filter((company) => company.id !== item.id));
-    notify(t.deleted, "success");
+  const removeCompany = async (item) => {
+    const confirmed = await confirmAction({
+      title: t.confirmDelete,
+      message: item.companyName || t.confirmDelete,
+      confirmText: t.delete || "Delete",
+      cancelText: t.cancel,
+    });
+    if (!confirmed) return;
+    const saved = await setCompanies(companies.filter((company) => company.id !== item.id));
+    if (saved) notify(t.deleted, "success");
   };
 
   return (
@@ -317,7 +324,7 @@ export default function Companies() {
         <div
           className="company-modal-backdrop"
           role="presentation"
-          onMouseDown={(event) => {
+          onClick={(event) => {
             if (event.target === event.currentTarget) closeModal();
           }}
         >
@@ -326,7 +333,7 @@ export default function Companies() {
             role="dialog"
             aria-modal="true"
             dir={direction}
-            onMouseDown={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
           >
             <div className="company-modal-header">
               <div>
