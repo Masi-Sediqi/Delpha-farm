@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import axios from "axios";
 import { notify } from "../utils/notify";
-import { apiUrl } from "../utils/api";
+import {
+  readBrowserCollection,
+  writeBrowserCollection,
+} from "../utils/browserStorage";
 
 export function useJsonCollection(name) {
   const [items, setItemsState] = useState([]);
@@ -10,8 +12,7 @@ export function useJsonCollection(name) {
 
   const load = useCallback(async () => {
     try {
-      const response = await axios.get(apiUrl(name));
-      const data = Array.isArray(response.data) ? response.data : [];
+      const data = await readBrowserCollection(name);
 
       itemsRef.current = data;
       setItemsState(data);
@@ -23,7 +24,7 @@ export function useJsonCollection(name) {
       itemsRef.current = [];
       setItemsState([]);
       setLoaded(true);
-      notify(`Unable to load ${name}. Please check the server.`, "error");
+      notify(`Unable to load ${name}. Please check browser storage.`, "error");
       return [];
     }
   }, [name]);
@@ -48,8 +49,7 @@ export function useJsonCollection(name) {
       setItemsState(nextItems);
 
       try {
-        const response = await axios.put(apiUrl(name), nextItems);
-        const savedData = Array.isArray(response.data) ? response.data : nextItems;
+        const savedData = await writeBrowserCollection(name, nextItems);
 
         itemsRef.current = savedData;
         setItemsState(savedData);
@@ -61,7 +61,7 @@ export function useJsonCollection(name) {
         itemsRef.current = previousItems;
         setItemsState(previousItems);
 
-        notify(`Unable to save ${name}. Please check the server.`, "error");
+        notify(`Unable to save ${name}. Please check browser storage.`, "error");
         return false;
       }
     },

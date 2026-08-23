@@ -1,17 +1,17 @@
-import axios from "axios";
-import { apiUrl } from "./api";
+import {
+  listBrowserCollectionNames,
+  readBrowserCollection,
+} from "./browserStorage";
 
 export async function loadBackupCollectionNames() {
-  const response = await axios.get(apiUrl("collections"));
-  return Array.isArray(response.data) ? response.data : [];
+  return listBrowserCollectionNames();
 }
 
 export async function buildBackupPayload() {
   const collections = await loadBackupCollectionNames();
   const entries = await Promise.all(
     collections.map(async (name) => {
-      const response = await axios.get(apiUrl(name));
-      return [name, Array.isArray(response.data) ? response.data : []];
+      return [name, await readBrowserCollection(name)];
     })
   );
 

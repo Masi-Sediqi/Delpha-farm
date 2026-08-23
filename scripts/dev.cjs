@@ -59,12 +59,15 @@ function stop(child) {
 
 async function main() {
   const children = [];
-  const hasBackend = await checkBackend();
+  const shouldStartBackend = process.env.ISP_START_API === "true";
+  const hasBackend = shouldStartBackend ? await checkBackend() : false;
 
   if (hasBackend) {
     console.log(`[SERVER] Reusing backend at http://${host}:${port}.`);
-  } else if (fs.existsSync(backendEntry)) {
+  } else if (shouldStartBackend && fs.existsSync(backendEntry)) {
     children.push(run("SERVER", "node", [backendEntry]));
+  } else if (!shouldStartBackend) {
+    console.log("[SERVER] Skipping backend; browser IndexedDB storage is active.");
   } else {
     console.warn(
       `[SERVER] No local transport-backend was included. Starting the web app only. ` +
