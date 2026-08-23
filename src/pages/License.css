@@ -1,0 +1,102 @@
+.license-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  background: #f5f3ee;
+  color: #111827;
+}
+
+.license-panel {
+  width: min(760px, 100%);
+  border: 1px solid #e5e0d8;
+  border-radius: 18px;
+  background: #ffffff;
+  padding: 34px;
+  box-shadow: 0 22px 70px rgba(15, 23, 42, 0.14);
+}
+
+.license-icon {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: #111827;
+  color: #ffffff;
+}
+
+.license-panel h1 {
+  margin: 20px 0 8px;
+  font-size: 28px;
+}
+
+.license-panel p {
+  margin: 0 0 22px;
+  color: #52627a;
+}
+
+.license-status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.license-status-grid div {
+  border: 1px solid #e5e0d8;
+  border-radius: 12px;
+  padding: 13px;
+  background: #fbfaf8;
+}
+
+.license-status-grid span,
+.license-form label {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  color: #40516c;
+}
+
+.license-status-grid strong {
+  display: block;
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+}
+
+.license-form textarea {
+  width: 100%;
+  margin-top: 8px;
+  border: 1px solid #d9dee7;
+  border-radius: 12px;
+  padding: 12px;
+  resize: vertical;
+  font: inherit;
+}
+
+.license-form button {
+  margin-top: 14px;
+  height: 44px;
+  border: 0;
+  border-radius: 12px;
+  padding: 0 18px;
+  background: #111827;
+  color: #ffffff;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.license-form button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .license-panel {
+    padding: 24px;
+  }
+
+  .license-status-grid {
+    grid-template-columns: 1fr;
+  }
+}
