@@ -99,7 +99,6 @@ function Settings() {
   const current = settings[0] || {};
 
   const [activeTab, setActiveTab] = useState("identity");
-  const [language, setLanguage] = useState(() => localStorage.getItem("afghan-power-language") || "en");
   const [companyName, setCompanyName] = useState(defaultSystemName);
   const [systemSubtitle, setSystemSubtitle] = useState(defaultSystemSubtitle);
   const [companyAddress, setCompanyAddress] = useState("");
@@ -134,12 +133,6 @@ function Settings() {
       window.removeEventListener("app-language-updated", syncLanguage);
       window.removeEventListener("storage", syncLanguage);
     };
-  }, []);
-
-  useEffect(() => {
-    const syncLanguage = () => setLanguage(localStorage.getItem("afghan-power-language") || "en");
-    window.addEventListener("app-language-updated", syncLanguage);
-    return () => window.removeEventListener("app-language-updated", syncLanguage);
   }, []);
 
   const settingsText = {
