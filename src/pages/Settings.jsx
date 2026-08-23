@@ -66,8 +66,8 @@ const themeOptions = [
   },
   {
     key: "clay-minimalism",
-    title: "Soft Sky",
-    description: "A calm light-blue workspace based on #e4f0ff",
+    title: "Graphite Mist",
+    description: "Layered gray gradients with charcoal navigation",
   },
   {
     key: "glassmorphism",
@@ -82,7 +82,7 @@ const themeOptions = [
   {
     key: "neon",
     title: "Neon",
-    description: "Dark with vivid neon accents",
+    description: "Dark surfaces with vivid cyan and violet glow",
   },
 ];
 
