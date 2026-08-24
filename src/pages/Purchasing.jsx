@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { useLocation } from "react-router-dom";
 import {
   Truck,
   CalendarDays,
@@ -202,6 +203,7 @@ const numeric = (value) => Math.max(Number(value || 0), 0);
 const getStock = (product) => numeric(product?.currentStock ?? product?.stock ?? product?.quantity ?? 0);
 
 function Purchasing() {
+  const location = useLocation();
   const [purchases, setPurchases] = useJsonCollection("purchases");
   const [suppliers] = useJsonCollection("suppliers");
   const [products, setProducts] = useJsonCollection("products");
@@ -210,6 +212,7 @@ function Purchasing() {
   const [productSearch, setProductSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editingPurchaseId, setEditingPurchaseId] = useState(null);
+  const [externalEditId, setExternalEditId] = useState(null);
   const [supplierId, setSupplierId] = useState("");
   const [billNumber, setBillNumber] = useState("");
   const [selectedItems, setSelectedItems] = useState([]);
@@ -323,6 +326,15 @@ function Purchasing() {
     setProductSearch("");
     setShowModal(true);
   };
+
+  useEffect(() => {
+    const targetId = location.state?.editPurchaseId;
+    if (!targetId || String(targetId) === String(externalEditId)) return;
+    const purchase = purchases.find((item) => String(item.id) === String(targetId));
+    if (!purchase) return;
+    setExternalEditId(targetId);
+    openEdit(purchase);
+  }, [location.state, purchases, externalEditId]);
 
   const closeModal = () => {
     setShowModal(false);

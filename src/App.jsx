@@ -17,8 +17,6 @@ import {
   FileBarChart,
   LayoutDashboard,
   MoreHorizontal,
-  PanelLeftClose,
-  PanelLeftOpen,
   ReceiptText,
   Settings as SettingsIcon,
   ShoppingBag,
@@ -534,7 +532,8 @@ function App() {
             aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            {sidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+            <span aria-hidden="true" />
+            <span aria-hidden="true" />
           </button>
 
           <Header.Actions currentUser={currentUser} onLogout={logout} compact />

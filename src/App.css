@@ -8608,3 +8608,135 @@ body.dark-mode .page-fade-shell:not(.route-dashboard) :is(
 ) :is(h2, h3, h4, strong, b, a, td, th, span) {
   color: #f8fafc !important;
 }
+
+/* Responsive modal action controls: prevent oversized buttons and clipped controls. */
+:is(
+  [class$="-modal-actions"], [class*="-modal-actions "],
+  [class$="-modal-footer"], [class*="-modal-footer "],
+  [class$="-form-actions"], [class*="-form-actions "],
+  [class$="-payment-actions"], [class*="-payment-actions "]
+) > button {
+  box-sizing: border-box !important;
+  min-height: 38px !important;
+  max-height: 42px !important;
+  height: 40px !important;
+  padding-block: 0 !important;
+  line-height: 1.15 !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+:is(
+  [class$="-modal-actions"], [class*="-modal-actions "],
+  [class$="-modal-footer"], [class*="-modal-footer "],
+  [class$="-form-actions"], [class*="-form-actions "],
+  [class$="-payment-actions"], [class*="-payment-actions "]
+) > button svg {
+  flex: 0 0 auto;
+}
+
+@media (min-width: 721px) {
+  :is(
+    [class$="-modal-actions"], [class*="-modal-actions "],
+    [class$="-modal-footer"], [class*="-modal-footer "],
+    [class$="-form-actions"], [class*="-form-actions "],
+    [class$="-payment-actions"], [class*="-payment-actions "]
+  ) > button {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: 104px !important;
+    max-width: 220px !important;
+  }
+}
+
+@media (max-width: 720px) {
+  :is(
+    [class$="-modal-actions"], [class*="-modal-actions "],
+    [class$="-modal-footer"], [class*="-modal-footer "],
+    [class$="-form-actions"], [class*="-form-actions "],
+    [class$="-payment-actions"], [class*="-payment-actions "]
+  ) {
+    gap: 7px !important;
+  }
+
+  :is(
+    [class$="-modal-actions"], [class*="-modal-actions "],
+    [class$="-modal-footer"], [class*="-modal-footer "],
+    [class$="-form-actions"], [class*="-form-actions "],
+    [class$="-payment-actions"], [class*="-payment-actions "]
+  ) > button {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    font-size: 12px !important;
+  }
+}
+
+/* Theme-safe tabs: active tab labels, counters and icons must stay visible. */
+:is([role="tab"], [class$="-tabs"] button, [class*="-tabs "] button) {
+  color: var(--text-secondary, #475569);
+}
+
+:is([role="tab"], [class$="-tabs"] button, [class*="-tabs "] button) :is(svg, span, b, strong) {
+  color: currentColor !important;
+}
+
+:is([role="tab"][aria-selected="true"], [class$="-tabs"] button.active, [class*="-tabs "] button.active) {
+  color: #ffffff !important;
+}
+
+:is([role="tab"][aria-selected="true"], [class$="-tabs"] button.active, [class*="-tabs "] button.active) :is(svg, span, b, strong) {
+  color: currentColor !important;
+}
+
+body[data-theme="black-white"].dark-mode :is([role="tab"][aria-selected="true"], [class$="-tabs"] button.active, [class*="-tabs "] button.active) {
+  color: #000000 !important;
+}
+
+/* Dark surfaces on non-dashboard pages must keep readable foregrounds. */
+.page-fade-shell:not(.route-dashboard) :is(
+  .product-detail-stock-badge,
+  .product-detail-inventory-grid article.primary,
+  .product-detail-icon,
+  .supplier-detail-avatar,
+  .supplier-detail-payment-btn,
+  .sales-register-primary,
+  .sales-register-payment-modes button.active,
+  .sales-register-item-no,
+  .sale-detail-tool.primary,
+  [class$="-primary"],
+  [class*="-primary "]
+) {
+  color: #ffffff !important;
+}
+
+.page-fade-shell:not(.route-dashboard) :is(
+  .product-detail-stock-badge,
+  .product-detail-inventory-grid article.primary,
+  .product-detail-icon,
+  .supplier-detail-avatar,
+  .supplier-detail-payment-btn,
+  .sales-register-primary,
+  .sales-register-payment-modes button.active,
+  .sales-register-item-no,
+  .sale-detail-tool.primary,
+  [class$="-primary"],
+  [class*="-primary "]
+) :is(svg, span, strong, b, em, p) {
+  color: currentColor !important;
+}
+
+.page-fade-shell:not(.route-dashboard) .product-detail-stock-badge span,
+.page-fade-shell:not(.route-dashboard) .product-detail-inventory-grid article.primary span {
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+
+.page-fade-shell:not(.route-dashboard) :is([role="tab"][aria-selected="true"], [class$="-tabs"] button.active, [class*="-tabs "] button.active) {
+  color: #ffffff !important;
+}
+
+.page-fade-shell:not(.route-dashboard) :is([role="tab"][aria-selected="true"], [class$="-tabs"] button.active, [class*="-tabs "] button.active) :is(svg, span, b, strong) {
+  color: currentColor !important;
+}

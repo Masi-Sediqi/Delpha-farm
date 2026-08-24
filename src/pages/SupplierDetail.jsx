@@ -6,11 +6,12 @@ import {
   BadgeDollarSign,
   Building2,
   CalendarDays,
-  CreditCard,
+  Edit3,
   FileText,
   MapPin,
   Phone,
   ReceiptText,
+  Trash2,
   Truck,
   UserRound,
   Wallet,
@@ -18,6 +19,7 @@ import {
 } from "lucide-react";
 import ShamsiDateInput from "../components/ShamsiDateInput";
 import { useJsonCollection } from "../hooks/useJsonCollection";
+import { confirmAction } from "../utils/confirmDialog";
 import { formatDateTime } from "../utils/afghanDate";
 import { notify } from "../utils/notify";
 import "./SupplierDetail.css";
@@ -50,6 +52,9 @@ const translations = {
     debit: "Purchase / Debit",
     credit: "Payment / Credit",
     balance: "Running Balance",
+    actions: "Actions",
+    edit: "Edit",
+    delete: "Delete",
     purchase: "Purchase",
     purchasePayment: "Payment at Purchase",
     manualPayment: "Payment",
@@ -68,6 +73,9 @@ const translations = {
     savePayment: "Save Payment",
     requiredAmount: "Please enter an amount greater than zero.",
     saved: "Payment saved successfully.",
+    updated: "Payment updated successfully.",
+    deleted: "Payment deleted successfully.",
+    confirmDelete: "Delete this payment record?",
     supplierMissing: "Supplier not found.",
   },
   fa: {
@@ -94,6 +102,9 @@ const translations = {
     debit: "خریداری / بدهکار",
     credit: "پرداخت / بستانکار",
     balance: "بیلانس جاری",
+    actions: "عملیات",
+    edit: "ویرایش",
+    delete: "حذف",
     purchase: "خریداری",
     purchasePayment: "پرداخت هنگام خرید",
     manualPayment: "پرداخت",
@@ -112,6 +123,9 @@ const translations = {
     savePayment: "ذخیره پرداخت",
     requiredAmount: "لطفاً مقدار بیشتر از صفر وارد کنید.",
     saved: "پرداخت با موفقیت ذخیره شد.",
+    updated: "پرداخت با موفقیت ویرایش شد.",
+    deleted: "پرداخت با موفقیت حذف شد.",
+    confirmDelete: "این ریکارد پرداخت حذف شود؟",
     supplierMissing: "تأمین‌کننده پیدا نشد.",
   },
   ps: {
@@ -138,6 +152,9 @@ const translations = {
     debit: "پېرود / بدهکار",
     credit: "تادیه / بستانکار",
     balance: "روان بیلانس",
+    actions: "عملیات",
+    edit: "سمون",
+    delete: "حذف",
     purchase: "پېرود",
     purchasePayment: "د پېرود پر مهال تادیه",
     manualPayment: "تادیه",
@@ -156,6 +173,9 @@ const translations = {
     savePayment: "تادیه ذخیره کول",
     requiredAmount: "مهرباني وکړئ له صفر څخه زیات مبلغ ولیکئ.",
     saved: "تادیه په بریالیتوب ذخیره شوه.",
+    updated: "تادیه په بریالیتوب بدله شوه.",
+    deleted: "تادیه په بریالیتوب حذف شوه.",
+    confirmDelete: "دا د تادیې ریکارډ حذف شي؟",
     supplierMissing: "عرضه کوونکی ونه موندل شو.",
   },
 };
@@ -184,6 +204,7 @@ export default function SupplierDetail() {
   const [payments, setPayments] = useJsonCollection("supplierPayments");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [showPayment, setShowPayment] = useState(false);
+  const [editingPaymentId, setEditingPaymentId] = useState(null);
   const [paymentForm, setPaymentForm] = useState({ date: today(), amount: "", description: "" });
 
   const t = translations[language] || translations.en;
@@ -203,7 +224,11 @@ export default function SupplierDetail() {
 
   useEffect(() => {
     document.body.classList.toggle("supplier-payment-modal-open", showPayment);
-    return () => document.body.classList.remove("supplier-payment-modal-open");
+    document.body.classList.toggle("app-modal-open", showPayment);
+    return () => {
+      document.body.classList.remove("supplier-payment-modal-open");
+      document.body.classList.remove("app-modal-open");
+    };
   }, [showPayment]);
 
   const supplierPurchases = useMemo(
@@ -240,6 +265,7 @@ export default function SupplierDetail() {
         reference: purchase.billNumber || purchase.id,
         description: t.purchase,
         kind: "purchase",
+        sourceId: purchase.id,
         debit: numeric(purchase.totalAmount),
         credit: 0,
         order,
@@ -251,6 +277,7 @@ export default function SupplierDetail() {
           reference: purchase.billNumber || purchase.id,
           description: t.purchasePayment,
           kind: "purchase-payment",
+          sourceId: purchase.id,
           debit: 0,
           credit: numeric(purchase.paidAmount),
           order: order + 1,
@@ -266,6 +293,7 @@ export default function SupplierDetail() {
         reference: payment.reference || `PAY-${String(payment.id).slice(-6)}`,
         description: payment.description || t.manualPayment,
         kind: "manual-payment",
+        sourceId: payment.id,
         debit: 0,
         credit: numeric(payment.amount),
         order,
@@ -287,13 +315,44 @@ export default function SupplierDetail() {
   const currentBalance = ledger.length ? numeric(ledger[ledger.length - 1].balance) : numeric(supplier?.openingBalance);
 
   const openPaymentModal = () => {
+    setEditingPaymentId(null);
     setPaymentForm({ date: today(), amount: "", description: "" });
     setShowPayment(true);
   };
 
   const closePaymentModal = () => {
     setShowPayment(false);
+    setEditingPaymentId(null);
     setPaymentForm({ date: today(), amount: "", description: "" });
+  };
+
+  const editLedgerEntry = (entry) => {
+    if (entry.kind === "manual-payment") {
+      const payment = payments.find((item) => String(item.id) === String(entry.sourceId));
+      if (!payment) return;
+      setEditingPaymentId(payment.id);
+      setPaymentForm({
+        date: normalizeDate(payment.date || payment.createdAt),
+        amount: String(payment.amount ?? ""),
+        description: payment.description || "",
+      });
+      setShowPayment(true);
+      return;
+    }
+    if (entry.sourceId) navigate("/purchasing", { state: { editPurchaseId: entry.sourceId } });
+  };
+
+  const deleteLedgerEntry = async (entry) => {
+    if (entry.kind !== "manual-payment") return;
+    const confirmed = await confirmAction({
+      title: t.confirmDelete,
+      message: entry.reference || entry.description || t.confirmDelete,
+      confirmText: t.delete,
+      cancelText: t.cancel,
+    });
+    if (!confirmed) return;
+    const saved = await setPayments(payments.filter((item) => String(item.id) !== String(entry.sourceId)));
+    if (saved) notify(t.deleted, "success");
   };
 
   const savePayment = async (event) => {
@@ -303,19 +362,26 @@ export default function SupplierDetail() {
       notify(t.requiredAmount, "warning");
       return;
     }
+    const previousPayment = editingPaymentId
+      ? payments.find((item) => String(item.id) === String(editingPaymentId))
+      : null;
     const record = {
-      id: `SPAY-${Date.now()}`,
+      id: editingPaymentId || `SPAY-${Date.now()}`,
       supplierId,
       supplierName: supplier?.supplierName || "",
       date: paymentForm.date || today(),
       amount,
       description: paymentForm.description.trim(),
-      reference: `PAY-${String(Date.now()).slice(-7)}`,
-      createdAt: new Date().toISOString(),
+      reference: previousPayment?.reference || `PAY-${String(Date.now()).slice(-7)}`,
+      createdAt: previousPayment?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
-    const saved = await setPayments([record, ...payments]);
+    const saved = await setPayments(editingPaymentId
+      ? payments.map((item) => (String(item.id) === String(editingPaymentId) ? record : item))
+      : [record, ...payments]
+    );
     if (saved) {
-      notify(t.saved, "success");
+      notify(editingPaymentId ? t.updated : t.saved, "success");
       closePaymentModal();
     }
   };
@@ -352,7 +418,7 @@ export default function SupplierDetail() {
               </label>
               <label>
                 <span><BadgeDollarSign size={15} />{t.amount}</span>
-                <div className="supplier-payment-amount-field"><input autoFocus type="number" min="0" step="any" value={paymentForm.amount} onChange={(e) => setPaymentForm((prev) => ({ ...prev, amount: e.target.value }))} /><strong>{currencyCode}</strong></div>
+                <input autoFocus type="number" min="0" step="any" value={paymentForm.amount} onChange={(e) => setPaymentForm((prev) => ({ ...prev, amount: e.target.value }))} />
               </label>
               <label className="supplier-payment-full">
                 <span><FileText size={15} />{t.paymentDescription}</span>
@@ -362,7 +428,7 @@ export default function SupplierDetail() {
           </div>
           <div className="supplier-payment-actions">
             <button type="button" className="secondary" onClick={closePaymentModal}>{t.cancel}</button>
-            <button type="submit" className="primary"><CreditCard size={16} />{t.savePayment}</button>
+            <button type="submit" className="primary">{t.savePayment}</button>
           </div>
         </form>
       </section>
@@ -411,7 +477,7 @@ export default function SupplierDetail() {
           <div className="supplier-detail-section-head ledger"><ReceiptText size={18} /><div><h2>{t.transactions}</h2><p>{ledger.length} {t.transactions.toLowerCase()}</p></div></div>
           <div className="supplier-detail-ledger-wrap">
             <table>
-              <thead><tr><th>{t.date}</th><th>{t.reference}</th><th>{t.description}</th><th>{t.debit}</th><th>{t.credit}</th><th>{t.balance}</th></tr></thead>
+              <thead><tr><th>{t.date}</th><th>{t.reference}</th><th>{t.description}</th><th>{t.debit}</th><th>{t.credit}</th><th>{t.balance}</th><th>{t.actions}</th></tr></thead>
               <tbody>
                 {ledger.length ? ledger.map((entry) => (
                   <tr key={entry.id}>
@@ -421,8 +487,18 @@ export default function SupplierDetail() {
                     <td className="supplier-ledger-debit">{entry.debit ? entry.debit.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—"}</td>
                     <td className="supplier-ledger-credit">{entry.credit ? entry.credit.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—"}</td>
                     <td className={entry.balance > 0 ? "supplier-ledger-balance owe" : entry.balance < 0 ? "supplier-ledger-balance receivable" : "supplier-ledger-balance"}>{Math.abs(entry.balance).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
+                    <td>
+                      <div className="supplier-ledger-actions">
+                        {entry.kind !== "opening" && (
+                          <button type="button" className="edit" onClick={() => editLedgerEntry(entry)} aria-label={t.edit} title={t.edit}><Edit3 size={14} /></button>
+                        )}
+                        {entry.kind === "manual-payment" && (
+                          <button type="button" className="delete" onClick={() => deleteLedgerEntry(entry)} aria-label={t.delete} title={t.delete}><Trash2 size={14} /></button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
-                )) : <tr><td colSpan="6" className="supplier-ledger-empty">{t.noTransactions}</td></tr>}
+                )) : <tr><td colSpan="7" className="supplier-ledger-empty">{t.noTransactions}</td></tr>}
               </tbody>
             </table>
           </div>
