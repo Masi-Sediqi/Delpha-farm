@@ -111,10 +111,28 @@ const shellLabels = {
 };
 
 function applyStoredTheme() {
-  const theme = localStorage.getItem(appThemeStorageKey) || "minimalism";
+  const storedTheme = localStorage.getItem(appThemeStorageKey) || "minimalism";
+  const theme = ["neon", "glassmorphism"].includes(storedTheme) ? "aurora" : storedTheme;
+  if (theme !== storedTheme) localStorage.setItem(appThemeStorageKey, theme);
   document.body.dataset.theme = theme;
   document.documentElement.dataset.theme = theme;
-  document.body.classList.toggle("dark-mode", ["black-white", "neon"].includes(theme));
+  document.body.classList.toggle("dark-mode", ["black-white", "aurora"].includes(theme));
+}
+
+function applyCompanyThemeIdentity(companyName = "") {
+  const source = String(companyName || "APG").trim() || "APG";
+  let hash = 0;
+  for (let index = 0; index < source.length; index += 1) {
+    hash = (hash * 31 + source.charCodeAt(index)) % 360;
+  }
+
+  const root = document.documentElement;
+  root.style.setProperty("--company-accent-hue", String(hash));
+  root.style.setProperty("--company-accent", `hsl(${hash} 86% 58%)`);
+  root.style.setProperty("--company-accent-2", `hsl(${(hash + 78) % 360} 88% 56%)`);
+  root.style.setProperty("--company-accent-3", `hsl(${(hash + 152) % 360} 92% 60%)`);
+  root.style.setProperty("--company-accent-soft", `hsl(${hash} 88% 58% / 0.16)`);
+  document.body.dataset.companyName = source;
 }
 
 function getStoredDirection() {
@@ -238,11 +256,44 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const hasOpenModal = () =>
+      Boolean(
+        document.querySelector(
+          [
+            '[class$="-modal-backdrop"]',
+            '[class*="-modal-backdrop "]',
+            '[class$="-modal-layer"]',
+            '[class*="-modal-layer "]',
+            '[role="dialog"][aria-modal="true"]',
+          ].join(",")
+        )
+      );
+
+    const syncModalState = () => {
+      document.body.classList.toggle("app-modal-open", hasOpenModal());
+    };
+
+    syncModalState();
+    const observer = new MutationObserver(syncModalState);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class", "role", "aria-modal"],
+    });
+
+    return () => {
+      observer.disconnect();
+      document.body.classList.remove("app-modal-open");
+    };
+  }, []);
+
 
   const company = settings[0] || {};
   const labels = shellLabels[appLanguage] || shellLabels.en;
-  const systemName = company.companyName || "ISP Assets";
-  const systemSubtitle = company.systemSubtitle || "Asset & Inventory Management";
+  const systemName = company.companyName || "APG";
+  const systemSubtitle = company.systemSubtitle || "Pharmacy & Medicine Management System";
   const systemLogo = company.logo || appLogo;
   const effectiveAccounts = accounts.some((account) => String(account.id) === "default-admin")
     ? accounts
@@ -255,6 +306,10 @@ function App() {
     window.addEventListener("company-settings-updated", loadSettings);
     return () => window.removeEventListener("company-settings-updated", loadSettings);
   }, [loadSettings]);
+
+  useEffect(() => {
+    applyCompanyThemeIdentity(systemName);
+  }, [systemName]);
 
   useEffect(() => {
     let cancelled = false;
@@ -427,7 +482,7 @@ function App() {
     appContent = (
       <Suspense fallback={<BusyLoader label="Opening login..." />}>
         <Login
-          accounts={accounts}
+          accounts={effectiveAccounts}
           setAccounts={setAccounts}
           onLogin={login}
           company={company}
@@ -542,7 +597,7 @@ function App() {
                   />
                 )}
               />
-              <Route path="/settings" element={protect("settings", <Settings />)} />
+              <Route path="/settings" element={protect("settings", <Settings accounts={effectiveAccounts} setAccounts={setAccounts} currentUser={currentUser} />)} />
               <Route
                 path="/accounts"
                 element={protect(

@@ -7662,3 +7662,285 @@ body[data-theme="neon"].dark-mode [class*="-modal-layer "] {
 /* Environment indicator */
 .app-mode-badge{display:inline-flex;align-items:center;justify-content:center;padding:3px 7px;border-radius:999px;font-size:10px;font-weight:900;letter-spacing:.08em;background:rgba(245,158,11,.14);color:#b45309;border:1px solid rgba(245,158,11,.35);white-space:nowrap}
 body[data-theme="black-white"] .app-mode-badge,body[data-theme="neon"] .app-mode-badge{background:rgba(251,191,36,.12);color:#fbbf24;border-color:rgba(251,191,36,.32)}
+
+/* Final unified modal/form system across all pages, languages, themes, and devices. */
+body.app-modal-open {
+  overflow: hidden !important;
+  touch-action: none;
+}
+
+body.app-modal-open .sidebar,
+body.app-modal-open .topbar {
+  pointer-events: none !important;
+  user-select: none;
+}
+
+[class$="-modal-backdrop"],
+[class*="-modal-backdrop "],
+[class$="-modal-layer"],
+[class*="-modal-layer "],
+.app-confirm-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483000 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  padding: clamp(10px, 4dvh, 40px) 16px !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  background: rgba(8, 12, 20, 0.68) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  backdrop-filter: blur(4px) !important;
+  overscroll-behavior: contain;
+  pointer-events: auto !important;
+}
+
+[class$="-modal"],
+[class*="-modal "],
+.app-confirm-modal {
+  width: min(860px, calc(100vw - 32px)) !important;
+  max-width: calc(100vw - 32px) !important;
+  max-height: calc(100dvh - clamp(20px, 8dvh, 80px)) !important;
+  margin: 0 auto !important;
+  box-sizing: border-box !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  border-radius: 16px !important;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  pointer-events: auto !important;
+}
+
+[class$="-modal"] *,
+[class*="-modal "] * {
+  box-sizing: border-box;
+}
+
+[class$="-modal"] form,
+[class*="-modal "] form {
+  min-width: 0 !important;
+}
+
+[class$="-modal-header"],
+[class*="-modal-header "],
+[class$="-modal-head"],
+[class*="-modal-head "] {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 6 !important;
+}
+
+[class$="-modal-actions"],
+[class*="-modal-actions "],
+[class$="-modal-footer"],
+[class*="-modal-footer "] {
+  position: sticky !important;
+  bottom: 0 !important;
+  z-index: 6 !important;
+  flex-wrap: wrap;
+  padding-bottom: max(12px, env(safe-area-inset-bottom)) !important;
+}
+
+body[data-theme="black-white"].dark-mode [class$="-modal-backdrop"],
+body[data-theme="black-white"].dark-mode [class*="-modal-backdrop "],
+body[data-theme="black-white"].dark-mode [class$="-modal-layer"],
+body[data-theme="black-white"].dark-mode [class*="-modal-layer "],
+body[data-theme="black-white"].dark-mode .app-confirm-backdrop {
+  background: rgba(2, 4, 17, 0.74) !important;
+}
+
+body[data-theme="neon"].dark-mode [class$="-modal-backdrop"],
+body[data-theme="neon"].dark-mode [class*="-modal-backdrop "],
+body[data-theme="neon"].dark-mode [class$="-modal-layer"],
+body[data-theme="neon"].dark-mode [class*="-modal-layer "],
+body[data-theme="neon"].dark-mode .app-confirm-backdrop {
+  background: rgba(0, 0, 0, 0.72) !important;
+}
+
+@media (max-width: 720px) {
+  [class$="-modal-backdrop"],
+  [class*="-modal-backdrop "],
+  [class$="-modal-layer"],
+  [class*="-modal-layer "],
+  .app-confirm-backdrop {
+    align-items: stretch !important;
+    padding: 8px !important;
+  }
+
+  [class$="-modal"],
+  [class*="-modal "],
+  .app-confirm-modal {
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+    max-height: calc(100dvh - 16px) !important;
+    border-radius: 14px !important;
+  }
+}
+
+@media (max-width: 560px) {
+  [class*="-form-grid"],
+  [class*="-fields-grid"],
+  [class*="-account-grid"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  [class*="-field-wide"],
+  [class*="-field-full"],
+  [class*="-span-2"],
+  label.full {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+/* Aurora Flow: premium company-branded theme replacing Neon and Desktop Light. */
+body[data-theme="aurora"].dark-mode,
+body[data-theme="aurora"].dark-mode #root,
+body[data-theme="aurora"].dark-mode .app {
+  --aurora-bg: #07115f;
+  --aurora-deep: #030724;
+  --aurora-panel: rgba(6, 12, 44, 0.82);
+  --aurora-panel-2: rgba(10, 18, 58, 0.88);
+  --aurora-line: rgba(181, 203, 255, 0.18);
+  --aurora-text: #f5f8ff;
+  --aurora-muted: #aab8da;
+  --aurora-accent: var(--company-accent, #14f1a6);
+  --aurora-accent-2: var(--company-accent-2, #19d3ff);
+  --aurora-accent-3: var(--company-accent-3, #a855f7);
+  background:
+    radial-gradient(circle at 78% 10%, color-mix(in srgb, var(--aurora-accent) 58%, transparent) 0 11%, transparent 32%),
+    radial-gradient(circle at 84% 34%, color-mix(in srgb, var(--aurora-accent-3) 66%, transparent) 0 8%, transparent 27%),
+    radial-gradient(circle at 56% 88%, color-mix(in srgb, var(--aurora-accent-2) 54%, transparent) 0 12%, transparent 34%),
+    radial-gradient(circle at 36% 96%, rgba(255, 0, 214, 0.46) 0 10%, transparent 32%),
+    linear-gradient(145deg, #071a78 0%, #04072a 42%, #091054 100%) !important;
+  background-attachment: fixed !important;
+  color: var(--aurora-text) !important;
+}
+
+body[data-theme="aurora"].dark-mode .app {
+  box-shadow: inset 0 0 140px rgba(0, 0, 0, 0.22);
+}
+
+body[data-theme="aurora"].dark-mode :is(.main, .sidebar, .topbar) {
+  background:
+    linear-gradient(135deg, rgba(5, 9, 35, 0.9), rgba(8, 18, 58, 0.72)),
+    radial-gradient(circle at 90% 0%, color-mix(in srgb, var(--aurora-accent) 24%, transparent), transparent 36%) !important;
+  border-color: var(--aurora-line) !important;
+  color: var(--aurora-text) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(1.15);
+  backdrop-filter: blur(22px) saturate(1.15);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28), inset 0 1px rgba(255, 255, 255, 0.05) !important;
+}
+
+body[data-theme="aurora"].dark-mode .brand h2,
+body[data-theme="aurora"].dark-mode :is(h1, h2, h3, h4, strong, label, th) {
+  color: var(--aurora-text) !important;
+}
+
+body[data-theme="aurora"].dark-mode .brand h2 {
+  text-shadow: 0 0 24px color-mix(in srgb, var(--aurora-accent) 42%, transparent);
+}
+
+body[data-theme="aurora"].dark-mode :is(p, small, td, .muted, [class*="subtitle"], [class*="description"]) {
+  color: var(--aurora-muted) !important;
+}
+
+body[data-theme="aurora"].dark-mode :is(
+  .card,
+  .stat,
+  .table-card,
+  [class$="-card"],
+  [class*="-card "],
+  [class$="-panel"],
+  [class*="-panel "],
+  [class$="-section"],
+  [class*="-section "],
+  [class$="-modal"],
+  [class*="-modal "]
+) {
+  background:
+    linear-gradient(145deg, rgba(8, 14, 48, 0.88), rgba(5, 9, 34, 0.94)),
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--aurora-accent-2) 18%, transparent), transparent 34%) !important;
+  border-color: var(--aurora-line) !important;
+  color: var(--aurora-text) !important;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.26), inset 0 1px rgba(255, 255, 255, 0.04) !important;
+}
+
+body[data-theme="aurora"].dark-mode :is(input, select, textarea, .header-search, .search-input, .search-box) {
+  background: rgba(2, 7, 30, 0.72) !important;
+  border-color: rgba(181, 203, 255, 0.22) !important;
+  color: var(--aurora-text) !important;
+  box-shadow: inset 0 1px 10px rgba(0, 0, 0, 0.22) !important;
+}
+
+body[data-theme="aurora"].dark-mode :is(input, select, textarea, .header-search, .search-input, .search-box):focus,
+body[data-theme="aurora"].dark-mode :is(input, select, textarea, .header-search, .search-input, .search-box):focus-within {
+  border-color: color-mix(in srgb, var(--aurora-accent) 74%, #ffffff) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--aurora-accent) 20%, transparent), 0 0 28px color-mix(in srgb, var(--aurora-accent) 12%, transparent) !important;
+}
+
+body[data-theme="aurora"].dark-mode :is(input, textarea)::placeholder {
+  color: rgba(213, 224, 255, 0.48) !important;
+}
+
+body[data-theme="aurora"].dark-mode .sidebar :is(.sidebar-main-link, .sidebar-simple-dropdown-link) {
+  color: #c1ccef !important;
+  border: 1px solid transparent;
+}
+
+body[data-theme="aurora"].dark-mode .sidebar :is(.sidebar-main-link, .sidebar-simple-dropdown-link) > svg {
+  color: color-mix(in srgb, var(--aurora-accent-2) 62%, #b9c4e6) !important;
+}
+
+body[data-theme="aurora"].dark-mode .sidebar :is(.sidebar-main-link, .sidebar-simple-dropdown-link):hover,
+body[data-theme="aurora"].dark-mode .sidebar .sidebar-main-link.active {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--aurora-accent) 26%, transparent), color-mix(in srgb, var(--aurora-accent-3) 15%, transparent)) !important;
+  border-color: color-mix(in srgb, var(--aurora-accent) 42%, transparent) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 28px color-mix(in srgb, var(--aurora-accent) 16%, transparent) !important;
+}
+
+body[data-theme="aurora"].dark-mode :is(button.primary, button[type="submit"], .settings-save, [class*="save-btn"], [class*="add-btn"]) {
+  background: linear-gradient(135deg, var(--aurora-accent), var(--aurora-accent-3)) !important;
+  border-color: color-mix(in srgb, var(--aurora-accent) 60%, white) !important;
+  color: #ffffff !important;
+  box-shadow: 0 14px 32px color-mix(in srgb, var(--aurora-accent) 28%, transparent) !important;
+}
+
+body[data-theme="aurora"].dark-mode th {
+  background: rgba(8, 16, 52, 0.96) !important;
+  color: #eef4ff !important;
+}
+
+body[data-theme="aurora"].dark-mode td,
+body[data-theme="aurora"].dark-mode tbody tr {
+  background: rgba(3, 8, 30, 0.68) !important;
+  border-color: rgba(181, 203, 255, 0.12) !important;
+}
+
+body[data-theme="aurora"].dark-mode tbody tr:hover {
+  background: color-mix(in srgb, var(--aurora-accent) 10%, rgba(3, 8, 30, 0.82)) !important;
+}
+
+body[data-theme="aurora"].dark-mode :is(.settings-tabs, [class*="-tabs"], [role="tablist"]) {
+  background: rgba(3, 8, 30, 0.66) !important;
+  border-color: var(--aurora-line) !important;
+}
+
+body[data-theme="aurora"].dark-mode :is(.settings-tabs button.active, [role="tab"][aria-selected="true"]) {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--aurora-accent) 28%, transparent), color-mix(in srgb, var(--aurora-accent-3) 20%, transparent)) !important;
+  color: #ffffff !important;
+  border-color: color-mix(in srgb, var(--aurora-accent) 42%, transparent) !important;
+}
+
+body[data-theme="aurora"].dark-mode [class$="-modal-backdrop"],
+body[data-theme="aurora"].dark-mode [class*="-modal-backdrop "],
+body[data-theme="aurora"].dark-mode [class$="-modal-layer"],
+body[data-theme="aurora"].dark-mode [class*="-modal-layer "],
+body[data-theme="aurora"].dark-mode .app-confirm-backdrop {
+  background: rgba(1, 5, 20, 0.74) !important;
+}

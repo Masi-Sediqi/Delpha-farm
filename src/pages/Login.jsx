@@ -1,125 +1,150 @@
-import { useState } from "react";
-import { LockKeyhole } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, Check, LockKeyhole, UserRound } from "lucide-react";
 import { notify } from "../utils/notify";
-import { todayDateValue } from "../utils/afghanDate";
 import "./Auth.css";
 
-function Login({ accounts, setAccounts, onLogin, company }) {
-  const [form, setForm] = useState({
-    email: "",
-    password: "",
-  });
+const languageStorageKey = "afghan-power-language";
+const rtlLanguages = new Set(["fa", "ps"]);
 
-  const systemName = company.companyName || "ISP Assets";
-  const savedSubtitle = String(company.systemSubtitle || "").trim();
-  const systemSubtitle =
-    !savedSubtitle || savedSubtitle === "Asset & Inventory Management"
-      ? "Pharmacy & Medicine Management System"
-      : savedSubtitle;
+const text = {
+  en: {
+    title: "Choose an Account",
+    subtitle: "Select your account to continue.",
+    passwordTitle: "Enter Password",
+    passwordHint: "Enter the password for the selected account.",
+    password: "Password",
+    passwordPlaceholder: "Enter your password",
+    signIn: "Sign In",
+    back: "Choose another account",
+    noAccounts: "No active accounts are available.",
+    wrongPassword: "The password is incorrect.",
+  },
+  fa: {
+    title: "انتخاب اکانت",
+    subtitle: "برای ادامه، اکانت خود را انتخاب کنید.",
+    passwordTitle: "پسورد را وارد کنید",
+    passwordHint: "پسورد اکانت انتخاب‌شده را وارد کنید.",
+    password: "پسورد",
+    passwordPlaceholder: "پسورد را وارد کنید",
+    signIn: "ورود",
+    back: "انتخاب اکانت دیگر",
+    noAccounts: "هیچ اکانت فعال موجود نیست.",
+    wrongPassword: "پسورد نادرست است.",
+  },
+  ps: {
+    title: "حساب وټاکئ",
+    subtitle: "د دوام لپاره خپل حساب وټاکئ.",
+    passwordTitle: "پټنوم ولیکئ",
+    passwordHint: "د ټاکل شوي حساب پټنوم ولیکئ.",
+    password: "پټنوم",
+    passwordPlaceholder: "پټنوم ولیکئ",
+    signIn: "ننوتل",
+    back: "بل حساب وټاکئ",
+    noAccounts: "هیڅ فعال حساب نشته.",
+    wrongPassword: "پټنوم سم نه دی.",
+  },
+};
+
+function Login({ accounts = [], onLogin, company }) {
+  const [language, setLanguage] = useState(() => localStorage.getItem(languageStorageKey) || "en");
+  const [selectedAccountId, setSelectedAccountId] = useState("");
+  const [password, setPassword] = useState("");
+
+  useEffect(() => {
+    const syncLanguage = () => setLanguage(localStorage.getItem(languageStorageKey) || "en");
+    window.addEventListener("app-language-updated", syncLanguage);
+    window.addEventListener("storage", syncLanguage);
+    return () => {
+      window.removeEventListener("app-language-updated", syncLanguage);
+      window.removeEventListener("storage", syncLanguage);
+    };
+  }, []);
+
+  const t = text[language] || text.en;
+  const direction = rtlLanguages.has(language) ? "rtl" : "ltr";
+  const systemName = company.companyName || "APG";
+  const systemSubtitle = company.systemSubtitle || "Pharmacy & Medicine Management System";
+
+  const activeAccounts = useMemo(
+    () => accounts.filter((account) => String(account.status || "Active").toLowerCase() !== "inactive"),
+    [accounts]
+  );
+
+  const selectedAccount = activeAccounts.find((account) => String(account.id) === String(selectedAccountId));
+
+  const chooseAccount = (account) => {
+    setSelectedAccountId(String(account.id));
+    setPassword("");
+  };
 
   const submit = async (event) => {
     event.preventDefault();
-
-    const email = form.email.trim().toLowerCase();
-
-    if (!email || !form.password) {
-      return notify("Please enter your email and password.", "error");
+    if (!selectedAccount) return;
+    if (!password) {
+      notify(t.passwordPlaceholder, "error");
+      return;
     }
-
-    let account = accounts.find(
-      (item) =>
-        (String(item.email || "").toLowerCase() === email ||
-          String(item.username || "").toLowerCase() === email) &&
-        (item.password === form.password || item.secondaryPassword === form.password)
-    );
-
-    if (!account && email === "admin@gmail.com" && form.password === "mynameisadmin") {
-      account = {
-        id: "default-admin",
-        fullName: "System Admin",
-        email: "admin@gmail.com",
-        password: "mynameisadmin",
-        secondaryPassword: "",
-        role: "Admin",
-        status: "Active",
-        permissions: {},
-        isDefaultAdmin: true,
-        createdAt: todayDateValue(),
-      };
-
-      if (!accounts.some((item) => String(item.id) === "default-admin")) {
-        const saved = await setAccounts([account, ...accounts]);
-        if (!saved) return;
-      }
+    const matches = selectedAccount.password === password || selectedAccount.secondaryPassword === password;
+    if (!matches) {
+      notify(t.wrongPassword, "error");
+      return;
     }
-
-    if (!account) {
-      return notify("The email or password is incorrect.", "error");
-    }
-
-    await onLogin(account);
+    await onLogin(selectedAccount);
   };
 
   return (
-    <div className="auth-page" dir="ltr">
+    <div className="auth-page" dir={direction}>
       <div className="auth-brand-panel">
         <div className="auth-logo">
-          {company.logo ? (
-            <img src={company.logo} alt={`${systemName} logo`} />
-          ) : (
-            systemName.slice(0, 1)
-          )}
+          {company.logo ? <img src={company.logo} alt={`${systemName} logo`} /> : systemName.slice(0, 1)}
         </div>
-
         <h1>{systemName}</h1>
         <p>{systemSubtitle}</p>
       </div>
 
       <div className="auth-form-panel">
-        <form className="auth-card" onSubmit={submit} noValidate>
-          <div className="auth-card-icon">
-            <LockKeyhole />
-          </div>
+        {!selectedAccount ? (
+          <section className="auth-card auth-account-card">
+            <div className="auth-card-icon"><UserRound /></div>
+            <h2>{t.title}</h2>
+            <p>{t.subtitle}</p>
 
-          <h2>Sign In to the System</h2>
+            <div className="auth-account-list">
+              {activeAccounts.map((account) => (
+                <button type="button" className="auth-account-item" key={account.id} onClick={() => chooseAccount(account)}>
+                  <span className="auth-account-avatar">{(account.fullName || account.email || "U").slice(0, 1).toUpperCase()}</span>
+                  <span className="auth-account-copy">
+                    <strong>{account.fullName || account.email}</strong>
+                    <small>{account.email || account.username || ""}</small>
+                  </span>
+                  <span className="auth-account-check"><Check size={16} /></span>
+                </button>
+              ))}
+              {activeAccounts.length === 0 && <div className="auth-empty-accounts">{t.noAccounts}</div>}
+            </div>
+          </section>
+        ) : (
+          <form className="auth-card auth-password-card" onSubmit={submit} noValidate>
+            <button type="button" className="auth-back-account" onClick={() => { setSelectedAccountId(""); setPassword(""); }}>
+              <ArrowLeft size={16} /> {t.back}
+            </button>
 
-          <p>Enter your account information to continue.</p>
+            <div className="auth-selected-user">
+              <span className="auth-account-avatar large">{(selectedAccount.fullName || selectedAccount.email || "U").slice(0, 1).toUpperCase()}</span>
+              <div><strong>{selectedAccount.fullName || selectedAccount.email}</strong><small>{selectedAccount.email || selectedAccount.username || ""}</small></div>
+            </div>
 
-          <label>
-            Email
-            <input
-              type="text"
-              inputMode="email"
-              value={form.email}
-              onChange={(event) =>
-                setForm({
-                  ...form,
-                  email: event.target.value,
-                })
-              }
-              placeholder="name@example.com"
-              autoComplete="email"
-            />
-          </label>
+            <div className="auth-card-icon"><LockKeyhole /></div>
+            <h2>{t.passwordTitle}</h2>
+            <p>{t.passwordHint}</p>
 
-          <label>
-            Password
-            <input
-              type="password"
-              value={form.password}
-              onChange={(event) =>
-                setForm({
-                  ...form,
-                  password: event.target.value,
-                })
-              }
-              placeholder="Enter your password"
-              autoComplete="current-password"
-            />
-          </label>
-
-          <button type="submit">Sign In</button>
-        </form>
+            <label>
+              {t.password}
+              <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder={t.passwordPlaceholder} autoComplete="current-password" autoFocus />
+            </label>
+            <button type="submit">{t.signIn}</button>
+          </form>
+        )}
       </div>
     </div>
   );

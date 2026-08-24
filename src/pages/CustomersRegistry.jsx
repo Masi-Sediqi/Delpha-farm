@@ -359,11 +359,23 @@ export default function CustomersRegistry() {
 
 
       {isOpen && createPortal(
-        <div className="customer-modal-layer" role="dialog" aria-modal="true">
-          <div className="customer-modal-backdrop" onClick={closeModal} />
-          <div className="customer-modal" dir={isRtl ? "rtl" : "ltr"} onClick={(event) => event.stopPropagation()}>
+        <div
+          className="customer-modal-layer"
+          role="presentation"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) closeModal();
+          }}
+        >
+          <section
+            className="customer-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="customer-modal-title"
+            dir={isRtl ? "rtl" : "ltr"}
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="customer-modal-head">
-              <div><h2>{editingId ? t.modalEditTitle : t.modalTitle}</h2><p>{t.modalSubtitle}</p></div>
+              <div><h2 id="customer-modal-title">{editingId ? t.modalEditTitle : t.modalTitle}</h2><p>{t.modalSubtitle}</p></div>
               <button type="button" className="customer-close-btn" onClick={closeModal}><X size={20} /></button>
             </div>
 
@@ -373,7 +385,7 @@ export default function CustomersRegistry() {
                   <div className="customer-section-title"><UserRound size={18} /><span>{t.customer}</span></div>
                   <div className="customer-form-grid">
                     <label className="customer-field"><span>{t.customerType}</span><select value={form.customerType} onChange={(e) => change("customerType", e.target.value)}><option value="individual">{t.individual}</option><option value="business">{t.business}</option></select></label>
-                    <label className="customer-field"><span>{t.fullName} *</span><input value={form.fullName} onChange={(e) => change("fullName", e.target.value)} /></label>
+                    <label className="customer-field"><span>{t.fullName} *</span><input value={form.fullName} onChange={(e) => change("fullName", e.target.value)} autoFocus /></label>
                     <label className="customer-field customer-span-2"><span>{t.companyName}</span><div className="customer-input-icon"><Building2 size={17} /><input value={form.companyName} onChange={(e) => change("companyName", e.target.value)} /></div></label>
                   </div>
                 </section>
@@ -414,7 +426,7 @@ export default function CustomersRegistry() {
                 <button type="submit" className="customer-primary-btn">{editingId ? t.update : t.save}</button>
               </div>
             </form>
-          </div>
+          </section>
         </div>,
         document.body
       )}

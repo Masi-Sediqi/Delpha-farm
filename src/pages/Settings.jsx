@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Banknote,
   CalendarDays,
   Building2,
   Database,
   Download,
+  Edit3,
   LockKeyhole,
   Image,
   Palette,
@@ -12,7 +14,9 @@ import {
   Save,
   Trash2,
   Upload,
+  UserPlus,
   Users,
+  X,
 } from "lucide-react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import { downloadBackup, loadBackupCollectionNames } from "../utils/backup";
@@ -70,31 +74,42 @@ const themeOptions = [
     description: "Layered gray gradients with charcoal navigation",
   },
   {
-    key: "glassmorphism",
-    title: "Desktop Light",
-    description: "Blue-gray desktop style with soft circular depth",
-  },
-  {
     key: "black-white",
     title: "Midnight Blue",
     description: "Deep navy surfaces with luminous blue accents",
   },
   {
-    key: "neon",
-    title: "Neon",
-    description: "Dark surfaces with vivid cyan and violet glow",
+    key: "aurora",
+    title: "Aurora Flow",
+    description: "Premium dark glass with company-colored aurora light",
   },
 ];
+
+function applyCompanyThemeIdentity(companyName = "") {
+  const source = String(companyName || defaultSystemName).trim() || defaultSystemName;
+  let hash = 0;
+  for (let index = 0; index < source.length; index += 1) {
+    hash = (hash * 31 + source.charCodeAt(index)) % 360;
+  }
+
+  const root = document.documentElement;
+  root.style.setProperty("--company-accent-hue", String(hash));
+  root.style.setProperty("--company-accent", `hsl(${hash} 86% 58%)`);
+  root.style.setProperty("--company-accent-2", `hsl(${(hash + 78) % 360} 88% 56%)`);
+  root.style.setProperty("--company-accent-3", `hsl(${(hash + 152) % 360} 92% 60%)`);
+  root.style.setProperty("--company-accent-soft", `hsl(${hash} 88% 58% / 0.16)`);
+  document.body.dataset.companyName = source;
+}
 
 function applyTheme(theme) {
   localStorage.setItem(themeStorageKey, theme);
   document.body.dataset.theme = theme;
   document.documentElement.dataset.theme = theme;
-  document.body.classList.toggle("dark-mode", ["black-white", "neon"].includes(theme));
+  document.body.classList.toggle("dark-mode", ["black-white", "aurora"].includes(theme));
   window.dispatchEvent(new Event("app-theme-updated"));
 }
 
-function Settings() {
+function Settings({ accounts = [], setAccounts, currentUser }) {
   const [settings, setSettings] = useJsonCollection("settings");
   const current = settings[0] || {};
 
@@ -117,10 +132,16 @@ function Settings() {
   const [autoBackupMode, setAutoBackupMode] = useState("off");
   const [autoBackupCustomDays, setAutoBackupCustomDays] = useState("7");
   const [activeTheme, setActiveTheme] = useState(
-    () => localStorage.getItem(themeStorageKey) || "minimalism"
+    () => {
+      const storedTheme = localStorage.getItem(themeStorageKey) || "minimalism";
+      return ["neon", "glassmorphism"].includes(storedTheme) ? "aurora" : storedTheme;
+    }
   );
   const [appDataBusy, setAppDataBusy] = useState(false);
   const [clearConfirm, setClearConfirm] = useState("");
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [editingUserId, setEditingUserId] = useState(null);
+  const [userForm, setUserForm] = useState({ fullName: "", email: "", password: "", confirmPassword: "" });
   const [language, setLanguage] = useState(
     () => localStorage.getItem(languageStorageKey) || "en"
   );
@@ -150,6 +171,7 @@ function Settings() {
       decimalPlaces: "Decimal places", preview: "Preview", saveDecimals: "Save Decimal Settings",
       exchangeRateTitle: "Exchange Rates Against Afghani", exchangeRateDescription: "Enter how many Afghanis equal one unit of each foreign currency.",
       usdRate: "US Dollar", eurRate: "Euro", inrRate: "Indian Rupee", oneUnit: "1 {code} =", afnUnit: "AFN", saveExchangeRates: "Save Exchange Rates",
+      usersTab: "Users", usersTitle: "Users", usersDescription: "Create and manage the accounts that can sign in to this system.", addUser: "Add User", editUser: "Edit User", userName: "Name", email: "Email", password: "Password", confirmPassword: "Confirm Password", actions: "Actions", edit: "Edit", delete: "Delete", noUsers: "No user accounts found.", saveUser: "Save User", updateUser: "Update User", cancel: "Cancel", createUserHint: "Enter the user's account information.", editUserHint: "Update the account information. Leave password empty to keep the current password.", passwordOptional: "Leave empty to keep current password", activeAccount: "Current account",
     },
     fa: {
       reportDateTab: "تاریخ راپور", decimalsTab: "اعشار اسعار",
@@ -164,6 +186,7 @@ function Settings() {
       decimalPlaces: "خانه اعشاری", preview: "نمونه نمایش", saveDecimals: "ذخیره تنظیمات اعشار",
       exchangeRateTitle: "نرخ اسعار در مقابل افغانی", exchangeRateDescription: "مشخص کنید یک واحد از هر اسعار خارجی چند افغانی می‌شود.",
       usdRate: "دالر امریکایی", eurRate: "یورو", inrRate: "کلدار هندی", oneUnit: "1 {code} =", afnUnit: "افغانی", saveExchangeRates: "ذخیره نرخ اسعار",
+      usersTab: "کاربران", usersTitle: "کاربران", usersDescription: "اکانت‌هایی را که اجازه ورود به سیستم دارند ایجاد و مدیریت کنید.", addUser: "افزودن کاربر", editUser: "ویرایش کاربر", userName: "نام", email: "ایمیل", password: "پسورد", confirmPassword: "تکرار پسورد", actions: "عملیات", edit: "ویرایش", delete: "حذف", noUsers: "هیچ اکانت کاربری موجود نیست.", saveUser: "ذخیره کاربر", updateUser: "ذخیره تغییرات", cancel: "لغو", createUserHint: "معلومات اکانت کاربر را وارد کنید.", editUserHint: "معلومات اکانت را ویرایش کنید. برای حفظ پسورد فعلی، فیلد پسورد را خالی بگذارید.", passwordOptional: "برای حفظ پسورد فعلی خالی بگذارید", activeAccount: "اکانت فعلی",
     },
     ps: {
       reportDateTab: "د راپور نېټه", decimalsTab: "د اسعارو اعشار",
@@ -178,18 +201,14 @@ function Settings() {
       decimalPlaces: "اعشاري خانې", preview: "بېلګه", saveDecimals: "د اعشاریو تنظیمات خوندي کړئ",
       exchangeRateTitle: "د افغانیو په مقابل کې د اسعارو نرخ", exchangeRateDescription: "وټاکئ چې د هرې بهرنۍ پیسې یو واحد څو افغانۍ کېږي.",
       usdRate: "امریکایي ډالر", eurRate: "یورو", inrRate: "هندي روپۍ", oneUnit: "1 {code} =", afnUnit: "افغانۍ", saveExchangeRates: "د اسعارو نرخونه خوندي کړئ",
+      usersTab: "کاروونکي", usersTitle: "کاروونکي", usersDescription: "هغه حسابونه جوړ او اداره کړئ چې دې سیسټم ته ننوتلی شي.", addUser: "کاروونکی اضافه کړئ", editUser: "کاروونکی سمول", userName: "نوم", email: "برېښنالیک", password: "پټنوم", confirmPassword: "پټنوم بیا ولیکئ", actions: "کړنې", edit: "سمول", delete: "حذف", noUsers: "هیڅ کارن حساب نشته.", saveUser: "کاروونکی خوندي کړئ", updateUser: "بدلونونه خوندي کړئ", cancel: "لغوه", createUserHint: "د کاروونکي د حساب معلومات ولیکئ.", editUserHint: "د حساب معلومات بدل کړئ. د اوسني پټنوم ساتلو لپاره د پټنوم برخه تشه پرېږدئ.", passwordOptional: "د اوسني پټنوم ساتلو لپاره تش پرېږدئ", activeAccount: "اوسنی حساب",
     },
   };
   const st = settingsText[language] || settingsText.en;
 
   useEffect(() => {
-    const storedCompanyName = String(current.companyName || "").trim();
-    const storedSubtitle = String(current.systemSubtitle || "").trim();
-    const legacyCompanyNames = new Set(["ISP Assets", "Masi"]);
-    const legacySubtitles = new Set(["Asset & Inventory Management"]);
-
-    setCompanyName(!storedCompanyName || legacyCompanyNames.has(storedCompanyName) ? defaultSystemName : storedCompanyName);
-    setSystemSubtitle(!storedSubtitle || legacySubtitles.has(storedSubtitle) ? defaultSystemSubtitle : storedSubtitle);
+    setCompanyName(current.companyName || defaultSystemName);
+    setSystemSubtitle(current.systemSubtitle || defaultSystemSubtitle);
     setCompanyAddress(current.companyAddress || "");
     setCompanyPhone(current.companyPhone || "");
     setCurrency(current.currency || "AFN");
@@ -224,9 +243,102 @@ function Settings() {
     current.logo,
   ]);
 
+  useEffect(() => {
+    document.body.classList.toggle("settings-user-modal-open", showUserModal);
+    return () => document.body.classList.remove("settings-user-modal-open");
+  }, [showUserModal]);
+
+  const openAddUser = () => {
+    setEditingUserId(null);
+    setUserForm({ fullName: "", email: "", password: "", confirmPassword: "" });
+    setShowUserModal(true);
+  };
+
+  const openEditUser = (account) => {
+    setEditingUserId(account.id);
+    setUserForm({
+      fullName: account.fullName || "",
+      email: account.email || account.username || "",
+      password: "",
+      confirmPassword: "",
+    });
+    setShowUserModal(true);
+  };
+
+  const closeUserModal = () => {
+    setShowUserModal(false);
+    setEditingUserId(null);
+    setUserForm({ fullName: "", email: "", password: "", confirmPassword: "" });
+  };
+
+  const saveUserAccount = async (event) => {
+    event.preventDefault();
+    if (!setAccounts) return;
+    const fullName = userForm.fullName.trim();
+    const email = userForm.email.trim().toLowerCase();
+    if (!fullName || !email) {
+      notify(language === "fa" ? "نام و ایمیل الزامی است." : language === "ps" ? "نوم او برېښنالیک اړین دي." : "Name and email are required.", "error");
+      return;
+    }
+    const duplicate = accounts.some((account) => String(account.id) !== String(editingUserId) && String(account.email || account.username || "").toLowerCase() === email);
+    if (duplicate) {
+      notify(language === "fa" ? "این ایمیل قبلاً استفاده شده است." : language === "ps" ? "دا برېښنالیک مخکې کارول شوی دی." : "This email is already in use.", "error");
+      return;
+    }
+    if (!editingUserId && !userForm.password) {
+      notify(language === "fa" ? "پسورد را وارد کنید." : language === "ps" ? "پټنوم ولیکئ." : "Please enter a password.", "error");
+      return;
+    }
+    if (userForm.password && userForm.password.length < 4) {
+      notify(language === "fa" ? "پسورد حداقل 4 حرف باشد." : language === "ps" ? "پټنوم لږ تر لږه 4 توري وي." : "Password must be at least 4 characters.", "error");
+      return;
+    }
+    if (userForm.password !== userForm.confirmPassword) {
+      notify(language === "fa" ? "تکرار پسورد مطابقت ندارد." : language === "ps" ? "د پټنوم تکرار سمون نه خوري." : "Password confirmation does not match.", "error");
+      return;
+    }
+    const existing = accounts.find((account) => String(account.id) === String(editingUserId));
+    const payload = {
+      ...(existing || {}),
+      fullName,
+      email,
+      username: email,
+      role: existing?.role || "Admin",
+      status: existing?.status || "Active",
+      permissions: existing?.permissions || {},
+      updatedAt: new Date().toISOString(),
+      ...(userForm.password ? { password: userForm.password } : {}),
+    };
+    const next = editingUserId
+      ? accounts.map((account) => String(account.id) === String(editingUserId) ? payload : account)
+      : [...accounts, { id: Date.now(), ...payload, createdAt: new Date().toISOString() }];
+    const saved = await setAccounts(next);
+    if (!saved) return;
+    notify(language === "fa" ? (editingUserId ? "کاربر ویرایش شد." : "کاربر اضافه شد.") : language === "ps" ? (editingUserId ? "کاروونکی سم شو." : "کاروونکی اضافه شو.") : (editingUserId ? "User updated." : "User added."));
+    closeUserModal();
+  };
+
+  const deleteUserAccount = async (account) => {
+    if (!setAccounts) return;
+    if (String(account.id) === String(currentUser?.id)) {
+      notify(language === "fa" ? "اکانت فعلی را نمی‌توانید حذف کنید." : language === "ps" ? "اوسنی حساب نشئ حذف کولی." : "You cannot delete the current account.", "error");
+      return;
+    }
+    const ok = await confirmAction({
+      title: st.delete,
+      message: `${st.delete}: ${account.fullName || account.email}?`,
+      confirmText: st.delete,
+    });
+    if (!ok) return;
+    const saved = await setAccounts(accounts.filter((item) => String(item.id) !== String(account.id)));
+    if (!saved) return;
+    notify(language === "fa" ? "کاربر حذف شد." : language === "ps" ? "کاروونکی حذف شو." : "User deleted.");
+  };
+
   const selectTheme = (theme) => {
     setActiveTheme(theme);
     applyTheme(theme);
+    applyCompanyThemeIdentity(companyName);
     notify("Theme updated successfully.");
   };
 
@@ -273,6 +385,7 @@ function Settings() {
     const saved = await setSettings(nextSettings);
     if (!saved) return;
 
+    applyCompanyThemeIdentity(nextSettings[0].companyName);
     window.dispatchEvent(new Event("company-settings-updated"));
     notify("System settings saved successfully.");
   };
@@ -444,7 +557,7 @@ function Settings() {
           onClick={() => setActiveTab("users")}
         >
           <Users size={16} />
-          Users
+          {st.usersTab}
         </button>
       </div>
 
@@ -742,16 +855,50 @@ function Settings() {
       )}
 
       {activeTab === "users" && (
-        <div className="settings-data-card">
-          <section className="settings-panel">
-            <div className="settings-section-title">
-              <h3>Users</h3>
-              <p>Open user management to add users, roles and permissions.</p>
+        <div className="settings-data-card settings-users-card" dir={language === "en" ? "ltr" : "rtl"}>
+          <section className="settings-panel settings-users-panel">
+            <div className="settings-users-head">
+              <div className="settings-section-title">
+                <h3>{st.usersTitle}</h3>
+                <p>{st.usersDescription}</p>
+              </div>
+              <button type="button" className="settings-add-user" onClick={openAddUser}>
+                <UserPlus size={17} />
+                {st.addUser}
+              </button>
             </div>
-            <a className="settings-link-button" href="#/user-management">
-              <Users size={16} />
-              Open Users
-            </a>
+
+            <div className="settings-users-table-wrap">
+              <table className="settings-users-table">
+                <thead>
+                  <tr>
+                    <th>{st.userName}</th>
+                    <th>{st.email}</th>
+                    <th>{st.actions}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {accounts.map((account) => (
+                    <tr key={account.id}>
+                      <td>
+                        <div className="settings-user-name">
+                          <span>{(account.fullName || account.email || "U").slice(0, 1).toUpperCase()}</span>
+                          <div><strong>{account.fullName || account.email}</strong>{String(account.id) === String(currentUser?.id) && <small>{st.activeAccount}</small>}</div>
+                        </div>
+                      </td>
+                      <td>{account.email || account.username || "—"}</td>
+                      <td>
+                        <div className="settings-user-actions">
+                          <button type="button" onClick={() => openEditUser(account)}><Edit3 size={14} />{st.edit}</button>
+                          <button type="button" className="danger" onClick={() => deleteUserAccount(account)} disabled={String(account.id) === String(currentUser?.id)}><Trash2 size={14} />{st.delete}</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {accounts.length === 0 && <tr><td colSpan="3" className="settings-users-empty">{st.noUsers}</td></tr>}
+                </tbody>
+              </table>
+            </div>
           </section>
         </div>
       )}
@@ -761,7 +908,7 @@ function Settings() {
           <section className="settings-panel">
             <div className="settings-section-title">
               <h3>Theme Settings</h3>
-              <p>Select one of the five available interface themes.</p>
+              <p>Select one of the available interface themes. Each theme uses the company name as its visual signature.</p>
             </div>
 
             <div className="settings-theme-grid">
@@ -879,10 +1026,35 @@ function Settings() {
         </div>
       )}
       </div>
+
+      {showUserModal && createPortal(
+        <div className="settings-user-modal-backdrop" role="presentation">
+          <div className="settings-user-modal" role="dialog" aria-modal="true" dir={language === "en" ? "ltr" : "rtl"} onClick={(event) => event.stopPropagation()}>
+            <div className="settings-user-modal-head">
+              <div>
+                <h3>{editingUserId ? st.editUser : st.addUser}</h3>
+                <p>{editingUserId ? st.editUserHint : st.createUserHint}</p>
+              </div>
+              <button type="button" onClick={closeUserModal} aria-label="Close"><X size={18} /></button>
+            </div>
+            <form className="settings-user-form" onSubmit={saveUserAccount}>
+              <div className="settings-user-form-grid">
+                <label><span>{st.userName} *</span><input value={userForm.fullName} onChange={(e) => setUserForm((v) => ({...v, fullName:e.target.value}))} autoFocus /></label>
+                <label><span>{st.email} *</span><input type="email" value={userForm.email} onChange={(e) => setUserForm((v) => ({...v, email:e.target.value}))} /></label>
+                <label><span>{st.password}{!editingUserId ? " *" : ""}</span><input type="password" value={userForm.password} placeholder={editingUserId ? st.passwordOptional : ""} onChange={(e) => setUserForm((v) => ({...v, password:e.target.value}))} autoComplete="new-password" /></label>
+                <label><span>{st.confirmPassword}{!editingUserId ? " *" : ""}</span><input type="password" value={userForm.confirmPassword} onChange={(e) => setUserForm((v) => ({...v, confirmPassword:e.target.value}))} autoComplete="new-password" /></label>
+              </div>
+              <div className="settings-user-modal-footer">
+                <button type="button" className="secondary" onClick={closeUserModal}>{st.cancel}</button>
+                <button type="submit" className="primary"><Save size={16} />{editingUserId ? st.updateUser : st.saveUser}</button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
 
 export default Settings;
-
-

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Check,
   CreditCard,
@@ -426,11 +427,19 @@ export default function SalesRegister() {
         </div>
       </section>
 
-      {showModal && (
-        <div className="sales-register-overlay" onClick={(e) => e.currentTarget === e.target && closeModal()}>
-          <form className="sales-register-modal" onSubmit={saveSale} onClick={(event) => event.stopPropagation()}>
+      {showModal && createPortal(
+        <div className="sales-register-overlay" role="presentation" onClick={(e) => e.currentTarget === e.target && closeModal()}>
+          <form
+            className="sales-register-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="sales-register-modal-title"
+            dir={direction}
+            onSubmit={saveSale}
+            onClick={(event) => event.stopPropagation()}
+          >
             <header className="sales-register-modal-head">
-              <div><h2><ShoppingBag size={22} />{t.modalTitle}</h2><p>{t.modalHint}</p></div>
+              <div><h2 id="sales-register-modal-title"><ShoppingBag size={22} />{t.modalTitle}</h2><p>{t.modalHint}</p></div>
               <button type="button" className="sales-register-icon" onClick={closeModal}><X size={20} /></button>
             </header>
 
@@ -500,7 +509,8 @@ export default function SalesRegister() {
               <button type="submit" className="sales-register-primary"><PackageCheck size={17} />{t.save}</button>
             </footer>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

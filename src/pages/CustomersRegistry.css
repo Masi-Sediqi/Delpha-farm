@@ -17,3 +17,219 @@
 .customer-ledger-summary{margin:0 22px 16px;padding:16px 18px;border:1px solid #e5eaf0;border-radius:13px;background:#fff;display:flex;align-items:center;justify-content:flex-end;gap:18px}.customer-ledger-summary span{font-size:14px;font-weight:700;color:#64748b}.customer-ledger-summary strong{font-size:24px;color:#0f172a}.customer-ledger-summary strong.is-due{color:#dc2626}
 [dir="rtl"] .customer-ledger-table th,[dir="rtl"] .customer-ledger-table td{text-align:right}
 @media(max-width:720px){.customer-ledger-modal{width:calc(100vw - 16px);height:calc(100dvh - 16px);max-height:calc(100dvh - 16px);border-radius:14px}.customer-ledger-customer-card{margin:12px 14px 0;align-items:flex-start;flex-direction:column}.customer-ledger-table-wrap{margin:12px 14px}.customer-ledger-summary{margin:0 14px 12px}.customer-ledger-meta{gap:8px}}
+
+/* Customer register modal now follows the Product register form pattern. */
+.customer-modal-layer {
+  z-index: 2147483000 !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 24px !important;
+  background: rgba(8, 12, 20, .74) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  backdrop-filter: blur(4px) !important;
+  overflow: auto !important;
+}
+
+.customer-modal-backdrop {
+  display: none !important;
+}
+
+.customer-modal {
+  position: relative !important;
+  z-index: 1 !important;
+  width: min(860px, 100%) !important;
+  height: auto !important;
+  max-height: calc(100dvh - 48px) !important;
+  overflow: auto !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 19px !important;
+  background: #ffffff !important;
+  color: #172033 !important;
+  box-shadow: 0 30px 80px rgba(15, 23, 42, .24) !important;
+}
+
+.customer-modal-head {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 6 !important;
+  min-height: 84px;
+  padding: 18px 20px !important;
+  border-bottom: 1px solid #eeeae2 !important;
+  background: rgba(255, 255, 255, .97) !important;
+}
+
+.customer-modal-head h2 {
+  margin: 0 0 5px !important;
+  color: #111827 !important;
+  font-size: 20px !important;
+  font-weight: 900 !important;
+}
+
+.customer-modal-head p {
+  margin: 0 !important;
+  color: #64748b !important;
+  font-size: 12px !important;
+}
+
+.customer-close-btn {
+  width: 36px !important;
+  height: 36px !important;
+  flex: 0 0 auto;
+  border-radius: 10px !important;
+  background: #f8fafc !important;
+  color: #475569 !important;
+}
+
+.customer-modal form {
+  display: block !important;
+  overflow: visible !important;
+}
+
+.customer-form-body {
+  padding: 20px !important;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 15px !important;
+  overflow: visible !important;
+}
+
+.customer-form-section,
+.customer-form-grid {
+  display: contents !important;
+}
+
+.customer-section-title {
+  display: none !important;
+}
+
+.customer-field,
+.customer-input-icon {
+  min-width: 0;
+}
+
+.customer-field.customer-span-2 {
+  grid-column: 1 / -1;
+}
+
+.customer-field > span {
+  color: #334155 !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+}
+
+.customer-field input,
+.customer-field select,
+.customer-field textarea,
+.customer-input-icon {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 10px !important;
+  background: #ffffff !important;
+  color: #172033 !important;
+  outline: none;
+  font: inherit;
+  font-size: 13px;
+  text-align: start;
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+
+.customer-field input,
+.customer-field select,
+.customer-input-icon {
+  min-height: 42px;
+  padding: 0 12px !important;
+}
+
+.customer-input-icon input {
+  min-height: 40px;
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
+.customer-field textarea {
+  min-height: 96px;
+  resize: vertical;
+  padding: 11px 12px !important;
+}
+
+.customer-field input:focus,
+.customer-field select:focus,
+.customer-field textarea:focus,
+.customer-input-icon:focus-within {
+  border-color: #818cf8 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, .09) !important;
+}
+
+.customer-modal-footer {
+  position: sticky !important;
+  bottom: 0 !important;
+  z-index: 6 !important;
+  margin: 0 20px;
+  padding: 16px 0 20px !important;
+  border-top: 1px solid #f0eee9 !important;
+  background: rgba(255, 255, 255, .97) !important;
+}
+
+.customer-modal-footer .customer-primary-btn,
+.customer-modal-footer .customer-secondary-btn {
+  min-height: 40px;
+  padding: 0 17px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+body.dark-mode .customer-modal,
+body.dark-mode .customer-modal-head,
+body.dark-mode .customer-modal-footer {
+  background: #151515 !important;
+  border-color: #2b2b2b !important;
+  color: #f8fafc !important;
+}
+
+body.dark-mode .customer-modal-head h2,
+body.dark-mode .customer-field > span {
+  color: #f8fafc !important;
+}
+
+body.dark-mode .customer-modal-head p {
+  color: #cbd5e1 !important;
+}
+
+body.dark-mode .customer-field input,
+body.dark-mode .customer-field select,
+body.dark-mode .customer-field textarea,
+body.dark-mode .customer-input-icon {
+  background: #0f0f10 !important;
+  border-color: #333333 !important;
+  color: #f8fafc !important;
+}
+
+@media (max-width: 640px) {
+  .customer-modal-layer {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+
+  .customer-modal {
+    width: 100% !important;
+    max-height: 94dvh !important;
+    border-radius: 20px 20px 0 0 !important;
+  }
+
+  .customer-form-body {
+    grid-template-columns: 1fr;
+    padding: 16px !important;
+  }
+
+  .customer-field.customer-span-2 {
+    grid-column: auto;
+  }
+
+  .customer-modal-footer {
+    margin: 0 16px;
+  }
+}
