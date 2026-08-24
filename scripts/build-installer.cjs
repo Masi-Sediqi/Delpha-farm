@@ -46,7 +46,7 @@ function keepOnlyInstaller() {
   for (const entry of fs.readdirSync(releaseDir)) {
     const target = path.join(releaseDir, entry);
     const isInstaller =
-      /^ISP-Setup-\d+\.\d+\.\d+\.exe$/i.test(entry);
+      /^APG-Medicine-Setup-\d+\.\d+\.\d+\.exe$/i.test(entry);
 
     if (!isInstaller) {
       removePath(target);

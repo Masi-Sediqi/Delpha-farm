@@ -1,9 +1,9 @@
 {
-  "name": "afghan-power",
+  "name": "apg-medicine-management",
   "private": true,
   "version": "1.0.4",
-  "productName": "ISP",
-  "description": "ISP asset and inventory management desktop application.",
+  "productName": "APG Medicine Management",
+  "description": "Pharmacy & Medicine Management System by AFGHAN POWER.",
   "author": "AFGHAN POWER",
   "type": "module",
   "main": "electron/main.cjs",
@@ -53,13 +53,13 @@
     "wait-on": "^9.0.10"
   },
   "build": {
-    "appId": "com.afghanpower.isp",
-    "productName": "ISP",
+    "appId": "com.afghanpower.medicine",
+    "productName": "APG Medicine Management",
     "electronVersion": "42.3.3",
     "directories": {
       "output": "release"
     },
-    "artifactName": "ISP-Setup-${version}.${ext}",
+    "artifactName": "APG-Medicine-Setup-${version}.${ext}",
     "asar": true,
     "files": [
       "public/icon.png",
@@ -84,15 +84,15 @@
         }
       ],
       "icon": "public/icon.png",
-      "executableName": "ISP"
+      "executableName": "APG-Medicine"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "ISP",
-      "uninstallDisplayName": "ISP",
+      "shortcutName": "APG Medicine Management",
+      "uninstallDisplayName": "APG Medicine Management",
       "deleteAppDataOnUninstall": false
     }
   }

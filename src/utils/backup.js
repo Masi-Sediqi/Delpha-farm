@@ -16,7 +16,7 @@ export async function buildBackupPayload() {
   );
 
   return {
-    app: "ISP Assets",
+    app: "APG Medicine Management",
     exportedAt: new Date().toISOString(),
     collections: Object.fromEntries(entries),
   };
@@ -32,7 +32,7 @@ export async function downloadBackup(reason = "manual") {
   const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
 
   link.href = url;
-  link.download = `isp-data-${reason}-${stamp}.json`;
+  link.download = `medicine-data-${reason}-${stamp}.json`;
   document.body.appendChild(link);
   link.click();
   link.remove();
