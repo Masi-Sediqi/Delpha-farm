@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 import {
   BadgeDollarSign,
   Building2,
@@ -200,6 +201,7 @@ const emptyForm = {
 };
 
 export default function Suppliers() {
+  const navigate = useNavigate();
   const [suppliers, setSuppliers] = useJsonCollection("suppliers");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [search, setSearch] = useState("");
@@ -436,7 +438,7 @@ export default function Suppliers() {
             </thead>
             <tbody>
               {filtered.length ? filtered.map((item) => (
-                <tr key={item.id}>
+                <tr key={item.id} className="supplier-clickable-row" onClick={() => navigate(`/supplier-detail/${item.id}`)}>
                   <td className="supplier-name-cell"><span className="supplier-avatar"><Building2 size={15} /></span><span>{item.supplierName}</span></td>
                   <td>{item.supplierType ? (t[item.supplierType] || item.supplierType) : "—"}</td>
                   <td>{t[item.currency] || String(item.currency || "—").toUpperCase()}</td>
@@ -446,8 +448,8 @@ export default function Suppliers() {
                   <td><span className={`supplier-status ${item.status === "inactive" ? "inactive" : "active"}`}>{item.status === "inactive" ? t.inactive : t.active}</span></td>
                   <td>
                     <div className="suppliers-actions">
-                      <button type="button" onClick={() => openEdit(item)} aria-label={t.editTitle}><Edit3 size={16} /></button>
-                      <button type="button" className="danger" onClick={() => removeSupplier(item)} aria-label={t.confirmDelete}><Trash2 size={16} /></button>
+                      <button type="button" onClick={(event) => { event.stopPropagation(); openEdit(item); }} aria-label={t.editTitle}><Edit3 size={16} /></button>
+                      <button type="button" className="danger" onClick={(event) => { event.stopPropagation(); removeSupplier(item); }} aria-label={t.confirmDelete}><Trash2 size={16} /></button>
                     </div>
                   </td>
                 </tr>

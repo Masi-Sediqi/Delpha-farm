@@ -41,6 +41,7 @@ import { IS_DEMO, APP_MODE, environmentStorageKey } from "./config/appConfig";
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Companies = lazy(() => import("./pages/Companies"));
 const Suppliers = lazy(() => import("./pages/Suppliers"));
+const SupplierDetail = lazy(() => import("./pages/SupplierDetail"));
 const Products = lazy(() => import("./pages/Products"));
 const ProductDetail = lazy(() => import("./pages/ProductDetail"));
 const Purchasing = lazy(() => import("./pages/Purchasing"));
@@ -577,6 +578,7 @@ function App() {
 
               <Route path="/companies" element={protect("suppliers", <Companies />)} />
               <Route path="/suppliers" element={protect("suppliers", <Suppliers />)} />
+              <Route path="/supplier-detail/:supplierId" element={protect("suppliers", <SupplierDetail />)} />
               <Route path="/products" element={protect("customers", <Products />)} />
               <Route path="/product-detail/:productId" element={protect("customers", <ProductDetail />)} />
               <Route path="/purchasing" element={protect("suppliers", <Purchasing />)} />

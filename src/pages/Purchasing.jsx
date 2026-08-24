@@ -5,6 +5,7 @@ import {
   CalendarDays,
   Check,
   CreditCard,
+  Edit3,
   PackagePlus,
   Search,
   ShoppingCart,
@@ -32,6 +33,7 @@ const translations = {
     noPurchases: "No purchases have been registered yet.",
     billNo: "Bill No.", supplier: "Supplier", date: "Date", total: "Total", paid: "Paid", remaining: "Remaining", paymentType: "Payment Type", items: "Items",
     modalTitle: "Register New Purchase",
+    editModalTitle: "Edit Purchase",
     modalHint: "Enter the bill number, choose a supplier, then add several products and complete the purchase details.",
     selectSupplier: "Select supplier",
     billNumber: "Bill Number",
@@ -68,8 +70,10 @@ const translations = {
     requiredProducts: "Please select at least one product.",
     invalidPaid: "Paid amount cannot be greater than the total amount.",
     saved: "Purchase saved successfully.",
+    updated: "Purchase updated successfully.",
     remove: "Remove",
     actions: "Actions",
+    edit: "Edit",
     delete: "Delete",
     deleted: "Purchase deleted successfully.",
     confirmDelete: "Delete this purchase?",
@@ -87,6 +91,7 @@ const translations = {
     noPurchases: "هنوز خریداری ثبت نشده است.",
     billNo: "بل نمبر", supplier: "تأمین‌کننده", date: "تاریخ", total: "جمله مقدار", paid: "پرداخت", remaining: "باقی‌مانده", paymentType: "حالت پرداخت", items: "تعداد اقلام",
     modalTitle: "ثبت خریداری جدید",
+    editModalTitle: "ویرایش خریداری",
     modalHint: "بل نمبر را وارد کنید، تأمین‌کننده را انتخاب نموده و سپس چند دوا را به خریداری اضافه کنید.",
     selectSupplier: "تأمین‌کننده را انتخاب کنید",
     billNumber: "بل نمبر",
@@ -123,8 +128,10 @@ const translations = {
     requiredProducts: "حداقل یک دوا را انتخاب کنید.",
     invalidPaid: "مقدار پرداخت نمی‌تواند بیشتر از جمله مقدار باشد.",
     saved: "خریداری با موفقیت ذخیره شد.",
+    updated: "خریداری با موفقیت ویرایش شد.",
     remove: "حذف",
     actions: "عملیات",
+    edit: "ویرایش",
     delete: "حذف",
     deleted: "خریداری با موفقیت حذف شد.",
     confirmDelete: "این خریداری حذف شود؟",
@@ -142,6 +149,7 @@ const translations = {
     noPurchases: "تر اوسه پېرود نه دی ثبت شوی.",
     billNo: "بل نمبر", supplier: "عرضه کوونکی", date: "نېټه", total: "ټول مبلغ", paid: "ورکړه", remaining: "پاتې", paymentType: "د ورکړې ډول", items: "توکي",
     modalTitle: "نوی پېرود ثبتول",
+    editModalTitle: "د پېرود سمون",
     modalHint: "بل نمبر ولیکئ، عرضه کوونکی وټاکئ او بیا څو توکي پېرود ته اضافه کړئ.",
     selectSupplier: "عرضه کوونکی وټاکئ",
     billNumber: "بل نمبر",
@@ -178,8 +186,10 @@ const translations = {
     requiredProducts: "لږ تر لږه یو توکی وټاکئ.",
     invalidPaid: "ورکړل شوی مبلغ له ټول مبلغ څخه زیات نه شي کېدای.",
     saved: "پېرود په بریالیتوب سره ذخیره شو.",
+    updated: "پېرود په بریالیتوب سم شو.",
     remove: "حذف",
     actions: "عملیات",
+    edit: "سمون",
     delete: "حذف",
     deleted: "پېرود په بریالیتوب سره حذف شو.",
     confirmDelete: "دا پېرود حذف شي؟",
@@ -197,6 +207,7 @@ function Purchasing() {
   const [search, setSearch] = useState("");
   const [productSearch, setProductSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [editingPurchaseId, setEditingPurchaseId] = useState(null);
   const [supplierId, setSupplierId] = useState("");
   const [billNumber, setBillNumber] = useState("");
   const [selectedItems, setSelectedItems] = useState([]);
@@ -273,6 +284,7 @@ function Purchasing() {
   }, [paymentMode, grandTotal, showModal]);
 
   const openModal = () => {
+    setEditingPurchaseId(null);
     setSupplierId("");
     setBillNumber("");
     setSelectedItems([]);
@@ -282,7 +294,38 @@ function Purchasing() {
     setShowModal(true);
   };
 
-  const closeModal = () => setShowModal(false);
+  const openEdit = (purchase) => {
+    setEditingPurchaseId(purchase.id);
+    setSupplierId(purchase.supplierId || "");
+    setBillNumber(purchase.billNumber || "");
+    setSelectedItems((purchase.items || []).map((item) => {
+      const product = products.find((productItem) => String(productItem.id) === String(item.productId));
+      const purchasedQuantity = numeric(item.quantity) + numeric(item.bonus);
+      return {
+        productId: item.productId,
+        productName: item.productName || "",
+        group: item.group || "",
+        cartonSize: item.cartonSize || "",
+        purchasePrice: numeric(item.purchasePrice),
+        cartons: item.cartons || 1,
+        quantity: item.quantity || 1,
+        bonus: item.bonus || 0,
+        discount: numeric(item.discount),
+        salePrice: numeric(item.salePrice),
+        expiryDate: item.expiryDate || "",
+        currentStock: Math.max(getStock(product) - purchasedQuantity, 0),
+      };
+    }));
+    setPaymentMode(purchase.paymentMode || "cash");
+    setPaidAmount(String(purchase.paidAmount ?? ""));
+    setProductSearch("");
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingPurchaseId(null);
+  };
 
   const savePurchase = async (event) => {
     event.preventDefault();
@@ -292,8 +335,11 @@ function Purchasing() {
     if (numeric(paidAmount) > grandTotal) return notify(t.invalidPaid, "error");
 
     const now = new Date().toISOString();
+    const previousPurchase = editingPurchaseId
+      ? purchases.find((item) => String(item.id) === String(editingPurchaseId))
+      : null;
     const purchase = {
-      id: `purchase-${Date.now()}`,
+      id: editingPurchaseId || `purchase-${Date.now()}`,
       supplierId,
       supplierName: supplierName(supplierId),
       billNumber: billNumber.trim(),
@@ -302,27 +348,37 @@ function Purchasing() {
       totalAmount: grandTotal,
       remainingAmount: remaining,
       items: selectedItems.map((item) => ({ ...item, lineTotal: lineTotal(item) })),
-      createdAt: now,
+      createdAt: previousPurchase?.createdAt || now,
+      updatedAt: now,
     };
 
-    const savedPurchase = await setPurchases([purchase, ...purchases]);
+    const savedPurchase = await setPurchases(editingPurchaseId
+      ? purchases.map((item) => (String(item.id) === String(editingPurchaseId) ? purchase : item))
+      : [purchase, ...purchases]
+    );
     if (!savedPurchase) return;
 
     const nextProducts = products.map((product) => {
       const item = selectedItems.find((row) => String(row.productId) === String(product.id));
-      if (!item) return product;
+      const previousItem = previousPurchase?.items?.find((row) => String(row.productId) === String(product.id));
+      if (!item && !previousItem) return product;
+      const previousQuantity = numeric(previousItem?.quantity) + numeric(previousItem?.bonus);
+      const nextQuantity = numeric(item?.quantity) + numeric(item?.bonus);
+      const nextStock = getStock(product) - previousQuantity + nextQuantity;
       return {
         ...product,
-        purchasePrice: numeric(item.purchasePrice),
-        salePrice: numeric(item.salePrice),
-        currentStock: getStock(product) + numeric(item.quantity) + numeric(item.bonus),
-        lastExpiryDate: item.expiryDate || product.lastExpiryDate || "",
+        ...(item ? {
+          purchasePrice: numeric(item.purchasePrice),
+          salePrice: numeric(item.salePrice),
+          lastExpiryDate: item.expiryDate || product.lastExpiryDate || "",
+        } : {}),
+        currentStock: Math.max(nextStock, 0),
         updatedAt: now,
       };
     });
     await setProducts(nextProducts);
 
-    notify(t.saved, "success");
+    notify(editingPurchaseId ? t.updated : t.saved, "success");
     closeModal();
   };
 
@@ -388,7 +444,7 @@ function Purchasing() {
             <thead><tr><th>{t.billNo}</th><th>{t.supplier}</th><th>{t.items}</th><th>{t.total}</th><th>{t.paid}</th><th>{t.remaining}</th><th>{t.paymentType}</th><th>{t.date}</th><th>{t.actions}</th></tr></thead>
             <tbody>
               {filteredPurchases.map((item) => (
-                <tr key={item.id}><td>{item.billNumber}</td><td>{item.supplierName || supplierName(item.supplierId) || item.companyName || "—"}</td><td>{item.items?.length || 0}</td><td>{numeric(item.totalAmount).toFixed(2)}</td><td>{numeric(item.paidAmount).toFixed(2)}</td><td>{numeric(item.remainingAmount).toFixed(2)}</td><td>{item.paymentMode === "installment" ? t.installment : t.cash}</td><td>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "—"}</td><td><button type="button" className="purchasing-row-delete" onClick={() => deletePurchase(item)} title={t.delete}><Trash2 size={15} /></button></td></tr>
+                <tr key={item.id}><td>{item.billNumber}</td><td>{item.supplierName || supplierName(item.supplierId) || item.companyName || "—"}</td><td>{item.items?.length || 0}</td><td>{numeric(item.totalAmount).toFixed(2)}</td><td>{numeric(item.paidAmount).toFixed(2)}</td><td>{numeric(item.remainingAmount).toFixed(2)}</td><td>{item.paymentMode === "installment" ? t.installment : t.cash}</td><td>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "—"}</td><td><div className="purchasing-row-actions"><button type="button" className="edit" onClick={() => openEdit(item)} title={t.edit} aria-label={t.edit}><Edit3 size={15} /></button><button type="button" className="delete" onClick={() => deletePurchase(item)} title={t.delete} aria-label={t.delete}><Trash2 size={15} /></button></div></td></tr>
               ))}
               {!filteredPurchases.length && <tr><td colSpan="9" className="purchasing-empty">{t.noPurchases}</td></tr>}
             </tbody>
@@ -400,7 +456,7 @@ function Purchasing() {
         <div className="purchasing-modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && closeModal()}>
           <form className="purchasing-modal" onSubmit={savePurchase} onClick={(event) => event.stopPropagation()}>
             <header className="purchasing-modal-header">
-              <div><h2><ShoppingCart size={22} />{t.modalTitle}</h2><p>{t.modalHint}</p></div>
+              <div><h2><ShoppingCart size={22} />{editingPurchaseId ? t.editModalTitle : t.modalTitle}</h2><p>{t.modalHint}</p></div>
               <button type="button" className="purchasing-icon-btn" onClick={closeModal}><X size={20} /></button>
             </header>
 

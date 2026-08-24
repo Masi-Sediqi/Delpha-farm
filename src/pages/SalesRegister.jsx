@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import {
   Check,
   CreditCard,
+  Edit3,
   FileText,
   PackageCheck,
   Search,
@@ -73,6 +74,9 @@ const translations = {
     invalidPaid: "Paid amount cannot be greater than the total amount.",
     saved: "Sale saved successfully.",
     actions: "Actions",
+    edit: "Edit",
+    editModalTitle: "Edit Sale",
+    updated: "Sale updated successfully.",
     delete: "Delete",
     deleted: "Sale deleted successfully.",
     confirmDelete: "Delete this sale?",
@@ -129,6 +133,9 @@ const translations = {
     invalidPaid: "مقدار پرداخت نمی‌تواند بیشتر از جمله باشد.",
     saved: "فروش با موفقیت ذخیره شد.",
     actions: "عملیات",
+    edit: "ویرایش",
+    editModalTitle: "ویرایش فروش",
+    updated: "فروش با موفقیت ویرایش شد.",
     delete: "حذف",
     deleted: "فروش با موفقیت حذف شد.",
     confirmDelete: "این فروش حذف شود؟",
@@ -185,6 +192,9 @@ const translations = {
     invalidPaid: "ورکړل شوی مبلغ له ټول مبلغ څخه زیات نه شي کېدای.",
     saved: "خرڅلاو په بریالیتوب ثبت شو.",
     actions: "عملیات",
+    edit: "سمون",
+    editModalTitle: "د خرڅلاو سمون",
+    updated: "خرڅلاو په بریالیتوب سم شو.",
     delete: "حذف",
     deleted: "خرڅلاو په بریالیتوب سره حذف شو.",
     confirmDelete: "دا خرڅلاو حذف شي؟",
@@ -203,6 +213,7 @@ export default function SalesRegister() {
   const [search, setSearch] = useState("");
   const [productSearch, setProductSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [editingSaleId, setEditingSaleId] = useState(null);
   const [customerId, setCustomerId] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [saleDate, setSaleDate] = useState(today());
@@ -244,6 +255,7 @@ export default function SalesRegister() {
   }, [products, productSearch]);
 
   const openModal = () => {
+    setEditingSaleId(null);
     setCustomerId("");
     setInvoiceNumber(`SAL-${String(Date.now()).slice(-7)}`);
     setSaleDate(today());
@@ -255,7 +267,33 @@ export default function SalesRegister() {
     setShowModal(true);
   };
 
-  const closeModal = () => setShowModal(false);
+  const openEdit = (sale) => {
+    setEditingSaleId(sale.id);
+    setCustomerId(sale.customerId || "");
+    setInvoiceNumber(sale.invoiceNumber || "");
+    setSaleDate(sale.saleDate || today());
+    setSelectedItems((sale.items || []).map((item) => ({
+      productId: item.productId,
+      productName: item.productName || "",
+      group: item.group || "",
+      cartonSize: item.cartonSize || "",
+      currentStock: getStock(products.find((product) => String(product.id) === String(item.productId))) + numeric(item.quantity),
+      cartons: item.cartons || 0,
+      quantity: item.quantity || 1,
+      salePrice: numeric(item.salePrice),
+      discount: numeric(item.discount),
+    })));
+    setPaymentMode(sale.paymentMode || "cash");
+    setPaidAmount(String(sale.paidAmount ?? ""));
+    setNotes(sale.notes || "");
+    setProductSearch("");
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingSaleId(null);
+  };
 
   const addProduct = (product) => {
     if (selectedItems.some((item) => String(item.productId) === String(product.id))) return;
@@ -302,7 +340,11 @@ export default function SalesRegister() {
 
     for (const item of selectedItems) {
       if (numeric(item.quantity) <= 0) return notify(t.invalidQuantity, "warning");
-      if (numeric(item.quantity) > numeric(item.currentStock)) {
+      const previousSale = editingSaleId ? sales.find((sale) => String(sale.id) === String(editingSaleId)) : null;
+      const previousItem = previousSale?.items?.find((saleItem) => String(saleItem.productId) === String(item.productId));
+      const product = products.find((productItem) => String(productItem.id) === String(item.productId));
+      const availableStock = getStock(product) + numeric(previousItem?.quantity);
+      if (numeric(item.quantity) > availableStock) {
         return notify(`${t.insufficientStock} ${item.productName}.`, "warning");
       }
     }
@@ -310,7 +352,7 @@ export default function SalesRegister() {
 
     const now = new Date().toISOString();
     const sale = {
-      id: `sale-${Date.now()}`,
+      id: editingSaleId || `sale-${Date.now()}`,
       customerId,
       customerName: customerName(customerId),
       invoiceNumber: invoiceNumber.trim(),
@@ -321,25 +363,31 @@ export default function SalesRegister() {
       remainingAmount: remaining,
       notes: notes.trim(),
       items: selectedItems.map((item) => ({ ...item, lineTotal: lineTotal(item) })),
-      createdAt: now,
+      createdAt: editingSaleId ? sales.find((item) => String(item.id) === String(editingSaleId))?.createdAt || now : now,
       updatedAt: now,
     };
 
-    const saved = await setSales([sale, ...sales]);
+    const saved = await setSales(editingSaleId
+      ? sales.map((item) => (String(item.id) === String(editingSaleId) ? sale : item))
+      : [sale, ...sales]
+    );
     if (!saved) return;
 
+    const previousSale = editingSaleId ? sales.find((item) => String(item.id) === String(editingSaleId)) : null;
     const nextProducts = products.map((product) => {
       const soldItem = selectedItems.find((item) => String(item.productId) === String(product.id));
-      if (!soldItem) return product;
+      const previousItem = previousSale?.items?.find((item) => String(item.productId) === String(product.id));
+      if (!soldItem && !previousItem) return product;
+      const nextStock = getStock(product) + numeric(previousItem?.quantity) - numeric(soldItem?.quantity);
       return {
         ...product,
-        currentStock: Math.max(getStock(product) - numeric(soldItem.quantity), 0),
+        currentStock: Math.max(nextStock, 0),
         updatedAt: now,
       };
     });
     await setProducts(nextProducts);
 
-    notify(t.saved, "success");
+    notify(editingSaleId ? t.updated : t.saved, "success");
     closeModal();
   };
 
@@ -418,7 +466,12 @@ export default function SalesRegister() {
                   <td className={numeric(sale.remainingAmount) > 0 ? "sales-register-due" : ""}>{money(sale.remainingAmount)}</td>
                   <td>{sale.paymentMode === "installment" ? t.installment : t.cash}</td>
                   <td>{sale.saleDate || (sale.createdAt ? new Date(sale.createdAt).toLocaleDateString() : "—")}</td>
-                  <td><button type="button" className="sales-register-row-delete" onClick={() => deleteSale(sale)} title={t.delete}><Trash2 size={15} /></button></td>
+                  <td>
+                    <div className="sales-register-row-actions">
+                      <button type="button" className="edit" onClick={() => openEdit(sale)} title={t.edit} aria-label={t.edit}><Edit3 size={15} /></button>
+                      <button type="button" className="delete" onClick={() => deleteSale(sale)} title={t.delete} aria-label={t.delete}><Trash2 size={15} /></button>
+                    </div>
+                  </td>
                 </tr>
               ))}
               {!filteredSales.length && <tr><td colSpan="9" className="sales-register-empty">{t.noSales}</td></tr>}
@@ -439,7 +492,7 @@ export default function SalesRegister() {
             onClick={(event) => event.stopPropagation()}
           >
             <header className="sales-register-modal-head">
-              <div><h2 id="sales-register-modal-title"><ShoppingBag size={22} />{t.modalTitle}</h2><p>{t.modalHint}</p></div>
+              <div><h2 id="sales-register-modal-title"><ShoppingBag size={22} />{editingSaleId ? t.editModalTitle : t.modalTitle}</h2><p>{t.modalHint}</p></div>
               <button type="button" className="sales-register-icon" onClick={closeModal}><X size={20} /></button>
             </header>
 
