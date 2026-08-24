@@ -13,6 +13,7 @@ import {
   Trash2,
   UserRound,
   Wallet,
+  Undo2,
   X,
 } from "lucide-react";
 import ShamsiDateInput from "../components/ShamsiDateInput";
@@ -20,6 +21,13 @@ import { useJsonCollection } from "../hooks/useJsonCollection";
 import { confirmAction } from "../utils/confirmDialog";
 import { formatDateTime } from "../utils/afghanDate";
 import { notify } from "../utils/notify";
+import {
+  allocateProductBatchesFEFO,
+  getProductStock,
+  legacyProductStock,
+  replaceReferenceMovements,
+  stockMovementId,
+} from "../utils/stock";
 import "./SalesRegister.css";
 
 const languageKey = "afghan-power-language";
@@ -30,6 +38,7 @@ const translations = {
     title: "Sales",
     subtitle: "Create multi-product sales and post them directly to customer accounts.",
     newSale: "New Sale",
+    saleReturns: "Sale Returns",
     salesRecords: "Sales Records",
     totalInvoices: "Total Invoices",
     totalSales: "Total Sales",
@@ -99,6 +108,7 @@ const translations = {
     title: "فروشات",
     subtitle: "فروش چندین دوا را ثبت کنید و مستقیماً در حساب مشتری درج نمایید.",
     newSale: "فروش جدید",
+    saleReturns: "برگشت فروش",
     salesRecords: "ریکاردهای فروشات",
     totalInvoices: "مجموع بل‌ها",
     totalSales: "مجموع فروشات",
@@ -168,6 +178,7 @@ const translations = {
     title: "خرڅلاو",
     subtitle: "د څو توکو خرڅلاو ثبت کړئ او مستقیم یې د پېرودونکي حساب ته ولېږئ.",
     newSale: "نوی خرڅلاو",
+    saleReturns: "د خرڅلاو بېرته ستنول",
     salesRecords: "د خرڅلاو ریکارډونه",
     totalInvoices: "ټول بلونه",
     totalSales: "ټول خرڅلاو",
@@ -236,14 +247,14 @@ const translations = {
 };
 
 const numeric = (value) => Math.max(Number(value || 0), 0);
-const getStock = (product) => numeric(product?.currentStock ?? product?.stock ?? product?.quantity ?? 0);
 const today = () => new Date().toISOString().slice(0, 10);
 
 export default function SalesRegister() {
   const [sales, setSales] = useJsonCollection("salesRegister");
   const navigate = useNavigate();
   const [customers] = useJsonCollection("customerRegistry");
-  const [products, setProducts] = useJsonCollection("products");
+  const [products] = useJsonCollection("products");
+  const [stockMovements, setStockMovements] = useJsonCollection("stockMovements");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [search, setSearch] = useState("");
   const [productSearch, setProductSearch] = useState("");
@@ -260,6 +271,7 @@ export default function SalesRegister() {
 
   const t = translations[language] || translations.en;
   const direction = rtlLanguages.has(language) ? "rtl" : "ltr";
+  const getStock = (product) => Math.max(getProductStock(stockMovements, product?.id, legacyProductStock(product)), 0);
 
   useEffect(() => {
     const syncLanguage = () => setLanguage(localStorage.getItem(languageKey) || "en");
@@ -288,7 +300,7 @@ export default function SalesRegister() {
       if (!q) return true;
       return `${product.productName || ""} ${product.group || ""} ${product.companyName || ""}`.toLowerCase().includes(q);
     });
-  }, [products, productSearch]);
+  }, [products, productSearch, stockMovements]);
 
   const openModal = () => {
     setEditingSaleId(null);
@@ -386,6 +398,15 @@ export default function SalesRegister() {
     }
     if (numeric(paidAmount) > grandTotal) return notify(t.invalidPaid, "warning");
 
+    const allocationByProduct = new Map();
+    for (const item of selectedItems) {
+      const allocation = allocateProductBatchesFEFO(stockMovements, item.productId, numeric(item.quantity), editingSaleId);
+      if (allocation.unallocated > 0) {
+        return notify(`${t.insufficientStock} ${item.productName}.`, "warning");
+      }
+      allocationByProduct.set(String(item.productId), allocation.allocations);
+    }
+
     const now = new Date().toISOString();
     const sale = {
       id: editingSaleId || `sale-${Date.now()}`,
@@ -398,7 +419,7 @@ export default function SalesRegister() {
       paidAmount: paid,
       remainingAmount: remaining,
       notes: notes.trim(),
-      items: selectedItems.map((item) => ({ ...item, lineTotal: lineTotal(item) })),
+      items: selectedItems.map((item) => ({ ...item, batchAllocations: allocationByProduct.get(String(item.productId)) || [], lineTotal: lineTotal(item) })),
       createdAt: editingSaleId ? sales.find((item) => String(item.id) === String(editingSaleId))?.createdAt || now : now,
       updatedAt: now,
     };
@@ -409,19 +430,29 @@ export default function SalesRegister() {
     );
     if (!saved) return;
 
-    const previousSale = editingSaleId ? sales.find((item) => String(item.id) === String(editingSaleId)) : null;
-    const nextProducts = products.map((product) => {
-      const soldItem = selectedItems.find((item) => String(item.productId) === String(product.id));
-      const previousItem = previousSale?.items?.find((item) => String(item.productId) === String(product.id));
-      if (!soldItem && !previousItem) return product;
-      const nextStock = getStock(product) + numeric(previousItem?.quantity) - numeric(soldItem?.quantity);
-      return {
-        ...product,
-        currentStock: Math.max(nextStock, 0),
+    const saleMovements = selectedItems.flatMap((item) => {
+      const allocations = allocationByProduct.get(String(item.productId)) || [];
+      return allocations.map((allocation, index) => ({
+        id: stockMovementId("sale", sale.id, item.productId, `${allocation.batchNo || "UNBATCHED"}-${index + 1}`),
+        productId: item.productId,
+        movementType: "sale",
+        referenceType: "sale",
+        referenceId: sale.id,
+        referenceNumber: sale.invoiceNumber,
+        quantityIn: 0,
+        quantityOut: numeric(allocation.quantity),
+        unitPrice: numeric(item.salePrice),
+        batchNo: allocation.batchNo || "UNBATCHED",
+        expiryDate: allocation.expiryDate || "",
+        movementDate: saleDate,
+        createdAt: now,
         updatedAt: now,
-      };
+      }));
     });
-    await setProducts(nextProducts);
+    const movementsSaved = await setStockMovements(
+      replaceReferenceMovements(stockMovements, "sale", sale.id, saleMovements)
+    );
+    if (!movementsSaved) return;
 
     notify(editingSaleId ? t.updated : t.saved, "success");
     closeModal();
@@ -439,18 +470,11 @@ export default function SalesRegister() {
     const saved = await setSales(sales.filter((item) => String(item.id) !== String(sale.id)));
     if (!saved) return;
 
-    const nextProducts = products.map((product) => {
-      const soldItem = sale.items?.find((item) => String(item.productId) === String(product.id));
-      if (!soldItem) return product;
-
-      return {
-        ...product,
-        currentStock: getStock(product) + numeric(soldItem.quantity),
-        updatedAt: new Date().toISOString(),
-      };
-    });
-
-    await setProducts(nextProducts);
+    await setStockMovements(
+      stockMovements.filter((movement) => !(
+        movement.referenceType === "sale" && String(movement.referenceId) === String(sale.id)
+      ))
+    );
     notify(t.deleted, "success");
   };
 
@@ -555,7 +579,10 @@ export default function SalesRegister() {
     <div className="sales-register-page" dir={direction}>
       <div className="sales-register-header">
         <div><h1>{t.title}</h1><p>{t.subtitle}</p></div>
-        <button type="button" className="sales-register-primary" onClick={openModal}><ShoppingBag size={18} />{t.newSale}</button>
+        <div className="sales-register-header-actions">
+          <button type="button" className="sales-register-secondary" onClick={() => navigate("/sale-returns")}><Undo2 size={18} />{t.saleReturns}</button>
+          <button type="button" className="sales-register-primary" onClick={openModal}><ShoppingBag size={18} />{t.newSale}</button>
+        </div>
       </div>
 
       <div className="sales-register-stats">

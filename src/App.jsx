@@ -15,6 +15,7 @@ import {
 import {
   Building2,
   FileBarChart,
+  FileMinus2,
   LayoutDashboard,
   MoreHorizontal,
   ReceiptText,
@@ -22,13 +23,21 @@ import {
   ShoppingBag,
   ShoppingCart,
   Truck,
+  Undo2,
+  RotateCcw,
   Users,
+  Wallet,
+  BadgeDollarSign,
+  BookOpenCheck,
+  Landmark,
+  Banknote,
 } from "lucide-react";
 import appLogo from "./assets/logo.png";
 import Header from "./components/Header";
 import GlobalTableEnhancer from "./components/GlobalTableEnhancer";
 import ConfirmDialogHost from "./components/ConfirmDialogHost";
 import StartupSplash from "./components/StartupSplash";
+import StockBootstrap from "./components/StockBootstrap";
 import ToastHost from "./components/ToastHost";
 import { useJsonCollection } from "./hooks/useJsonCollection";
 import { downloadBackup } from "./utils/backup";
@@ -46,6 +55,14 @@ const Purchasing = lazy(() => import("./pages/Purchasing"));
 const CustomersRegistry = lazy(() => import("./pages/CustomersRegistry"));
 const CustomerDetail = lazy(() => import("./pages/CustomerDetail"));
 const SalesRegister = lazy(() => import("./pages/SalesRegister"));
+const PurchaseReturns = lazy(() => import("./pages/PurchaseReturns"));
+const SaleReturns = lazy(() => import("./pages/SaleReturns"));
+const CashFlow = lazy(() => import("./pages/CashFlow"));
+const Expenses = lazy(() => import("./pages/Expenses"));
+const ReceivablesPayables = lazy(() => import("./pages/ReceivablesPayables"));
+const GeneralJournal = lazy(() => import("./pages/GeneralJournal"));
+const Banks = lazy(() => import("./pages/Banks"));
+const CashCount = lazy(() => import("./pages/CashCount"));
 const SaleDetail = lazy(() => import("./pages/SaleDetail"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Settings = lazy(() => import("./pages/Settings"));
@@ -77,34 +94,58 @@ const rtlLanguages = new Set(["fa", "ps"]);
 const shellLabels = {
   en: {
     dashboard: "Dashboard",
-    companies: "Companies",
+    companies: "Manufacturers",
     suppliers: "Suppliers",
     products: "Products",
     purchasing: "Purchasing",
+    purchaseReturns: "Purchase Returns",
     customerRegistry: "Customers",
     salesRegister: "Sales",
+    saleReturns: "Sale Returns",
+    cashFlow: "Cash Flow",
+    banks: "Banks",
+    cashCount: "Cash Count",
+    expenses: "Expenses",
+    receivablesPayables: "Receivables & Payables",
+    generalJournal: "General Journal",
     reports: "Reports",
     settings: "Settings",
   },
   fa: {
     dashboard: "داشبورد",
-    companies: "شرکت‌ها",
+    companies: "شرکت‌های سازنده",
     suppliers: "تأمین‌کننده‌گان",
     products: "محصولات",
     purchasing: "خریداری",
+    purchaseReturns: "برگشت خرید",
     customerRegistry: "مشتریان",
     salesRegister: "فروشات",
+    saleReturns: "برگشت فروش",
+    cashFlow: "جریان نقدی",
+    banks: "بانک‌ها",
+    cashCount: "شمارش نقدی",
+    expenses: "مصارف",
+    receivablesPayables: "دریافتنی و پرداختنی",
+    generalJournal: "ژورنال عمومی",
     reports: "گزارشات",
     settings: "تنظیمات",
   },
   ps: {
     dashboard: "ډشبورد",
-    companies: "شرکتونه",
+    companies: "تولیدوونکي شرکتونه",
     suppliers: "عرضه کوونکي",
     products: "محصولات",
     purchasing: "پېرود",
+    purchaseReturns: "د پېرود بېرته ستنول",
     customerRegistry: "پېرودونکي",
     salesRegister: "خرڅلاو",
+    saleReturns: "د خرڅلاو بېرته ستنول",
+    cashFlow: "نغدي جریان",
+    banks: "بانکونه",
+    cashCount: "د نغدو شمېرنه",
+    expenses: "مصارف",
+    receivablesPayables: "ترلاسه کېدونکي او ورکول کېدونکي",
+    generalJournal: "عمومي ژورنال",
     reports: "راپورونه",
     settings: "تنظیمات",
   },
@@ -445,14 +486,18 @@ function App() {
     setSessionId(null);
   };
 
+  // Keep the sidebar focused on the same high-level areas used by the Access system.
+  // Supporting tools (returns, banks, cash count, expenses and journals) stay available
+  // through their parent modules instead of occupying permanent sidebar space.
   const menuItems = [
     { to: "/", label: labels.dashboard, moduleKey: "dashboard", icon: LayoutDashboard },
-    { to: "/companies", label: labels.companies, moduleKey: "suppliers", icon: Building2 },
+    { to: "/manufacturers", label: labels.companies, moduleKey: "suppliers", icon: Building2 },
     { to: "/suppliers", label: labels.suppliers, moduleKey: "suppliers", icon: Truck },
     { to: "/products", label: labels.products, moduleKey: "customers", icon: ReceiptText },
     { to: "/purchasing", label: labels.purchasing, moduleKey: "suppliers", icon: ShoppingCart },
     { to: "/customer-registry", label: labels.customerRegistry, moduleKey: "customers", icon: Users },
     { to: "/sales-register", label: labels.salesRegister, moduleKey: "customers", icon: ShoppingBag },
+    { to: "/cash-flow", label: labels.cashFlow, moduleKey: "reports", icon: Wallet },
     { to: "/reports", label: labels.reports, moduleKey: "reports", icon: FileBarChart },
     { to: "/settings", label: labels.settings, moduleKey: "settings", icon: SettingsIcon },
   ];
@@ -579,16 +624,25 @@ function App() {
               <Route path="/" element={protect("dashboard", <Dashboard />)} />
               <Route path="/search-results" element={protect("dashboard", <SearchResults />)} />
 
+              <Route path="/manufacturers" element={protect("suppliers", <Companies />)} />
               <Route path="/companies" element={protect("suppliers", <Companies />)} />
               <Route path="/suppliers" element={protect("suppliers", <Suppliers />)} />
               <Route path="/supplier-detail/:supplierId" element={protect("suppliers", <SupplierDetail />)} />
               <Route path="/products" element={protect("customers", <Products />)} />
               <Route path="/product-detail/:productId" element={protect("customers", <ProductDetail />)} />
               <Route path="/purchasing" element={protect("suppliers", <Purchasing />)} />
+              <Route path="/purchase-returns" element={protect("suppliers", <PurchaseReturns />)} />
               <Route path="/customer-registry" element={protect("customers", <CustomersRegistry />)} />
               <Route path="/customer-detail/:customerId" element={protect("customers", <CustomerDetail />)} />
               <Route path="/sales-register" element={protect("customers", <SalesRegister />)} />
               <Route path="/sales" element={protect("customers", <SalesRegister />)} />
+              <Route path="/sale-returns" element={protect("customers", <SaleReturns />)} />
+              <Route path="/cash-flow" element={protect("reports", <CashFlow />)} />
+              <Route path="/banks" element={protect("reports", <Banks />)} />
+              <Route path="/cash-count" element={protect("reports", <CashCount />)} />
+              <Route path="/expenses" element={protect("reports", <Expenses />)} />
+              <Route path="/receivables-payables" element={protect("reports", <ReceivablesPayables />)} />
+              <Route path="/general-journal" element={protect("reports", <GeneralJournal />)} />
               <Route path="/sale-detail/:saleId" element={protect("customers", <SaleDetail />)} />
               <Route path="/reports" element={protect("reports", <Reports />)} />
 
@@ -640,6 +694,7 @@ function App() {
   return (
     <>
       <StartupSplash />
+      <StockBootstrap />
       {appContent}
       {!currentUser && <ToastHost />}
       {!currentUser && <ConfirmDialogHost />}

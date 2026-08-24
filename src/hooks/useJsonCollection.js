@@ -5,6 +5,8 @@ import {
   writeBrowserCollection,
 } from "../utils/browserStorage";
 
+const collectionUpdateEvent = "app-json-collection-updated";
+
 export function useJsonCollection(name) {
   const [items, setItemsState] = useState([]);
   const [loaded, setLoaded] = useState(false);
@@ -33,6 +35,18 @@ export function useJsonCollection(name) {
     load();
   }, [load]);
 
+  useEffect(() => {
+    const syncCollection = (event) => {
+      if (event?.detail?.name !== name || !Array.isArray(event?.detail?.items)) return;
+      itemsRef.current = event.detail.items;
+      setItemsState(event.detail.items);
+      setLoaded(true);
+    };
+
+    window.addEventListener(collectionUpdateEvent, syncCollection);
+    return () => window.removeEventListener(collectionUpdateEvent, syncCollection);
+  }, [name]);
+
   const setItems = useCallback(
     async (nextValue) => {
       const previousItems = itemsRef.current;
@@ -53,6 +67,9 @@ export function useJsonCollection(name) {
 
         itemsRef.current = savedData;
         setItemsState(savedData);
+        window.dispatchEvent(new CustomEvent(collectionUpdateEvent, {
+          detail: { name, items: savedData },
+        }));
 
         return true;
       } catch (error) {

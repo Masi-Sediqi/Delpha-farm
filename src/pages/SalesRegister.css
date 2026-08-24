@@ -322,3 +322,7 @@ body.dark-mode .sales-register-product-search {
     margin: 0 16px;
   }
 }
+
+/* Access-aligned header actions */
+.sales-register-header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.sales-register-secondary{border:1px solid var(--border-color,#dfe3e8);background:var(--card-bg,#fff);color:var(--text-color,#111827);border-radius:10px;padding:10px 14px;font-weight:700;display:inline-flex;align-items:center;gap:7px;cursor:pointer}.sales-register-secondary:hover{background:var(--hover-bg,#f4f5f7)}
+@media(max-width:640px){.sales-register-header-actions{width:100%}.sales-register-header-actions>button{flex:1}}

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Truck,
   CalendarDays,
@@ -18,6 +18,12 @@ import { useJsonCollection } from "../hooks/useJsonCollection";
 import { confirmAction } from "../utils/confirmDialog";
 import { formatDateTime } from "../utils/afghanDate";
 import { notify } from "../utils/notify";
+import {
+  getProductStock,
+  legacyProductStock,
+  replaceReferenceMovements,
+  stockMovementId,
+} from "../utils/stock";
 import "./Purchasing.css";
 
 const languageKey = "afghan-power-language";
@@ -27,6 +33,7 @@ const translations = {
     title: "Purchasing",
     subtitle: "Register multi-product purchases from suppliers.",
     newPurchase: "New Purchase",
+    purchaseReturns: "Purchase Returns",
     purchases: "Purchase Records",
     totalBills: "Total Bills",
     totalAmount: "Total Purchase Amount",
@@ -40,6 +47,7 @@ const translations = {
     modalHint: "Enter the bill number, choose a supplier, then add several products and complete the purchase details.",
     selectSupplier: "Select supplier",
     billNumber: "Bill Number",
+    purchaseDate: "Purchase Date",
     billPlaceholder: "Example: INV-1001",
     availableProducts: "Available Products",
     productSearch: "Search product...",
@@ -57,6 +65,7 @@ const translations = {
     discount: "Discount",
     lineTotal: "Line Total",
     salePrice: "Sale Price",
+    batchNo: "Batch No.",
     expiryDate: "Expiry Date",
     currentStock: "Current Stock",
     summary: "Purchase Summary",
@@ -85,6 +94,7 @@ const translations = {
     title: "خریداری",
     subtitle: "خرید چندین جنس از تأمین‌کننده‌گان را در یک بل ثبت کنید.",
     newPurchase: "خریداری جدید",
+    purchaseReturns: "برگشت خرید",
     purchases: "ریکاردهای خریداری",
     totalBills: "مجموع بل‌ها",
     totalAmount: "مجموع خریداری",
@@ -98,6 +108,7 @@ const translations = {
     modalHint: "بل نمبر را وارد کنید، تأمین‌کننده را انتخاب نموده و سپس چند دوا را به خریداری اضافه کنید.",
     selectSupplier: "تأمین‌کننده را انتخاب کنید",
     billNumber: "بل نمبر",
+    purchaseDate: "تاریخ خریداری",
     billPlaceholder: "مثلاً INV-1001",
     availableProducts: "دواهای موجود",
     productSearch: "جستجوی دوا...",
@@ -115,6 +126,7 @@ const translations = {
     discount: "تخفیف",
     lineTotal: "جمله",
     salePrice: "قیمت فروش",
+    batchNo: "شماره بچ",
     expiryDate: "تاریخ انقضا",
     currentStock: "موجودی فعلی",
     summary: "خلاصه خریداری",
@@ -143,6 +155,7 @@ const translations = {
     title: "پېرود",
     subtitle: "له عرضه کوونکو څخه د څو توکو پېرود په یوه بل کې ثبت کړئ.",
     newPurchase: "نوی پېرود",
+    purchaseReturns: "د پېرود بېرته ستنول",
     purchases: "د پېرود ریکارډونه",
     totalBills: "ټول بلونه",
     totalAmount: "د پېرود ټول مبلغ",
@@ -156,6 +169,7 @@ const translations = {
     modalHint: "بل نمبر ولیکئ، عرضه کوونکی وټاکئ او بیا څو توکي پېرود ته اضافه کړئ.",
     selectSupplier: "عرضه کوونکی وټاکئ",
     billNumber: "بل نمبر",
+    purchaseDate: "د پېرود نېټه",
     billPlaceholder: "لکه INV-1001",
     availableProducts: "موجود توکي",
     productSearch: "د توکي لټون...",
@@ -173,6 +187,7 @@ const translations = {
     discount: "تخفیف",
     lineTotal: "ټول",
     salePrice: "د خرڅلاو بیه",
+    batchNo: "د بچ نمبر",
     expiryDate: "د ختمېدو نېټه",
     currentStock: "اوسنی موجودي",
     summary: "د پېرود لنډیز",
@@ -200,13 +215,25 @@ const translations = {
 };
 
 const numeric = (value) => Math.max(Number(value || 0), 0);
-const getStock = (product) => numeric(product?.currentStock ?? product?.stock ?? product?.quantity ?? 0);
+const today = () => {
+  const date = new Date();
+  const offset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 10);
+};
+
+const purchaseRows = (purchase, purchaseItems) => {
+  const detailRows = purchaseItems.filter((item) => String(item.purchaseId) === String(purchase.id));
+  return detailRows.length ? detailRows : (Array.isArray(purchase.items) ? purchase.items : []);
+};
 
 function Purchasing() {
   const location = useLocation();
-  const [purchases, setPurchases] = useJsonCollection("purchases");
+  const navigate = useNavigate();
+  const [purchases, setPurchases, , purchasesLoaded] = useJsonCollection("purchases");
+  const [purchaseItems, setPurchaseItems, , purchaseItemsLoaded] = useJsonCollection("purchaseItems");
   const [suppliers] = useJsonCollection("suppliers");
   const [products, setProducts] = useJsonCollection("products");
+  const [stockMovements, setStockMovements] = useJsonCollection("stockMovements");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [search, setSearch] = useState("");
   const [productSearch, setProductSearch] = useState("");
@@ -215,12 +242,14 @@ function Purchasing() {
   const [externalEditId, setExternalEditId] = useState(null);
   const [supplierId, setSupplierId] = useState("");
   const [billNumber, setBillNumber] = useState("");
+  const [purchaseDate, setPurchaseDate] = useState(today());
   const [selectedItems, setSelectedItems] = useState([]);
   const [paymentMode, setPaymentMode] = useState("cash");
   const [paidAmount, setPaidAmount] = useState("");
 
   const t = translations[language] || translations.en;
   const direction = language === "en" ? "ltr" : "rtl";
+  const getStock = (product) => Math.max(getProductStock(stockMovements, product?.id, legacyProductStock(product)), 0);
 
   useEffect(() => {
     const syncLanguage = () => setLanguage(localStorage.getItem(languageKey) || "en");
@@ -236,6 +265,49 @@ function Purchasing() {
     document.body.classList.toggle("purchasing-modal-open", showModal);
     return () => document.body.classList.remove("purchasing-modal-open");
   }, [showModal]);
+
+  useEffect(() => {
+    if (!purchasesLoaded || !purchaseItemsLoaded) return;
+    const legacyPurchases = purchases.filter((purchase) => Array.isArray(purchase.items) && purchase.items.length);
+    if (!legacyPurchases.length) return;
+
+    const migrate = async () => {
+      const nextItems = [...purchaseItems];
+      let itemsChanged = false;
+
+      legacyPurchases.forEach((purchase) => {
+        const alreadyMigrated = nextItems.some((item) => String(item.purchaseId) === String(purchase.id));
+        if (alreadyMigrated) return;
+        purchase.items.forEach((item, index) => {
+          nextItems.push({
+            ...item,
+            id: item.id || `purchase-item-${purchase.id}-${index + 1}`,
+            purchaseId: purchase.id,
+            createdAt: item.createdAt || purchase.createdAt || new Date().toISOString(),
+            updatedAt: item.updatedAt || purchase.updatedAt || purchase.createdAt || new Date().toISOString(),
+          });
+        });
+        itemsChanged = true;
+      });
+
+      if (itemsChanged) {
+        const itemsSaved = await setPurchaseItems(nextItems);
+        if (!itemsSaved) return;
+      }
+
+      const nextPurchases = purchases.map((purchase) => {
+        if (!Array.isArray(purchase.items)) return purchase;
+        const { items, ...header } = purchase;
+        return {
+          ...header,
+          purchaseDate: header.purchaseDate || header.date || String(header.createdAt || "").slice(0, 10) || today(),
+        };
+      });
+      await setPurchases(nextPurchases);
+    };
+
+    migrate();
+  }, [purchasesLoaded, purchaseItemsLoaded, purchases, purchaseItems, setPurchaseItems, setPurchases]);
 
   const supplierName = (id) => suppliers.find((item) => String(item.id) === String(id))?.supplierName || "—";
 
@@ -263,6 +335,7 @@ function Purchasing() {
         bonus: 0,
         discount: numeric(product.discount),
         salePrice: numeric(product.salePrice),
+        batchNo: "",
         expiryDate: "",
         currentStock: getStock(product),
       },
@@ -292,6 +365,7 @@ function Purchasing() {
     setEditingPurchaseId(null);
     setSupplierId("");
     setBillNumber("");
+    setPurchaseDate(today());
     setSelectedItems([]);
     setPaymentMode("cash");
     setPaidAmount("");
@@ -303,9 +377,9 @@ function Purchasing() {
     setEditingPurchaseId(purchase.id);
     setSupplierId(purchase.supplierId || "");
     setBillNumber(purchase.billNumber || "");
-    setSelectedItems((purchase.items || []).map((item) => {
+    setPurchaseDate(purchase.purchaseDate || purchase.date || String(purchase.createdAt || "").slice(0, 10) || today());
+    setSelectedItems(purchaseRows(purchase, purchaseItems).map((item) => {
       const product = products.find((productItem) => String(productItem.id) === String(item.productId));
-      const purchasedQuantity = numeric(item.quantity) + numeric(item.bonus);
       return {
         productId: item.productId,
         productName: item.productName || "",
@@ -317,8 +391,9 @@ function Purchasing() {
         bonus: item.bonus || 0,
         discount: numeric(item.discount),
         salePrice: numeric(item.salePrice),
+        batchNo: item.batchNo || "",
         expiryDate: item.expiryDate || "",
-        currentStock: Math.max(getStock(product) - purchasedQuantity, 0),
+        currentStock: getStock(product),
       };
     }));
     setPaymentMode(purchase.paymentMode || "cash");
@@ -345,23 +420,28 @@ function Purchasing() {
     event.preventDefault();
     if (!supplierId) return notify(t.requiredSupplier, "error");
     if (!billNumber.trim()) return notify(t.requiredBill, "error");
+    if (!purchaseDate) return notify(t.purchaseDate, "error");
     if (!selectedItems.length) return notify(t.requiredProducts, "error");
     if (numeric(paidAmount) > grandTotal) return notify(t.invalidPaid, "error");
 
     const now = new Date().toISOString();
+    const purchaseId = editingPurchaseId || `purchase-${Date.now()}`;
     const previousPurchase = editingPurchaseId
       ? purchases.find((item) => String(item.id) === String(editingPurchaseId))
       : null;
+    const previousItems = previousPurchase ? purchaseRows(previousPurchase, purchaseItems) : [];
+
     const purchase = {
-      id: editingPurchaseId || `purchase-${Date.now()}`,
+      id: purchaseId,
       supplierId,
       supplierName: supplierName(supplierId),
       billNumber: billNumber.trim(),
+      purchaseDate,
       paymentMode,
       paidAmount: paid,
       totalAmount: grandTotal,
       remainingAmount: remaining,
-      items: selectedItems.map((item) => ({ ...item, lineTotal: lineTotal(item) })),
+      itemCount: selectedItems.length,
       createdAt: previousPurchase?.createdAt || now,
       updatedAt: now,
     };
@@ -372,21 +452,50 @@ function Purchasing() {
     );
     if (!savedPurchase) return;
 
+    const retainedItems = purchaseItems.filter((item) => String(item.purchaseId) !== String(purchaseId));
+    const nextPurchaseItems = selectedItems.map((item, index) => {
+      const existing = previousItems.find((row) => String(row.productId) === String(item.productId));
+      return {
+        ...item,
+        id: existing?.id || `purchase-item-${purchaseId}-${index + 1}`,
+        purchaseId,
+        lineTotal: lineTotal(item),
+        createdAt: existing?.createdAt || now,
+        updatedAt: now,
+      };
+    });
+    const detailsSaved = await setPurchaseItems([...nextPurchaseItems, ...retainedItems]);
+    if (!detailsSaved) return;
+
+    const purchaseMovements = selectedItems.map((item) => ({
+      id: stockMovementId("purchase", purchaseId, item.productId, item.batchNo || `line-${item.productId}`),
+      productId: item.productId,
+      movementType: "purchase",
+      referenceType: "purchase",
+      referenceId: purchaseId,
+      referenceNumber: billNumber.trim(),
+      quantityIn: numeric(item.quantity) + numeric(item.bonus),
+      quantityOut: 0,
+      unitCost: numeric(item.purchasePrice),
+      batchNo: item.batchNo || "",
+      expiryDate: item.expiryDate || "",
+      movementDate: purchaseDate,
+      createdAt: previousItems.find((row) => String(row.productId) === String(item.productId))?.createdAt || now,
+      updatedAt: now,
+    }));
+    const movementsSaved = await setStockMovements(
+      replaceReferenceMovements(stockMovements, "purchase", purchaseId, purchaseMovements)
+    );
+    if (!movementsSaved) return;
+
     const nextProducts = products.map((product) => {
       const item = selectedItems.find((row) => String(row.productId) === String(product.id));
-      const previousItem = previousPurchase?.items?.find((row) => String(row.productId) === String(product.id));
-      if (!item && !previousItem) return product;
-      const previousQuantity = numeric(previousItem?.quantity) + numeric(previousItem?.bonus);
-      const nextQuantity = numeric(item?.quantity) + numeric(item?.bonus);
-      const nextStock = getStock(product) - previousQuantity + nextQuantity;
+      if (!item) return product;
       return {
         ...product,
-        ...(item ? {
-          purchasePrice: numeric(item.purchasePrice),
-          salePrice: numeric(item.salePrice),
-          lastExpiryDate: item.expiryDate || product.lastExpiryDate || "",
-        } : {}),
-        currentStock: Math.max(nextStock, 0),
+        purchasePrice: numeric(item.purchasePrice),
+        salePrice: numeric(item.salePrice),
+        lastExpiryDate: item.expiryDate || product.lastExpiryDate || "",
         updatedAt: now,
       };
     });
@@ -407,20 +516,13 @@ function Purchasing() {
 
     const saved = await setPurchases(purchases.filter((item) => String(item.id) !== String(purchase.id)));
     if (!saved) return;
+    await setPurchaseItems(purchaseItems.filter((item) => String(item.purchaseId) !== String(purchase.id)));
 
-    const nextProducts = products.map((product) => {
-      const purchasedItem = purchase.items?.find((item) => String(item.productId) === String(product.id));
-      if (!purchasedItem) return product;
-
-      const purchasedQuantity = numeric(purchasedItem.quantity) + numeric(purchasedItem.bonus);
-      return {
-        ...product,
-        currentStock: Math.max(getStock(product) - purchasedQuantity, 0),
-        updatedAt: new Date().toISOString(),
-      };
-    });
-
-    await setProducts(nextProducts);
+    await setStockMovements(
+      stockMovements.filter((movement) => !(
+        movement.referenceType === "purchase" && String(movement.referenceId) === String(purchase.id)
+      ))
+    );
     notify(t.deleted, "success");
   };
 
@@ -441,7 +543,10 @@ function Purchasing() {
     <div className="purchasing-page" dir={direction}>
       <div className="purchasing-page-header">
         <div><h1>{t.title}</h1><p>{t.subtitle}</p></div>
-        <button type="button" className="purchasing-primary-btn" onClick={openModal}><PackagePlus size={18} />{t.newPurchase}</button>
+        <div className="purchasing-header-actions">
+          <button type="button" className="purchasing-secondary-btn" onClick={() => navigate("/purchase-returns")}><RotateCcw size={18} />{t.purchaseReturns}</button>
+          <button type="button" className="purchasing-primary-btn" onClick={openModal}><PackagePlus size={18} />{t.newPurchase}</button>
+        </div>
       </div>
 
       <div className="purchasing-stats">
@@ -458,7 +563,7 @@ function Purchasing() {
             <thead><tr><th>{t.billNo}</th><th>{t.supplier}</th><th>{t.items}</th><th>{t.total}</th><th>{t.paid}</th><th>{t.remaining}</th><th>{t.paymentType}</th><th>{t.date}</th><th>{t.actions}</th></tr></thead>
             <tbody>
               {filteredPurchases.map((item) => (
-                <tr key={item.id}><td>{item.billNumber}</td><td>{item.supplierName || supplierName(item.supplierId) || item.companyName || "—"}</td><td>{item.items?.length || 0}</td><td>{numeric(item.totalAmount).toFixed(2)}</td><td>{numeric(item.paidAmount).toFixed(2)}</td><td>{numeric(item.remainingAmount).toFixed(2)}</td><td>{item.paymentMode === "installment" ? t.installment : t.cash}</td><td>{formatDateTime(item.createdAt)}</td><td><div className="purchasing-row-actions"><button type="button" className="edit" onClick={() => openEdit(item)} title={t.edit} aria-label={t.edit}><Edit3 size={15} /></button><button type="button" className="delete" onClick={() => deletePurchase(item)} title={t.delete} aria-label={t.delete}><Trash2 size={15} /></button></div></td></tr>
+                <tr key={item.id}><td>{item.billNumber}</td><td>{item.supplierName || supplierName(item.supplierId) || item.companyName || "—"}</td><td>{purchaseRows(item, purchaseItems).length || item.itemCount || 0}</td><td>{numeric(item.totalAmount).toFixed(2)}</td><td>{numeric(item.paidAmount).toFixed(2)}</td><td>{numeric(item.remainingAmount).toFixed(2)}</td><td>{item.paymentMode === "installment" ? t.installment : t.cash}</td><td>{formatDateTime(item.purchaseDate || item.createdAt)}</td><td><div className="purchasing-row-actions"><button type="button" className="edit" onClick={() => openEdit(item)} title={t.edit} aria-label={t.edit}><Edit3 size={15} /></button><button type="button" className="delete" onClick={() => deletePurchase(item)} title={t.delete} aria-label={t.delete}><Trash2 size={15} /></button></div></td></tr>
               ))}
               {!filteredPurchases.length && <tr><td colSpan="9" className="purchasing-empty">{t.noPurchases}</td></tr>}
             </tbody>
@@ -477,6 +582,7 @@ function Purchasing() {
             <div className="purchasing-modal-body">
               <div className="purchasing-top-fields">
                 <label><span>{t.billNumber}</span><input value={billNumber} onChange={(e) => setBillNumber(e.target.value)} placeholder={t.billPlaceholder} /></label>
+                <label><span><CalendarDays size={15} />{t.purchaseDate}</span><ShamsiDateInput value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} /></label>
                 <label><span><Truck size={15} />{t.supplier}</span><select value={supplierId} onChange={(e) => { setSupplierId(e.target.value); setSelectedItems([]); }}><option value="">{t.selectSupplier}</option>{suppliers.filter((supplier) => supplier.status !== "inactive").map((supplier) => <option value={supplier.id} key={supplier.id}>{supplier.supplierName}</option>)}</select></label>
               </div>
 
@@ -500,6 +606,7 @@ function Purchasing() {
                       <label><span>{t.discount}</span><input type="number" min="0" step="0.01" value={item.discount} onChange={(e) => updateItem(item.productId, "discount", e.target.value)} /></label>
                       <label><span>{t.lineTotal}</span><input value={lineTotal(item).toFixed(2)} readOnly /></label>
                       <label><span>{t.salePrice}</span><input type="number" min="0" step="0.01" value={item.salePrice} onChange={(e) => updateItem(item.productId, "salePrice", e.target.value)} /></label>
+                      <label><span>{t.batchNo}</span><input value={item.batchNo || ""} onChange={(e) => updateItem(item.productId, "batchNo", e.target.value)} placeholder="B-001" /></label>
                       <label><span><CalendarDays size={14} />{t.expiryDate}</span><ShamsiDateInput value={item.expiryDate} onChange={(e) => updateItem(item.productId, "expiryDate", e.target.value)} /></label>
                       <label className="purchasing-stock-field"><span>{t.currentStock}</span><input value={item.currentStock} readOnly /></label>
                     </div>

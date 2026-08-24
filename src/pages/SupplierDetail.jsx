@@ -57,6 +57,7 @@ const translations = {
     delete: "Delete",
     purchase: "Purchase",
     purchasePayment: "Payment at Purchase",
+    purchaseReturn: "Purchase Return",
     manualPayment: "Payment",
     opening: "Opening Balance",
     noTransactions: "No purchases or payments have been recorded for this supplier yet.",
@@ -107,6 +108,7 @@ const translations = {
     delete: "حذف",
     purchase: "خریداری",
     purchasePayment: "پرداخت هنگام خرید",
+    purchaseReturn: "برگشت خرید",
     manualPayment: "پرداخت",
     opening: "بیلانس افتتاحیه",
     noTransactions: "برای این تأمین‌کننده هنوز خریداری یا پرداختی ثبت نشده است.",
@@ -157,6 +159,7 @@ const translations = {
     delete: "حذف",
     purchase: "پېرود",
     purchasePayment: "د پېرود پر مهال تادیه",
+    purchaseReturn: "د پېرود بېرته ستنول",
     manualPayment: "تادیه",
     opening: "افتتاحي بیلانس",
     noTransactions: "د دې عرضه کوونکي لپاره تر اوسه پېرود یا تادیه نه ده ثبت شوې.",
@@ -201,6 +204,7 @@ export default function SupplierDetail() {
   const navigate = useNavigate();
   const [suppliers] = useJsonCollection("suppliers");
   const [purchases] = useJsonCollection("purchases");
+  const [purchaseReturns] = useJsonCollection("purchaseReturns");
   const [payments, setPayments] = useJsonCollection("supplierPayments");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [showPayment, setShowPayment] = useState(false);
@@ -234,6 +238,10 @@ export default function SupplierDetail() {
   const supplierPurchases = useMemo(
     () => purchases.filter((item) => String(item.supplierId) === String(supplierId)),
     [purchases, supplierId]
+  );
+  const supplierReturns = useMemo(
+    () => purchaseReturns.filter((item) => String(item.supplierId) === String(supplierId)),
+    [purchaseReturns, supplierId]
   );
   const supplierPayments = useMemo(
     () => payments.filter((item) => String(item.supplierId) === String(supplierId)),
@@ -285,6 +293,23 @@ export default function SupplierDetail() {
       }
     });
 
+
+    supplierReturns.forEach((item) => {
+      const returnDate = item.returnDate || item.date || item.createdAt || "";
+      const order = new Date(returnDate || 0).getTime() || 0;
+      entries.push({
+        id: `purchase-return-${item.id}`,
+        date: returnDate,
+        reference: item.returnNo || item.id,
+        description: item.notes || t.purchaseReturn,
+        kind: "purchase-return",
+        sourceId: item.id,
+        debit: 0,
+        credit: numeric(item.totalAmount),
+        order: order + 2,
+      });
+    });
+
     supplierPayments.forEach((payment) => {
       const order = new Date(payment.date || payment.createdAt || 0).getTime() || 0;
       entries.push({
@@ -306,7 +331,7 @@ export default function SupplierDetail() {
       running += numeric(entry.debit) - numeric(entry.credit);
       return { ...entry, balance: running };
     });
-  }, [supplier, supplierId, supplierPurchases, supplierPayments, t.opening, t.purchase, t.purchasePayment, t.manualPayment]);
+  }, [supplier, supplierId, supplierPurchases, supplierReturns, supplierPayments, t.opening, t.purchase, t.purchasePayment, t.purchaseReturn, t.manualPayment]);
 
   const totalPurchases = supplierPurchases.reduce((sum, item) => sum + numeric(item.totalAmount), 0);
   const purchasePayments = supplierPurchases.reduce((sum, item) => sum + numeric(item.paidAmount), 0);

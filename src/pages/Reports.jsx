@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Download, FileSpreadsheet, FileText, Printer } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { BookOpenCheck, BadgeDollarSign, Download, FileSpreadsheet, FileText, Printer } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -111,6 +112,7 @@ const sectionOrder = [
 const colors = ["#2563eb", "#14b8a6", "#f59e0b", "#8b5cf6", "#ef4444", "#22c55e", "#0ea5e9"];
 
 function Reports() {
+  const navigate = useNavigate();
   const [settings] = useJsonCollection("settings");
   const [assets] = useJsonCollection("assets");
   const [assetMovements] = useJsonCollection("assetMovements");
@@ -396,6 +398,8 @@ function Reports() {
         </div>
 
         <div className="report-export-actions">
+          <button type="button" onClick={() => navigate("/receivables-payables")}><BadgeDollarSign size={16} /> AR / AP</button>
+          <button type="button" onClick={() => navigate("/general-journal")}><BookOpenCheck size={16} /> Journal</button>
           <button type="button" onClick={exportExcel}><FileSpreadsheet size={16} /> Excel</button>
           <button type="button" onClick={printReport}><FileText size={16} /> PDF</button>
           <button type="button" onClick={exportCsv}><Download size={16} /> CSV</button>

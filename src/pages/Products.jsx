@@ -24,7 +24,7 @@ const translations = {
     group: "Group",
     cartonSize: "Carton Size",
     discount: "Discount (%)",
-    company: "Company",
+    company: "Manufacturer",
     madeIn: "Made In",
     salePrice: "Sale Price",
     purchasePrice: "Purchase Price",
@@ -39,7 +39,7 @@ const translations = {
     addNewCompany: "Add company",
     newCompany: "New Company Name",
     newCompanyPlaceholder: "Enter new company name",
-    selectCompany: "Select company",
+    selectCompany: "Select manufacturer",
     addNewCountry: "Add country",
     newCountry: "New Country Name",
     newCountryPlaceholder: "Enter new country name",
@@ -55,7 +55,7 @@ const translations = {
     update: "Update Product",
     required: "Please enter the product name and select a group.",
     groupRequired: "Please enter a name for the new group.",
-    companyRequired: "Please select a company from Companies.",
+    companyRequired: "Please select a manufacturer.",
     countryRequired: "Please enter a name for the new country.",
     saved: "Product saved successfully.",
     updated: "Product updated successfully.",
@@ -79,7 +79,7 @@ const translations = {
     group: "گروپ",
     cartonSize: "سایز کارتن",
     discount: "تخفیف (%)",
-    company: "کمپنی",
+    company: "کمپنی سازنده",
     madeIn: "ساخت",
     salePrice: "قیمت فروش",
     purchasePrice: "قیمت خرید",
@@ -94,7 +94,7 @@ const translations = {
     addNewCompany: "افزودن کمپنی",
     newCompany: "نام کمپنی جدید",
     newCompanyPlaceholder: "نام کمپنی جدید را وارد کنید",
-    selectCompany: "کمپنی را انتخاب کنید",
+    selectCompany: "کمپنی سازنده را انتخاب کنید",
     addNewCountry: "افزودن کشور",
     newCountry: "نام کشور جدید",
     newCountryPlaceholder: "نام کشور جدید را وارد کنید",
@@ -110,7 +110,7 @@ const translations = {
     update: "ثبت تغییرات",
     required: "لطفاً نام جنس را وارد و گروپ را انتخاب کنید.",
     groupRequired: "لطفاً نام گروپ جدید را وارد کنید.",
-    companyRequired: "لطفاً یک کمپنی را از بخش شرکت‌ها انتخاب کنید.",
+    companyRequired: "لطفاً کمپنی سازنده را انتخاب کنید.",
     countryRequired: "لطفاً نام کشور جدید را وارد کنید.",
     saved: "جنس با موفقیت ذخیره شد.",
     updated: "جنس با موفقیت ویرایش شد.",
@@ -134,7 +134,7 @@ const translations = {
     group: "ګروپ",
     cartonSize: "د کارتن سایز",
     discount: "تخفیف (%)",
-    company: "شرکت",
+    company: "تولیدوونکی شرکت",
     madeIn: "جوړ شوی په",
     salePrice: "د خرڅلاو بیه",
     purchasePrice: "د پېرود بیه",
@@ -149,7 +149,7 @@ const translations = {
     addNewCompany: "شرکت زیاتول",
     newCompany: "د نوي شرکت نوم",
     newCompanyPlaceholder: "د نوي شرکت نوم ولیکئ",
-    selectCompany: "شرکت وټاکئ",
+    selectCompany: "تولیدوونکی شرکت وټاکئ",
     addNewCountry: "هېواد زیاتول",
     newCountry: "د نوي هېواد نوم",
     newCountryPlaceholder: "د نوي هېواد نوم ولیکئ",
@@ -165,7 +165,7 @@ const translations = {
     update: "بدلونونه ثبتول",
     required: "مهرباني وکړئ د توکي نوم ولیکئ او ګروپ وټاکئ.",
     groupRequired: "مهرباني وکړئ د نوي ګروپ نوم ولیکئ.",
-    companyRequired: "مهرباني وکړئ د شرکتونو له برخې یو شرکت وټاکئ.",
+    companyRequired: "مهرباني وکړئ تولیدوونکی شرکت وټاکئ.",
     countryRequired: "مهرباني وکړئ د نوي هېواد نوم ولیکئ.",
     saved: "توکی په بریالیتوب سره ذخیره شو.",
     updated: "توکی په بریالیتوب سره سم شو.",
@@ -196,7 +196,7 @@ const emptyForm = {
   group: "A",
   cartonSize: "",
   discount: "",
-  companyId: "",
+  manufacturerId: "",
   madeIn: "Afghanistan",
   salePrice: "",
   purchasePrice: "",
@@ -207,7 +207,8 @@ function Products() {
   const navigate = useNavigate();
   const [products, setProducts] = useJsonCollection("products");
   const [savedGroups, setSavedGroups] = useJsonCollection("salesProductGroups");
-  const [companies] = useJsonCollection("companies");
+  const [manufacturers] = useJsonCollection("manufacturers");
+  const [legacyCompanies] = useJsonCollection("companies");
   const [savedCountries, setSavedCountries] = useJsonCollection("productCountries");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [search, setSearch] = useState("");
@@ -221,6 +222,15 @@ function Products() {
 
   const t = translations[language] || translations.en;
   const direction = language === "en" ? "ltr" : "rtl";
+
+  const availableManufacturers = useMemo(() => {
+    if (manufacturers.length) return manufacturers;
+    return legacyCompanies.map((item) => ({
+      ...item,
+      manufacturerName: item.manufacturerName || item.companyName || item.name || "",
+      status: item.status || "active",
+    }));
+  }, [manufacturers, legacyCompanies]);
 
   useEffect(() => {
     const syncLanguage = () => setLanguage(localStorage.getItem(languageKey) || "en");
@@ -256,9 +266,9 @@ function Products() {
     ];
   }, [savedCountries]);
 
-  const companyNameById = (companyId, legacyName = "") => {
-    const company = companies.find((item) => String(item.id) === String(companyId));
-    return company?.companyName || legacyName || "—";
+  const manufacturerNameById = (manufacturerId, legacyName = "") => {
+    const manufacturer = availableManufacturers.find((item) => String(item.id) === String(manufacturerId));
+    return manufacturer?.manufacturerName || manufacturer?.companyName || legacyName || "—";
   };
 
   const filteredProducts = useMemo(() => {
@@ -268,11 +278,11 @@ function Products() {
       [
         product.productName,
         product.group,
-        companyNameById(product.companyId, product.company),
+        manufacturerNameById(product.manufacturerId || product.companyId, product.company),
         product.madeIn,
       ].some((value) => String(value || "").toLowerCase().includes(query))
     );
-  }, [products, search, companies]);
+  }, [products, search, availableManufacturers]);
 
   const countryLabel = (value) => {
     const country = allCountries.find((item) => item.value === value);
@@ -291,13 +301,13 @@ function Products() {
 
   const openEdit = (product) => {
     setEditingId(product.id);
-    const legacyCompany = companies.find(
-      (item) => String(item.companyName || "").trim().toLowerCase() === String(product.company || "").trim().toLowerCase()
+    const legacyManufacturer = availableManufacturers.find(
+      (item) => String(item.manufacturerName || item.companyName || "").trim().toLowerCase() === String(product.company || "").trim().toLowerCase()
     );
     setFormData({
       ...emptyForm,
       ...product,
-      companyId: product.companyId || legacyCompany?.id || "",
+      manufacturerId: product.manufacturerId || product.companyId || legacyManufacturer?.id || "",
     });
     setAddingGroup(false);
     setNewGroup("");
@@ -346,7 +356,7 @@ function Products() {
       return;
     }
 
-    if (!formData.companyId) {
+    if (!formData.manufacturerId) {
       notify(t.companyRequired, "error");
       return;
     }
@@ -356,7 +366,7 @@ function Products() {
       id: editingId || `sale-product-${Date.now()}`,
       productName: formData.productName.trim(),
       group: selectedGroup,
-      companyId: formData.companyId,
+      manufacturerId: formData.manufacturerId,
       madeIn: selectedCountry,
       cartonSize: formData.cartonSize.trim(),
       discount: Number(formData.discount || 0),
@@ -456,7 +466,7 @@ function Products() {
                   <td><span className="sales-product-group-badge">{product.group || "—"}</span></td>
                   <td>{product.cartonSize || "—"}</td>
                   <td>{Number(product.discount || 0)}%</td>
-                  <td>{companyNameById(product.companyId, product.company)}</td>
+                  <td>{manufacturerNameById(product.manufacturerId || product.companyId, product.company)}</td>
                   <td>{countryLabel(product.madeIn)}</td>
                   <td>{Number(product.salePrice || 0).toLocaleString("en-US")}</td>
                   <td>{Number(product.purchasePrice || 0).toLocaleString("en-US")}</td>
@@ -516,11 +526,11 @@ function Products() {
 
                 <div className="sales-product-field">
                   <span>{t.company} *</span>
-                  <select name="companyId" value={formData.companyId} onChange={handleChange}>
+                  <select name="manufacturerId" value={formData.manufacturerId} onChange={handleChange}>
                     <option value="">{t.selectCompany}</option>
-                    {companies.map((company) => (
-                      <option key={company.id} value={company.id}>
-                        {company.companyName || company.name || company.id}
+                    {availableManufacturers.filter((manufacturer) => manufacturer.status !== "inactive").map((manufacturer) => (
+                      <option key={manufacturer.id} value={manufacturer.id}>
+                        {manufacturer.manufacturerName || manufacturer.companyName || manufacturer.name || manufacturer.id}
                       </option>
                     ))}
                   </select>

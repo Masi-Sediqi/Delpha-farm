@@ -8,6 +8,7 @@ import {
   ClipboardList,
   Package,
   PackageCheck,
+  Layers3,
   ShoppingBag,
   ShoppingCart,
   TrendingDown,
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import { formatDateTime } from "../utils/afghanDate";
+import { getProductBatchBalances, getProductStock, getProductStockTotals, legacyProductStock } from "../utils/stock";
 import "./ProductDetail.css";
 
 const languageKey = "afghan-power-language";
@@ -33,6 +35,14 @@ const translations = {
     inventory: "Inventory",
     purchases: "Purchases",
     sales: "Sales",
+    batches: "Batches",
+    batchInventory: "Batch & Expiry Inventory",
+    batchNo: "Batch No.",
+    expiryDate: "Expiry Date",
+    availableQty: "Available Qty",
+    receivedQty: "Received",
+    issuedQty: "Issued",
+    noBatches: "No batch inventory is available for this product yet.",
     specifications: "Product Specifications",
     productName: "Product Name",
     group: "Group",
@@ -44,10 +54,10 @@ const translations = {
     description: "Description",
     noDescription: "No description has been added.",
     inventorySummary: "Inventory Summary",
-    openingOrLegacyStock: "Recorded Current Stock",
+    openingOrLegacyStock: "Opening / Adjustment Stock",
     purchasedUnits: "Purchased Units",
     soldUnits: "Sold Units",
-    calculatedMovement: "Purchase − Sales",
+    calculatedMovement: "Net Stock Movement",
     currentAvailable: "Current Available",
     lastExpiry: "Latest Expiry Date",
     noExpiry: "No expiry date recorded",
@@ -80,6 +90,14 @@ const translations = {
     inventory: "موجودی",
     purchases: "خریدها",
     sales: "فروش‌ها",
+    batches: "بچ‌ها",
+    batchInventory: "موجودی بر اساس بچ و تاریخ انقضا",
+    batchNo: "شماره بچ",
+    expiryDate: "تاریخ انقضا",
+    availableQty: "موجودی بچ",
+    receivedQty: "ورودی",
+    issuedQty: "خروجی",
+    noBatches: "هنوز موجودی بچ برای این محصول ثبت نشده است.",
     specifications: "مشخصات محصول",
     productName: "نام محصول",
     group: "گروپ",
@@ -91,10 +109,10 @@ const translations = {
     description: "توضیحات",
     noDescription: "برای این محصول توضیحی ثبت نشده است.",
     inventorySummary: "خلاصه موجودی",
-    openingOrLegacyStock: "موجودی ثبت‌شده فعلی",
+    openingOrLegacyStock: "موجودی افتتاحیه / تعدیل",
     purchasedUnits: "مقدار خریداری‌شده",
     soldUnits: "مقدار فروخته‌شده",
-    calculatedMovement: "خرید منهای فروش",
+    calculatedMovement: "حرکت خالص موجودی",
     currentAvailable: "موجودی قابل دسترس",
     lastExpiry: "آخرین تاریخ انقضا",
     noExpiry: "تاریخ انقضا ثبت نشده است",
@@ -127,6 +145,14 @@ const translations = {
     inventory: "موجودي",
     purchases: "پېرودونه",
     sales: "خرڅلاو",
+    batches: "بچونه",
+    batchInventory: "د بچ او ختمېدو نېټې موجودي",
+    batchNo: "د بچ نمبر",
+    expiryDate: "د ختمېدو نېټه",
+    availableQty: "د بچ موجودي",
+    receivedQty: "داخل",
+    issuedQty: "وتلی",
+    noBatches: "تر اوسه د دې توکي لپاره د بچ موجودي نشته.",
     specifications: "د محصول مشخصات",
     productName: "د محصول نوم",
     group: "ګروپ",
@@ -138,10 +164,10 @@ const translations = {
     description: "تشریح",
     noDescription: "د دې محصول لپاره تشریح نه ده ثبت شوې.",
     inventorySummary: "د موجودۍ لنډیز",
-    openingOrLegacyStock: "اوسنۍ ثبت شوې موجودي",
+    openingOrLegacyStock: "افتتاحیه / تعدیل موجودي",
     purchasedUnits: "پېرودل شوی مقدار",
     soldUnits: "پلورل شوی مقدار",
-    calculatedMovement: "پېرود منفي خرڅلاو",
+    calculatedMovement: "د موجودۍ خالص حرکت",
     currentAvailable: "اوسنۍ موجودي",
     lastExpiry: "وروستۍ د ختمېدو نېټه",
     noExpiry: "د ختمېدو نېټه نه ده ثبت شوې",
@@ -171,9 +197,12 @@ function ProductDetail() {
   const { productId } = useParams();
   const navigate = useNavigate();
   const [products] = useJsonCollection("products");
-  const [companies] = useJsonCollection("companies");
+  const [manufacturers] = useJsonCollection("manufacturers");
+  const [legacyCompanies] = useJsonCollection("companies");
   const [purchases] = useJsonCollection("purchases");
+  const [purchaseItems] = useJsonCollection("purchaseItems");
   const [sales] = useJsonCollection("salesRegister");
+  const [stockMovements] = useJsonCollection("stockMovements");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [activeTab, setActiveTab] = useState("overview");
 
@@ -194,10 +223,12 @@ function ProductDetail() {
 
   const productPurchases = useMemo(() => {
     return purchases.flatMap((purchase) => {
-      const matching = (purchase.items || []).filter((item) => String(item.productId) === String(productId));
+      const detailRows = purchaseItems.filter((item) => String(item.purchaseId) === String(purchase.id));
+      const sourceRows = detailRows.length ? detailRows : (Array.isArray(purchase.items) ? purchase.items : []);
+      const matching = sourceRows.filter((item) => String(item.productId) === String(productId));
       return matching.map((item) => ({ ...item, purchase }));
     });
-  }, [purchases, productId]);
+  }, [purchases, purchaseItems, productId]);
 
   const productSales = useMemo(() => {
     return sales.flatMap((sale) => {
@@ -206,13 +237,15 @@ function ProductDetail() {
     });
   }, [sales, productId]);
 
-  const totalPurchased = productPurchases.reduce(
+  const movementTotals = getProductStockTotals(stockMovements, productId);
+  const totalPurchased = movementTotals.purchased || productPurchases.reduce(
     (sum, row) => sum + numeric(row.quantity) + numeric(row.bonus),
     0
   );
-  const totalSold = productSales.reduce((sum, row) => sum + numeric(row.quantity), 0);
-  const currentStock = numeric(product?.currentStock ?? product?.stock ?? product?.quantity ?? 0);
-  const movementBalance = totalPurchased - totalSold;
+  const totalSold = movementTotals.sold || productSales.reduce((sum, row) => sum + numeric(row.quantity), 0);
+  const currentStock = Math.max(getProductStock(stockMovements, productId, legacyProductStock(product)), 0);
+  const batchBalances = getProductBatchBalances(stockMovements, productId).filter((batch) => Math.abs(numeric(batch.available)) > 0.000001);
+  const movementBalance = movementTotals.quantityIn - movementTotals.quantityOut;
   const latestExpiry = productPurchases
     .map((row) => row.expiryDate)
     .filter(Boolean)
@@ -221,13 +254,16 @@ function ProductDetail() {
 
   const companyName = useMemo(() => {
     if (!product) return t.unknown;
-    const company = companies.find((item) => String(item.id) === String(product.companyId));
-    return company?.companyName || product.company || t.unknown;
-  }, [companies, product, t.unknown]);
+    const manufacturerId = product.manufacturerId || product.companyId;
+    const source = manufacturers.length ? manufacturers : legacyCompanies;
+    const manufacturer = source.find((item) => String(item.id) === String(manufacturerId));
+    return manufacturer?.manufacturerName || manufacturer?.companyName || product.company || t.unknown;
+  }, [manufacturers, legacyCompanies, product, t.unknown]);
 
   const tabs = [
     { id: "overview", label: t.overview, icon: ClipboardList },
     { id: "inventory", label: t.inventory, icon: Boxes },
+    { id: "batches", label: t.batches, icon: Layers3, count: batchBalances.length },
     { id: "purchases", label: t.purchases, icon: ShoppingCart, count: productPurchases.length },
     { id: "sales", label: t.sales, icon: ShoppingBag, count: productSales.length },
   ];
@@ -318,12 +354,35 @@ function ProductDetail() {
         <section className="product-detail-content product-detail-card">
           <div className="product-detail-section-heading"><Boxes size={20} /><div><h2>{t.inventorySummary}</h2></div></div>
           <div className="product-detail-inventory-grid">
-            <article><span>{t.openingOrLegacyStock}</span><strong>{money(currentStock)}</strong></article>
+            <article><span>{t.openingOrLegacyStock}</span><strong>{money(movementTotals.opening)}</strong></article>
             <article><span>{t.purchasedUnits}</span><strong>{money(totalPurchased)}</strong></article>
             <article><span>{t.soldUnits}</span><strong>{money(totalSold)}</strong></article>
             <article><span>{t.calculatedMovement}</span><strong className={movementBalance < 0 ? "negative" : ""}>{money(movementBalance)}</strong></article>
             <article className="primary"><span>{t.currentAvailable}</span><strong>{money(currentStock)}</strong></article>
             <article><span>{t.lastExpiry}</span><strong>{latestExpiry || t.noExpiry}</strong></article>
+          </div>
+        </section>
+      )}
+
+      {activeTab === "batches" && (
+        <section className="product-detail-content product-detail-card">
+          <div className="product-detail-section-heading"><Layers3 size={20} /><div><h2>{t.batchInventory}</h2></div></div>
+          <div className="product-detail-table-wrap">
+            <table>
+              <thead><tr><th>{t.batchNo}</th><th>{t.expiryDate}</th><th>{t.receivedQty}</th><th>{t.issuedQty}</th><th>{t.availableQty}</th></tr></thead>
+              <tbody>
+                {batchBalances.map((batch) => (
+                  <tr key={batch.batchNo}>
+                    <td><strong>{batch.batchNo}</strong></td>
+                    <td>{batch.expiryDate ? formatDateTime(batch.expiryDate, { fallback: t.noExpiry }) : t.noExpiry}</td>
+                    <td>{money(batch.quantityIn)}</td>
+                    <td>{money(batch.quantityOut)}</td>
+                    <td><strong className={batch.available < 0 ? "negative" : ""}>{money(batch.available)}</strong></td>
+                  </tr>
+                ))}
+                {!batchBalances.length && <tr><td colSpan="5" className="product-detail-empty">{t.noBatches}</td></tr>}
+              </tbody>
+            </table>
           </div>
         </section>
       )}
@@ -339,7 +398,7 @@ function ProductDetail() {
                   <tr key={`${row.purchase?.id || index}-${index}`}>
                     <td><strong>{row.purchase?.billNumber || t.unknown}</strong></td>
                     <td>{row.purchase?.supplierName || row.purchase?.companyName || t.unknown}</td>
-                    <td>{formatDateTime(row.purchase?.createdAt, { fallback: t.unknown })}</td>
+                    <td>{formatDateTime(row.purchase?.purchaseDate || row.purchase?.createdAt, { fallback: t.unknown })}</td>
                     <td>{money(row.quantity)}</td>
                     <td>{money(row.bonus)}</td>
                     <td>{money(row.purchasePrice)}</td>

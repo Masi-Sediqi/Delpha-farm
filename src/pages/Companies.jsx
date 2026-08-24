@@ -1,171 +1,131 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Building2, Edit3, Plus, Search, Trash2, X } from "lucide-react";
+import { Factory, Edit3, Plus, Search, Trash2, X } from "lucide-react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
+import { environmentStorageKey } from "../config/appConfig";
 import { confirmAction } from "../utils/confirmDialog";
 import { notify } from "../utils/notify";
 import "./Companies.css";
 
 const languageKey = "afghan-power-language";
+const migrationKey = environmentStorageKey("apg-manufacturers-migrated-v1");
 
 const translations = {
   en: {
-    title: "Companies",
-    subtitle: "Register and manage supplier and business companies.",
-    add: "Register New Company",
-    total: "Total Companies",
-    search: "Search company, type, contact or phone...",
-    empty: "No companies have been registered yet.",
-    companyName: "Company Name",
-    type: "Type",
-    priceType: "Price Type",
-    contactPerson: "Contact Person",
+    title: "Manufacturers",
+    subtitle: "Register and manage medicine manufacturers. Suppliers are managed separately.",
+    add: "Add Manufacturer",
+    total: "Total Manufacturers",
+    search: "Search manufacturer, country, phone or address...",
+    empty: "No manufacturers have been registered yet.",
+    name: "Manufacturer Name",
+    country: "Country",
     phone: "Phone Number",
     address: "Address",
-    openingBalance: "Opening Balance (+ / -)",
-    ledgerPage: "Ledger Page",
     notes: "Notes",
+    status: "Status",
+    active: "Active",
+    inactive: "Inactive",
     actions: "Actions",
-    addTitle: "Register New Company",
-    editTitle: "Edit Company",
-    hint: "Enter the company information below.",
-    selectType: "Select type",
-    selectPriceType: "Select price type",
-    supplier: "Supplier",
-    sales: "Sales",
-    both: "Supplier & Sales",
-    pharmacy: "Pharmacy",
-    drugstore: "Drugstore",
-    dostHajiZaman: "Dost Haji Zaman",
-    dostHajiSharif: "Dost Haji Sharif",
-    company: "Company",
-    wholesaleType: "Wholesale",
-    pharmacist: "Pharmacist",
-    unknown: "Unknown",
-    inventory: "Inventory",
-    representative: "Representative",
-    usd: "Dollar",
-    afn: "Afghani",
-    pkr: "Kaldar",
-    save: "Save Company",
-    update: "Update Company",
+    addTitle: "Register Manufacturer",
+    editTitle: "Edit Manufacturer",
+    hint: "Enter the medicine manufacturer's information below.",
+    save: "Save Manufacturer",
+    update: "Update Manufacturer",
     cancel: "Cancel",
-    required: "Please enter the company name.",
-    saved: "Company saved successfully.",
-    updated: "Company updated successfully.",
-    deleted: "Company deleted successfully.",
-    confirmDelete: "Delete this company?",
+    required: "Please enter the manufacturer name.",
+    saved: "Manufacturer saved successfully.",
+    updated: "Manufacturer updated successfully.",
+    deleted: "Manufacturer deleted successfully.",
+    confirmDelete: "Delete this manufacturer?",
+    inUse: "This manufacturer is used by one or more products and cannot be deleted.",
   },
   fa: {
-    title: "شرکت‌ها",
-    subtitle: "شرکت‌های تأمین‌کننده و تجارتی را ثبت و مدیریت کنید.",
-    add: "ثبت شرکت جدید",
-    total: "تعداد شرکت‌ها",
-    search: "جستجوی نام شرکت، نوع، شخص تماس یا شماره...",
-    empty: "هنوز هیچ شرکتی ثبت نشده است.",
-    companyName: "نام شرکت",
-    type: "نوع",
-    priceType: "نوع اسعار",
-    contactPerson: "شخص ارتباطی",
+    title: "شرکت‌های سازنده",
+    subtitle: "کمپنی‌های تولیدکننده دوا را ثبت و مدیریت کنید. تأمین‌کننده‌گان بخش جدا دارند.",
+    add: "شرکت سازنده جدید",
+    total: "تعداد شرکت‌های سازنده",
+    search: "جستجوی کمپنی سازنده، کشور، شماره یا آدرس...",
+    empty: "هنوز شرکت سازنده‌ای ثبت نشده است.",
+    name: "نام شرکت سازنده",
+    country: "کشور",
     phone: "شماره تماس",
     address: "آدرس",
-    openingBalance: "بیلانس افتتاحیه (+ یا -)",
-    ledgerPage: "صفحه کتاب تأدیات",
     notes: "ملاحظات",
+    status: "حالت",
+    active: "فعال",
+    inactive: "غیرفعال",
     actions: "عملیات",
-    addTitle: "ثبت شرکت جدید",
-    editTitle: "اصلاح شرکت",
-    hint: "معلومات شرکت را در فورم زیر وارد کنید.",
-    selectType: "نوع را انتخاب کنید",
-    selectPriceType: "نوع اسعار را انتخاب کنید",
-    supplier: "تأمین‌کننده",
-    sales: "فروش",
-    both: "تأمین‌کننده و فروش",
-    pharmacy: "پرچون",
-    drugstore: "درملتون",
-    dostHajiZaman: "دوست حاجی زمان",
-    dostHajiSharif: "دوست حاجی شریف",
-    company: "شرکت",
-    wholesaleType: "عمده",
-    pharmacist: "فارمسست",
-    unknown: "مجهول",
-    inventory: "موجودی",
-    representative: "نماینده",
-    usd: "دالر",
-    afn: "افغانی",
-    pkr: "کلدار",
-    save: "ذخیره شرکت",
+    addTitle: "ثبت شرکت سازنده",
+    editTitle: "اصلاح شرکت سازنده",
+    hint: "معلومات کمپنی تولیدکننده دوا را وارد کنید.",
+    save: "ذخیره شرکت سازنده",
     update: "ثبت تغییرات",
     cancel: "لغو",
-    required: "لطفاً نام شرکت را وارد کنید.",
-    saved: "شرکت با موفقیت ذخیره شد.",
-    updated: "شرکت با موفقیت اصلاح شد.",
-    deleted: "شرکت با موفقیت حذف شد.",
-    confirmDelete: "این شرکت حذف شود؟",
+    required: "لطفاً نام شرکت سازنده را وارد کنید.",
+    saved: "شرکت سازنده با موفقیت ذخیره شد.",
+    updated: "شرکت سازنده با موفقیت اصلاح شد.",
+    deleted: "شرکت سازنده با موفقیت حذف شد.",
+    confirmDelete: "این شرکت سازنده حذف شود؟",
+    inUse: "این شرکت سازنده در یک یا چند محصول استفاده شده و قابل حذف نیست.",
   },
   ps: {
-    title: "شرکتونه",
-    subtitle: "عرضه کوونکي او سوداګریز شرکتونه ثبت او اداره کړئ.",
-    add: "نوی شرکت ثبتول",
-    total: "د شرکتونو شمېر",
-    search: "د شرکت، ډول، اړیکې کس یا شمېرې لټون...",
-    empty: "تر اوسه کوم شرکت نه دی ثبت شوی.",
-    companyName: "د شرکت نوم",
-    type: "ډول",
-    priceType: "د اسعارو ډول",
-    contactPerson: "د اړیکې کس",
+    title: "تولیدوونکي شرکتونه",
+    subtitle: "د درملو تولیدوونکي شرکتونه ثبت او اداره کړئ. عرضه کوونکي جلا برخه لري.",
+    add: "نوی تولیدوونکی شرکت",
+    total: "د تولیدوونکو شمېر",
+    search: "د تولیدوونکي، هېواد، شمېرې یا پتې لټون...",
+    empty: "تر اوسه تولیدوونکی شرکت نه دی ثبت شوی.",
+    name: "د تولیدوونکي شرکت نوم",
+    country: "هېواد",
     phone: "د اړیکې شمېره",
     address: "پته",
-    openingBalance: "افتتاحي بیلانس (+ یا -)",
-    ledgerPage: "د تادیاتو کتاب پاڼه",
     notes: "ملاحظات",
+    status: "حالت",
+    active: "فعال",
+    inactive: "غیرفعال",
     actions: "عملیات",
-    addTitle: "نوی شرکت ثبتول",
-    editTitle: "د شرکت سمون",
-    hint: "د شرکت معلومات په لاندې فورم کې ولیکئ.",
-    selectType: "ډول وټاکئ",
-    selectPriceType: "د اسعارو ډول وټاکئ",
-    supplier: "عرضه کوونکی",
-    sales: "خرڅلاو",
-    both: "عرضه او خرڅلاو",
-    pharmacy: "پرچون",
-    drugstore: "درملتون",
-    dostHajiZaman: "د حاجي زمان دوست",
-    dostHajiSharif: "د حاجي شریف دوست",
-    company: "شرکت",
-    wholesaleType: "عمده",
-    pharmacist: "فارمسست",
-    unknown: "نامعلوم",
-    inventory: "موجودي",
-    representative: "استازی",
-    usd: "ډالر",
-    afn: "افغانۍ",
-    pkr: "کلدار",
-    save: "شرکت ذخیره کول",
+    addTitle: "تولیدوونکی شرکت ثبتول",
+    editTitle: "د تولیدوونکي شرکت سمون",
+    hint: "د درملو تولیدوونکي شرکت معلومات ولیکئ.",
+    save: "تولیدوونکی ذخیره کول",
     update: "بدلونونه ثبتول",
     cancel: "لغوه",
-    required: "مهرباني وکړئ د شرکت نوم ولیکئ.",
-    saved: "شرکت په بریالیتوب سره ذخیره شو.",
-    updated: "شرکت په بریالیتوب سره سم شو.",
-    deleted: "شرکت په بریالیتوب سره حذف شو.",
-    confirmDelete: "دا شرکت حذف شي؟",
+    required: "مهرباني وکړئ د تولیدوونکي شرکت نوم ولیکئ.",
+    saved: "تولیدوونکی شرکت په بریالیتوب ذخیره شو.",
+    updated: "تولیدوونکی شرکت په بریالیتوب سم شو.",
+    deleted: "تولیدوونکی شرکت په بریالیتوب حذف شو.",
+    confirmDelete: "دا تولیدوونکی شرکت حذف شي؟",
+    inUse: "دا تولیدوونکی شرکت په محصول کې کارول شوی او حذف کېدای نه شي.",
   },
 };
 
 const emptyForm = {
-  companyName: "",
-  type: "",
-  priceType: "",
-  contactPerson: "",
+  manufacturerName: "",
+  country: "",
   phone: "",
   address: "",
-  openingBalance: "",
-  ledgerPage: "",
   notes: "",
+  status: "active",
 };
 
+const normalizeLegacyCompany = (item) => ({
+  id: item.id || `MFR-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+  manufacturerName: item.manufacturerName || item.companyName || item.name || "",
+  country: item.country || item.madeIn || "",
+  phone: item.phone || "",
+  address: item.address || "",
+  notes: item.notes || "",
+  status: item.status || "active",
+  createdAt: item.createdAt || new Date().toISOString(),
+  updatedAt: item.updatedAt || new Date().toISOString(),
+  migratedFromCompany: true,
+});
+
 export default function Companies() {
-  const [companies, setCompanies] = useJsonCollection("companies");
+  const [manufacturers, setManufacturers, , manufacturersLoaded] = useJsonCollection("manufacturers");
+  const [legacyCompanies, , , legacyLoaded] = useJsonCollection("companies");
+  const [products] = useJsonCollection("products");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -186,18 +146,32 @@ export default function Companies() {
   }, []);
 
   useEffect(() => {
+    if (!manufacturersLoaded || !legacyLoaded) return;
+    if (localStorage.getItem(migrationKey) === "1") return;
+
+    const migrate = async () => {
+      if (!manufacturers.length && legacyCompanies.length) {
+        await setManufacturers(legacyCompanies.map(normalizeLegacyCompany));
+      }
+      localStorage.setItem(migrationKey, "1");
+    };
+
+    migrate();
+  }, [manufacturersLoaded, legacyLoaded, manufacturers.length, legacyCompanies, setManufacturers]);
+
+  useEffect(() => {
     document.body.classList.toggle("company-modal-open", showModal);
     return () => document.body.classList.remove("company-modal-open");
   }, [showModal]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return companies;
-    return companies.filter((item) =>
-      [item.companyName, item.type, item.priceType, item.contactPerson, item.phone, item.address]
+    if (!q) return manufacturers;
+    return manufacturers.filter((item) =>
+      [item.manufacturerName, item.country, item.phone, item.address, item.notes]
         .some((value) => String(value || "").toLowerCase().includes(q))
     );
-  }, [companies, search]);
+  }, [manufacturers, search]);
 
   const openNew = () => {
     setEditingId(null);
@@ -219,39 +193,57 @@ export default function Companies() {
 
   const updateField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!form.companyName.trim()) {
+    const name = form.manufacturerName.trim();
+    if (!name) {
       notify(t.required, "warning");
       return;
     }
 
+    const now = new Date().toISOString();
     if (editingId) {
-      setCompanies(companies.map((item) => item.id === editingId ? { ...item, ...form, updatedAt: new Date().toISOString() } : item));
+      const saved = await setManufacturers(manufacturers.map((item) =>
+        String(item.id) === String(editingId)
+          ? { ...item, ...form, manufacturerName: name, updatedAt: now }
+          : item
+      ));
+      if (!saved) return;
       notify(t.updated, "success");
     } else {
-      setCompanies([
+      const saved = await setManufacturers([
         {
           ...form,
-          id: `CMP-${Date.now()}`,
-          createdAt: new Date().toISOString(),
+          manufacturerName: name,
+          id: `MFR-${Date.now()}`,
+          createdAt: now,
+          updatedAt: now,
         },
-        ...companies,
+        ...manufacturers,
       ]);
+      if (!saved) return;
       notify(t.saved, "success");
     }
     closeModal();
   };
 
-  const removeCompany = async (item) => {
+  const removeManufacturer = async (item) => {
+    const inUse = products.some((product) =>
+      String(product.manufacturerId || product.companyId || "") === String(item.id)
+    );
+    if (inUse) {
+      notify(t.inUse, "warning");
+      return;
+    }
+
     const confirmed = await confirmAction({
       title: t.confirmDelete,
-      message: item.companyName || t.confirmDelete,
-      confirmText: t.delete || "Delete",
+      message: item.manufacturerName || t.confirmDelete,
+      confirmText: "Delete",
       cancelText: t.cancel,
     });
     if (!confirmed) return;
-    const saved = await setCompanies(companies.filter((company) => company.id !== item.id));
+    const saved = await setManufacturers(manufacturers.filter((manufacturer) => manufacturer.id !== item.id));
     if (saved) notify(t.deleted, "success");
   };
 
@@ -260,7 +252,7 @@ export default function Companies() {
       <div className="companies-header">
         <div>
           <div className="companies-title-line">
-            <Building2 size={25} />
+            <Factory size={25} />
             <h1>{t.title}</h1>
           </div>
           <p>{t.subtitle}</p>
@@ -279,38 +271,36 @@ export default function Companies() {
           </div>
           <div className="companies-total" dir={direction}>
             <span>{t.total}</span>
-            <strong>{companies.length}</strong>
+            <strong>{manufacturers.length}</strong>
           </div>
         </div>
 
         <div className="companies-table-wrap">
-          <table className="companies-table">
+          <table className="companies-table manufacturer-table">
             <thead>
               <tr>
-                <th>{t.companyName}</th>
-                <th>{t.type}</th>
-                <th>{t.priceType}</th>
-                <th>{t.contactPerson}</th>
+                <th>{t.name}</th>
+                <th>{t.country}</th>
                 <th>{t.phone}</th>
-                <th>{t.openingBalance}</th>
+                <th>{t.address}</th>
+                <th>{t.status}</th>
                 <th>{t.actions}</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan="7" className="companies-empty">{t.empty}</td></tr>
+                <tr><td colSpan="6" className="companies-empty">{t.empty}</td></tr>
               ) : filtered.map((item) => (
                 <tr key={item.id}>
-                  <td className="company-name-cell">{item.companyName}</td>
-                  <td>{item.type || "—"}</td>
-                  <td>{item.priceType || "—"}</td>
-                  <td>{item.contactPerson || "—"}</td>
+                  <td className="company-name-cell">{item.manufacturerName}</td>
+                  <td>{item.country || "—"}</td>
                   <td dir="ltr">{item.phone || "—"}</td>
-                  <td dir="ltr">{item.openingBalance || "0.00"}</td>
+                  <td className="manufacturer-address-cell">{item.address || "—"}</td>
+                  <td><span className={`manufacturer-status ${item.status === "inactive" ? "inactive" : "active"}`}>{item.status === "inactive" ? t.inactive : t.active}</span></td>
                   <td>
                     <div className="companies-actions">
                       <button type="button" onClick={() => openEdit(item)} title={t.editTitle}><Edit3 size={16} /></button>
-                      <button type="button" className="danger" onClick={() => removeCompany(item)} title={t.confirmDelete}><Trash2 size={16} /></button>
+                      <button type="button" className="danger" onClick={() => removeManufacturer(item)} title={t.confirmDelete}><Trash2 size={16} /></button>
                     </div>
                   </td>
                 </tr>
@@ -321,20 +311,8 @@ export default function Companies() {
       </div>
 
       {showModal && createPortal((
-        <div
-          className="company-modal-backdrop"
-          role="presentation"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) closeModal();
-          }}
-        >
-          <div
-            className="company-modal"
-            role="dialog"
-            aria-modal="true"
-            dir={direction}
-            onClick={(event) => event.stopPropagation()}
-          >
+        <div className="company-modal-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) closeModal(); }}>
+          <div className="company-modal" role="dialog" aria-modal="true" dir={direction} onClick={(event) => event.stopPropagation()}>
             <div className="company-modal-header">
               <div>
                 <h2>{editingId ? t.editTitle : t.addTitle}</h2>
@@ -345,40 +323,13 @@ export default function Companies() {
 
             <form className="company-form" onSubmit={handleSubmit}>
               <div className="company-field full">
-                <label>{t.companyName} *</label>
-                <input value={form.companyName} onChange={(e) => updateField("companyName", e.target.value)} autoFocus />
+                <label>{t.name} *</label>
+                <input value={form.manufacturerName} onChange={(e) => updateField("manufacturerName", e.target.value)} autoFocus />
               </div>
 
               <div className="company-field">
-                <label>{t.type}</label>
-                <select value={form.type} onChange={(e) => updateField("type", e.target.value)}>
-                  <option value="">{t.selectType}</option>
-                  <option value="retail">{t.pharmacy}</option>
-                  <option value="drugstore">{t.drugstore}</option>
-                  <option value="dost_haji_zaman">{t.dostHajiZaman}</option>
-                  <option value="dost_haji_sharif">{t.dostHajiSharif}</option>
-                  <option value="company">{t.company}</option>
-                  <option value="wholesale">{t.wholesaleType}</option>
-                  <option value="pharmacist">{t.pharmacist}</option>
-                  <option value="unknown">{t.unknown}</option>
-                  <option value="inventory">{t.inventory}</option>
-                  <option value="representative">{t.representative}</option>
-                </select>
-              </div>
-
-              <div className="company-field">
-                <label>{t.priceType}</label>
-                <select value={form.priceType} onChange={(e) => updateField("priceType", e.target.value)}>
-                  <option value="">{t.selectPriceType}</option>
-                  <option value="USD">{t.usd}</option>
-                  <option value="AFN">{t.afn}</option>
-                  <option value="PKR">{t.pkr}</option>
-                </select>
-              </div>
-
-              <div className="company-field">
-                <label>{t.contactPerson}</label>
-                <input value={form.contactPerson} onChange={(e) => updateField("contactPerson", e.target.value)} />
+                <label>{t.country}</label>
+                <input value={form.country} onChange={(e) => updateField("country", e.target.value)} />
               </div>
 
               <div className="company-field">
@@ -392,13 +343,11 @@ export default function Companies() {
               </div>
 
               <div className="company-field">
-                <label>{t.openingBalance}</label>
-                <input dir="ltr" type="number" step="0.01" value={form.openingBalance} onChange={(e) => updateField("openingBalance", e.target.value)} placeholder="0.00" />
-              </div>
-
-              <div className="company-field">
-                <label>{t.ledgerPage}</label>
-                <input value={form.ledgerPage} onChange={(e) => updateField("ledgerPage", e.target.value)} />
+                <label>{t.status}</label>
+                <select value={form.status} onChange={(e) => updateField("status", e.target.value)}>
+                  <option value="active">{t.active}</option>
+                  <option value="inactive">{t.inactive}</option>
+                </select>
               </div>
 
               <div className="company-field full">
