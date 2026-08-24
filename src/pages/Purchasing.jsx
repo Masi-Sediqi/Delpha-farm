@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
-  Building2,
+  Truck,
   CalendarDays,
   Check,
   CreditCard,
@@ -20,25 +21,25 @@ const languageKey = "afghan-power-language";
 const translations = {
   en: {
     title: "Purchasing",
-    subtitle: "Register multi-product purchases from companies.",
+    subtitle: "Register multi-product purchases from suppliers.",
     newPurchase: "New Purchase",
     purchases: "Purchase Records",
     totalBills: "Total Bills",
     totalAmount: "Total Purchase Amount",
     totalPaid: "Total Paid",
     totalRemaining: "Total Remaining",
-    search: "Search bill number or company...",
+    search: "Search bill number or supplier...",
     noPurchases: "No purchases have been registered yet.",
-    billNo: "Bill No.", company: "Company", date: "Date", total: "Total", paid: "Paid", remaining: "Remaining", paymentType: "Payment Type", items: "Items",
+    billNo: "Bill No.", supplier: "Supplier", date: "Date", total: "Total", paid: "Paid", remaining: "Remaining", paymentType: "Payment Type", items: "Items",
     modalTitle: "Register New Purchase",
-    modalHint: "Choose a company, select several products and enter purchase details.",
-    selectCompany: "Select company",
+    modalHint: "Enter the bill number, choose a supplier, then add several products and complete the purchase details.",
+    selectSupplier: "Select supplier",
     billNumber: "Bill Number",
     billPlaceholder: "Example: INV-1001",
-    productsFromCompany: "Products of Selected Company",
+    availableProducts: "Available Products",
     productSearch: "Search product...",
-    chooseCompanyFirst: "Select a company first to see its products.",
-    noCompanyProducts: "No products are registered for this company.",
+    chooseSupplierFirst: "Select a supplier first to add products to this purchase.",
+    noProducts: "No products are registered yet.",
     selectedProducts: "Selected Products",
     clickToAdd: "Click a product to add it to this purchase.",
     noSelected: "No product selected yet.",
@@ -62,7 +63,7 @@ const translations = {
     balance: "Remaining Balance",
     cancel: "Cancel",
     save: "Save Purchase",
-    requiredCompany: "Please select a company.",
+    requiredSupplier: "Please select a supplier.",
     requiredBill: "Please enter the bill number.",
     requiredProducts: "Please select at least one product.",
     invalidPaid: "Paid amount cannot be greater than the total amount.",
@@ -75,25 +76,25 @@ const translations = {
   },
   fa: {
     title: "خریداری",
-    subtitle: "خرید چندین جنس از شرکت‌ها را در یک بل ثبت کنید.",
+    subtitle: "خرید چندین جنس از تأمین‌کننده‌گان را در یک بل ثبت کنید.",
     newPurchase: "خریداری جدید",
     purchases: "ریکاردهای خریداری",
     totalBills: "مجموع بل‌ها",
     totalAmount: "مجموع خریداری",
     totalPaid: "مجموع پرداخت",
     totalRemaining: "مجموع باقی‌مانده",
-    search: "جستجوی بل نمبر یا شرکت...",
+    search: "جستجوی بل نمبر یا تأمین‌کننده...",
     noPurchases: "هنوز خریداری ثبت نشده است.",
-    billNo: "بل نمبر", company: "شرکت", date: "تاریخ", total: "جمله مقدار", paid: "پرداخت", remaining: "باقی‌مانده", paymentType: "حالت پرداخت", items: "تعداد اقلام",
+    billNo: "بل نمبر", supplier: "تأمین‌کننده", date: "تاریخ", total: "جمله مقدار", paid: "پرداخت", remaining: "باقی‌مانده", paymentType: "حالت پرداخت", items: "تعداد اقلام",
     modalTitle: "ثبت خریداری جدید",
-    modalHint: "شرکت را انتخاب کنید، چند دوا را اضافه نموده و جزئیات خرید را وارد کنید.",
-    selectCompany: "شرکت را انتخاب کنید",
+    modalHint: "بل نمبر را وارد کنید، تأمین‌کننده را انتخاب نموده و سپس چند دوا را به خریداری اضافه کنید.",
+    selectSupplier: "تأمین‌کننده را انتخاب کنید",
     billNumber: "بل نمبر",
     billPlaceholder: "مثلاً INV-1001",
-    productsFromCompany: "دواهای شرکت انتخاب‌شده",
+    availableProducts: "دواهای موجود",
     productSearch: "جستجوی دوا...",
-    chooseCompanyFirst: "اول یک شرکت را انتخاب کنید تا دواهای آن نمایش داده شود.",
-    noCompanyProducts: "برای این شرکت هنوز محصول ثبت نشده است.",
+    chooseSupplierFirst: "اول تأمین‌کننده را انتخاب کنید تا بتوانید دواها را به خریداری اضافه کنید.",
+    noProducts: "هنوز هیچ محصولی ثبت نشده است.",
     selectedProducts: "دواهای انتخاب‌شده",
     clickToAdd: "روی هر دوا کلیک کنید تا به این خریداری اضافه شود.",
     noSelected: "هنوز هیچ دوا انتخاب نشده است.",
@@ -117,7 +118,7 @@ const translations = {
     balance: "باقی‌مانده",
     cancel: "لغو",
     save: "ذخیره خریداری",
-    requiredCompany: "لطفاً شرکت را انتخاب کنید.",
+    requiredSupplier: "لطفاً تأمین‌کننده را انتخاب کنید.",
     requiredBill: "لطفاً بل نمبر را وارد کنید.",
     requiredProducts: "حداقل یک دوا را انتخاب کنید.",
     invalidPaid: "مقدار پرداخت نمی‌تواند بیشتر از جمله مقدار باشد.",
@@ -130,25 +131,25 @@ const translations = {
   },
   ps: {
     title: "پېرود",
-    subtitle: "له شرکتونو څخه د څو توکو پېرود په یوه بل کې ثبت کړئ.",
+    subtitle: "له عرضه کوونکو څخه د څو توکو پېرود په یوه بل کې ثبت کړئ.",
     newPurchase: "نوی پېرود",
     purchases: "د پېرود ریکارډونه",
     totalBills: "ټول بلونه",
     totalAmount: "د پېرود ټول مبلغ",
     totalPaid: "ټولې ورکړې",
     totalRemaining: "پاتې مبلغ",
-    search: "د بل نمبر یا شرکت لټون...",
+    search: "د بل نمبر یا عرضه کوونکي لټون...",
     noPurchases: "تر اوسه پېرود نه دی ثبت شوی.",
-    billNo: "بل نمبر", company: "شرکت", date: "نېټه", total: "ټول مبلغ", paid: "ورکړه", remaining: "پاتې", paymentType: "د ورکړې ډول", items: "توکي",
+    billNo: "بل نمبر", supplier: "عرضه کوونکی", date: "نېټه", total: "ټول مبلغ", paid: "ورکړه", remaining: "پاتې", paymentType: "د ورکړې ډول", items: "توکي",
     modalTitle: "نوی پېرود ثبتول",
-    modalHint: "شرکت وټاکئ، څو درمل اضافه کړئ او د پېرود معلومات ولیکئ.",
-    selectCompany: "شرکت وټاکئ",
+    modalHint: "بل نمبر ولیکئ، عرضه کوونکی وټاکئ او بیا څو توکي پېرود ته اضافه کړئ.",
+    selectSupplier: "عرضه کوونکی وټاکئ",
     billNumber: "بل نمبر",
     billPlaceholder: "لکه INV-1001",
-    productsFromCompany: "د ټاکل شوي شرکت توکي",
+    availableProducts: "موجود توکي",
     productSearch: "د توکي لټون...",
-    chooseCompanyFirst: "لومړی شرکت وټاکئ ترڅو د هغه توکي ښکاره شي.",
-    noCompanyProducts: "د دې شرکت لپاره توکي نه دي ثبت شوي.",
+    chooseSupplierFirst: "لومړی عرضه کوونکی وټاکئ ترڅو توکي پېرود ته اضافه کړئ.",
+    noProducts: "تر اوسه کوم محصول نه دی ثبت شوی.",
     selectedProducts: "ټاکل شوي توکي",
     clickToAdd: "پر توکي کلیک وکړئ ترڅو دې پېرود ته اضافه شي.",
     noSelected: "تر اوسه کوم توکی نه دی ټاکل شوی.",
@@ -172,7 +173,7 @@ const translations = {
     balance: "پاتې مبلغ",
     cancel: "لغوه",
     save: "پېرود ذخیره کول",
-    requiredCompany: "مهرباني وکړئ شرکت وټاکئ.",
+    requiredSupplier: "مهرباني وکړئ عرضه کوونکی وټاکئ.",
     requiredBill: "مهرباني وکړئ بل نمبر ولیکئ.",
     requiredProducts: "لږ تر لږه یو توکی وټاکئ.",
     invalidPaid: "ورکړل شوی مبلغ له ټول مبلغ څخه زیات نه شي کېدای.",
@@ -190,13 +191,13 @@ const getStock = (product) => numeric(product?.currentStock ?? product?.stock ??
 
 function Purchasing() {
   const [purchases, setPurchases] = useJsonCollection("purchases");
-  const [companies] = useJsonCollection("companies");
+  const [suppliers] = useJsonCollection("suppliers");
   const [products, setProducts] = useJsonCollection("products");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [search, setSearch] = useState("");
   const [productSearch, setProductSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [companyId, setCompanyId] = useState("");
+  const [supplierId, setSupplierId] = useState("");
   const [billNumber, setBillNumber] = useState("");
   const [selectedItems, setSelectedItems] = useState([]);
   const [paymentMode, setPaymentMode] = useState("cash");
@@ -220,17 +221,16 @@ function Purchasing() {
     return () => document.body.classList.remove("purchasing-modal-open");
   }, [showModal]);
 
-  const companyName = (id) => companies.find((item) => String(item.id) === String(id))?.companyName || "—";
+  const supplierName = (id) => suppliers.find((item) => String(item.id) === String(id))?.supplierName || "—";
 
-  const companyProducts = useMemo(() => {
-    if (!companyId) return [];
+  const availableProducts = useMemo(() => {
+    if (!supplierId) return [];
     const q = productSearch.trim().toLowerCase();
     return products.filter((item) => {
-      if (String(item.companyId) !== String(companyId)) return false;
       if (!q) return true;
-      return `${item.productName || ""} ${item.group || ""}`.toLowerCase().includes(q);
+      return `${item.productName || ""} ${item.group || ""} ${item.companyName || ""}`.toLowerCase().includes(q);
     });
-  }, [products, companyId, productSearch]);
+  }, [products, supplierId, productSearch]);
 
   const addProduct = (product) => {
     if (selectedItems.some((item) => String(item.productId) === String(product.id))) return;
@@ -273,7 +273,7 @@ function Purchasing() {
   }, [paymentMode, grandTotal, showModal]);
 
   const openModal = () => {
-    setCompanyId("");
+    setSupplierId("");
     setBillNumber("");
     setSelectedItems([]);
     setPaymentMode("cash");
@@ -286,7 +286,7 @@ function Purchasing() {
 
   const savePurchase = async (event) => {
     event.preventDefault();
-    if (!companyId) return notify(t.requiredCompany, "error");
+    if (!supplierId) return notify(t.requiredSupplier, "error");
     if (!billNumber.trim()) return notify(t.requiredBill, "error");
     if (!selectedItems.length) return notify(t.requiredProducts, "error");
     if (numeric(paidAmount) > grandTotal) return notify(t.invalidPaid, "error");
@@ -294,8 +294,8 @@ function Purchasing() {
     const now = new Date().toISOString();
     const purchase = {
       id: `purchase-${Date.now()}`,
-      companyId,
-      companyName: companyName(companyId),
+      supplierId,
+      supplierName: supplierName(supplierId),
       billNumber: billNumber.trim(),
       paymentMode,
       paidAmount: paid,
@@ -329,7 +329,7 @@ function Purchasing() {
   const deletePurchase = async (purchase) => {
     const confirmed = await confirmAction({
       title: t.confirmDelete,
-      message: purchase.billNumber || purchase.companyName || t.confirmDelete,
+      message: purchase.billNumber || purchase.supplierName || purchase.companyName || t.confirmDelete,
       confirmText: t.delete,
       cancelText: t.cancel,
     });
@@ -357,8 +357,8 @@ function Purchasing() {
   const filteredPurchases = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return purchases;
-    return purchases.filter((item) => `${item.billNumber || ""} ${item.companyName || companyName(item.companyId)}`.toLowerCase().includes(q));
-  }, [purchases, search, companies]);
+    return purchases.filter((item) => `${item.billNumber || ""} ${item.supplierName || supplierName(item.supplierId) || item.companyName || ""}`.toLowerCase().includes(q));
+  }, [purchases, search, suppliers]);
 
   const totals = purchases.reduce((acc, item) => {
     acc.amount += numeric(item.totalAmount);
@@ -385,10 +385,10 @@ function Purchasing() {
         <div className="purchasing-card-title"><h2>{t.purchases}</h2><div className="purchasing-search"><Search size={17} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t.search} /></div></div>
         <div className="purchasing-table-wrap">
           <table>
-            <thead><tr><th>{t.billNo}</th><th>{t.company}</th><th>{t.items}</th><th>{t.total}</th><th>{t.paid}</th><th>{t.remaining}</th><th>{t.paymentType}</th><th>{t.date}</th><th>{t.actions}</th></tr></thead>
+            <thead><tr><th>{t.billNo}</th><th>{t.supplier}</th><th>{t.items}</th><th>{t.total}</th><th>{t.paid}</th><th>{t.remaining}</th><th>{t.paymentType}</th><th>{t.date}</th><th>{t.actions}</th></tr></thead>
             <tbody>
               {filteredPurchases.map((item) => (
-                <tr key={item.id}><td>{item.billNumber}</td><td>{item.companyName || companyName(item.companyId)}</td><td>{item.items?.length || 0}</td><td>{numeric(item.totalAmount).toFixed(2)}</td><td>{numeric(item.paidAmount).toFixed(2)}</td><td>{numeric(item.remainingAmount).toFixed(2)}</td><td>{item.paymentMode === "installment" ? t.installment : t.cash}</td><td>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "—"}</td><td><button type="button" className="purchasing-row-delete" onClick={() => deletePurchase(item)} title={t.delete}><Trash2 size={15} /></button></td></tr>
+                <tr key={item.id}><td>{item.billNumber}</td><td>{item.supplierName || supplierName(item.supplierId) || item.companyName || "—"}</td><td>{item.items?.length || 0}</td><td>{numeric(item.totalAmount).toFixed(2)}</td><td>{numeric(item.paidAmount).toFixed(2)}</td><td>{numeric(item.remainingAmount).toFixed(2)}</td><td>{item.paymentMode === "installment" ? t.installment : t.cash}</td><td>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "—"}</td><td><button type="button" className="purchasing-row-delete" onClick={() => deletePurchase(item)} title={t.delete}><Trash2 size={15} /></button></td></tr>
               ))}
               {!filteredPurchases.length && <tr><td colSpan="9" className="purchasing-empty">{t.noPurchases}</td></tr>}
             </tbody>
@@ -396,8 +396,8 @@ function Purchasing() {
         </div>
       </section>
 
-      {showModal && (
-        <div className="purchasing-modal-overlay" onClick={(e) => e.target === e.currentTarget && closeModal()}>
+      {showModal && createPortal((
+        <div className="purchasing-modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && closeModal()}>
           <form className="purchasing-modal" onSubmit={savePurchase} onClick={(event) => event.stopPropagation()}>
             <header className="purchasing-modal-header">
               <div><h2><ShoppingCart size={22} />{t.modalTitle}</h2><p>{t.modalHint}</p></div>
@@ -406,13 +406,13 @@ function Purchasing() {
 
             <div className="purchasing-modal-body">
               <div className="purchasing-top-fields">
-                <label><span><Building2 size={15} />{t.company}</span><select value={companyId} onChange={(e) => { setCompanyId(e.target.value); setSelectedItems([]); }}><option value="">{t.selectCompany}</option>{companies.map((company) => <option value={company.id} key={company.id}>{company.companyName}</option>)}</select></label>
                 <label><span>{t.billNumber}</span><input value={billNumber} onChange={(e) => setBillNumber(e.target.value)} placeholder={t.billPlaceholder} /></label>
+                <label><span><Truck size={15} />{t.supplier}</span><select value={supplierId} onChange={(e) => { setSupplierId(e.target.value); setSelectedItems([]); }}><option value="">{t.selectSupplier}</option>{suppliers.filter((supplier) => supplier.status !== "inactive").map((supplier) => <option value={supplier.id} key={supplier.id}>{supplier.supplierName}</option>)}</select></label>
               </div>
 
               <div className="purchasing-picker-section">
-                <div className="purchasing-section-heading"><div><h3>{t.productsFromCompany}</h3><p>{t.clickToAdd}</p></div>{companyId && <div className="purchasing-product-search"><Search size={16} /><input value={productSearch} onChange={(e) => setProductSearch(e.target.value)} placeholder={t.productSearch} /></div>}</div>
-                {!companyId ? <div className="purchasing-picker-empty">{t.chooseCompanyFirst}</div> : !companyProducts.length ? <div className="purchasing-picker-empty">{t.noCompanyProducts}</div> : <div className="purchasing-product-picker">{companyProducts.map((product) => { const active = selectedItems.some((item) => String(item.productId) === String(product.id)); return <button type="button" key={product.id} className={`purchasing-product-chip ${active ? "is-selected" : ""}`} onClick={() => addProduct(product)}><span>{product.productName}</span><small>{product.group || "—"}</small>{active && <Check size={16} />}</button>; })}</div>}
+                <div className="purchasing-section-heading"><div><h3>{t.availableProducts}</h3><p>{t.clickToAdd}</p></div>{supplierId && <div className="purchasing-product-search"><Search size={16} /><input value={productSearch} onChange={(e) => setProductSearch(e.target.value)} placeholder={t.productSearch} /></div>}</div>
+                {!supplierId ? <div className="purchasing-picker-empty">{t.chooseSupplierFirst}</div> : !availableProducts.length ? <div className="purchasing-picker-empty">{t.noProducts}</div> : <div className="purchasing-product-picker">{availableProducts.map((product) => { const active = selectedItems.some((item) => String(item.productId) === String(product.id)); return <button type="button" key={product.id} className={`purchasing-product-chip ${active ? "is-selected" : ""}`} onClick={() => addProduct(product)}><span>{product.productName}</span><small>{product.group || "—"}</small>{active && <Check size={16} />}</button>; })}</div>}
               </div>
 
               <div className="purchasing-selected-section">
@@ -451,7 +451,7 @@ function Purchasing() {
             <footer className="purchasing-modal-footer"><button type="button" className="purchasing-secondary-btn" onClick={closeModal}>{t.cancel}</button><button className="purchasing-primary-btn" type="submit"><Check size={17} />{t.save}</button></footer>
           </form>
         </div>
-      )}
+      ), document.body)}
     </div>
   );
 }

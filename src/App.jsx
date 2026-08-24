@@ -23,6 +23,7 @@ import {
   Settings as SettingsIcon,
   ShoppingBag,
   ShoppingCart,
+  Truck,
   Users,
 } from "lucide-react";
 import appLogo from "./assets/logo.png";
@@ -35,10 +36,13 @@ import { useJsonCollection } from "./hooks/useJsonCollection";
 import { downloadBackup } from "./utils/backup";
 import { notify } from "./utils/notify";
 import { canViewModule } from "./utils/permissions";
+import { IS_DEMO, APP_MODE, environmentStorageKey } from "./config/appConfig";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Companies = lazy(() => import("./pages/Companies"));
+const Suppliers = lazy(() => import("./pages/Suppliers"));
 const Products = lazy(() => import("./pages/Products"));
+const ProductDetail = lazy(() => import("./pages/ProductDetail"));
 const Purchasing = lazy(() => import("./pages/Purchasing"));
 const CustomersRegistry = lazy(() => import("./pages/CustomersRegistry"));
 const CustomerDetail = lazy(() => import("./pages/CustomerDetail"));
@@ -65,7 +69,8 @@ const defaultAdminAccount = {
   createdAt: "2026-07-18",
 };
 
-const autoBackupStorageKey = "isp-auto-backup-last-run";
+const autoBackupStorageKey = environmentStorageKey("isp-auto-backup-last-run");
+const sessionStorageKey = environmentStorageKey("isp-system-session");
 const appThemeStorageKey = "afghan-power-theme";
 const appLanguageStorageKey = "afghan-power-language";
 const rtlLanguages = new Set(["fa", "ps"]);
@@ -73,6 +78,7 @@ const shellLabels = {
   en: {
     dashboard: "Dashboard",
     companies: "Companies",
+    suppliers: "Suppliers",
     products: "Products",
     purchasing: "Purchasing",
     customerRegistry: "Customers",
@@ -83,6 +89,7 @@ const shellLabels = {
   fa: {
     dashboard: "داشبورد",
     companies: "شرکت‌ها",
+    suppliers: "تأمین‌کننده‌گان",
     products: "محصولات",
     purchasing: "خریداری",
     customerRegistry: "مشتریان",
@@ -93,6 +100,7 @@ const shellLabels = {
   ps: {
     dashboard: "ډشبورد",
     companies: "شرکتونه",
+    suppliers: "عرضه کوونکي",
     products: "محصولات",
     purchasing: "پېرود",
     customerRegistry: "پېرودونکي",
@@ -205,7 +213,7 @@ function App() {
     () => localStorage.getItem(appLanguageStorageKey) || "en"
   );
   const [sessionId, setSessionId] = useState(() =>
-    localStorage.getItem("isp-system-session")
+    localStorage.getItem(sessionStorageKey)
   );
 
   useEffect(() => {
@@ -370,18 +378,19 @@ function App() {
       }
     }
 
-    localStorage.setItem("isp-system-session", String(account.id));
+    localStorage.setItem(sessionStorageKey, String(account.id));
     setSessionId(String(account.id));
   };
 
   const logout = () => {
-    localStorage.removeItem("isp-system-session");
+    localStorage.removeItem(sessionStorageKey);
     setSessionId(null);
   };
 
   const menuItems = [
     { to: "/", label: labels.dashboard, moduleKey: "dashboard", icon: LayoutDashboard },
     { to: "/companies", label: labels.companies, moduleKey: "suppliers", icon: Building2 },
+    { to: "/suppliers", label: labels.suppliers, moduleKey: "suppliers", icon: Truck },
     { to: "/products", label: labels.products, moduleKey: "customers", icon: ReceiptText },
     { to: "/purchasing", label: labels.purchasing, moduleKey: "suppliers", icon: ShoppingCart },
     { to: "/customer-registry", label: labels.customerRegistry, moduleKey: "customers", icon: Users },
@@ -432,6 +441,7 @@ function App() {
         dir={appDirection}
         data-direction={appDirection}
         data-language={appLanguage}
+        data-app-mode={APP_MODE}
       >
         <aside
           className={`sidebar ${mobileMenuOpen ? "mobile-menu-open" : ""}`}
@@ -494,6 +504,7 @@ function App() {
         <div className="sidebar-version-area">
           <div className="sidebar-version-row">
             <span className="sidebar-version-label">v0.0.1 • Business Management</span>
+            {IS_DEMO && <span className="app-mode-badge">DEMO</span>}
           </div>
         </div>
         </aside>
@@ -510,7 +521,9 @@ function App() {
               <Route path="/search-results" element={protect("dashboard", <SearchResults />)} />
 
               <Route path="/companies" element={protect("suppliers", <Companies />)} />
+              <Route path="/suppliers" element={protect("suppliers", <Suppliers />)} />
               <Route path="/products" element={protect("customers", <Products />)} />
+              <Route path="/product-detail/:productId" element={protect("customers", <ProductDetail />)} />
               <Route path="/purchasing" element={protect("suppliers", <Purchasing />)} />
               <Route path="/customer-registry" element={protect("customers", <CustomersRegistry />)} />
               <Route path="/customer-detail/:customerId" element={protect("customers", <CustomerDetail />)} />

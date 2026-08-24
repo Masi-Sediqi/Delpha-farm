@@ -580,3 +580,11 @@ body[data-theme="neon"].dark-mode .sales-product-inline-add {
   border-color: #334155;
   color: #f8fafc;
 }
+
+
+/* Product detail navigation */
+.sales-product-clickable-row{cursor:pointer;transition:background .16s ease,transform .16s ease}
+.sales-product-clickable-row:hover{background:rgba(99,102,241,.055)}
+.sales-product-clickable-row:focus-visible{outline:2px solid currentColor;outline-offset:-2px}
+body[data-theme="black-white"].dark-mode .sales-product-clickable-row:hover{background:rgba(255,255,255,.06)}
+body[data-theme="neon"].dark-mode .sales-product-clickable-row:hover{background:rgba(34,211,238,.08)}

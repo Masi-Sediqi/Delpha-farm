@@ -17,8 +17,12 @@
     "build:electron": "node scripts/build-installer.cjs",
     "dist": "node scripts/build-installer.cjs",
     "lint": "eslint .",
-    "preview": "vite preview"
-    ,"test:license": "node --test tests/license-compatibility.test.cjs"
+    "preview": "vite preview",
+    "test:license": "node --test tests/license-compatibility.test.cjs",
+    "dev:demo": "vite --mode demo",
+    "dev:production": "vite --mode production",
+    "build:demo": "vite build --mode demo",
+    "build:production": "vite build --mode production"
   },
   "dependencies": {
     "axios": "^1.17.0",

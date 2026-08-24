@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
 import {
   Banknote,
   CalendarDays,
@@ -16,8 +15,9 @@ import {
   Users,
 } from "lucide-react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
-import { apiUrl } from "../utils/api";
 import { downloadBackup, loadBackupCollectionNames } from "../utils/backup";
+import { writeBrowserCollection } from "../utils/browserStorage";
+import { IS_DEMO, APP_MODE } from "../config/appConfig";
 import { notify } from "../utils/notify";
 import { confirmAction } from "../utils/confirmDialog";
 import "./Settings.css";
@@ -299,7 +299,7 @@ function Settings() {
       if (!ok) return;
 
       await Promise.all(
-        importable.map((name) => axios.put(apiUrl(name), data[name]))
+        importable.map((name) => writeBrowserCollection(name, data[name]))
       );
       notify("App data imported successfully. Refresh the app to see all changes.");
     } catch (error) {
@@ -311,6 +311,11 @@ function Settings() {
   };
 
   const clearData = async () => {
+    if (!IS_DEMO) {
+      notify("Clear Data is disabled in Production mode.", "error");
+      return;
+    }
+
     if (clearConfirm.trim().toUpperCase() !== "CLEAR") {
       notify("Type CLEAR to confirm data clearing.", "error");
       return;
@@ -327,7 +332,7 @@ function Settings() {
     try {
       setAppDataBusy(true);
       const collections = await loadCollectionNames();
-      await Promise.all(collections.map((name) => axios.put(apiUrl(name), [])));
+      await Promise.all(collections.map((name) => writeBrowserCollection(name, [])));
       setClearConfirm("");
       notify("App data cleared successfully. Refresh the app to start clean.");
     } catch (error) {
@@ -738,6 +743,12 @@ function Settings() {
               <p>Export a backup, import a backup, or clear all saved app data.</p>
             </div>
 
+            <div className={`settings-environment-status ${IS_DEMO ? "is-demo" : "is-production"}`}>
+              <strong>{IS_DEMO ? "Demo Environment" : "Production Environment"}</strong>
+              <span>{IS_DEMO ? "Demo data is isolated from the customer production environment." : "Production data is isolated from the demo environment."}</span>
+              <code>{APP_MODE}</code>
+            </div>
+
             <div className="settings-data-actions">
               <button type="button" onClick={exportData} disabled={appDataBusy}>
                 <Download size={16} />
@@ -797,25 +808,27 @@ function Settings() {
               </button>
             </div>
 
-            <div className="settings-clear-zone">
-              <div>
-                <Database size={18} />
-                <strong>Clear Data</strong>
-                <span>Type CLEAR, then press Clear Data.</span>
+            {IS_DEMO && (
+              <div className="settings-clear-zone">
+                <div>
+                  <Database size={18} />
+                  <strong>Clear Demo Data</strong>
+                  <span>Type CLEAR, then press Clear Demo Data.</span>
+                </div>
+
+                <input
+                  value={clearConfirm}
+                  onChange={(event) => setClearConfirm(event.target.value)}
+                  placeholder="CLEAR"
+                  disabled={appDataBusy}
+                />
+
+                <button type="button" onClick={clearData} disabled={appDataBusy}>
+                  <Trash2 size={16} />
+                  Clear Demo Data
+                </button>
               </div>
-
-              <input
-                value={clearConfirm}
-                onChange={(event) => setClearConfirm(event.target.value)}
-                placeholder="CLEAR"
-                disabled={appDataBusy}
-              />
-
-              <button type="button" onClick={clearData} disabled={appDataBusy}>
-                <Trash2 size={16} />
-                Clear Data
-              </button>
-            </div>
+            )}
           </section>
         </div>
       )}

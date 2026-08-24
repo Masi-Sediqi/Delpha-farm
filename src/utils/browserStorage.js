@@ -1,7 +1,13 @@
-const databaseName = "afghan-power-browser-data";
+import { IS_PRODUCTION } from "../config/appConfig";
+
+const databaseName = IS_PRODUCTION
+  ? "afghan-power-browser-data-production"
+  : "afghan-power-browser-data";
 const databaseVersion = 1;
 const storeName = "collections";
-const localStoragePrefix = "afghan-power-collection:";
+const localStoragePrefix = IS_PRODUCTION
+  ? "afghan-power-production-collection:"
+  : "afghan-power-collection:";
 
 let databasePromise;
 

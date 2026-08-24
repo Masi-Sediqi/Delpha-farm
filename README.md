@@ -1,3 +1,16 @@
+# Environment Modes
+
+This project has isolated Demo and Production environments.
+
+- Demo (developer): `npm run dev:demo` / `npm run build:demo`
+- Production (customer): `npm run dev:production` / `npm run build:production`
+
+Demo keeps the existing browser database name so current local demo data is preserved. Production uses a separate IndexedDB database and local-storage namespace.
+
+For Vercel customer deployment set `VITE_APP_MODE=production` in Project Settings → Environment Variables, then use the normal `npm run build` command.
+
+---
+
 # React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

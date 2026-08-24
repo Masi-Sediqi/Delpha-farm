@@ -1,696 +1,465 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
-
-function EditIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M12 20h9"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-      <path
-        d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function TrashIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M3 6h18"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-      <path
-        d="M8 6V4h8v2"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-      <path
-        d="M6 6l1 15h10l1-15"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M10 11v6M14 11v6"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-function InfoIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-      <path
-        d="M12 16v-4"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-      <path
-        d="M12 8h.01"
-        stroke="currentColor"
-        strokeWidth="3"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-import "./Suppliers.css";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import {
+  BadgeDollarSign,
+  Building2,
+  Edit3,
+  MapPin,
+  Plus,
+  Search,
+  Trash2,
+  Truck,
+  UserRound,
+  X,
+} from "lucide-react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
+import { confirmAction } from "../utils/confirmDialog";
 import { notify } from "../utils/notify";
-import TablePagination from "../components/TablePagination";
-import { useTablePagination } from "../hooks/useTablePagination";
-import { hasPermission } from "../utils/permissions";
+import "./Suppliers.css";
 
-function Suppliers({ currentUser }) {
-  const [showModal, setShowModal] = useState(false);
-  const [search, setSearch] = useState("");
-  const [editIndex, setEditIndex] = useState(null);
-  const [openAction, setOpenAction] = useState(null);
+const languageKey = "afghan-power-language";
+const rtlLanguages = new Set(["fa", "ps"]);
 
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [deleteIndex, setDeleteIndex] = useState(null);
-
-  const toggleActionMenu = (event, index) => {
-  const rect = event.currentTarget.getBoundingClientRect();
-
-  setActionMenuPosition({
-    top: rect.bottom + 8,
-    left: rect.right - 150,
-  });
-
-  setOpenAction(openAction === index ? null : index);
+const translations = {
+  en: {
+    title: "Suppliers",
+    subtitle: "Register and manage suppliers, balances and contact information.",
+    add: "Register New Supplier",
+    total: "Total Suppliers",
+    active: "Active",
+    inactive: "Inactive",
+    search: "Search supplier, type, contact or phone...",
+    empty: "No suppliers have been registered yet.",
+    supplierName: "Supplier Name",
+    supplierType: "Supplier Type",
+    currency: "Currency",
+    contactPerson: "Contact Person",
+    phone: "Phone Number",
+    address: "Address",
+    openingBalance: "Opening Balance (+ / -)",
+    ledgerPage: "Payment Ledger Page",
+    notes: "Notes",
+    status: "Status",
+    actions: "Actions",
+    addTitle: "Register New Supplier",
+    editTitle: "Edit Supplier",
+    hint: "Enter the supplier information based on the supplier account structure.",
+    selectType: "Select supplier type",
+    selectCurrency: "Select currency",
+    wholesale: "Wholesale",
+    retail: "Retail",
+    pharmacy: "Pharmacy",
+    drugstore: "Drugstore",
+    company: "Company",
+    representative: "Representative",
+    pharmacist: "Pharmacist",
+    inventory: "Inventory",
+    unknown: "Unknown",
+    dostHajiZaman: "Dost Haji Zaman",
+    dostHajiSharif: "Dost Haji Sharif",
+    afn: "Afghani (AFN)",
+    usd: "US Dollar (USD)",
+    pkr: "Kaldar (PKR)",
+    eur: "Euro (EUR)",
+    save: "Save Supplier",
+    update: "Update Supplier",
+    cancel: "Cancel",
+    required: "Please enter the supplier name.",
+    saved: "Supplier saved successfully.",
+    updated: "Supplier updated successfully.",
+    deleted: "Supplier deleted successfully.",
+    confirmDelete: "Delete this supplier?",
+  },
+  fa: {
+    title: "تأمین‌کننده‌گان",
+    subtitle: "تأمین‌کننده‌گان، بیلانس و معلومات ارتباطی آنان را ثبت و مدیریت کنید.",
+    add: "ثبت تأمین‌کننده جدید",
+    total: "تعداد تأمین‌کننده‌گان",
+    active: "فعال",
+    inactive: "غیرفعال",
+    search: "جستجوی نام، نوع، شخص ارتباطی یا شماره تماس...",
+    empty: "هنوز هیچ تأمین‌کننده ثبت نشده است.",
+    supplierName: "نام تأمین‌کننده",
+    supplierType: "نوع",
+    currency: "نوع اسعار",
+    contactPerson: "شخص ارتباطی",
+    phone: "شماره تماس",
+    address: "آدرس",
+    openingBalance: "بیلانس افتتاحیه (+ / -)",
+    ledgerPage: "صفحه کتاب تأدیات",
+    notes: "ملاحظات",
+    status: "حالت",
+    actions: "عملیات",
+    addTitle: "ثبت تأمین‌کننده جدید",
+    editTitle: "اصلاح تأمین‌کننده",
+    hint: "معلومات تأمین‌کننده را مطابق ساختار حساب تأمین‌کننده وارد کنید.",
+    selectType: "نوع تأمین‌کننده را انتخاب کنید",
+    selectCurrency: "نوع اسعار را انتخاب کنید",
+    wholesale: "عمده",
+    retail: "پرچون",
+    pharmacy: "فارمیسی",
+    drugstore: "درملتون",
+    company: "شرکت",
+    representative: "نماینده",
+    pharmacist: "فارمسست",
+    inventory: "موجودی",
+    unknown: "مجهول",
+    dostHajiZaman: "دوست حاجی زمان",
+    dostHajiSharif: "دوست حاجی شریف",
+    afn: "افغانی (AFN)",
+    usd: "دالر (USD)",
+    pkr: "کلدار (PKR)",
+    eur: "یورو (EUR)",
+    save: "ذخیره تأمین‌کننده",
+    update: "ثبت تغییرات",
+    cancel: "لغو",
+    required: "لطفاً نام تأمین‌کننده را وارد کنید.",
+    saved: "تأمین‌کننده با موفقیت ذخیره شد.",
+    updated: "تأمین‌کننده با موفقیت اصلاح شد.",
+    deleted: "تأمین‌کننده با موفقیت حذف شد.",
+    confirmDelete: "این تأمین‌کننده حذف شود؟",
+  },
+  ps: {
+    title: "عرضه کوونکي",
+    subtitle: "عرضه کوونکي، بیلانس او د اړیکو معلومات ثبت او مدیریت کړئ.",
+    add: "نوی عرضه کوونکی ثبتول",
+    total: "ټول عرضه کوونکي",
+    active: "فعال",
+    inactive: "غیرفعال",
+    search: "د نوم، ډول، اړیکې کس یا شمېرې لټون...",
+    empty: "تر اوسه کوم عرضه کوونکی نه دی ثبت شوی.",
+    supplierName: "د عرضه کوونکي نوم",
+    supplierType: "ډول",
+    currency: "د اسعارو ډول",
+    contactPerson: "د اړیکې کس",
+    phone: "د اړیکې شمېره",
+    address: "پته",
+    openingBalance: "افتتاحي بیلانس (+ / -)",
+    ledgerPage: "د تادیاتو کتاب پاڼه",
+    notes: "یادښتونه",
+    status: "حالت",
+    actions: "کړنې",
+    addTitle: "نوی عرضه کوونکی ثبتول",
+    editTitle: "عرضه کوونکی سمول",
+    hint: "د عرضه کوونکي معلومات د حساب د جوړښت مطابق ولیکئ.",
+    selectType: "د عرضه کوونکي ډول وټاکئ",
+    selectCurrency: "اسعار وټاکئ",
+    wholesale: "عمده",
+    retail: "پرچون",
+    pharmacy: "فارمسي",
+    drugstore: "درملتون",
+    company: "شرکت",
+    representative: "استازی",
+    pharmacist: "فارمسست",
+    inventory: "موجودي",
+    unknown: "نامعلوم",
+    dostHajiZaman: "د حاجي زمان دوست",
+    dostHajiSharif: "د حاجي شریف دوست",
+    afn: "افغانۍ (AFN)",
+    usd: "ډالر (USD)",
+    pkr: "کلدار (PKR)",
+    eur: "یورو (EUR)",
+    save: "عرضه کوونکی ذخیره کول",
+    update: "بدلونونه ثبتول",
+    cancel: "لغوه",
+    required: "مهرباني وکړئ د عرضه کوونکي نوم ولیکئ.",
+    saved: "عرضه کوونکی په بریالیتوب ذخیره شو.",
+    updated: "عرضه کوونکی په بریالیتوب سم شو.",
+    deleted: "عرضه کوونکی په بریالیتوب حذف شو.",
+    confirmDelete: "دا عرضه کوونکی حذف شي؟",
+  },
 };
 
-  const [actionMenuPosition, setActionMenuPosition] = useState({
-  top: 0,
-  left: 0,
-});
+const supplierTypes = [
+  "wholesale",
+  "retail",
+  "pharmacy",
+  "drugstore",
+  "company",
+  "representative",
+  "pharmacist",
+  "inventory",
+  "dostHajiZaman",
+  "dostHajiSharif",
+  "unknown",
+];
 
-  const emptyForm = {
-    supplierName: "",
-    companyName: "",
-    contactPerson: "",
-    phone: "",
-    email: "",
-    address: "",
-    taxNumber: "",
-    supplierTypes: [],
-    customSupplierType: "",
-    status: "Active",
-    note: "",
-  };
+const currencyOptions = ["afn", "usd", "pkr", "eur"];
 
+const emptyForm = {
+  supplierName: "",
+  supplierType: "",
+  currency: "afn",
+  contactPerson: "",
+  phone: "",
+  address: "",
+  openingBalance: "",
+  ledgerPage: "",
+  notes: "",
+  status: "active",
+};
+
+export default function Suppliers() {
   const [suppliers, setSuppliers] = useJsonCollection("suppliers");
-  const [formData, setFormData] = useState(emptyForm);
-  const canCreateSupplier = hasPermission(currentUser, "suppliers", "create");
-  const canEditSupplier = hasPermission(currentUser, "suppliers", "edit");
-  const canDeleteSupplier = hasPermission(currentUser, "suppliers", "delete");
+  const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
+  const [search, setSearch] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState(emptyForm);
 
-  const filteredSuppliers = suppliers
-    .map((supplier, originalIndex) => ({ ...supplier, originalIndex }))
-    .filter((supplier) =>
-      (supplier.supplierName || "").toLowerCase().includes(search.toLowerCase()) ||
-      (supplier.companyName || "").toLowerCase().includes(search.toLowerCase()) ||
-      (supplier.contactPerson || "").toLowerCase().includes(search.toLowerCase()) ||
-      (supplier.phone || "").toLowerCase().includes(search.toLowerCase()) ||
-      (supplier.email || "").toLowerCase().includes(search.toLowerCase()) ||
-      (supplier.supplierTypes || []).join(" ").toLowerCase().includes(search.toLowerCase()) ||
-      (supplier.status || "").toLowerCase().includes(search.toLowerCase())
+  const t = translations[language] || translations.en;
+  const direction = rtlLanguages.has(language) ? "rtl" : "ltr";
+
+  useEffect(() => {
+    const syncLanguage = () => setLanguage(localStorage.getItem(languageKey) || "en");
+    window.addEventListener("app-language-updated", syncLanguage);
+    window.addEventListener("storage", syncLanguage);
+    return () => {
+      window.removeEventListener("app-language-updated", syncLanguage);
+      window.removeEventListener("storage", syncLanguage);
+    };
+  }, []);
+
+  useEffect(() => {
+    document.body.classList.toggle("supplier-modal-open", showModal);
+    return () => document.body.classList.remove("supplier-modal-open");
+  }, [showModal]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return suppliers;
+    return suppliers.filter((item) =>
+      [item.supplierName, item.supplierType, item.contactPerson, item.phone, item.address, item.currency]
+        .some((value) => String(value || "").toLowerCase().includes(q))
     );
+  }, [suppliers, search]);
 
-  const supplierPagination = useTablePagination(filteredSuppliers, search);
+  const activeCount = suppliers.filter((item) => item.status !== "inactive").length;
 
-  const totalSuppliers = suppliers.length;
-  const activeSuppliers = suppliers.filter((supplier) => supplier.status === "Active").length;
-  const inactiveSuppliers = suppliers.filter((supplier) => supplier.status === "Inactive").length;
-  const money = (value) => Number(value || 0).toLocaleString("en-US");
-
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-    setFormData((previous) => ({
-      ...previous,
-      [name]: value,
-    }));
-  };
-
-  const toggleSupplierType = (type) => {
-    setFormData((previous) => {
-      const currentTypes = previous.supplierTypes || [];
-      const exists = currentTypes.includes(type);
-
-      return {
-        ...previous,
-        supplierTypes: exists
-          ? currentTypes.filter((item) => item !== type)
-          : [...currentTypes, type],
-      };
-    });
-  };
-
-  const addCustomSupplierType = () => {
-    const customType = formData.customSupplierType.trim();
-
-    if (!customType) return;
-
-    setFormData((previous) => ({
-      ...previous,
-      supplierTypes: Array.from(
-        new Set([...(previous.supplierTypes || []), customType])
-      ),
-      customSupplierType: "",
-    }));
-  };
-
-  const removeSupplierType = (type) => {
-    setFormData((previous) => ({
-      ...previous,
-      supplierTypes: (previous.supplierTypes || []).filter(
-        (item) => item !== type
-      ),
-    }));
-  };
-
-  const resetForm = () => {
-    setFormData(emptyForm);
-    setEditIndex(null);
-  };
-
-  const openCreateModal = () => {
-    if (!canCreateSupplier) {
-      notify("You do not have permission to create supplier records.", "error");
-      return;
-    }
-    resetForm();
+  const openNew = () => {
+    setEditingId(null);
+    setForm(emptyForm);
     setShowModal(true);
   };
+
+  const openEdit = (item) => {
+    setEditingId(item.id);
+    setForm({ ...emptyForm, ...item });
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingId(null);
+    setForm(emptyForm);
+  };
+
+  const updateField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
   const handleSubmit = async (event) => {
-    
     event.preventDefault();
-    
-    const cleanData = {
-      ...formData,
-      supplierName: formData.supplierName.trim(),
-      companyName: formData.companyName.trim(),
-      contactPerson: formData.contactPerson.trim(),
-      phone: formData.phone.trim(),
-      email: formData.email.trim(),
-      address: formData.address.trim(),
-      taxNumber: formData.taxNumber.trim(),
-      supplierTypes: formData.supplierTypes || [],
-      createdAt: formData.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    delete cleanData.customSupplierType;
-
-    if (editIndex !== null) {
-  if (!canEditSupplier) {
-    notify("You do not have permission to edit supplier records.", "error");
-    return;
-  }
-  const updatedSuppliers = [...suppliers];
-  updatedSuppliers[editIndex] = cleanData;
-
-  const saved = await setSuppliers(updatedSuppliers);
-
-  if (saved) {
-    notify("Supplier updated successfully.");
-    resetForm();
-    setShowModal(false);
-  }
-
-  return;
-}
-
-if (!canCreateSupplier) {
-  notify("You do not have permission to create supplier records.", "error");
-  return;
-}
-
-const saved = await setSuppliers([...suppliers, cleanData]);
-
-if (saved) {
-  notify("Supplier saved successfully.");
-  resetForm();
-  setShowModal(false);
-}
-
-    resetForm();
-    setShowModal(false);
-  };
-
-  const editSupplier = (index) => {
-    if (!canEditSupplier) {
-      notify("You do not have permission to edit supplier records.", "error");
+    if (!form.supplierName.trim()) {
+      notify(t.required, "warning");
       return;
     }
-    setEditIndex(index);
-    setFormData({
-      ...emptyForm,
-      ...suppliers[index],
-      supplierTypes: suppliers[index].supplierTypes || [],
-      customSupplierType: "",
-    });
-    setShowModal(true);
-    setOpenAction(null);
+
+    const payload = {
+      ...form,
+      openingBalance: Number(form.openingBalance || 0),
+      updatedAt: new Date().toISOString(),
+    };
+
+    let saved;
+    if (editingId) {
+      saved = await setSuppliers(
+        suppliers.map((item) => item.id === editingId ? { ...item, ...payload } : item)
+      );
+      if (saved) notify(t.updated, "success");
+    } else {
+      saved = await setSuppliers([
+        {
+          ...payload,
+          id: `SUP-${Date.now()}`,
+          createdAt: new Date().toISOString(),
+        },
+        ...suppliers,
+      ]);
+      if (saved) notify(t.saved, "success");
+    }
+
+    if (saved) closeModal();
   };
 
-  const openDeleteModal = (index) => {
-  if (!canDeleteSupplier) {
-    notify("You do not have permission to delete supplier records.", "error");
-    return;
-  }
-  setDeleteIndex(index);
-  setDeleteModalOpen(true);
-  setOpenAction(null);
-};
+  const removeSupplier = async (item) => {
+    const confirmed = await confirmAction({
+      title: t.confirmDelete,
+      message: item.supplierName || t.confirmDelete,
+      confirmText: t.actions === "Actions" ? "Delete" : t.actions,
+      cancelText: t.cancel,
+    });
+    if (!confirmed) return;
+    const saved = await setSuppliers(suppliers.filter((supplier) => supplier.id !== item.id));
+    if (saved) notify(t.deleted, "success");
+  };
 
-const cancelDelete = () => {
-  setDeleteIndex(null);
-  setDeleteModalOpen(false);
-};
-
-const confirmDelete = () => {
-  if (deleteIndex === null) return;
-  if (!canDeleteSupplier) {
-    notify("You do not have permission to delete supplier records.", "error");
-    return;
-  }
-
-  setSuppliers(suppliers.filter((_, supplierIndex) => supplierIndex !== deleteIndex));
-  setDeleteIndex(null);
-  setDeleteModalOpen(false);
-  notify("Supplier deleted successfully.");
-};
-
-  return (
-    <div className="drivers-page suppliers-page">
-      <div className="drivers-header">
-        <div>
-          <h1>Supplier Management</h1>
-          <p>Save, edit, delete, and manage all supplier records.</p>
-        </div>
-
-        {canCreateSupplier && (
-          <button className="driver-add-btn" onClick={openCreateModal}>
-            + Add Supplier
-          </button>
-        )}
-      </div>
-
-      <div className="drivers-stats">
-        <div className="driver-stat-card">
-          <span>Total Suppliers</span>
-          <strong>{totalSuppliers}</strong>
-          <p>All registered suppliers</p>
-        </div>
-
-        <div className="driver-stat-card">
-          <span>Active Suppliers</span>
-          <strong>{activeSuppliers}</strong>
-          <p>Currently active suppliers</p>
-        </div>
-
-        <div className="driver-stat-card">
-          <span>Inactive Suppliers</span>
-          <strong>{inactiveSuppliers}</strong>
-          <p>Disabled supplier records</p>
-        </div>
-
-      </div>
-
-      <div className="drivers-table-card">
-        <div className="drivers-table-header">
+  const modal = showModal ? (
+    <div className="supplier-modal-backdrop" role="presentation" onMouseDown={(e) => e.target === e.currentTarget && closeModal()}>
+      <section className="supplier-modal" dir={direction} role="dialog" aria-modal="true" aria-labelledby="supplier-modal-title">
+        <div className="supplier-modal-header">
           <div>
-            <h3>Supplier List</h3>
-            <p>All suppliers saved in the system</p>
+            <div className="supplier-modal-title-line">
+              <Truck size={22} />
+              <h2 id="supplier-modal-title">{editingId ? t.editTitle : t.addTitle}</h2>
+            </div>
+            <p>{t.hint}</p>
+          </div>
+          <button type="button" className="supplier-close" onClick={closeModal} aria-label={t.cancel}>
+            <X size={19} />
+          </button>
+        </div>
+
+        <form className="supplier-form" onSubmit={handleSubmit}>
+          <div className="supplier-section supplier-section-main">
+            <div className="supplier-section-title"><Building2 size={17} /><span>{t.supplierName}</span></div>
+            <div className="supplier-fields-grid">
+              <div className="supplier-field supplier-field-full">
+                <label>{t.supplierName} *</label>
+                <input autoFocus value={form.supplierName} onChange={(e) => updateField("supplierName", e.target.value)} />
+              </div>
+              <div className="supplier-field">
+                <label>{t.supplierType}</label>
+                <select value={form.supplierType} onChange={(e) => updateField("supplierType", e.target.value)}>
+                  <option value="">{t.selectType}</option>
+                  {supplierTypes.map((type) => <option key={type} value={type}>{t[type]}</option>)}
+                </select>
+              </div>
+              <div className="supplier-field">
+                <label>{t.currency}</label>
+                <select value={form.currency} onChange={(e) => updateField("currency", e.target.value)}>
+                  {currencyOptions.map((currency) => <option key={currency} value={currency}>{t[currency]}</option>)}
+                </select>
+              </div>
+            </div>
           </div>
 
-          <input
-            placeholder="Search supplier..."
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
+          <div className="supplier-section">
+            <div className="supplier-section-title"><UserRound size={17} /><span>{t.contactPerson}</span></div>
+            <div className="supplier-fields-grid">
+              <div className="supplier-field">
+                <label>{t.contactPerson}</label>
+                <input value={form.contactPerson} onChange={(e) => updateField("contactPerson", e.target.value)} />
+              </div>
+              <div className="supplier-field">
+                <label>{t.phone}</label>
+                <input inputMode="tel" value={form.phone} onChange={(e) => updateField("phone", e.target.value)} />
+              </div>
+              <div className="supplier-field supplier-field-full">
+                <label>{t.address}</label>
+                <textarea rows="2" value={form.address} onChange={(e) => updateField("address", e.target.value)} />
+              </div>
+            </div>
+          </div>
+
+          <div className="supplier-section">
+            <div className="supplier-section-title"><BadgeDollarSign size={17} /><span>{t.openingBalance}</span></div>
+            <div className="supplier-fields-grid supplier-account-grid">
+              <div className="supplier-field">
+                <label>{t.openingBalance}</label>
+                <input type="number" step="any" value={form.openingBalance} onChange={(e) => updateField("openingBalance", e.target.value)} />
+                <small>+ / -</small>
+              </div>
+              <div className="supplier-field">
+                <label>{t.ledgerPage}</label>
+                <input value={form.ledgerPage} onChange={(e) => updateField("ledgerPage", e.target.value)} />
+              </div>
+              <div className="supplier-field">
+                <label>{t.status}</label>
+                <div className="supplier-status-switch">
+                  <button type="button" className={form.status === "active" ? "active" : ""} onClick={() => updateField("status", "active")}>{t.active}</button>
+                  <button type="button" className={form.status === "inactive" ? "active" : ""} onClick={() => updateField("status", "inactive")}>{t.inactive}</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="supplier-section">
+            <div className="supplier-section-title"><MapPin size={17} /><span>{t.notes}</span></div>
+            <div className="supplier-field supplier-field-full">
+              <label>{t.notes}</label>
+              <textarea rows="3" value={form.notes} onChange={(e) => updateField("notes", e.target.value)} />
+            </div>
+          </div>
+
+          <div className="supplier-form-actions">
+            <button type="button" className="secondary" onClick={closeModal}>{t.cancel}</button>
+            <button type="submit" className="primary">{editingId ? t.update : t.save}</button>
+          </div>
+        </form>
+      </section>
+    </div>
+  ) : null;
+
+  return (
+    <div className="suppliers-page" dir={direction}>
+      <div className="suppliers-header">
+        <div>
+          <div className="suppliers-title-line"><Truck size={26} /><h1>{t.title}</h1></div>
+          <p>{t.subtitle}</p>
+        </div>
+        <button type="button" className="suppliers-add-btn" onClick={openNew}><Plus size={18} />{t.add}</button>
+      </div>
+
+      <div className="suppliers-stats">
+        <div className="supplier-stat-card"><span>{t.total}</span><strong>{suppliers.length}</strong></div>
+        <div className="supplier-stat-card"><span>{t.active}</span><strong>{activeCount}</strong></div>
+        <div className="supplier-stat-card"><span>{t.inactive}</span><strong>{Math.max(suppliers.length - activeCount, 0)}</strong></div>
+      </div>
+
+      <div className="suppliers-card">
+        <div className="suppliers-toolbar">
+          <div className="suppliers-search"><Search size={17} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t.search} /></div>
         </div>
 
-        <div className="drivers-table-wrap">
-          <table>
+        <div className="suppliers-table-wrap">
+          <table className="suppliers-table">
             <thead>
               <tr>
-                <th>Supplier Name</th>
-                <th>Company</th>
-                <th>Contact Person</th>
-                <th>Phone</th>
-                <th>Email</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th>{t.supplierName}</th>
+                <th>{t.supplierType}</th>
+                <th>{t.currency}</th>
+                <th>{t.contactPerson}</th>
+                <th>{t.phone}</th>
+                <th>{t.openingBalance}</th>
+                <th>{t.status}</th>
+                <th>{t.actions}</th>
               </tr>
             </thead>
-
             <tbody>
-              {supplierPagination.pageItems.map((supplier) => {
-                const index = supplier.originalIndex;
-
-                return (
-                  <tr key={index}>
-                    <td className="driver-name">{supplier.supplierName}</td>
-                    <td>{supplier.companyName || "-"}</td>
-                    <td>{supplier.contactPerson || "-"}</td>
-                    <td>{supplier.phone || "-"}</td>
-                    <td>{supplier.email || "-"}</td>
-                    <td>
-                      <span
-                        className={
-                          supplier.status === "Active"
-                            ? "driver-badge active"
-                            : "driver-badge inactive"
-                        }
-                      >
-                        {supplier.status}
-                      </span>
-                    </td>
-                    <td>
-  <div className="supplier-action-cell">
-    <button
-      type="button"
-      className="action-btn"
-      onClick={(event) => toggleActionMenu(event, index)}
-    >
-      ⋮
-    </button>
-
-    {openAction === index && (
-      <div
-        className="supplier-floating-menu"
-        style={{
-          top: `${actionMenuPosition.top}px`,
-          left: `${actionMenuPosition.left}px`,
-        }}
-      >
-<Link
-  className="supplier-menu-link"
-  to={`/suppliers/${index}`}
-  onClick={() => setOpenAction(null)}
->
-  <InfoIcon />
-  <span>Full Detail</span>
-</Link>
-
-{canEditSupplier && (
-  <button type="button" onClick={() => editSupplier(index)}>
-    <EditIcon />
-    <span>Edit</span>
-  </button>
-)}
-
-{canDeleteSupplier && (
-  <button
-    type="button"
-    className="danger-action"
-    onClick={() => openDeleteModal(index)}
-  >
-    <TrashIcon />
-    <span>Delete</span>
-  </button>
-)}
-      </div>
-    )}
-  </div>
-</td>
-                  </tr>
-                );
-              })}
-
-              {filteredSuppliers.length === 0 && (
-                <tr>
-                  <td colSpan="8" className="employee-empty">
-                    No supplier has been registered yet.
+              {filtered.length ? filtered.map((item) => (
+                <tr key={item.id}>
+                  <td className="supplier-name-cell"><span className="supplier-avatar"><Building2 size={15} /></span><span>{item.supplierName}</span></td>
+                  <td>{item.supplierType ? (t[item.supplierType] || item.supplierType) : "—"}</td>
+                  <td>{t[item.currency] || String(item.currency || "—").toUpperCase()}</td>
+                  <td>{item.contactPerson || "—"}</td>
+                  <td dir="ltr">{item.phone || "—"}</td>
+                  <td className={Number(item.openingBalance || 0) < 0 ? "negative-balance" : ""}>{Number(item.openingBalance || 0).toLocaleString()}</td>
+                  <td><span className={`supplier-status ${item.status === "inactive" ? "inactive" : "active"}`}>{item.status === "inactive" ? t.inactive : t.active}</span></td>
+                  <td>
+                    <div className="suppliers-actions">
+                      <button type="button" onClick={() => openEdit(item)} aria-label={t.editTitle}><Edit3 size={16} /></button>
+                      <button type="button" className="danger" onClick={() => removeSupplier(item)} aria-label={t.confirmDelete}><Trash2 size={16} /></button>
+                    </div>
                   </td>
                 </tr>
+              )) : (
+                <tr><td colSpan="8" className="suppliers-empty">{t.empty}</td></tr>
               )}
             </tbody>
           </table>
         </div>
-
-        <TablePagination
-          page={supplierPagination.page}
-          totalPages={supplierPagination.totalPages}
-          setPage={supplierPagination.setPage}
-          totalItems={filteredSuppliers.length}
-          pageSize={supplierPagination.pageSize}
-          setPageSize={supplierPagination.setPageSize}
-        />
       </div>
 
-      {showModal && (
-        <div className="driver-modal-backdrop">
-          <div className="driver-modal" onClick={(event) => event.stopPropagation()}>
-            <div className="driver-modal-header">
-              <div>
-                <h3>{editIndex !== null ? "Edit Supplier" : "Add New Supplier"}</h3>
-                <p>Enter complete supplier information.</p>
-              </div>
-
-              <button
-                className="driver-close-btn"
-                onClick={() => {
-                  resetForm();
-                  setShowModal(false);
-                }}
-              >
-                ×
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit}>
-              <div className="driver-form-grid">
-                <div className="form-group">
-                  <label>Supplier Name</label>
-                  <input
-                    name="supplierName"
-                    value={formData.supplierName}
-                    onChange={handleChange}
-                    placeholder="Example: Netlink Technologies"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Company Name</label>
-                  <input
-                    name="companyName"
-                    value={formData.companyName}
-                    onChange={handleChange}
-                    placeholder="Example: Netlink Ltd"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Contact Person</label>
-                  <input
-                    name="contactPerson"
-                    value={formData.contactPerson}
-                    onChange={handleChange}
-                    placeholder="Example: Ahmad"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Phone Number</label>
-                  <input
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    placeholder="Example: 0799000000"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Email Address</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    placeholder="Example: info@example.com"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>TIN / Tax Number</label>
-                  <input
-                    name="taxNumber"
-                    value={formData.taxNumber}
-                    onChange={handleChange}
-                    placeholder="Optional"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Status</label>
-                  <select
-                    name="status"
-                    value={formData.status}
-                    onChange={handleChange}
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
-                </div>
-
-                <div className="form-group form-full">
-                  <label>Supplier Services</label>
-
-                  <div className="supplier-type-picker">
-                    <button
-                      type="button"
-                      className={
-                        (formData.supplierTypes || []).includes("Product Supplier")
-                          ? "active"
-                          : ""
-                      }
-                      onClick={() => toggleSupplierType("Product Supplier")}
-                    >
-                      Provides Products
-                    </button>
-
-                    <button
-                      type="button"
-                      className={
-                        (formData.supplierTypes || []).includes("Repair Service")
-                          ? "active"
-                          : ""
-                      }
-                      onClick={() => toggleSupplierType("Repair Service")}
-                    >
-                      Repairs Devices
-                    </button>
-                  </div>
-
-                  <div className="supplier-custom-type-add">
-                    <input
-                      name="customSupplierType"
-                      value={formData.customSupplierType}
-                      onChange={handleChange}
-                      placeholder="Add custom supplier service..."
-                    />
-
-                    <button type="button" onClick={addCustomSupplierType}>
-                      Add
-                    </button>
-                  </div>
-
-                  {(formData.supplierTypes || []).length > 0 && (
-                    <div className="supplier-type-chips">
-                      {(formData.supplierTypes || []).map((type) => (
-                        <button
-                          type="button"
-                          key={type}
-                          onClick={() => removeSupplierType(type)}
-                        >
-                          {type}
-                          <span>×</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="form-group form-full">
-                  <label>Address</label>
-                  <input
-                    name="address"
-                    value={formData.address}
-                    onChange={handleChange}
-                    placeholder="Supplier address"
-                  />
-                </div>
-
-                <div className="form-group form-full">
-                  <label>Notes</label>
-                  <textarea
-                    name="note"
-                    value={formData.note}
-                    onChange={handleChange}
-                    placeholder="Additional supplier notes..."
-                  />
-                </div>
-              </div>
-
-              <div className="driver-modal-actions">
-                <button
-                  type="button"
-                  className="driver-cancel-btn"
-                  onClick={() => {
-                    resetForm();
-                    setShowModal(false);
-                  }}
-                >
-                  Cancel
-                </button>
-
-                <button type="submit" className="driver-save-btn">
-                  {editIndex !== null ? "Save Changes" : "Save Supplier"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-      {deleteModalOpen && (
-  <div className="supplier-delete-backdrop" onClick={cancelDelete}>
-    <div className="supplier-delete-modal" onClick={(event) => event.stopPropagation()}>
-      <div className="supplier-delete-icon">
-        <TrashIcon />
-      </div>
-
-      <h3>Delete Supplier</h3>
-
-      <p>
-        Are you sure you want to delete this supplier? This action cannot be undone.
-      </p>
-
-      <div className="supplier-delete-actions">
-        <button
-          type="button"
-          className="supplier-delete-cancel"
-          onClick={cancelDelete}
-        >
-          Cancel
-        </button>
-
-        <button
-          type="button"
-          className="supplier-delete-confirm"
-          onClick={confirmDelete}
-        >
-          Delete
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+      {showModal && createPortal(modal, document.body)}
     </div>
   );
 }
-
-export default Suppliers;

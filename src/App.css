@@ -7657,3 +7657,8 @@ body[data-theme="neon"].dark-mode [class*="-modal-layer "] {
   -webkit-backdrop-filter: blur(4px) !important;
   backdrop-filter: blur(4px) !important;
 }
+
+
+/* Environment indicator */
+.app-mode-badge{display:inline-flex;align-items:center;justify-content:center;padding:3px 7px;border-radius:999px;font-size:10px;font-weight:900;letter-spacing:.08em;background:rgba(245,158,11,.14);color:#b45309;border:1px solid rgba(245,158,11,.35);white-space:nowrap}
+body[data-theme="black-white"] .app-mode-badge,body[data-theme="neon"] .app-mode-badge{background:rgba(251,191,36,.12);color:#fbbf24;border-color:rgba(251,191,36,.32)}

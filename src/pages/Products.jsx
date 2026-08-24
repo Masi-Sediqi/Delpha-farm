@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { Edit3, PackagePlus, Plus, Search, Trash2, X } from "lucide-react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
@@ -203,6 +204,7 @@ const emptyForm = {
 };
 
 function Products() {
+  const navigate = useNavigate();
   const [products, setProducts] = useJsonCollection("products");
   const [savedGroups, setSavedGroups] = useJsonCollection("salesProductGroups");
   const [companies] = useJsonCollection("companies");
@@ -449,7 +451,7 @@ function Products() {
             </thead>
             <tbody>
               {filteredProducts.map((product) => (
-                <tr key={product.id}>
+                <tr key={product.id} className="sales-product-clickable-row" role="button" tabIndex={0} onClick={() => navigate(`/product-detail/${product.id}`)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") navigate(`/product-detail/${product.id}`); }}>
                   <td className="sales-product-name-cell"><strong>{product.productName}</strong>{product.description && <small>{product.description}</small>}</td>
                   <td><span className="sales-product-group-badge">{product.group || "—"}</span></td>
                   <td>{product.cartonSize || "—"}</td>
@@ -460,8 +462,8 @@ function Products() {
                   <td>{Number(product.purchasePrice || 0).toLocaleString("en-US")}</td>
                   <td>
                     <div className="sales-product-row-actions">
-                      <button type="button" onClick={() => openEdit(product)} title={t.edit}><Edit3 size={15} /></button>
-                      <button type="button" className="danger" onClick={() => deleteProduct(product)} title={t.delete}><Trash2 size={15} /></button>
+                      <button type="button" onClick={(event) => { event.stopPropagation(); openEdit(product); }} title={t.edit}><Edit3 size={15} /></button>
+                      <button type="button" className="danger" onClick={(event) => { event.stopPropagation(); deleteProduct(product); }} title={t.delete}><Trash2 size={15} /></button>
                     </div>
                   </td>
                 </tr>
