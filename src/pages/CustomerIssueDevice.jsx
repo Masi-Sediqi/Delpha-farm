@@ -5,6 +5,7 @@ import { notify } from "../utils/notify";
 import { confirmAction } from "../utils/confirmDialog";
 import { formatDateTime } from "../utils/afghanDate";
 import "./CustomerIssueDevice.css";
+import ShamsiDateInput from "../components/ShamsiDateInput";
 
 function createEmptyIssueForm() {
   return {
@@ -3628,8 +3629,7 @@ if (!movementsSaved) {
               <div className="customer-issue-buyback-grid">
                 <label>
                   Purchase Date
-                  <input
-                    type="date"
+                  <ShamsiDateInput
                     value={buybackForm.purchaseDate}
                     onChange={(event) =>
                       setBuybackForm((previous) => ({
@@ -3642,7 +3642,7 @@ if (!movementsSaved) {
 
                 <label>
                   Purchased By
-                  <input
+                  <ShamsiDateInput
                     value={buybackForm.purchasedBy}
                     onChange={(event) =>
                       setBuybackForm((previous) => ({
@@ -3811,7 +3811,6 @@ if (!movementsSaved) {
           <label>
             Date
             <input
-              type="date"
               value={historyFilters.date}
               onChange={(event) =>
                 setHistoryFilters((previous) => ({
@@ -4275,8 +4274,7 @@ if (!movementsSaved) {
                         Issue Date
                       </label>
 
-                      <input
-                        type="date"
+                      <ShamsiDateInput
                         name="issueDate"
                         value={
                           formData.issueDate
@@ -5229,8 +5227,7 @@ if (!movementsSaved) {
                 <div className="customer-issue-form-group">
                   <label>Issue Date</label>
 
-                  <input
-                    type="date"
+                  <ShamsiDateInput
                     name="issueDate"
                     value={
                       editForm.issueDate

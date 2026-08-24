@@ -714,7 +714,7 @@ const [isDeletingTransfer, setIsDeletingTransfer] =
   const renderLocationSelect = (name, type) => {
     if (["Main Stock", "Repair", "Waste", "Damaged", "Lost", "Disposal", "Any"].includes(type)) {
       return (
-        <input
+        <ShamsiDateInput
           value={type === "Any" ? "Current Location" : type}
           readOnly
           className="device-transfer-readonly"
@@ -1548,7 +1548,7 @@ const deleteTransferRecord = async () => {
 
           <label>
             Device Issue date
-            <input type="date" name="transferDate" value={form.transferDate} onChange={handleChange} />
+            <ShamsiDateInput name="transferDate" value={form.transferDate} onChange={handleChange} />
           </label>
 
           <label>
@@ -1613,7 +1613,7 @@ const deleteTransferRecord = async () => {
                   </label>
                   <label>
                     Received Date
-                    <input type="date" name="depositReceivedDate" value={form.depositReceivedDate} onChange={handleChange} />
+                    <ShamsiDateInput name="depositReceivedDate" value={form.depositReceivedDate} onChange={handleChange} />
                   </label>
                   <label>
                     Payment Method
@@ -1678,7 +1678,7 @@ const deleteTransferRecord = async () => {
               </label>
               <label>
                 Refund Date
-                <input type="date" name="refundDate" value={form.refundDate} onChange={handleChange} />
+                <ShamsiDateInput name="refundDate" value={form.refundDate} onChange={handleChange} />
               </label>
               <label>
                 payment slip refrence
@@ -2059,7 +2059,6 @@ const deleteTransferRecord = async () => {
             <label>
               From Date
               <input
-                type="date"
                 value={recordFilters.dateFrom}
                 onChange={(event) =>
                   setRecordFilters((previous) => ({
@@ -2072,8 +2071,7 @@ const deleteTransferRecord = async () => {
 
             <label>
               To Date
-              <input
-                type="date"
+              <ShamsiDateInput
                 value={recordFilters.dateTo}
                 onChange={(event) =>
                   setRecordFilters((previous) => ({

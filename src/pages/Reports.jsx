@@ -18,6 +18,7 @@ import {
   buildAssetInventoryInsights,
   sumAssetRows,
 } from "../utils/assetInventoryInsights";
+import ShamsiDateInput from "../components/ShamsiDateInput";
 import "./Reports.css";
 
 const money = (value) => Number(value || 0).toLocaleString("en-US");
@@ -364,7 +365,7 @@ function Reports() {
             <header>
               <div class="logo">${logoHtml}</div>
               <div><h1>${escapeHtml(systemName)}</h1><p>${escapeHtml(currentTitle)}</p></div>
-              <div class="date">${escapeHtml(new Date().toLocaleDateString("en-US"))}</div>
+              <div class="date">${escapeHtml(formatDateTime(new Date()))}</div>
             </header>
             <main>
               <section class="cards">
@@ -449,8 +450,8 @@ function Reports() {
 
           <div className="report-filters pro-report-filters report-modern-filters">
             <label><span>Search</span><input value={filters.search} onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))} placeholder="Search records..." /></label>
-            <label><span>From Date</span><input type="date" value={filters.fromDate} onChange={(event) => setFilters((current) => ({ ...current, fromDate: event.target.value }))} /></label>
-            <label><span>To Date</span><input type="date" value={filters.toDate} onChange={(event) => setFilters((current) => ({ ...current, toDate: event.target.value }))} /></label>
+            <label><span>From Date</span><ShamsiDateInput value={filters.fromDate} onChange={(event) => setFilters((current) => ({ ...current, fromDate: event.target.value }))} /></label>
+            <label><span>To Date</span><ShamsiDateInput value={filters.toDate} onChange={(event) => setFilters((current) => ({ ...current, toDate: event.target.value }))} /></label>
             <label><span>Status</span><select value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}>{filterOptions.status.map((option) => <option key={option}>{option}</option>)}</select></label>
             <label><span>Type / Category</span><select value={filters.type} onChange={(event) => setFilters((current) => ({ ...current, type: event.target.value }))}>{filterOptions.type.map((option) => <option key={option}>{option}</option>)}</select></label>
             <div className="report-filter-buttons"><button type="button" onClick={resetFilters}>Reset</button></div>

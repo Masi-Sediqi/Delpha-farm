@@ -16,7 +16,9 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+import ShamsiDateInput from "../components/ShamsiDateInput";
 import { useJsonCollection } from "../hooks/useJsonCollection";
+import { formatDateTime } from "../utils/afghanDate";
 import { notify } from "../utils/notify";
 import "./SupplierDetail.css";
 
@@ -346,7 +348,7 @@ export default function SupplierDetail() {
             <div className="supplier-payment-grid">
               <label>
                 <span><CalendarDays size={15} />{t.paymentDate}</span>
-                <input type="date" value={paymentForm.date} onChange={(e) => setPaymentForm((prev) => ({ ...prev, date: e.target.value }))} />
+                <ShamsiDateInput value={paymentForm.date} onChange={(e) => setPaymentForm((prev) => ({ ...prev, date: e.target.value }))} />
               </label>
               <label>
                 <span><BadgeDollarSign size={15} />{t.amount}</span>
@@ -413,7 +415,7 @@ export default function SupplierDetail() {
               <tbody>
                 {ledger.length ? ledger.map((entry) => (
                   <tr key={entry.id}>
-                    <td>{entry.date ? new Date(entry.date).toLocaleDateString(language === "fa" ? "fa-AF" : language === "ps" ? "ps-AF" : "en-US") : "—"}</td>
+                    <td>{formatDateTime(entry.date)}</td>
                     <td><span className="supplier-ledger-reference">{entry.reference || "—"}</span></td>
                     <td><span className={`supplier-ledger-description ${entry.kind || ""}`}>{entry.description}</span></td>
                     <td className="supplier-ledger-debit">{entry.debit ? entry.debit.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—"}</td>

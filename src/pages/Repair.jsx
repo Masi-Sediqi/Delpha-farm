@@ -3,6 +3,7 @@ import { useJsonCollection } from "../hooks/useJsonCollection";
 import { notify } from "../utils/notify";
 import { formatDateTime, todayDateValue } from "../utils/afghanDate";
 import "./Repair.css";
+import ShamsiDateInput from "../components/ShamsiDateInput";
 
 const money = (value) => Number(value || 0).toLocaleString("en-US");
 const keyOf = (value) => String(value || "");
@@ -620,7 +621,7 @@ export default function Repair() {
               <option value="Fixed">Fixed</option>
               <option value="Not Fixed">Not Fixed</option>
             </select>
-            <input
+            <ShamsiDateInput
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search asset, source, reference..."
@@ -738,7 +739,6 @@ export default function Repair() {
                 <label>
                   Result Date
                   <input
-                    type="date"
                     value={resultForm.resultDate}
                     onChange={(event) => setResultForm((previous) => ({ ...previous, resultDate: event.target.value }))}
                   />

@@ -8023,3 +8023,588 @@ body[data-theme="aurora"].dark-mode .app-confirm-modal {
     flex: 1;
   }
 }
+
+/* Final visual standard: shared cards and modal fade-in across the whole app. */
+:root {
+  --app-card-radius: 8px;
+  --app-card-padding: 14px;
+  --app-card-border: var(--border-color, #e5e7eb);
+  --app-card-surface: var(--card-bg, #ffffff);
+  --app-card-shadow: 0 8px 22px rgba(15, 23, 42, 0.045);
+  --app-stat-min-height: 76px;
+  --app-content-card-min-height: 66px;
+  --app-icon-tile-size: 40px;
+  --app-icon-tile-radius: 8px;
+  --app-icon-tile-bg: color-mix(in srgb, var(--company-accent, #2563eb) 11%, transparent);
+  --app-icon-tile-color: var(--company-accent, #2563eb);
+}
+
+@keyframes appModalBackdropFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes appModalPanelFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+:is(.card, .table-card, [class$="-card"], [class*="-card "], [class$="-table-card"], [class*="-table-card "]) {
+  border: 1px solid var(--app-card-border) !important;
+  border-radius: var(--app-card-radius) !important;
+  background: var(--app-card-surface) !important;
+  box-shadow: var(--app-card-shadow) !important;
+  color: var(--text-primary, inherit);
+}
+
+:is(.card, [class$="-card"], [class*="-card "]) {
+  min-height: var(--app-content-card-min-height);
+}
+
+:is(.stat, [class$="-stat"], [class*="-stat "], [class$="-stat-card"], [class*="-stat-card "], [class$="-stats"] > *, [class*="-stats "] > *) {
+  min-height: var(--app-stat-min-height) !important;
+  border: 1px solid var(--app-card-border) !important;
+  border-radius: var(--app-card-radius) !important;
+  background: var(--app-card-surface) !important;
+  box-shadow: var(--app-card-shadow) !important;
+  padding: var(--app-card-padding) !important;
+  text-align: center !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+}
+
+:is(.stat, [class$="-stat"], [class*="-stat "], [class$="-stat-card"], [class*="-stat-card "]) :is(span, small, p) {
+  line-height: 1.35;
+}
+
+:is(.stat, [class$="-stat"], [class*="-stat "], [class$="-stat-card"], [class*="-stat-card "]) :is(strong, h2) {
+  line-height: 1.15;
+  word-break: break-word;
+}
+
+:is(
+  .stat,
+  [class$="-stat"],
+  [class*="-stat "],
+  [class$="-stat-card"],
+  [class*="-stat-card "],
+  [class$="-stats"] > *,
+  [class*="-stats "] > *
+) > :is(svg, .icon, [class$="-icon"], [class*="-icon "], [class$="-icon-box"], [class*="-icon-box "], [class$="-avatar"], [class*="-avatar "], span:first-child) {
+  width: var(--app-icon-tile-size) !important;
+  height: var(--app-icon-tile-size) !important;
+  min-width: var(--app-icon-tile-size) !important;
+  min-height: var(--app-icon-tile-size) !important;
+  margin: 0 auto 8px !important;
+  border-radius: var(--app-icon-tile-radius) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: var(--app-icon-tile-bg) !important;
+  color: var(--app-icon-tile-color) !important;
+}
+
+:is(
+  .card:not(.table-card),
+  [class$="-card"]:not([class$="-table-card"]),
+  [class*="-card "]:not([class*="-table-card "])
+) > :is(.icon, [class$="-icon"], [class*="-icon "], [class$="-icon-box"], [class*="-icon-box "]) {
+  width: var(--app-icon-tile-size) !important;
+  height: var(--app-icon-tile-size) !important;
+  min-width: var(--app-icon-tile-size) !important;
+  min-height: var(--app-icon-tile-size) !important;
+  border-radius: var(--app-icon-tile-radius) !important;
+  background: var(--app-icon-tile-bg) !important;
+  color: var(--app-icon-tile-color) !important;
+}
+
+[class$="-modal-backdrop"],
+[class*="-modal-backdrop "],
+[class$="-modal-layer"],
+[class*="-modal-layer "],
+[class$="-modal-overlay"],
+[class*="-modal-overlay "],
+[class$="-overlay"],
+[class*="-overlay "],
+.app-confirm-backdrop,
+.app-confirm-overlay {
+  animation: appModalBackdropFadeIn 0.22s ease-out both !important;
+}
+
+[class$="-modal"],
+[class*="-modal "],
+.app-confirm-modal {
+  animation: appModalPanelFadeIn 0.24s cubic-bezier(0.22, 1, 0.36, 1) both !important;
+}
+
+body.dark-mode {
+  --app-card-border: var(--border-color, #334155);
+  --app-card-surface: var(--card-bg, #1e293b);
+  --app-card-shadow: 0 16px 40px rgba(0, 0, 0, 0.22);
+  --app-icon-tile-bg: color-mix(in srgb, var(--company-accent, #38bdf8) 18%, transparent);
+  --app-icon-tile-color: var(--company-accent, #38bdf8);
+}
+
+body[data-theme="minimalism"] {
+  --app-card-shadow: none;
+}
+
+body[data-theme="clay-minimalism"] {
+  --app-card-shadow: 10px 10px 24px rgba(148, 163, 184, 0.16), -6px -6px 18px rgba(255, 255, 255, 0.72);
+}
+
+body[data-theme="glassmorphism"] {
+  --app-card-surface: rgba(255, 255, 255, 0.72);
+  --app-card-border: rgba(255, 255, 255, 0.58);
+  --app-card-shadow: 0 18px 48px rgba(99, 102, 241, 0.1);
+}
+
+body[data-theme="black-white"].dark-mode {
+  --app-card-surface: #111111;
+  --app-card-border: #3f3f46;
+  --app-card-shadow: 0 16px 44px rgba(0, 0, 0, 0.34);
+  --app-icon-tile-bg: #ffffff;
+  --app-icon-tile-color: #000000;
+}
+
+body[data-theme="aurora"].dark-mode {
+  --app-card-surface: linear-gradient(145deg, rgba(8, 14, 48, 0.88), rgba(5, 9, 34, 0.94));
+  --app-card-border: var(--aurora-line);
+  --app-card-shadow: 0 18px 48px rgba(0, 0, 0, 0.26), inset 0 1px rgba(255, 255, 255, 0.04);
+}
+
+body[data-theme="neon"].dark-mode {
+  --app-card-surface: linear-gradient(145deg, rgba(17, 25, 54, 0.96), rgba(8, 12, 31, 0.98));
+  --app-card-border: rgba(34, 211, 238, 0.28);
+  --app-card-shadow: 0 0 28px rgba(34, 211, 238, 0.08), 0 20px 48px rgba(0, 0, 0, 0.25);
+}
+
+@media (max-width: 760px) {
+  :root {
+    --app-card-padding: 12px;
+    --app-stat-min-height: 70px;
+    --app-icon-tile-size: 36px;
+  }
+
+  :is([class$="-stats"], [class*="-stats "], .stats) {
+    gap: 10px !important;
+  }
+}
+
+@media (max-width: 440px) {
+  :root {
+    --app-card-padding: 10px;
+    --app-icon-tile-size: 34px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [class$="-modal-backdrop"],
+  [class*="-modal-backdrop "],
+  [class$="-modal-layer"],
+  [class*="-modal-layer "],
+  [class$="-modal-overlay"],
+  [class*="-modal-overlay "],
+  [class$="-overlay"],
+  [class*="-overlay "],
+  [class$="-modal"],
+  [class*="-modal "],
+  .app-confirm-backdrop,
+  .app-confirm-overlay,
+  .app-confirm-modal {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* Final card style requested by reference: compact metric cards with side accent. */
+:root {
+  --app-card-radius: 8px;
+  --app-card-padding: 18px;
+  --app-stat-min-height: 96px;
+  --app-card-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  --app-stat-accent: #22c55e;
+  --app-icon-tile-size: 40px;
+  --app-icon-tile-bg: color-mix(in srgb, var(--app-stat-accent) 13%, transparent);
+  --app-icon-tile-color: var(--app-stat-accent);
+}
+
+:is(.stat, [class$="-stat"], [class*="-stat "], [class$="-stat-card"], [class*="-stat-card "], [class$="-stats"] > *, [class*="-stats "] > *) {
+  position: relative !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 14px !important;
+  min-height: var(--app-stat-min-height) !important;
+  padding: var(--app-card-padding) !important;
+  text-align: start !important;
+  overflow: hidden !important;
+  border-inline-start: 4px solid var(--app-stat-accent) !important;
+}
+
+:is(.stat, [class$="-stat"], [class*="-stat "], [class$="-stat-card"], [class*="-stat-card "], [class$="-stats"] > *, [class*="-stats "] > *):nth-child(4n + 1) {
+  --app-stat-accent: #22c55e;
+}
+
+:is(.stat, [class$="-stat"], [class*="-stat "], [class$="-stat-card"], [class*="-stat-card "], [class$="-stats"] > *, [class*="-stats "] > *):nth-child(4n + 2) {
+  --app-stat-accent: #0ea5e9;
+}
+
+:is(.stat, [class$="-stat"], [class*="-stat "], [class$="-stat-card"], [class*="-stat-card "], [class$="-stats"] > *, [class*="-stats "] > *):nth-child(4n + 3) {
+  --app-stat-accent: #f59e0b;
+}
+
+:is(.stat, [class$="-stat"], [class*="-stat "], [class$="-stat-card"], [class*="-stat-card "], [class$="-stats"] > *, [class*="-stats "] > *):nth-child(4n) {
+  --app-stat-accent: #ef4444;
+}
+
+:is(.stat, [class$="-stat"], [class*="-stat "], [class$="-stat-card"], [class*="-stat-card "]) > div:not([class*="icon"]):not([class*="avatar"]) {
+  min-width: 0;
+}
+
+:is(.stat, [class$="-stat"], [class*="-stat "], [class$="-stat-card"], [class*="-stat-card "]) :is(span, small, p) {
+  color: var(--text-secondary, #475569) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  text-align: start !important;
+}
+
+:is(.stat, [class$="-stat"], [class*="-stat "], [class$="-stat-card"], [class*="-stat-card "]) :is(strong, h2) {
+  color: var(--text-primary, #020617) !important;
+  display: block;
+  margin-top: 6px;
+  font-size: clamp(20px, 2vw, 26px) !important;
+  font-weight: 900 !important;
+  letter-spacing: 0 !important;
+  text-align: start !important;
+}
+
+:is(
+  .stat,
+  [class$="-stat"],
+  [class*="-stat "],
+  [class$="-stat-card"],
+  [class*="-stat-card "],
+  [class$="-stats"] > *,
+  [class*="-stats "] > *
+) > :is(svg, .icon, [class$="-icon"], [class*="-icon "], [class$="-icon-box"], [class*="-icon-box "], [class$="-avatar"], [class*="-avatar "], span:first-child) {
+  width: var(--app-icon-tile-size) !important;
+  height: var(--app-icon-tile-size) !important;
+  min-width: var(--app-icon-tile-size) !important;
+  min-height: var(--app-icon-tile-size) !important;
+  margin: 0 !important;
+  border-radius: 8px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: var(--app-icon-tile-bg) !important;
+  color: var(--app-icon-tile-color) !important;
+  order: 2;
+}
+
+.app[dir="rtl"] :is(.stat, [class$="-stat"], [class*="-stat "], [class$="-stat-card"], [class*="-stat-card "], [class$="-stats"] > *, [class*="-stats "] > *) {
+  text-align: right !important;
+}
+
+body.dark-mode :is(.stat, [class$="-stat"], [class*="-stat "], [class$="-stat-card"], [class*="-stat-card "]) :is(strong, h2) {
+  color: #f8fafc !important;
+}
+
+@media (max-width: 760px) {
+  :root {
+    --app-stat-min-height: 88px;
+    --app-card-padding: 14px;
+    --app-icon-tile-size: 36px;
+  }
+}
+
+/* Dashboard card design applied to every page card. */
+:is(.card, .stat, .table-card, [class$="-card"], [class*="-card "], [class$="-table-card"], [class*="-table-card "]) {
+  --dashboard-card-accent: #6d5dfc;
+  --dashboard-card-glow: rgba(109, 93, 252, 0.18);
+  position: relative !important;
+  isolation: isolate;
+  overflow: hidden !important;
+  border: 1px solid var(--app-card-border) !important;
+  border-inline-start: 1px solid var(--app-card-border) !important;
+  border-radius: 20px !important;
+  background: var(--app-card-surface) !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.07) !important;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease !important;
+}
+
+:is(.card, .stat, .table-card, [class$="-card"], [class*="-card "], [class$="-table-card"], [class*="-table-card "]):nth-child(4n + 1) {
+  --dashboard-card-accent: #6d5dfc;
+  --dashboard-card-glow: rgba(109, 93, 252, 0.18);
+}
+
+:is(.card, .stat, .table-card, [class$="-card"], [class*="-card "], [class$="-table-card"], [class*="-table-card "]):nth-child(4n + 2) {
+  --dashboard-card-accent: #0ea5e9;
+  --dashboard-card-glow: rgba(14, 165, 233, 0.18);
+}
+
+:is(.card, .stat, .table-card, [class$="-card"], [class*="-card "], [class$="-table-card"], [class*="-table-card "]):nth-child(4n + 3) {
+  --dashboard-card-accent: #10b981;
+  --dashboard-card-glow: rgba(16, 185, 129, 0.18);
+}
+
+:is(.card, .stat, .table-card, [class$="-card"], [class*="-card "], [class$="-table-card"], [class*="-table-card "]):nth-child(4n) {
+  --dashboard-card-accent: #f59e0b;
+  --dashboard-card-glow: rgba(245, 158, 11, 0.2);
+}
+
+:is(.card, .stat, .table-card, [class$="-card"], [class*="-card "], [class$="-table-card"], [class*="-table-card "])::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 96px;
+  height: 96px;
+  inset-block-start: -43px;
+  inset-inline-end: -30px;
+  border-radius: 50%;
+  background: var(--dashboard-card-glow);
+  transition: transform 0.28s ease;
+  pointer-events: none;
+}
+
+:is(.card, .stat, .table-card, [class$="-card"], [class*="-card "], [class$="-table-card"], [class*="-table-card "])::after {
+  content: "";
+  position: absolute;
+  inset-block: 18px;
+  inset-inline-start: 0;
+  width: 4px;
+  border-radius: 0 8px 8px 0;
+  background: var(--dashboard-card-accent);
+  pointer-events: none;
+}
+
+:is(.card, .stat, .table-card, [class$="-card"], [class*="-card "], [class$="-table-card"], [class*="-table-card "]):hover {
+  transform: translateY(-3px) !important;
+  border-color: color-mix(in srgb, var(--dashboard-card-accent) 35%, #e8ecf2) !important;
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.14) !important;
+}
+
+:is(.card, .stat, .table-card, [class$="-card"], [class*="-card "], [class$="-table-card"], [class*="-table-card "]):hover::before {
+  transform: scale(1.35);
+}
+
+:is(.card, .stat, [class$="-card"], [class*="-card "], [class$="-stat"], [class*="-stat "], [class$="-stat-card"], [class*="-stat-card "]) :is(strong, h2) {
+  color: var(--dashboard-card-accent) !important;
+}
+
+:is(.stat, [class$="-stat"], [class*="-stat "], [class$="-stat-card"], [class*="-stat-card "], [class$="-stats"] > *, [class*="-stats "] > *) {
+  flex-direction: row !important;
+  text-align: start !important;
+  min-height: 104px !important;
+  padding: 19px 20px !important;
+}
+
+:is(.stat, [class$="-stat"], [class*="-stat "], [class$="-stat-card"], [class*="-stat-card "], [class$="-stats"] > *, [class*="-stats "] > *) > :is(svg, .icon, [class$="-icon"], [class*="-icon "], [class$="-icon-box"], [class*="-icon-box "], [class$="-avatar"], [class*="-avatar "], span:first-child) {
+  background: var(--dashboard-card-glow) !important;
+  color: var(--dashboard-card-accent) !important;
+}
+
+body.dark-mode :is(.card, .stat, .table-card, [class$="-card"], [class*="-card "], [class$="-table-card"], [class*="-table-card "]):hover {
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.32) !important;
+}
+
+@media (max-width: 760px) {
+  :is(.card, .stat, .table-card, [class$="-card"], [class*="-card "], [class$="-table-card"], [class*="-table-card "]) {
+    border-radius: 16px !important;
+  }
+
+  :is(.stat, [class$="-stat"], [class*="-stat "], [class$="-stat-card"], [class*="-stat-card "], [class$="-stats"] > *, [class*="-stats "] > *) {
+    min-height: 92px !important;
+    padding: 15px 16px !important;
+  }
+}
+
+/* Keep Dashboard cards expressive; simplify cards everywhere else. */
+:is(
+  .card,
+  .stat,
+  .table-card,
+  [class$="-card"],
+  [class*="-card "],
+  [class$="-table-card"],
+  [class*="-table-card "]
+):not(
+  .dashboard-modern-card,
+  .dashboard-static-card,
+  .dashboard-category-card,
+  .dashboard-drill-card,
+  .dashboard-chart-card,
+  .dashboard-insight-card
+) {
+  overflow: hidden !important;
+  border: 1px solid var(--app-card-border) !important;
+  border-inline-start: 1px solid var(--app-card-border) !important;
+  border-radius: 12px !important;
+  background: var(--app-card-surface) !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.045) !important;
+  transform: none !important;
+}
+
+:is(
+  .card,
+  .stat,
+  .table-card,
+  [class$="-card"],
+  [class*="-card "],
+  [class$="-table-card"],
+  [class*="-table-card "]
+):not(
+  .dashboard-modern-card,
+  .dashboard-static-card,
+  .dashboard-category-card,
+  .dashboard-drill-card,
+  .dashboard-chart-card,
+  .dashboard-insight-card
+)::before,
+:is(
+  .card,
+  .stat,
+  .table-card,
+  [class$="-card"],
+  [class*="-card "],
+  [class$="-table-card"],
+  [class*="-table-card "]
+):not(
+  .dashboard-modern-card,
+  .dashboard-static-card,
+  .dashboard-category-card,
+  .dashboard-drill-card,
+  .dashboard-chart-card,
+  .dashboard-insight-card
+)::after {
+  display: none !important;
+  content: none !important;
+}
+
+:is(
+  .card,
+  .stat,
+  .table-card,
+  [class$="-card"],
+  [class*="-card "],
+  [class$="-table-card"],
+  [class*="-table-card "]
+):not(
+  .dashboard-modern-card,
+  .dashboard-static-card,
+  .dashboard-category-card,
+  .dashboard-drill-card,
+  .dashboard-chart-card,
+  .dashboard-insight-card
+):hover {
+  transform: none !important;
+  border-color: var(--app-card-border) !important;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06) !important;
+}
+
+body.dark-mode :is(
+  .card,
+  .stat,
+  .table-card,
+  [class$="-card"],
+  [class*="-card "],
+  [class$="-table-card"],
+  [class*="-table-card "]
+):not(
+  .dashboard-modern-card,
+  .dashboard-static-card,
+  .dashboard-category-card,
+  .dashboard-drill-card,
+  .dashboard-chart-card,
+  .dashboard-insight-card
+) {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18) !important;
+}
+
+/* Remove top summary stat cards outside Dashboard. */
+.page-fade-shell:not(.route-dashboard) :is(
+  .stats,
+  .dashboard-modern-stats,
+  .dashboard-stats-expanded,
+  .dashboard-control-stats,
+  [class$="-stats"],
+  [class*="-stats "]
+) {
+  display: none !important;
+}
+
+.page-fade-shell:not(.route-dashboard) :is(
+  .sales-products-stats,
+  .supplier-stats,
+  .suppliers-stats,
+  .purchasing-stats,
+  .sales-register-stats,
+  .customer-detail-stats,
+  .product-detail-stats,
+  .supplier-detail-stat-grid,
+  .settings-stats,
+  .report-stats
+) {
+  display: none !important;
+}
+
+/* Non-dashboard pages should not inherit dashboard green/accent text treatment. */
+.page-fade-shell:not(.route-dashboard) :is(
+  .card,
+  .stat,
+  .table-card,
+  [class$="-card"],
+  [class*="-card "],
+  [class$="-table-card"],
+  [class*="-table-card "]
+) :is(h2, h3, h4, strong, b, a, td, th, span) {
+  color: var(--text-primary, #0f172a) !important;
+}
+
+.page-fade-shell:not(.route-dashboard) :is(
+  .card,
+  .stat,
+  .table-card,
+  [class$="-card"],
+  [class*="-card "],
+  [class$="-table-card"],
+  [class*="-table-card "]
+) :is(p, small, label) {
+  color: var(--text-secondary, #64748b) !important;
+}
+
+.page-fade-shell:not(.route-dashboard) :is(.status-active, .badge-success, .success, .active-badge) {
+  color: #047857 !important;
+}
+
+.page-fade-shell:not(.route-dashboard) :is(.danger, .error, .delete, .status-inactive, .badge-danger) {
+  color: #dc2626 !important;
+}
+
+.page-fade-shell:not(.route-dashboard) :is(.warning, .pending, .badge-warning) {
+  color: #d97706 !important;
+}
+
+body.dark-mode .page-fade-shell:not(.route-dashboard) :is(
+  .card,
+  .stat,
+  .table-card,
+  [class$="-card"],
+  [class*="-card "],
+  [class$="-table-card"],
+  [class*="-table-card "]
+) :is(h2, h3, h4, strong, b, a, td, th, span) {
+  color: #f8fafc !important;
+}

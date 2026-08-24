@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import { formatDateTime } from "../utils/afghanDate";
 import "./AssetAuditTrail.css";
+import ShamsiDateInput from "../components/ShamsiDateInput";
 
 const money = (value) => Number(value || 0).toLocaleString("en-US");
 
@@ -237,8 +238,7 @@ export default function AssetAuditTrail() {
         <div className="asset-audit-filters">
           <label>
             Date
-            <input
-              type="date"
+            <ShamsiDateInput
               value={filters.date}
               onChange={(event) => setFilters((previous) => ({ ...previous, date: event.target.value }))}
             />

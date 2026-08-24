@@ -82,6 +82,10 @@ export function gregorianToAfghan(value) {
   return d2j(g2d(gy, gm, gd));
 }
 
+export function getAfghanToday() {
+  return gregorianToAfghan(todayDateValue());
+}
+
 export function afghanToGregorian(jy, jm, jd) {
   if (!jy || !jm || !jd) return "";
   const { gy, gm, gd } = d2g(j2d(Number(jy), Number(jm), Number(jd)));
@@ -111,21 +115,33 @@ export function formatAfghanDate(value, options = {}) {
   if (!value) return options.fallback ?? "-";
 
   const rawValue = String(value);
+  const separator = options.separator ?? "/";
+  const pad = Boolean(options.pad);
+
+  const formatParts = ({ jy, jm, jd }) => {
+    const month = pad ? String(jm).padStart(2, "0") : String(jm);
+    const day = pad ? String(jd).padStart(2, "0") : String(jd);
+    return `${jy}${separator}${month}${separator}${day}`;
+  };
 
   if (/^\d{4}-\d{2}-\d{2}$/.test(rawValue)) {
-    return rawValue;
+    const afghanDate = gregorianToAfghan(rawValue);
+    return afghanDate ? formatParts(afghanDate) : rawValue;
   }
 
   const parsedDate = new Date(value);
 
   if (Number.isNaN(parsedDate.getTime())) return rawValue.slice(0, 10);
 
-  return new Intl.DateTimeFormat("en-CA", {
+  const gregorianDate = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Kabul",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).format(parsedDate);
+  const afghanDate = gregorianToAfghan(gregorianDate);
+
+  return afghanDate ? formatParts(afghanDate) : gregorianDate;
 }
 
 export function formatTime(value, options = {}) {
@@ -162,5 +178,7 @@ export function formatDateTime(value, timeSourceOrOptions = {}, maybeOptions = {
 }
 
 export function formatAfghanMonth(value) {
-  return value ? String(value).slice(0, 7) : "-";
+  const afghanDate = gregorianToAfghan(value);
+  if (!afghanDate) return value ? String(value).slice(0, 7) : "-";
+  return `${afghanDate.jy}/${String(afghanDate.jm).padStart(2, "0")}`;
 }

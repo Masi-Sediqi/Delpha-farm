@@ -12,8 +12,10 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import ShamsiDateInput from "../components/ShamsiDateInput";
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import { confirmAction } from "../utils/confirmDialog";
+import { formatDateTime } from "../utils/afghanDate";
 import { notify } from "../utils/notify";
 import "./Purchasing.css";
 
@@ -444,7 +446,7 @@ function Purchasing() {
             <thead><tr><th>{t.billNo}</th><th>{t.supplier}</th><th>{t.items}</th><th>{t.total}</th><th>{t.paid}</th><th>{t.remaining}</th><th>{t.paymentType}</th><th>{t.date}</th><th>{t.actions}</th></tr></thead>
             <tbody>
               {filteredPurchases.map((item) => (
-                <tr key={item.id}><td>{item.billNumber}</td><td>{item.supplierName || supplierName(item.supplierId) || item.companyName || "—"}</td><td>{item.items?.length || 0}</td><td>{numeric(item.totalAmount).toFixed(2)}</td><td>{numeric(item.paidAmount).toFixed(2)}</td><td>{numeric(item.remainingAmount).toFixed(2)}</td><td>{item.paymentMode === "installment" ? t.installment : t.cash}</td><td>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "—"}</td><td><div className="purchasing-row-actions"><button type="button" className="edit" onClick={() => openEdit(item)} title={t.edit} aria-label={t.edit}><Edit3 size={15} /></button><button type="button" className="delete" onClick={() => deletePurchase(item)} title={t.delete} aria-label={t.delete}><Trash2 size={15} /></button></div></td></tr>
+                <tr key={item.id}><td>{item.billNumber}</td><td>{item.supplierName || supplierName(item.supplierId) || item.companyName || "—"}</td><td>{item.items?.length || 0}</td><td>{numeric(item.totalAmount).toFixed(2)}</td><td>{numeric(item.paidAmount).toFixed(2)}</td><td>{numeric(item.remainingAmount).toFixed(2)}</td><td>{item.paymentMode === "installment" ? t.installment : t.cash}</td><td>{formatDateTime(item.createdAt)}</td><td><div className="purchasing-row-actions"><button type="button" className="edit" onClick={() => openEdit(item)} title={t.edit} aria-label={t.edit}><Edit3 size={15} /></button><button type="button" className="delete" onClick={() => deletePurchase(item)} title={t.delete} aria-label={t.delete}><Trash2 size={15} /></button></div></td></tr>
               ))}
               {!filteredPurchases.length && <tr><td colSpan="9" className="purchasing-empty">{t.noPurchases}</td></tr>}
             </tbody>
@@ -486,7 +488,7 @@ function Purchasing() {
                       <label><span>{t.discount}</span><input type="number" min="0" step="0.01" value={item.discount} onChange={(e) => updateItem(item.productId, "discount", e.target.value)} /></label>
                       <label><span>{t.lineTotal}</span><input value={lineTotal(item).toFixed(2)} readOnly /></label>
                       <label><span>{t.salePrice}</span><input type="number" min="0" step="0.01" value={item.salePrice} onChange={(e) => updateItem(item.productId, "salePrice", e.target.value)} /></label>
-                      <label><span><CalendarDays size={14} />{t.expiryDate}</span><input type="date" value={item.expiryDate} onChange={(e) => updateItem(item.productId, "expiryDate", e.target.value)} /></label>
+                      <label><span><CalendarDays size={14} />{t.expiryDate}</span><ShamsiDateInput value={item.expiryDate} onChange={(e) => updateItem(item.productId, "expiryDate", e.target.value)} /></label>
                       <label className="purchasing-stock-field"><span>{t.currentStock}</span><input value={item.currentStock} readOnly /></label>
                     </div>
                   </article>

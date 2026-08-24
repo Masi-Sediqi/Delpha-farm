@@ -14,6 +14,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
+import { formatDateTime } from "../utils/afghanDate";
 import "./ProductDetail.css";
 
 const languageKey = "afghan-power-language";
@@ -338,7 +339,7 @@ function ProductDetail() {
                   <tr key={`${row.purchase?.id || index}-${index}`}>
                     <td><strong>{row.purchase?.billNumber || t.unknown}</strong></td>
                     <td>{row.purchase?.supplierName || row.purchase?.companyName || t.unknown}</td>
-                    <td>{row.purchase?.createdAt ? new Date(row.purchase.createdAt).toLocaleDateString() : t.unknown}</td>
+                    <td>{formatDateTime(row.purchase?.createdAt, { fallback: t.unknown })}</td>
                     <td>{money(row.quantity)}</td>
                     <td>{money(row.bonus)}</td>
                     <td>{money(row.purchasePrice)}</td>
@@ -363,7 +364,7 @@ function ProductDetail() {
                   <tr key={`${row.sale?.id || index}-${index}`}>
                     <td><strong>{row.sale?.invoiceNumber || t.unknown}</strong></td>
                     <td>{row.sale?.customerName || t.unknown}</td>
-                    <td>{row.sale?.saleDate || (row.sale?.createdAt ? new Date(row.sale.createdAt).toLocaleDateString() : t.unknown)}</td>
+                    <td>{formatDateTime(row.sale?.saleDate || row.sale?.createdAt, { fallback: t.unknown })}</td>
                     <td>{money(row.quantity)}</td>
                     <td>{money(row.salePrice)}</td>
                     <td>{money(row.discount)}</td>

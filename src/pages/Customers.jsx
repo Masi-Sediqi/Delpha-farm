@@ -10,6 +10,7 @@ import {
   sumCustomerRows,
 } from "../utils/customerInsights";
 import "./Customers.css";
+import ShamsiDateInput from "../components/ShamsiDateInput";
 
 const emptyForm = {
   customerId: "",
@@ -889,8 +890,7 @@ const saveIssueDevice = async (event) => {
 
                 <div className="customer-form-group">
                   <label>Activation date</label>
-                  <input
-                    type="date"
+                  <ShamsiDateInput
                     name="registrationDate"
                     value={formData.registrationDate}
                     onChange={handleChange}
@@ -1045,8 +1045,7 @@ const saveIssueDevice = async (event) => {
 
           <div className="customer-form-group">
             <label>Issue Date</label>
-            <input
-              type="date"
+            <ShamsiDateInput
               name="issueDate"
               value={issueDeviceForm.issueDate}
               onChange={handleIssueDeviceChange}

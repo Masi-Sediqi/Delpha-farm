@@ -13,6 +13,7 @@ import {
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import { formatDateTime, todayDateValue } from "../utils/afghanDate";
 import "./AssetFullInformation.css";
+import ShamsiDateInput from "../components/ShamsiDateInput";
 
 const today = () => todayDateValue();
 
@@ -435,8 +436,7 @@ function AssetInsightDetails() {
           <div className="asset-insight-custom-range">
             <label>
               From
-              <input
-                type="date"
+              <ShamsiDateInput
                 value={customRange.from}
                 onChange={(event) =>
                   setCustomRange((previous) => ({ ...previous, from: event.target.value }))
@@ -445,8 +445,7 @@ function AssetInsightDetails() {
             </label>
             <label>
               To
-              <input
-                type="date"
+              <ShamsiDateInput
                 value={customRange.to}
                 onChange={(event) =>
                   setCustomRange((previous) => ({ ...previous, to: event.target.value }))
@@ -659,8 +658,7 @@ function AssetInsightDetails() {
               <div className="asset-detail-form-grid">
                 <label>
                   Date
-                  <input
-                    type="date"
+                  <ShamsiDateInput
                     value={String(editRow.date || "").slice(0, 10)}
                     onChange={(event) =>
                       setEditRow((previous) => ({ ...previous, date: event.target.value }))

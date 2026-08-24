@@ -11,6 +11,7 @@ import { useJsonCollection } from "../hooks/useJsonCollection";
 import { notify } from "../utils/notify";
 import { formatDateTime, todayDateValue } from "../utils/afghanDate";
 import "./AssetFullInformation.css";
+import ShamsiDateInput from "../components/ShamsiDateInput";
 
 const today = () => todayDateValue();
 
@@ -4877,7 +4878,7 @@ const handleEditPurchaseBillImageChange = (event) => {
                             <div className="asset-detail-form-grid">
                                 <label>
                                     Quantity ({purchaseUsageUnit})
-                                    <input
+                                    <ShamsiDateInput
                                         type="number"
                                         min="1"
                                         value={purchaseForm.quantity}
@@ -5116,7 +5117,6 @@ const handleEditPurchaseBillImageChange = (event) => {
                                 <label>
                                     Purchase Date
                                     <input
-                                        type="date"
                                         value={purchaseRecordForm.purchaseDate}
                                         onChange={(event) =>
                                             setPurchaseRecordForm((previous) => ({
@@ -5164,7 +5164,7 @@ const handleEditPurchaseBillImageChange = (event) => {
 
                                 <label>
                                     Invoice Number
-                                    <input
+                                    <ShamsiDateInput
                                         value={purchaseRecordForm.invoiceNumber}
                                         onChange={(event) =>
                                             setPurchaseRecordForm((previous) => ({
@@ -5396,7 +5396,6 @@ const handleEditPurchaseBillImageChange = (event) => {
                                 <label>
                                     Waste Date
                                     <input
-                                        type="date"
                                         value={wasteForm.wasteDate}
                                         onChange={(event) =>
                                             setWasteForm((previous) => ({
@@ -5411,7 +5410,7 @@ const handleEditPurchaseBillImageChange = (event) => {
                                     <label>
                                       Quantity ({purchaseUsageUnit})
 
-                                      <input
+                                      <ShamsiDateInput
                                         type="number"
                                         min="1"
                                         max={currentStock}
@@ -5992,7 +5991,6 @@ const handleEditPurchaseBillImageChange = (event) => {
                                 <label>
                                     Transfer Date
                                     <input
-                                        type="date"
                                         value={transferForm.transferDate}
                                         onChange={(event) =>
                                             setTransferForm((previous) => ({
@@ -6005,7 +6003,7 @@ const handleEditPurchaseBillImageChange = (event) => {
 
                                 <label>
                                     Responsible Person
-                                    <input
+                                    <ShamsiDateInput
                                         value={transferForm.responsiblePerson}
                                         onChange={(event) =>
                                             setTransferForm((previous) => ({
@@ -6423,7 +6421,6 @@ const handleEditPurchaseBillImageChange = (event) => {
                                 <label>
                                     Result Date
                                     <input
-                                        type="date"
                                         value={repairResultForm.repairDate}
                                         onChange={(event) =>
                                             setRepairResultForm((previous) => ({
@@ -6522,7 +6519,7 @@ const handleEditPurchaseBillImageChange = (event) => {
                                 {repairResultForm.repairStatus !== "Not Fixed" && (
                                     <label>
                                         Remaining Amount
-                                        <input
+                                        <ShamsiDateInput
                                             value={`${money(
                                                 Math.max(
                                                     Number(repairResultForm.repairCost || 0) -
@@ -6675,7 +6672,6 @@ const handleEditPurchaseBillImageChange = (event) => {
                 <label>
                     Purchase Date
                     <input
-                        type="date"
                         value={
                             editMovementForm.purchaseDate ||
                             ""
@@ -6695,7 +6691,7 @@ const handleEditPurchaseBillImageChange = (event) => {
 
                 <label>
                     Quantity ({purchaseUsageUnit})
-                    <input
+                    <ShamsiDateInput
                         type="number"
                         min="1"
                         step="1"
@@ -7089,7 +7085,6 @@ const handleEditPurchaseBillImageChange = (event) => {
                 <label>
                     Balance Date
                     <input
-                        type="date"
                         value={editMovementForm.date || ""}
                         onChange={(event) =>
                             setEditMovementForm((previous) => ({
@@ -7102,7 +7097,7 @@ const handleEditPurchaseBillImageChange = (event) => {
 
                 <label>
                     Quantity ({purchaseUsageUnit})
-                    <input
+                    <ShamsiDateInput
                         type="number"
                         min="1"
                         step={isIndividualAsset ? "1" : "any"}
@@ -7278,7 +7273,6 @@ const handleEditPurchaseBillImageChange = (event) => {
                 <label>
                     Waste Date
                     <input
-                        type="date"
                         value={editMovementForm.date || ""}
                         onChange={(event) =>
                             setEditMovementForm((previous) => ({
@@ -7292,7 +7286,7 @@ const handleEditPurchaseBillImageChange = (event) => {
                 {!isIndividualAsset && (
                     <label>
                         Quantity ({purchaseUsageUnit})
-                        <input
+                        <ShamsiDateInput
                             type="number"
                             min="1"
                             max={editWasteMaxQuantity}
@@ -7790,7 +7784,6 @@ const handleEditPurchaseBillImageChange = (event) => {
                 <label>
                     Transfer Date
                     <input
-                        type="date"
                         value={editMovementForm.date || ""}
                         onChange={(event) =>
                             setEditMovementForm((previous) => ({
@@ -7803,7 +7796,7 @@ const handleEditPurchaseBillImageChange = (event) => {
 
                 <label>
                     Responsible Person
-                    <input
+                    <ShamsiDateInput
                         value={editMovementForm.responsiblePerson || ""}
                         onChange={(event) =>
                             setEditMovementForm((previous) => ({
@@ -7868,7 +7861,6 @@ const handleEditPurchaseBillImageChange = (event) => {
             <label>
                 Date
                 <input
-                    type="date"
                     value={editMovementForm.date || ""}
                     onChange={(event) =>
                         setEditMovementForm((previous) => ({

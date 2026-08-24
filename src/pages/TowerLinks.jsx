@@ -3,6 +3,7 @@ import { useJsonCollection } from "../hooks/useJsonCollection";
 import { notify } from "../utils/notify";
 import { formatDateTime } from "../utils/afghanDate";
 import "./TowerLinks.css";
+import ShamsiDateInput from "../components/ShamsiDateInput";
 
 const emptyForm = {
   fromTower: "",
@@ -591,8 +592,7 @@ function TowerLinks() {
 
                 <div className="tower-link-form-group">
                   <label>Installation Date</label>
-                  <input
-                    type="date"
+                  <ShamsiDateInput
                     name="installationDate"
                     value={formData.installationDate}
                     onChange={handleChange}

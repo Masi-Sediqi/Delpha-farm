@@ -408,7 +408,7 @@ const handleActionToggle = (event, assetKey) => {
               ))}
             </select>
 
-            <input
+            <ShamsiDateInput
               value={search}
               onChange={(event) =>
                 setSearch(event.target.value)
@@ -422,7 +422,6 @@ const handleActionToggle = (event, assetKey) => {
           <label>
             Date
             <input
-              type="date"
               value={transferFilters.date}
               onChange={(event) =>
                 setTransferFilters((previous) => ({ ...previous, date: event.target.value }))

@@ -48,6 +48,7 @@ const Purchasing = lazy(() => import("./pages/Purchasing"));
 const CustomersRegistry = lazy(() => import("./pages/CustomersRegistry"));
 const CustomerDetail = lazy(() => import("./pages/CustomerDetail"));
 const SalesRegister = lazy(() => import("./pages/SalesRegister"));
+const SaleDetail = lazy(() => import("./pages/SaleDetail"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Settings = lazy(() => import("./pages/Settings"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
@@ -234,6 +235,9 @@ function App() {
   const [sessionId, setSessionId] = useState(() =>
     localStorage.getItem(sessionStorageKey)
   );
+  const routeClassName = location.pathname === "/"
+    ? "route-dashboard"
+    : `route-${location.pathname.replace(/^\/+/, "").replace(/[^a-zA-Z0-9]+/g, "-") || "dashboard"}`;
 
   useEffect(() => {
     applyStoredTheme();
@@ -571,7 +575,7 @@ function App() {
 
         <div className="page-content">
           <Suspense fallback={<BusyLoader label="Loading module..." />}>
-            <div className="page-fade-shell" key={location.pathname}>
+            <div className={`page-fade-shell ${routeClassName}`} key={location.pathname}>
             <Routes>
               <Route path="/" element={protect("dashboard", <Dashboard />)} />
               <Route path="/search-results" element={protect("dashboard", <SearchResults />)} />
@@ -586,6 +590,7 @@ function App() {
               <Route path="/customer-detail/:customerId" element={protect("customers", <CustomerDetail />)} />
               <Route path="/sales-register" element={protect("customers", <SalesRegister />)} />
               <Route path="/sales" element={protect("customers", <SalesRegister />)} />
+              <Route path="/sale-detail/:saleId" element={protect("customers", <SaleDetail />)} />
               <Route path="/reports" element={protect("reports", <Reports />)} />
 
               <Route

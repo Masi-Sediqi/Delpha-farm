@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Banknote,
-  CalendarDays,
   Building2,
   Database,
   Download,
@@ -120,7 +119,6 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
   const [companyPhone, setCompanyPhone] = useState("");
   const [currency, setCurrency] = useState("AFN");
   const [exchangeRates, setExchangeRates] = useState({ USD: "", EUR: "", INR: "" });
-  const [reportDateCalendar, setReportDateCalendar] = useState("gregorian");
   const [currencyDecimals, setCurrencyDecimals] = useState({
     AFN: 2,
     USD: 2,
@@ -159,12 +157,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
 
   const settingsText = {
     en: {
-      reportDateTab: "Report Date", decimalsTab: "Currency Decimals",
-      reportDateTitle: "Report Date Calendar",
-      reportDateDescription: "Choose whether report dates are shown in Solar Hijri (Jalali) or Gregorian format.",
-      jalali: "Solar Hijri (Jalali)", jalaliDescription: "Shamsi / Solar Hijri calendar",
-      gregorian: "Gregorian", gregorianDescription: "Gregorian calendar",
-      saveReportDate: "Save Report Date",
+      decimalsTab: "Currency Decimals",
       decimalsTitle: "Currency Decimal Places",
       decimalsDescription: "Set how many digits after the decimal point are allowed for each currency.",
       afn: "Afghani", usd: "US Dollar", eur: "Euro", pkr: "Pakistani Rupee",
@@ -174,12 +167,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
       usersTab: "Users", usersTitle: "Users", usersDescription: "Create and manage the accounts that can sign in to this system.", addUser: "Add User", editUser: "Edit User", userName: "Name", email: "Email", password: "Password", confirmPassword: "Confirm Password", actions: "Actions", edit: "Edit", delete: "Delete", noUsers: "No user accounts found.", saveUser: "Save User", updateUser: "Update User", cancel: "Cancel", createUserHint: "Enter the user's account information.", editUserHint: "Update the account information. Leave password empty to keep the current password.", passwordOptional: "Leave empty to keep current password", activeAccount: "Current account",
     },
     fa: {
-      reportDateTab: "تاریخ راپور", decimalsTab: "اعشار اسعار",
-      reportDateTitle: "تاریخ راپور",
-      reportDateDescription: "انتخاب کنید تاریخ راپورها به شکل شمسی یا میلادی نمایش داده شود.",
-      jalali: "شمسی", jalaliDescription: "تقویم هجری شمسی",
-      gregorian: "میلادی", gregorianDescription: "تقویم میلادی",
-      saveReportDate: "ذخیره تاریخ راپور",
+      decimalsTab: "اعشار اسعار",
       decimalsTitle: "خانه‌های اعشاری اسعار",
       decimalsDescription: "تعداد رقم‌های بعد از ممیز را برای هر واحد پول مشخص کنید.",
       afn: "افغانی", usd: "دالر", eur: "یورو", pkr: "کلدار",
@@ -189,12 +177,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
       usersTab: "کاربران", usersTitle: "کاربران", usersDescription: "اکانت‌هایی را که اجازه ورود به سیستم دارند ایجاد و مدیریت کنید.", addUser: "افزودن کاربر", editUser: "ویرایش کاربر", userName: "نام", email: "ایمیل", password: "پسورد", confirmPassword: "تکرار پسورد", actions: "عملیات", edit: "ویرایش", delete: "حذف", noUsers: "هیچ اکانت کاربری موجود نیست.", saveUser: "ذخیره کاربر", updateUser: "ذخیره تغییرات", cancel: "لغو", createUserHint: "معلومات اکانت کاربر را وارد کنید.", editUserHint: "معلومات اکانت را ویرایش کنید. برای حفظ پسورد فعلی، فیلد پسورد را خالی بگذارید.", passwordOptional: "برای حفظ پسورد فعلی خالی بگذارید", activeAccount: "اکانت فعلی",
     },
     ps: {
-      reportDateTab: "د راپور نېټه", decimalsTab: "د اسعارو اعشار",
-      reportDateTitle: "د راپور نېټه",
-      reportDateDescription: "وټاکئ چې د راپورونو نېټې په شمسي یا میلادي بڼه ښکاره شي.",
-      jalali: "شمسي", jalaliDescription: "هجري شمسي کلیزه",
-      gregorian: "میلادي", gregorianDescription: "میلادي کلیزه",
-      saveReportDate: "د راپور نېټه خوندي کړئ",
+      decimalsTab: "د اسعارو اعشار",
       decimalsTitle: "د اسعارو اعشاري خانې",
       decimalsDescription: "د هرې پیسې لپاره له اعشاریې وروسته د شمېرو شمېر وټاکئ.",
       afn: "افغانۍ", usd: "ډالر", eur: "یورو", pkr: "کلدار",
@@ -217,7 +200,6 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
       EUR: current.exchangeRates?.EUR ?? "",
       INR: current.exchangeRates?.INR ?? "",
     });
-    setReportDateCalendar(current.reportDateCalendar || "gregorian");
     setCurrencyDecimals({
       AFN: Number.isInteger(Number(current.currencyDecimals?.AFN)) ? Number(current.currencyDecimals.AFN) : 2,
       USD: Number.isInteger(Number(current.currencyDecimals?.USD)) ? Number(current.currencyDecimals.USD) : 2,
@@ -236,7 +218,6 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
     current.companyPhone,
     current.currency,
     current.exchangeRates,
-    current.reportDateCalendar,
     current.currencyDecimals,
     current.securityPassword,
     current.systemSubtitle,
@@ -372,7 +353,6 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
           EUR: Number(exchangeRates.EUR || 0),
           INR: Number(exchangeRates.INR || 0),
         },
-        reportDateCalendar,
         currencyDecimals,
         securityPassword,
         logo,
@@ -502,14 +482,6 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
         >
           <Banknote size={16} />
           {t.currency}
-        </button>
-        <button
-          type="button"
-          className={activeTab === "report-date" ? "active" : ""}
-          onClick={() => setActiveTab("report-date")}
-        >
-          <CalendarDays size={16} />
-          {st.reportDateTab}
         </button>
         <button
           type="button"
@@ -706,29 +678,6 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
               <Save size={16} />
               {st.saveExchangeRates}
             </button>
-          </section>
-        </form>
-      )}
-
-      {activeTab === "report-date" && (
-        <form className="settings-card settings-card-single settings-full-width-card" onSubmit={save}>
-          <section className="settings-panel settings-full-width-panel">
-            <div className="settings-section-title">
-              <h3>{st.reportDateTitle}</h3>
-              <p>{st.reportDateDescription}</p>
-            </div>
-            <div className="settings-report-date-options settings-wide-options">
-              {[
-                { key: "jalali", title: st.jalali, description: st.jalaliDescription },
-                { key: "gregorian", title: st.gregorian, description: st.gregorianDescription },
-              ].map((item) => (
-                <button type="button" key={item.key} className={reportDateCalendar === item.key ? "active" : ""} onClick={() => setReportDateCalendar(item.key)}>
-                  <CalendarDays size={20} />
-                  <div><strong>{item.title}</strong><span>{item.description}</span></div>
-                </button>
-              ))}
-            </div>
-            <button type="submit" className="settings-save settings-save-full"><Save size={16} />{st.saveReportDate}</button>
           </section>
         </form>
       )}

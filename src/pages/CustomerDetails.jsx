@@ -4,6 +4,7 @@ import { useJsonCollection } from "../hooks/useJsonCollection";
 import { notify } from "../utils/notify";
 import { formatDateTime } from "../utils/afghanDate";
 import "./CustomerDetails.css";
+import ShamsiDateInput from "../components/ShamsiDateInput";
 
 function money(value) {
   return Number(value || 0).toLocaleString("en-US");
@@ -1691,8 +1692,7 @@ const saveCustomerPayment = async (event) => {
               <div className="customer-details-form-grid">
                 <label className="customer-buyback-field">
                   Purchase Date
-                  <input
-                    type="date"
+                  <ShamsiDateInput
                     value={buybackForm.purchaseDate}
                     onChange={(event) =>
                       setBuybackForm((previous) => ({
@@ -1705,7 +1705,7 @@ const saveCustomerPayment = async (event) => {
 
                 <label className="customer-buyback-field">
                   Purchased By
-                  <input
+                  <ShamsiDateInput
                     value={buybackForm.purchasedBy}
                     onChange={(event) =>
                       setBuybackForm((previous) => ({
@@ -1914,8 +1914,7 @@ const saveCustomerPayment = async (event) => {
 
                 <div>
                   <label>Start Date</label>
-                  <input
-                    type="date"
+                  <ShamsiDateInput
                     name="startDate"
                     value={editPackageForm.startDate}
                     onChange={handleEditPackageChange}
@@ -1924,8 +1923,7 @@ const saveCustomerPayment = async (event) => {
 
                 <div>
                   <label>End Date</label>
-                  <input
-                    type="date"
+                  <ShamsiDateInput
                     name="endDate"
                     value={editPackageForm.endDate}
                     onChange={handleEditPackageChange}
@@ -1991,8 +1989,7 @@ const saveCustomerPayment = async (event) => {
               <div className="customer-details-form-grid">
                 <div>
                   <label>Payment Date</label>
-                  <input
-                    type="date"
+                  <ShamsiDateInput
                     name="paymentDate"
                     value={paymentForm.paymentDate}
                     onChange={handlePaymentChange}
@@ -2115,7 +2112,6 @@ const saveCustomerPayment = async (event) => {
                 : `${disconnectActionType} Date`}
             </label>
             <input
-              type="date"
               value={disconnectForm.disconnectionDate}
               onChange={(event) =>
                 setDisconnectForm((previous) => ({
@@ -2132,7 +2128,7 @@ const saveCustomerPayment = async (event) => {
                 ? "Reason of Suspend"
                 : `${disconnectActionType} Reason`}
             </label>
-            <input
+            <ShamsiDateInput
               type="text"
               value={disconnectForm.disconnectionReason}
               onChange={(event) =>
@@ -2257,7 +2253,6 @@ const saveCustomerPayment = async (event) => {
                 <div>
                   <label>Reconnect Date</label>
                   <input
-                    type="date"
                     value={reconnectForm.reconnectDate}
                     onChange={(event) =>
                       setReconnectForm((previous) => ({

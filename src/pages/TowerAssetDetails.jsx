@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import { formatDateTime } from "../utils/afghanDate";
 import "./TowerAssetDetails.css";
+import ShamsiDateInput from "../components/ShamsiDateInput";
 
 const money = (value) => Number(value || 0).toLocaleString("en-US");
 
@@ -296,8 +297,7 @@ export default function TowerAssetDetails() {
         <div className="tower-detail-assets-filters">
           <label>
             Date
-            <input
-              type="date"
+            <ShamsiDateInput
               value={assetFilters.date}
               onChange={(event) =>
                 setAssetFilters((previous) => ({ ...previous, date: event.target.value }))

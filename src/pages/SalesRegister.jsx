@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 import {
   Check,
   CreditCard,
   Edit3,
   FileText,
   PackageCheck,
+  Printer,
   Search,
   ShoppingBag,
   Trash2,
@@ -13,8 +15,10 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+import ShamsiDateInput from "../components/ShamsiDateInput";
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import { confirmAction } from "../utils/confirmDialog";
+import { formatDateTime } from "../utils/afghanDate";
 import { notify } from "../utils/notify";
 import "./SalesRegister.css";
 
@@ -80,6 +84,16 @@ const translations = {
     delete: "Delete",
     deleted: "Sale deleted successfully.",
     confirmDelete: "Delete this sale?",
+    dailyTitle: "Daily Sales",
+    dailyHint: "Sales registered on this date.",
+    viewDay: "View day sales",
+    print: "Print",
+    dailyReport: "Daily Sales Report",
+    invoices: "Invoices",
+    products: "Products",
+    invoiceDetail: "Sale Invoice Detail",
+    invoiceHint: "Products and payment details for this sale.",
+    clickRecord: "View sale detail",
   },
   fa: {
     title: "فروشات",
@@ -139,6 +153,16 @@ const translations = {
     delete: "حذف",
     deleted: "فروش با موفقیت حذف شد.",
     confirmDelete: "این فروش حذف شود؟",
+    dailyTitle: "فروشات روزانه",
+    dailyHint: "فروش‌های ثبت‌شده در این تاریخ.",
+    viewDay: "دیدن فروشات همین روز",
+    print: "چاپ",
+    dailyReport: "راپور فروشات روزانه",
+    invoices: "بل‌ها",
+    products: "محصولات",
+    invoiceDetail: "جزئیات بل فروش",
+    invoiceHint: "اقلام و معلومات پرداخت این فروش.",
+    clickRecord: "دیدن جزئیات فروش",
   },
   ps: {
     title: "خرڅلاو",
@@ -198,6 +222,16 @@ const translations = {
     delete: "حذف",
     deleted: "خرڅلاو په بریالیتوب سره حذف شو.",
     confirmDelete: "دا خرڅلاو حذف شي؟",
+    dailyTitle: "ورځنی خرڅلاو",
+    dailyHint: "په دې نېټه ثبت شوي خرڅلاو.",
+    viewDay: "د همدې ورځې خرڅلاو وګورئ",
+    print: "چاپ",
+    dailyReport: "د ورځني خرڅلاو راپور",
+    invoices: "بلونه",
+    products: "محصولات",
+    invoiceDetail: "د خرڅلاو بل جزئیات",
+    invoiceHint: "د دې خرڅلاو توکي او د تادیې معلومات.",
+    clickRecord: "د خرڅلاو جزئیات وګورئ",
   },
 };
 
@@ -207,12 +241,14 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 export default function SalesRegister() {
   const [sales, setSales] = useJsonCollection("salesRegister");
+  const navigate = useNavigate();
   const [customers] = useJsonCollection("customerRegistry");
   const [products, setProducts] = useJsonCollection("products");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [search, setSearch] = useState("");
   const [productSearch, setProductSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [dailyDate, setDailyDate] = useState("");
   const [editingSaleId, setEditingSaleId] = useState(null);
   const [customerId, setCustomerId] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
@@ -236,9 +272,9 @@ export default function SalesRegister() {
   }, []);
 
   useEffect(() => {
-    document.body.classList.toggle("sales-register-modal-open", showModal);
+    document.body.classList.toggle("sales-register-modal-open", showModal || Boolean(dailyDate));
     return () => document.body.classList.remove("sales-register-modal-open");
-  }, [showModal]);
+  }, [showModal, dailyDate]);
 
   const customerName = (id) => {
     const customer = customers.find((item) => String(item.id) === String(id));
@@ -424,6 +460,20 @@ export default function SalesRegister() {
     return sales.filter((sale) => `${sale.invoiceNumber || ""} ${sale.customerName || customerName(sale.customerId)}`.toLowerCase().includes(q));
   }, [sales, search, customers]);
 
+  const saleDay = (sale) => String(sale.saleDate || sale.createdAt || "").slice(0, 10);
+  const dailySales = useMemo(
+    () => sales.filter((sale) => dailyDate && saleDay(sale) === dailyDate),
+    [sales, dailyDate]
+  );
+  const dailyTotals = dailySales.reduce((acc, sale) => {
+    acc.invoices += 1;
+    acc.items += sale.items?.length || 0;
+    acc.total += numeric(sale.totalAmount);
+    acc.paid += numeric(sale.paidAmount);
+    acc.due += numeric(sale.remainingAmount);
+    return acc;
+  }, { invoices: 0, items: 0, total: 0, paid: 0, due: 0 });
+
   const totals = sales.reduce((acc, sale) => {
     acc.sales += numeric(sale.totalAmount);
     acc.paid += numeric(sale.paidAmount);
@@ -432,6 +482,74 @@ export default function SalesRegister() {
   }, { sales: 0, paid: 0, due: 0 });
 
   const money = (value) => numeric(value).toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+  const printDailySales = () => {
+    const title = `${t.dailyReport} - ${formatDateTime(dailyDate)}`;
+    const directionAttr = direction;
+    const rows = dailySales.map((sale) => `
+      <tr>
+        <td>${sale.invoiceNumber || "—"}</td>
+        <td>${sale.customerName || customerName(sale.customerId)}</td>
+        <td>${sale.items?.length || 0}</td>
+        <td>${money(sale.totalAmount)}</td>
+        <td>${money(sale.paidAmount)}</td>
+        <td>${money(sale.remainingAmount)}</td>
+        <td>${sale.paymentMode === "installment" ? t.installment : t.cash}</td>
+      </tr>
+    `).join("");
+    const printWindow = window.open("", "_blank", "width=900,height=700");
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <!doctype html>
+      <html dir="${directionAttr}">
+        <head>
+          <meta charset="utf-8" />
+          <title>${title}</title>
+          <style>
+            @page { size: A4; margin: 14mm; }
+            * { box-sizing: border-box; }
+            body { margin: 0; font-family: Arial, sans-serif; color: #111827; background: #fff; }
+            .sheet { min-height: 100vh; display: grid; gap: 16px; align-content: start; }
+            header { display: flex; align-items: center; justify-content: space-between; gap: 18px; border-bottom: 2px solid #111827; padding-bottom: 12px; }
+            h1 { margin: 0; font-size: 22px; }
+            p { margin: 4px 0 0; color: #475569; font-size: 12px; }
+            .date { border: 1px solid #d1d5db; border-radius: 10px; padding: 10px 14px; font-weight: 800; white-space: nowrap; }
+            .summary { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+            .summary div { border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px; }
+            .summary span { display: block; color: #64748b; font-size: 10px; }
+            .summary strong { display: block; margin-top: 4px; font-size: 15px; }
+            table { width: 100%; border-collapse: collapse; font-size: 11px; }
+            th, td { border: 1px solid #e5e7eb; padding: 8px; text-align: start; }
+            th { background: #f8fafc; color: #334155; font-size: 10px; text-transform: uppercase; }
+            tfoot td { font-weight: 900; background: #f9fafb; }
+            @media print { .sheet { page-break-inside: avoid; } }
+          </style>
+        </head>
+        <body>
+          <main class="sheet">
+            <header>
+              <div><h1>${t.dailyReport}</h1><p>${t.dailyHint}</p></div>
+              <div class="date">${formatDateTime(dailyDate)}</div>
+            </header>
+            <section class="summary">
+              <div><span>${t.invoices}</span><strong>${dailyTotals.invoices}</strong></div>
+              <div><span>${t.items}</span><strong>${dailyTotals.items}</strong></div>
+              <div><span>${t.total}</span><strong>${money(dailyTotals.total)}</strong></div>
+              <div><span>${t.paid}</span><strong>${money(dailyTotals.paid)}</strong></div>
+              <div><span>${t.due}</span><strong>${money(dailyTotals.due)}</strong></div>
+            </section>
+            <table>
+              <thead><tr><th>${t.invoiceNo}</th><th>${t.customer}</th><th>${t.items}</th><th>${t.total}</th><th>${t.paid}</th><th>${t.due}</th><th>${t.paymentType}</th></tr></thead>
+              <tbody>${rows || `<tr><td colspan="7">${t.noSales}</td></tr>`}</tbody>
+            </table>
+          </main>
+          <script>window.onload = () => { window.print(); };</script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
 
   return (
     <div className="sales-register-page" dir={direction}>
@@ -457,7 +575,7 @@ export default function SalesRegister() {
             <thead><tr><th>{t.invoiceNo}</th><th>{t.customer}</th><th>{t.items}</th><th>{t.total}</th><th>{t.paid}</th><th>{t.due}</th><th>{t.paymentType}</th><th>{t.date}</th><th>{t.actions}</th></tr></thead>
             <tbody>
               {filteredSales.map((sale) => (
-                <tr key={sale.id}>
+                <tr key={sale.id} className="sales-register-clickable-row" onClick={() => navigate(`/sale-detail/${sale.id}`)} title={t.clickRecord}>
                   <td><strong>{sale.invoiceNumber}</strong></td>
                   <td>{sale.customerName || customerName(sale.customerId)}</td>
                   <td>{sale.items?.length || 0}</td>
@@ -465,11 +583,15 @@ export default function SalesRegister() {
                   <td>{money(sale.paidAmount)}</td>
                   <td className={numeric(sale.remainingAmount) > 0 ? "sales-register-due" : ""}>{money(sale.remainingAmount)}</td>
                   <td>{sale.paymentMode === "installment" ? t.installment : t.cash}</td>
-                  <td>{sale.saleDate || (sale.createdAt ? new Date(sale.createdAt).toLocaleDateString() : "—")}</td>
+                  <td>
+                    <button type="button" className="sales-register-date-link" onClick={() => setDailyDate(saleDay(sale))} title={t.viewDay}>
+                      {formatDateTime(sale.saleDate || sale.createdAt)}
+                    </button>
+                  </td>
                   <td>
                     <div className="sales-register-row-actions">
-                      <button type="button" className="edit" onClick={() => openEdit(sale)} title={t.edit} aria-label={t.edit}><Edit3 size={15} /></button>
-                      <button type="button" className="delete" onClick={() => deleteSale(sale)} title={t.delete} aria-label={t.delete}><Trash2 size={15} /></button>
+                      <button type="button" className="edit" onClick={(event) => { event.stopPropagation(); openEdit(sale); }} title={t.edit} aria-label={t.edit}><Edit3 size={15} /></button>
+                      <button type="button" className="delete" onClick={(event) => { event.stopPropagation(); deleteSale(sale); }} title={t.delete} aria-label={t.delete}><Trash2 size={15} /></button>
                     </div>
                   </td>
                 </tr>
@@ -479,6 +601,50 @@ export default function SalesRegister() {
           </table>
         </div>
       </section>
+
+      {dailyDate && createPortal(
+        <div className="sales-daily-overlay" role="presentation" onClick={(e) => e.currentTarget === e.target && setDailyDate("")}>
+          <section className="sales-daily-modal" role="dialog" aria-modal="true" aria-labelledby="sales-daily-title" dir={direction}>
+            <header className="sales-daily-head">
+              <div>
+                <h2 id="sales-daily-title"><FileText size={22} />{t.dailyTitle}</h2>
+                <p>{t.dailyHint} <strong>{formatDateTime(dailyDate)}</strong></p>
+              </div>
+              <div className="sales-daily-actions">
+                <button type="button" onClick={printDailySales}><Printer size={16} />{t.print}</button>
+                <button type="button" className="icon" onClick={() => setDailyDate("")} aria-label={t.cancel}><X size={19} /></button>
+              </div>
+            </header>
+            <div className="sales-daily-summary">
+              <article><span>{t.invoices}</span><strong>{dailyTotals.invoices}</strong></article>
+              <article><span>{t.items}</span><strong>{dailyTotals.items}</strong></article>
+              <article><span>{t.total}</span><strong>{money(dailyTotals.total)}</strong></article>
+              <article><span>{t.paid}</span><strong>{money(dailyTotals.paid)}</strong></article>
+              <article className={dailyTotals.due > 0 ? "due" : ""}><span>{t.due}</span><strong>{money(dailyTotals.due)}</strong></article>
+            </div>
+            <div className="sales-daily-table-wrap">
+              <table>
+                <thead><tr><th>{t.invoiceNo}</th><th>{t.customer}</th><th>{t.items}</th><th>{t.total}</th><th>{t.paid}</th><th>{t.due}</th><th>{t.paymentType}</th></tr></thead>
+                <tbody>
+                  {dailySales.map((sale) => (
+                    <tr key={sale.id}>
+                      <td><strong>{sale.invoiceNumber}</strong></td>
+                      <td>{sale.customerName || customerName(sale.customerId)}</td>
+                      <td>{sale.items?.length || 0}</td>
+                      <td>{money(sale.totalAmount)}</td>
+                      <td>{money(sale.paidAmount)}</td>
+                      <td className={numeric(sale.remainingAmount) > 0 ? "sales-register-due" : ""}>{money(sale.remainingAmount)}</td>
+                      <td>{sale.paymentMode === "installment" ? t.installment : t.cash}</td>
+                    </tr>
+                  ))}
+                  {!dailySales.length && <tr><td colSpan="7" className="sales-register-empty">{t.noSales}</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>,
+        document.body
+      )}
 
       {showModal && createPortal(
         <div className="sales-register-overlay" role="presentation" onClick={(e) => e.currentTarget === e.target && closeModal()}>
@@ -500,7 +666,7 @@ export default function SalesRegister() {
               <div className="sales-register-top-grid">
                 <label><span><UserRound size={15} />{t.customer}</span><select value={customerId} onChange={(e) => setCustomerId(e.target.value)}><option value="">{t.selectCustomer}</option>{customers.filter((c) => c.status !== "inactive").map((customer) => <option key={customer.id} value={customer.id}>{customer.fullName || customer.companyName}</option>)}</select></label>
                 <label><span>{t.invoiceNumber}</span><input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} placeholder={t.invoicePlaceholder} /></label>
-                <label><span>{t.saleDate}</span><input type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} /></label>
+                <label><span>{t.saleDate}</span><ShamsiDateInput value={saleDate} onChange={(e) => setSaleDate(e.target.value)} /></label>
               </div>
 
               <section className="sales-register-picker-section">
