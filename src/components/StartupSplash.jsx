@@ -59,7 +59,7 @@ function StartupSplash() {
       <div className="startup-splash-content">
         <span>POWERED BY</span>
         <strong>AFGHAN POWER</strong>
-        <p>Asset & Inventory Management</p>
+        <p>Pharmacy & Medicine Management System</p>
         <div className="startup-splash-line">
           <i />
         </div>
