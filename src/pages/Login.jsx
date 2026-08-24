@@ -11,8 +11,11 @@ function Login({ accounts, setAccounts, onLogin, company }) {
   });
 
   const systemName = company.companyName || "ISP Assets";
+  const savedSubtitle = String(company.systemSubtitle || "").trim();
   const systemSubtitle =
-    company.systemSubtitle || "Asset & Inventory Management";
+    !savedSubtitle || savedSubtitle === "Asset & Inventory Management"
+      ? "Pharmacy & Medicine Management System"
+      : savedSubtitle;
 
   const submit = async (event) => {
     event.preventDefault();

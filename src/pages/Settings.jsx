@@ -22,39 +22,39 @@ import { notify } from "../utils/notify";
 import { confirmAction } from "../utils/confirmDialog";
 import "./Settings.css";
 
-const defaultSystemName = "ISP Assets";
-const defaultSystemSubtitle = "Asset & Inventory Management";
+const defaultSystemName = "APG";
+const defaultSystemSubtitle = "Pharmacy & Medicine Management System";
 const themeStorageKey = "afghan-power-theme";
 const languageStorageKey = "afghan-power-language";
 const settingsLabels = {
   en: {
     company: "Company",
-    currency: "Currency",
+    currency: "Exchange Rates",
     companyName: "Company Name",
     address: "Address",
     phone: "Phone Number",
     logo: "Company Logo",
-    currencyTitle: "Currency",
+    currencyTitle: "Exchange Rates",
     currencies: { AFN: "Afghani", USD: "US Dollar", INR: "Indian Rupee" },
   },
   fa: {
     company: "کمپنی",
-    currency: "واحد پول",
+    currency: "نرخ اسعار",
     companyName: "نام کمپنی",
     address: "آدرس",
     phone: "شماره تماس",
     logo: "لوگوی کمپنی",
-    currencyTitle: "واحد پول",
+    currencyTitle: "نرخ اسعار",
     currencies: { AFN: "افغانی", USD: "دالر", INR: "کلدار هندی" },
   },
   ps: {
     company: "شرکت",
-    currency: "د پیسو واحد",
+    currency: "د اسعارو نرخونه",
     companyName: "د شرکت نوم",
     address: "پته",
     phone: "د اړیکې شمېره",
     logo: "د شرکت لوګو",
-    currencyTitle: "د پیسو واحد",
+    currencyTitle: "د اسعارو نرخونه",
     currencies: { AFN: "افغانۍ", USD: "امریکایي ډالر", INR: "هندي روپۍ" },
   },
 };
@@ -104,6 +104,7 @@ function Settings() {
   const [companyAddress, setCompanyAddress] = useState("");
   const [companyPhone, setCompanyPhone] = useState("");
   const [currency, setCurrency] = useState("AFN");
+  const [exchangeRates, setExchangeRates] = useState({ USD: "", EUR: "", INR: "" });
   const [reportDateCalendar, setReportDateCalendar] = useState("gregorian");
   const [currencyDecimals, setCurrencyDecimals] = useState({
     AFN: 2,
@@ -147,6 +148,8 @@ function Settings() {
       decimalsDescription: "Set how many digits after the decimal point are allowed for each currency.",
       afn: "Afghani", usd: "US Dollar", eur: "Euro", pkr: "Pakistani Rupee",
       decimalPlaces: "Decimal places", preview: "Preview", saveDecimals: "Save Decimal Settings",
+      exchangeRateTitle: "Exchange Rates Against Afghani", exchangeRateDescription: "Enter how many Afghanis equal one unit of each foreign currency.",
+      usdRate: "US Dollar", eurRate: "Euro", inrRate: "Indian Rupee", oneUnit: "1 {code} =", afnUnit: "AFN", saveExchangeRates: "Save Exchange Rates",
     },
     fa: {
       reportDateTab: "تاریخ راپور", decimalsTab: "اعشار اسعار",
@@ -159,6 +162,8 @@ function Settings() {
       decimalsDescription: "تعداد رقم‌های بعد از ممیز را برای هر واحد پول مشخص کنید.",
       afn: "افغانی", usd: "دالر", eur: "یورو", pkr: "کلدار",
       decimalPlaces: "خانه اعشاری", preview: "نمونه نمایش", saveDecimals: "ذخیره تنظیمات اعشار",
+      exchangeRateTitle: "نرخ اسعار در مقابل افغانی", exchangeRateDescription: "مشخص کنید یک واحد از هر اسعار خارجی چند افغانی می‌شود.",
+      usdRate: "دالر امریکایی", eurRate: "یورو", inrRate: "کلدار هندی", oneUnit: "1 {code} =", afnUnit: "افغانی", saveExchangeRates: "ذخیره نرخ اسعار",
     },
     ps: {
       reportDateTab: "د راپور نېټه", decimalsTab: "د اسعارو اعشار",
@@ -171,16 +176,28 @@ function Settings() {
       decimalsDescription: "د هرې پیسې لپاره له اعشاریې وروسته د شمېرو شمېر وټاکئ.",
       afn: "افغانۍ", usd: "ډالر", eur: "یورو", pkr: "کلدار",
       decimalPlaces: "اعشاري خانې", preview: "بېلګه", saveDecimals: "د اعشاریو تنظیمات خوندي کړئ",
+      exchangeRateTitle: "د افغانیو په مقابل کې د اسعارو نرخ", exchangeRateDescription: "وټاکئ چې د هرې بهرنۍ پیسې یو واحد څو افغانۍ کېږي.",
+      usdRate: "امریکایي ډالر", eurRate: "یورو", inrRate: "هندي روپۍ", oneUnit: "1 {code} =", afnUnit: "افغانۍ", saveExchangeRates: "د اسعارو نرخونه خوندي کړئ",
     },
   };
   const st = settingsText[language] || settingsText.en;
 
   useEffect(() => {
-    setCompanyName(current.companyName || defaultSystemName);
-    setSystemSubtitle(current.systemSubtitle || defaultSystemSubtitle);
+    const storedCompanyName = String(current.companyName || "").trim();
+    const storedSubtitle = String(current.systemSubtitle || "").trim();
+    const legacyCompanyNames = new Set(["ISP Assets", "Masi"]);
+    const legacySubtitles = new Set(["Asset & Inventory Management"]);
+
+    setCompanyName(!storedCompanyName || legacyCompanyNames.has(storedCompanyName) ? defaultSystemName : storedCompanyName);
+    setSystemSubtitle(!storedSubtitle || legacySubtitles.has(storedSubtitle) ? defaultSystemSubtitle : storedSubtitle);
     setCompanyAddress(current.companyAddress || "");
     setCompanyPhone(current.companyPhone || "");
     setCurrency(current.currency || "AFN");
+    setExchangeRates({
+      USD: current.exchangeRates?.USD ?? "",
+      EUR: current.exchangeRates?.EUR ?? "",
+      INR: current.exchangeRates?.INR ?? "",
+    });
     setReportDateCalendar(current.reportDateCalendar || "gregorian");
     setCurrencyDecimals({
       AFN: Number.isInteger(Number(current.currencyDecimals?.AFN)) ? Number(current.currencyDecimals.AFN) : 2,
@@ -199,6 +216,7 @@ function Settings() {
     current.companyAddress,
     current.companyPhone,
     current.currency,
+    current.exchangeRates,
     current.reportDateCalendar,
     current.currencyDecimals,
     current.securityPassword,
@@ -237,6 +255,11 @@ function Settings() {
         companyAddress: companyAddress.trim(),
         companyPhone: companyPhone.trim(),
         currency,
+        exchangeRates: {
+          USD: Number(exchangeRates.USD || 0),
+          EUR: Number(exchangeRates.EUR || 0),
+          INR: Number(exchangeRates.INR || 0),
+        },
         reportDateCalendar,
         currencyDecimals,
         securityPassword,
@@ -518,34 +541,57 @@ function Settings() {
       )}
 
       {activeTab === "currency" && (
-        <form className="settings-card settings-card-single" onSubmit={save}>
-          <section className="settings-panel">
+        <form className="settings-card settings-card-single settings-full-width-card" onSubmit={save}>
+          <section className="settings-panel settings-full-width-panel">
             <div className="settings-section-title">
-              <h3>{t.currencyTitle}</h3>
-              <p>Select the default currency used in billing, sales, reports and print views.</p>
+              <h3>{st.exchangeRateTitle}</h3>
+              <p>{st.exchangeRateDescription}</p>
             </div>
 
-            <div className="settings-choice-grid">
+            <div className="settings-exchange-grid">
               {[
-                { key: "AFN", title: t.currencies.AFN, description: "Afghan Afghani" },
-                { key: "USD", title: t.currencies.USD, description: "US Dollar" },
-                { key: "INR", title: t.currencies.INR, description: "Indian Rupee" },
+                { key: "USD", title: st.usdRate },
+                { key: "EUR", title: st.eurRate },
+                { key: "INR", title: st.inrRate },
               ].map((item) => (
-                <button
-                  type="button"
-                  key={item.key}
-                  className={currency === item.key ? "active" : ""}
-                  onClick={() => setCurrency(item.key)}
-                >
-                  <strong>{item.title}</strong>
-                  <span>{item.description}</span>
-                </button>
+                <label className="settings-exchange-card" key={item.key}>
+                  <div className="settings-exchange-card-head">
+                    <Banknote size={19} />
+                    <div>
+                      <strong>{item.title}</strong>
+                      <span>{item.key}</span>
+                    </div>
+                  </div>
+                  <div className="settings-exchange-input-row">
+                    <span>{st.oneUnit.replace("{code}", item.key)}</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.0001"
+                      inputMode="decimal"
+                      value={exchangeRates[item.key]}
+                      onChange={(event) =>
+                        setExchangeRates((previous) => ({
+                          ...previous,
+                          [item.key]: event.target.value,
+                        }))
+                      }
+                      placeholder="0.0000"
+                    />
+                    <b>{st.afnUnit}</b>
+                  </div>
+                </label>
               ))}
             </div>
 
-            <button type="submit" className="settings-save">
+            <div className="settings-exchange-note">
+              <Banknote size={18} />
+              <span>{st.exchangeRateDescription}</span>
+            </div>
+
+            <button type="submit" className="settings-save settings-save-full">
               <Save size={16} />
-              Save Currency
+              {st.saveExchangeRates}
             </button>
           </section>
         </form>

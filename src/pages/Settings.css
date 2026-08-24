@@ -142,3 +142,63 @@ body.dark-mode .settings-format-preview > strong, body.dark-mode .settings-forma
 .settings-environment-status strong{font-size:14px}.settings-environment-status span{grid-column:1;font-size:12px;color:var(--text-muted,#64748b)}.settings-environment-status code{grid-column:2;grid-row:1/3;padding:5px 8px;border-radius:8px;font-size:11px;font-weight:800;text-transform:uppercase}
 .settings-environment-status.is-demo code{background:rgba(245,158,11,.12);color:#b45309}.settings-environment-status.is-production code{background:rgba(34,197,94,.12);color:#15803d}
 @media(max-width:640px){.settings-environment-status{grid-template-columns:1fr}.settings-environment-status code{grid-column:1;grid-row:auto;justify-self:start}}
+
+
+/* Exchange rate settings */
+.settings-exchange-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  width: 100%;
+}
+.settings-exchange-card {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 14px;
+  background: var(--card-bg, #fff);
+  color: var(--text-color, #111827);
+}
+.settings-exchange-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.settings-exchange-card-head > svg { flex: 0 0 auto; }
+.settings-exchange-card-head div { display: grid; gap: 2px; }
+.settings-exchange-card-head strong { color: inherit; font-size: 14px; }
+.settings-exchange-card-head span { color: var(--text-muted, #64748b); font-size: 11px; font-weight: 800; }
+.settings-exchange-input-row {
+  display: grid;
+  grid-template-columns: auto minmax(90px, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+}
+.settings-exchange-input-row > span, .settings-exchange-input-row > b {
+  white-space: nowrap;
+  color: var(--text-muted, #64748b);
+  font-size: 12px;
+}
+.settings-exchange-input-row input {
+  width: 100%;
+  min-width: 0;
+  text-align: center;
+  font-weight: 850;
+  font-size: 15px;
+}
+.settings-exchange-note {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 13px;
+  border: 1px dashed var(--border-color, #dbe2ea);
+  border-radius: 11px;
+  background: rgba(148, 163, 184, .06);
+  color: var(--text-muted, #64748b);
+  font-size: 12px;
+}
+body.dark-mode .settings-exchange-card { background: rgba(15,23,42,.72); border-color: rgba(148,163,184,.28); }
+body.dark-mode .settings-exchange-input-row input { background: rgba(15,23,42,.88); color: #f8fafc; border-color: rgba(148,163,184,.28); }
+[dir="rtl"] .settings-exchange-card-head, [dir="rtl"] .settings-exchange-note { direction: rtl; }
+@media (max-width: 980px) { .settings-exchange-grid { grid-template-columns: 1fr; } }
+@media (max-width: 520px) {
+  .settings-exchange-card { padding: 13px; }
+  .settings-exchange-input-row { grid-template-columns: 1fr; align-items: stretch; }
+  .settings-exchange-input-row > span, .settings-exchange-input-row > b { text-align: center; }
+}
