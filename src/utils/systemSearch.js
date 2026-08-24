@@ -1,63 +1,39 @@
-const normalize = (value) => String(value || "").toLowerCase().trim();
-const compact = (value) => normalize(value).replace(/[^a-z0-9]/g, "");
+import { countryNameById, groupNameById } from "./productMasterData";
+const normalize = (value) => String(value ?? "").toLowerCase().trim();
+const compact = (value) => normalize(value).replace(/[^\p{L}\p{N}]+/gu, "");
 
-export const money = (value) => Number(value || 0).toLocaleString("en-US");
+export const money = (value) => Number(value || 0).toLocaleString("en-US", { maximumFractionDigits: 2 });
 
 export const includesQuery = (value, query) => {
   const text = normalize(value);
+  const q = normalize(query);
   const cleanText = compact(value);
   const cleanQuery = compact(query);
-  return text.includes(normalize(query)) || (cleanQuery && cleanText.includes(cleanQuery));
+  return Boolean(q) && (text.includes(q) || (cleanQuery && cleanText.includes(cleanQuery)));
 };
 
 export const flattenSearchText = (value, depth = 0) => {
   if (value == null || depth > 4) return "";
   if (["string", "number", "boolean"].includes(typeof value)) return String(value);
   if (Array.isArray(value)) return value.map((item) => flattenSearchText(item, depth + 1)).join(" ");
-  if (typeof value === "object") {
-    return Object.values(value)
-      .map((item) => flattenSearchText(item, depth + 1))
-      .join(" ");
-  }
+  if (typeof value === "object") return Object.values(value).map((item) => flattenSearchText(item, depth + 1)).join(" ");
   return "";
 };
 
 export const recordMatchesQuery = (record, query, extraValues = []) =>
   includesQuery([flattenSearchText(record), ...extraValues].join(" "), query);
 
-const safeDate = (record) =>
-  record.date ||
-  record.createdAt ||
-  record.createdDate ||
-  record.transferDate ||
-  record.issueDate ||
-  record.purchaseDate ||
-  record.paymentDate ||
-  record.registrationDate ||
-  "-";
-
-const assetTitle = (record) =>
-  [record.category, record.assetId || record.deviceId, record.deviceName || record.assetName || record.name]
-    .filter(Boolean)
-    .join(" - ") || "System record";
+const dateOf = (record) =>
+  record?.paymentDate || record?.saleDate || record?.purchaseDate || record?.date || record?.createdAt || "";
 
 const row = ({ type, title, subtitle, path, record, details = [] }) => ({
   type,
-  key: `${type}-${record?.id || record?.assetId || record?.customerId || record?.transferId || record?.referenceNumber || record?.createdAt || title || flattenSearchText(record).slice(0, 40)}`,
-  title: title || assetTitle(record),
-  subtitle: subtitle || record.status || record.type || "System record",
+  key: `${type}-${record?.id || record?.productId || record?.customerId || record?.supplierId || record?.invoiceNumber || record?.billNumber || title}`,
+  title: title || "—",
+  subtitle: subtitle || "",
   path,
   record,
-  details: [
-    `Date: ${safeDate(record)}`,
-    `Category: ${record.category || "-"}`,
-    `Issued from: ${record.sourceLocation || record.source || record.from || record.fromLocation || "-"}`,
-    `Issued to: ${record.destinationLocation || record.destination || record.to || record.toLocation || "-"}`,
-    `Status: ${record.newStatus || record.status || record.issueStatus || record.approvalStatus || "-"}`,
-    `Deposit Recived: ${money(record.depositAmount || record.depositReceivedAmount || 0)} ${record.depositCurrency || "AFN"}`,
-    `Deposit Paid: ${money(record.refundAmount || record.withdrawAmount || record.depositRefundAmount || 0)} ${record.refundCurrency || record.depositCurrency || "AFN"}`,
-    ...details,
-  ],
+  details: [`Date: ${String(dateOf(record) || "-").slice(0, 10) || "-"}`, ...details],
 });
 
 export function buildSystemSearchResults(data, query, options = {}) {
@@ -65,147 +41,118 @@ export function buildSystemSearchResults(data, query, options = {}) {
   if (keyword.length < 2) return [];
 
   const {
-    assets = [],
-    customers = [],
+    products = [],
+    productGroups = [],
+    countries = [],
+    manufacturers = [],
     suppliers = [],
-    supplierPurchases = [],
-    towerAssets = [],
-    deviceTransfers = [],
-    assetMovements = [],
-    towerAssetTransfers = [],
-    deviceHistory = [],
-    securityDeposits = [],
-    customerDevices = [],
+    customers = [],
+    purchases = [],
+    sales = [],
     customerPayments = [],
-    transactions = [],
-    packages = [],
-    customerPackages = [],
-    disconnections = [],
-  } = data;
+    supplierPayments = [],
+  } = data || {};
 
   const limit = options.limit || Infinity;
   const results = [];
 
-  assets.filter((item) => recordMatchesQuery(item, keyword)).forEach((item) => {
+  products.filter((item) => {
+    const group = groupNameById(productGroups, item.groupId, item.group || "");
+    const country = countryNameById(countries, item.countryId, "en", item.madeIn || "");
+    return recordMatchesQuery(item, keyword, [group, country]);
+  }).forEach((item) => {
+    const group = groupNameById(productGroups, item.groupId, item.group || "-") || "-";
+    const country = countryNameById(countries, item.countryId, "en", item.madeIn || "-") || "-";
     results.push(row({
-      type: "Asset",
-      title: `${item.assetId || "-"} - ${item.deviceName || item.name || "Asset"}`,
-      subtitle: [item.macAddress, item.serialNumber, item.model].filter(Boolean).join(" / ") || "Asset record",
-      path: `/assets/${item.id || item.assetId}/details`,
+      type: "Product",
+      title: item.productName || item.name || "Product",
+      subtitle: [group, country].filter(Boolean).join(" · "),
+      path: `/product-detail/${item.id}`,
       record: item,
-      details: [`Quantity: ${money(item.quantity || 0)} ${item.purchaseUsageUnit || item.purchaseUnit || item.unit || "Piece"}`],
+      details: [
+        `Group: ${group}`,
+        `Made in: ${country}`,
+        `Sale price: ${money(item.salePrice || item.defaultSalePrice || 0)}`,
+        `Purchase price: ${money(item.purchasePrice || item.defaultPurchasePrice || 0)}`,
+      ],
+    }));
+  });
+
+  manufacturers.filter((item) => recordMatchesQuery(item, keyword)).forEach((item) => {
+    results.push(row({
+      type: "Manufacturer",
+      title: item.manufacturerName || item.companyName || item.name || "Manufacturer",
+      subtitle: item.country || item.phone || "",
+      path: "/manufacturers",
+      record: item,
+      details: [`Country: ${item.country || "-"}`, `Phone: ${item.phone || "-"}`],
+    }));
+  });
+
+  suppliers.filter((item) => recordMatchesQuery(item, keyword)).forEach((item) => {
+    results.push(row({
+      type: "Supplier",
+      title: item.supplierName || item.companyName || item.name || "Supplier",
+      subtitle: item.contactPerson || item.phone || "",
+      path: `/supplier-detail/${item.id}`,
+      record: item,
+      details: [`Phone: ${item.phone || item.contactNumber || "-"}`, `Currency: ${item.currency || "AFN"}`],
     }));
   });
 
   customers.filter((item) => recordMatchesQuery(item, keyword)).forEach((item) => {
     results.push(row({
       type: "Customer",
-      title: `${item.customerId || "-"} - ${item.customerName || item.fullName || item.name || "Customer"}`,
-      subtitle: item.phone || item.contactNumber || item.address || "Customer record",
-      path: `/customers/${item.id || item.customerId}`,
+      title: item.fullName || item.customerName || item.companyName || item.name || "Customer",
+      subtitle: item.phone || item.email || "",
+      path: `/customer-detail/${item.id}`,
       record: item,
-      details: [`Phone: ${item.phone || item.contactNumber || "-"}`],
+      details: [`Phone: ${item.phone || "-"}`, `Email: ${item.email || "-"}`],
     }));
   });
 
-  towerAssets.filter((item) => recordMatchesQuery(item, keyword)).forEach((item) => {
-    results.push(row({
-      type: "Tower",
-      title: item.towerName || "Tower",
-      subtitle: item.towerLocation || "Tower record",
-      path: `/tower-assets/${item.id}/details`,
-      record: item,
-      details: [`Responsible: ${item.responsiblePerson || item.installedBy || "-"}`],
-    }));
-  });
-
-  suppliers.forEach((supplier, index) => {
-    if (!recordMatchesQuery(supplier, keyword)) return;
-    results.push(row({
-      type: "Supplier",
-      title: supplier.supplierName || supplier.companyName || "Supplier",
-      subtitle: supplier.companyName || supplier.phone || "Supplier record",
-      path: `/suppliers/${index}`,
-      record: supplier,
-      details: [`Phone: ${supplier.phone || "-"}`],
-    }));
-  });
-
-  deviceTransfers.filter((item) => recordMatchesQuery(item, keyword)).forEach((item) => {
-    results.push(row({
-      type: "Transfer",
-      title: `${item.transferId || item.referenceNumber || "Transfer"} - ${assetTitle(item)}`,
-      subtitle: `${item.sourceLocation || item.sourceType || "-"} -> ${item.destinationLocation || item.destinationType || "-"}`,
-      path: item.assetRecordId || item.assetId ? `/assets/${item.assetRecordId || item.assetId}/audit-trail` : "/device-transfer-management",
-      record: item,
-      details: [
-        `Transfer type: ${item.transferType || "-"}`,
-        `Quantity: ${money(item.quantity || 0)} ${item.unit || "Piece"}`,
-      ],
-    }));
-  });
-
-  supplierPurchases.filter((item) => recordMatchesQuery(item, keyword)).forEach((item) => {
+  purchases.filter((item) => recordMatchesQuery(item, keyword)).forEach((item) => {
     results.push(row({
       type: "Purchase",
-      title: `${item.assetId || "-"} - ${item.deviceName || item.assetName || "Purchase"}`,
-      subtitle: item.supplierName || item.supplier || "Supplier purchase",
-      path: item.assetRecordId || item.assetId ? `/assets/${item.assetRecordId || item.assetId}/details` : "/suppliers",
+      title: item.billNumber || item.invoiceNumber || "Purchase",
+      subtitle: item.supplierName || "",
+      path: "/purchasing",
       record: item,
-      details: [`Invoice: ${item.invoiceNumber || "-"}`, `Quantity: ${money(item.quantity || 0)}`],
+      details: [`Supplier: ${item.supplierName || "-"}`, `Total: ${money(item.totalAmount || item.grandTotal || item.total || 0)} ${item.currency || "AFN"}`],
     }));
   });
 
-  assetMovements.filter((item) => recordMatchesQuery(item, keyword)).forEach((item) => {
+  sales.filter((item) => recordMatchesQuery(item, keyword)).forEach((item) => {
     results.push(row({
-      type: "Movement",
-      title: `${item.assetId || item.deviceId || "-"} - ${item.deviceName || item.assetName || item.movement || "Movement"}`,
-      subtitle: item.movement || item.movementType || item.type || "Asset movement",
-      path: `/assets/${item.assetRecordId || item.assetId || item.deviceId}/details`,
+      type: "Sale",
+      title: item.invoiceNumber || item.billNumber || "Sale",
+      subtitle: item.customerName || "",
+      path: item.id ? `/sale-detail/${item.id}` : "/sales-register",
       record: item,
+      details: [`Customer: ${item.customerName || "-"}`, `Total: ${money(item.totalAmount || item.grandTotal || item.total || 0)} ${item.currency || "AFN"}`],
     }));
   });
 
-  securityDeposits.filter((item) => recordMatchesQuery(item, keyword)).forEach((item) => {
+  customerPayments.filter((item) => recordMatchesQuery(item, keyword)).forEach((item) => {
     results.push(row({
-      type: "Deposit",
-      title: `${item.customerId || "-"} - ${item.customerName || item.customer || "Customer Deposit"}`,
-      subtitle: `${money(item.depositAmount || item.amount || item.remainingDeposit || 0)} ${item.currency || item.depositCurrency || "AFN"}`,
-      path: item.customerRecordId || item.customerId ? `/customers/${item.customerRecordId || item.customerId}/issue-device` : "/reports",
+      type: "Payment",
+      title: item.reference || item.description || "Customer payment",
+      subtitle: item.customerName || "Customer payment",
+      path: item.customerId ? `/customer-detail/${item.customerId}` : "/customer-registry",
       record: item,
-      details: [`Receipt: ${item.receiptNumber || "-"}`],
+      details: [`Amount: ${money(item.amount || item.paidAmount || 0)} ${item.currency || "AFN"}`, "Account: Customer"],
     }));
   });
 
-  deviceHistory.filter((item) => recordMatchesQuery(item, keyword)).forEach((item) => {
+  supplierPayments.filter((item) => recordMatchesQuery(item, keyword)).forEach((item) => {
     results.push(row({
-      type: "History",
-      title: `${item.transferId || "History"} - ${assetTitle(item)}`,
-      subtitle: `${item.sourceLocation || "-"} -> ${item.destinationLocation || "-"}`,
-      path: item.assetRecordId || item.assetId ? `/assets/${item.assetRecordId || item.assetId}/audit-trail` : "/device-transfer-management",
+      type: "Payment",
+      title: item.reference || item.description || "Supplier payment",
+      subtitle: item.supplierName || "Supplier payment",
+      path: item.supplierId ? `/supplier-detail/${item.supplierId}` : "/suppliers",
       record: item,
+      details: [`Amount: ${money(item.amount || item.paidAmount || 0)} ${item.currency || "AFN"}`, "Account: Supplier"],
     }));
-  });
-
-  [
-    { type: "Tower Transfer", path: "/tower-assets", rows: towerAssetTransfers },
-    { type: "Customer Device", path: "/issued-devices", rows: customerDevices },
-    { type: "Payment", path: "/reports", rows: customerPayments },
-    { type: "Transaction", path: "/reports", rows: transactions },
-    { type: "Package", path: "/packages", rows: packages },
-    { type: "Customer Package", path: "/packages", rows: customerPackages },
-    { type: "Reconnect / Suspend", path: "/customers", rows: disconnections },
-  ].forEach((collection) => {
-    collection.rows.filter((item) => recordMatchesQuery(item, keyword)).forEach((item) => {
-      results.push(row({
-        type: collection.type,
-        title: item.title || item.name || item.customerName || item.deviceName || item.packageName || collection.type,
-        subtitle: item.status || item.type || safeDate(item),
-        path: collection.path,
-        record: item,
-        details: [`Amount: ${item.amount ? money(item.amount) : "-"}`],
-      }));
-    });
   });
 
   return results.slice(0, limit);

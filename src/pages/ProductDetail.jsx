@@ -17,6 +17,7 @@ import {
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import { formatDateTime } from "../utils/afghanDate";
 import { getProductBatchBalances, getProductStock, getProductStockTotals, legacyProductStock } from "../utils/stock";
+import { countryNameById, groupNameById } from "../utils/productMasterData";
 import "./ProductDetail.css";
 
 const languageKey = "afghan-power-language";
@@ -198,6 +199,8 @@ function ProductDetail() {
   const navigate = useNavigate();
   const [products] = useJsonCollection("products");
   const [manufacturers] = useJsonCollection("manufacturers");
+  const [productGroups] = useJsonCollection("productGroups");
+  const [productCountries] = useJsonCollection("countries");
   const [legacyCompanies] = useJsonCollection("companies");
   const [purchases] = useJsonCollection("purchases");
   const [purchaseItems] = useJsonCollection("purchaseItems");
@@ -335,10 +338,10 @@ function ProductDetail() {
           <div className="product-detail-section-heading"><ClipboardList size={20} /><div><h2>{t.specifications}</h2></div></div>
           <div className="product-detail-spec-grid">
             <div><span>{t.productName}</span><strong>{product.productName || t.unknown}</strong></div>
-            <div><span>{t.group}</span><strong>{product.group || t.unknown}</strong></div>
+            <div><span>{t.group}</span><strong>{groupNameById(productGroups, product.groupId, product.group || t.unknown) || t.unknown}</strong></div>
             <div><span>{t.cartonSize}</span><strong>{product.cartonSize || t.unknown}</strong></div>
             <div><span>{t.manufacturer}</span><strong>{companyName}</strong></div>
-            <div><span>{t.madeIn}</span><strong>{product.madeIn || t.unknown}</strong></div>
+            <div><span>{t.madeIn}</span><strong>{countryNameById(productCountries, product.countryId, language, product.madeIn || t.unknown) || t.unknown}</strong></div>
             <div><span>{t.purchasePrice}</span><strong>{money(product.purchasePrice)}</strong></div>
             <div><span>{t.salePrice}</span><strong>{money(product.salePrice)}</strong></div>
             <div><span>{t.discount}</span><strong>{numeric(product.discount)}%</strong></div>

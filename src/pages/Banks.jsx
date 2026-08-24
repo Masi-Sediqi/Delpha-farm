@@ -451,7 +451,7 @@ export default function Banks() {
             </form> : <form onSubmit={saveTransaction} className="bank-form">
               <div className="bank-form-grid">
                 <label><span>{t.bank}</span><select value={transactionForm.bankId} onChange={(e) => setTransactionForm({ ...transactionForm, bankId: e.target.value })}><option value="">{t.selectBank}</option>{banks.filter((bank) => bank.status !== "Inactive").map((bank) => <option key={bank.id} value={bank.id}>{bank.bankName} — {bank.accountName} ({bank.currency})</option>)}</select></label>
-                <label><span>{t.date}</span><ShamsiDateInput value={transactionForm.date} onChange={(value) => setTransactionForm({ ...transactionForm, date: value })} /></label>
+                <label><span>{t.date}</span><ShamsiDateInput value={transactionForm.date} onChange={(event) => setTransactionForm({ ...transactionForm, date: event.target.value })} /></label>
                 <label><span>{t.type}</span><select value={transactionForm.type} onChange={(e) => setTransactionForm({ ...transactionForm, type: e.target.value })}><option value="deposit">{t.deposit}</option><option value="withdrawal">{t.withdrawal}</option></select></label>
                 <label><span>{t.amount}</span><input type="number" step="any" min="0" value={transactionForm.amount} onChange={(e) => setTransactionForm({ ...transactionForm, amount: e.target.value })} /></label>
                 <label className="bank-form-full"><span>{t.reference}</span><input value={transactionForm.reference} onChange={(e) => setTransactionForm({ ...transactionForm, reference: e.target.value })} /></label>

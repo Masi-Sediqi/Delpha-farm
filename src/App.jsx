@@ -31,6 +31,7 @@ import {
   BookOpenCheck,
   Landmark,
   Banknote,
+  Boxes,
 } from "lucide-react";
 import appLogo from "./assets/logo.png";
 import Header from "./components/Header";
@@ -38,6 +39,7 @@ import GlobalTableEnhancer from "./components/GlobalTableEnhancer";
 import ConfirmDialogHost from "./components/ConfirmDialogHost";
 import StartupSplash from "./components/StartupSplash";
 import StockBootstrap from "./components/StockBootstrap";
+import ProductMasterDataBootstrap from "./components/ProductMasterDataBootstrap";
 import ToastHost from "./components/ToastHost";
 import { useJsonCollection } from "./hooks/useJsonCollection";
 import { downloadBackup } from "./utils/backup";
@@ -63,11 +65,10 @@ const ReceivablesPayables = lazy(() => import("./pages/ReceivablesPayables"));
 const GeneralJournal = lazy(() => import("./pages/GeneralJournal"));
 const Banks = lazy(() => import("./pages/Banks"));
 const CashCount = lazy(() => import("./pages/CashCount"));
+const Inventory = lazy(() => import("./pages/Inventory"));
 const SaleDetail = lazy(() => import("./pages/SaleDetail"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Settings = lazy(() => import("./pages/Settings"));
-const UserManagement = lazy(() => import("./pages/UserManagement"));
-const Accounts = lazy(() => import("./pages/Accounts"));
 const SearchResults = lazy(() => import("./pages/SearchResults"));
 const Login = lazy(() => import("./pages/Login"));
 const License = lazy(() => import("./pages/License"));
@@ -102,6 +103,7 @@ const shellLabels = {
     customerRegistry: "Customers",
     salesRegister: "Sales",
     saleReturns: "Sale Returns",
+    inventory: "Inventory",
     cashFlow: "Cash Flow",
     banks: "Banks",
     cashCount: "Cash Count",
@@ -121,6 +123,7 @@ const shellLabels = {
     customerRegistry: "مشتریان",
     salesRegister: "فروشات",
     saleReturns: "برگشت فروش",
+    inventory: "موجودی",
     cashFlow: "جریان نقدی",
     banks: "بانک‌ها",
     cashCount: "شمارش نقدی",
@@ -140,6 +143,7 @@ const shellLabels = {
     customerRegistry: "پېرودونکي",
     salesRegister: "خرڅلاو",
     saleReturns: "د خرڅلاو بېرته ستنول",
+    inventory: "موجودي",
     cashFlow: "نغدي جریان",
     banks: "بانکونه",
     cashCount: "د نغدو شمېرنه",
@@ -497,6 +501,7 @@ function App() {
     { to: "/purchasing", label: labels.purchasing, moduleKey: "suppliers", icon: ShoppingCart },
     { to: "/customer-registry", label: labels.customerRegistry, moduleKey: "customers", icon: Users },
     { to: "/sales-register", label: labels.salesRegister, moduleKey: "customers", icon: ShoppingBag },
+    { to: "/inventory", label: labels.inventory, moduleKey: "reports", icon: Boxes },
     { to: "/cash-flow", label: labels.cashFlow, moduleKey: "reports", icon: Wallet },
     { to: "/reports", label: labels.reports, moduleKey: "reports", icon: FileBarChart },
     { to: "/settings", label: labels.settings, moduleKey: "settings", icon: SettingsIcon },
@@ -637,6 +642,7 @@ function App() {
               <Route path="/sales-register" element={protect("customers", <SalesRegister />)} />
               <Route path="/sales" element={protect("customers", <SalesRegister />)} />
               <Route path="/sale-returns" element={protect("customers", <SaleReturns />)} />
+              <Route path="/inventory" element={protect("reports", <Inventory />)} />
               <Route path="/cash-flow" element={protect("reports", <CashFlow />)} />
               <Route path="/banks" element={protect("reports", <Banks />)} />
               <Route path="/cash-count" element={protect("reports", <CashCount />)} />
@@ -646,29 +652,8 @@ function App() {
               <Route path="/sale-detail/:saleId" element={protect("customers", <SaleDetail />)} />
               <Route path="/reports" element={protect("reports", <Reports />)} />
 
-              <Route
-                path="/user-management"
-                element={protect(
-                  "userManagement",
-                  <UserManagement
-                    accounts={effectiveAccounts}
-                    setAccounts={setAccounts}
-                    currentUser={currentUser}
-                  />
-                )}
-              />
               <Route path="/settings" element={protect("settings", <Settings accounts={effectiveAccounts} setAccounts={setAccounts} currentUser={currentUser} />)} />
-              <Route
-                path="/accounts"
-                element={protect(
-                  "userManagement",
-                  <Accounts
-                    accounts={accounts}
-                    setAccounts={setAccounts}
-                    currentUser={currentUser}
-                  />
-                )}
-              />
+
 
               <Route
                 path="*"
@@ -695,6 +680,7 @@ function App() {
     <>
       <StartupSplash />
       <StockBootstrap />
+      <ProductMasterDataBootstrap />
       {appContent}
       {!currentUser && <ToastHost />}
       {!currentUser && <ConfirmDialogHost />}

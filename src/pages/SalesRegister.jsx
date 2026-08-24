@@ -21,6 +21,7 @@ import { useJsonCollection } from "../hooks/useJsonCollection";
 import { confirmAction } from "../utils/confirmDialog";
 import { formatDateTime } from "../utils/afghanDate";
 import { notify } from "../utils/notify";
+import { groupNameById } from "../utils/productMasterData";
 import {
   allocateProductBatchesFEFO,
   getProductStock,
@@ -254,6 +255,7 @@ export default function SalesRegister() {
   const navigate = useNavigate();
   const [customers] = useJsonCollection("customerRegistry");
   const [products] = useJsonCollection("products");
+  const [productGroups] = useJsonCollection("productGroups");
   const [stockMovements, setStockMovements] = useJsonCollection("stockMovements");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [search, setSearch] = useState("");
@@ -298,9 +300,9 @@ export default function SalesRegister() {
     return products.filter((product) => {
       if (getStock(product) <= 0) return false;
       if (!q) return true;
-      return `${product.productName || ""} ${product.group || ""} ${product.companyName || ""}`.toLowerCase().includes(q);
+      return `${product.productName || ""} ${groupNameById(productGroups, product.groupId, product.group || "")} ${product.companyName || ""}`.toLowerCase().includes(q);
     });
-  }, [products, productSearch, stockMovements]);
+  }, [products, productSearch, stockMovements, productGroups]);
 
   const openModal = () => {
     setEditingSaleId(null);
@@ -350,7 +352,7 @@ export default function SalesRegister() {
       {
         productId: product.id,
         productName: product.productName || "",
-        group: product.group || "",
+        group: groupNameById(productGroups, product.groupId, product.group || ""),
         cartonSize: product.cartonSize || "",
         currentStock: getStock(product),
         cartons: 0,
@@ -705,7 +707,7 @@ export default function SalesRegister() {
                   <div className="sales-register-product-picker">
                     {availableProducts.map((product) => {
                       const active = selectedItems.some((item) => String(item.productId) === String(product.id));
-                      return <button type="button" key={product.id} className={active ? "is-selected" : ""} onClick={() => addProduct(product)}><span>{product.productName}</span><small>{product.group || "—"} · {t.currentStock}: {getStock(product)}</small>{active && <Check size={15} />}</button>;
+                      return <button type="button" key={product.id} className={active ? "is-selected" : ""} onClick={() => addProduct(product)}><span>{product.productName}</span><small>{groupNameById(productGroups, product.groupId, product.group || "—") || "—"} · {t.currentStock}: {getStock(product)}</small>{active && <Check size={15} />}</button>;
                     })}
                   </div>
                 )}

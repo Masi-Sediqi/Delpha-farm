@@ -5,6 +5,7 @@ import { Edit3, PackagePlus, Plus, Search, Trash2, X } from "lucide-react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import { confirmAction } from "../utils/confirmDialog";
 import { notify } from "../utils/notify";
+import { countryNameById, groupNameById, makeMasterId, normalizeMasterName } from "../utils/productMasterData";
 import "./Products.css";
 
 const languageKey = "afghan-power-language";
@@ -177,27 +178,14 @@ const translations = {
   },
 };
 
-const countries = [
-  { value: "Afghanistan", en: "Afghanistan", fa: "افغانستان", ps: "افغانستان" },
-  { value: "United Kingdom", en: "United Kingdom", fa: "انگلستان", ps: "انګلستان" },
-  { value: "Pakistan", en: "Pakistan", fa: "پاکستان", ps: "پاکستان" },
-  { value: "Turkey", en: "Turkey", fa: "ترکیه", ps: "ترکیه" },
-  { value: "Russia", en: "Russia", fa: "روسیه", ps: "روسیه" },
-  { value: "North Sudan", en: "North Sudan", fa: "سودان شمالی", ps: "شمالي سوډان" },
-  { value: "Malaysia", en: "Malaysia", fa: "مالیزیا", ps: "مالیزیا" },
-  { value: "India", en: "India", fa: "هند", ps: "هند" },
-  { value: "Vietnam", en: "Vietnam", fa: "ویتنام", ps: "ویتنام" },
- ];
-
-
 
 const emptyForm = {
   productName: "",
-  group: "A",
+  groupId: "",
   cartonSize: "",
   discount: "",
   manufacturerId: "",
-  madeIn: "Afghanistan",
+  countryId: "",
   salePrice: "",
   purchasePrice: "",
   description: "",
@@ -206,10 +194,10 @@ const emptyForm = {
 function Products() {
   const navigate = useNavigate();
   const [products, setProducts] = useJsonCollection("products");
-  const [savedGroups, setSavedGroups] = useJsonCollection("salesProductGroups");
+  const [productGroups, setProductGroups] = useJsonCollection("productGroups");
   const [manufacturers] = useJsonCollection("manufacturers");
   const [legacyCompanies] = useJsonCollection("companies");
-  const [savedCountries, setSavedCountries] = useJsonCollection("productCountries");
+  const [productCountries, setProductCountries] = useJsonCollection("countries");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -247,24 +235,13 @@ function Products() {
     return () => document.body.classList.remove("sales-product-modal-open");
   }, [showModal]);
 
-  const groups = useMemo(() => {
-    const custom = savedGroups
-      .map((item) => String(typeof item === "string" ? item : item?.name || "").trim())
-      .filter(Boolean);
-    return [...new Set(["A", "B", ...custom])];
-  }, [savedGroups]);
+  const groups = useMemo(() => productGroups.filter((item) => item?.name), [productGroups]);
+  const allCountries = useMemo(() => productCountries.filter((item) => item?.name || item?.en), [productCountries]);
+  const defaultGroupId = productGroups.find((item) => normalizeMasterName(item.name) === "a")?.id || productGroups[0]?.id || "";
+  const defaultCountryId = productCountries.find((item) => normalizeMasterName(item.name || item.en) === "afghanistan")?.id || productCountries[0]?.id || "";
 
-  const allCountries = useMemo(() => {
-    const custom = savedCountries
-      .map((item) => String(typeof item === "string" ? item : item?.name || "").trim())
-      .filter(Boolean);
-    return [
-      ...countries,
-      ...custom
-        .filter((name) => !countries.some((item) => item.value.toLowerCase() === name.toLowerCase()))
-        .map((name) => ({ value: name, en: name, fa: name, ps: name })),
-    ];
-  }, [savedCountries]);
+  const groupLabel = (product) => groupNameById(productGroups, product.groupId, product.group || "—") || "—";
+  const countryLabel = (product) => countryNameById(productCountries, product.countryId, language, product.madeIn || "—") || "—";
 
   const manufacturerNameById = (manufacturerId, legacyName = "") => {
     const manufacturer = availableManufacturers.find((item) => String(item.id) === String(manufacturerId));
@@ -277,21 +254,17 @@ function Products() {
     return products.filter((product) =>
       [
         product.productName,
-        product.group,
+        groupLabel(product),
         manufacturerNameById(product.manufacturerId || product.companyId, product.company),
-        product.madeIn,
+        countryLabel(product),
       ].some((value) => String(value || "").toLowerCase().includes(query))
     );
-  }, [products, search, availableManufacturers]);
+  }, [products, search, availableManufacturers, productGroups, productCountries, language]);
 
-  const countryLabel = (value) => {
-    const country = allCountries.find((item) => item.value === value);
-    return country ? country[language] || country.en : value || "—";
-  };
 
   const openNew = () => {
     setEditingId(null);
-    setFormData(emptyForm);
+    setFormData({ ...emptyForm, groupId: defaultGroupId, countryId: defaultCountryId });
     setAddingGroup(false);
     setNewGroup("");
     setAddingCountry(false);
@@ -304,9 +277,13 @@ function Products() {
     const legacyManufacturer = availableManufacturers.find(
       (item) => String(item.manufacturerName || item.companyName || "").trim().toLowerCase() === String(product.company || "").trim().toLowerCase()
     );
+    const legacyGroup = productGroups.find((item) => normalizeMasterName(item.name) === normalizeMasterName(product.group));
+    const legacyCountry = productCountries.find((item) => normalizeMasterName(item.name || item.en) === normalizeMasterName(product.madeIn));
     setFormData({
       ...emptyForm,
       ...product,
+      groupId: product.groupId || legacyGroup?.id || defaultGroupId,
+      countryId: product.countryId || legacyCountry?.id || defaultCountryId,
       manufacturerId: product.manufacturerId || product.companyId || legacyManufacturer?.id || "",
     });
     setAddingGroup(false);
@@ -333,25 +310,36 @@ function Products() {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    let selectedGroup = formData.group;
+    let selectedGroupId = formData.groupId;
+    let selectedCountryId = formData.countryId;
+
     if (addingGroup) {
-      selectedGroup = newGroup.trim();
-      if (!selectedGroup) {
-        notify(t.groupRequired, "error");
-        return;
+      const name = newGroup.trim();
+      if (!name) { notify(t.groupRequired, "error"); return; }
+      const existing = productGroups.find((item) => normalizeMasterName(item.name) === normalizeMasterName(name));
+      if (existing) selectedGroupId = existing.id;
+      else {
+        const row = { id: makeMasterId("group", name), name, createdAt: new Date().toISOString() };
+        const saved = await setProductGroups([...productGroups, row]);
+        if (!saved) return;
+        selectedGroupId = row.id;
       }
     }
 
-    let selectedCountry = formData.madeIn;
     if (addingCountry) {
-      selectedCountry = newCountry.trim();
-      if (!selectedCountry) {
-        notify(t.countryRequired, "error");
-        return;
+      const name = newCountry.trim();
+      if (!name) { notify(t.countryRequired, "error"); return; }
+      const existing = productCountries.find((item) => normalizeMasterName(item.name || item.en) === normalizeMasterName(name));
+      if (existing) selectedCountryId = existing.id;
+      else {
+        const row = { id: makeMasterId("country", name), name, en: name, fa: name, ps: name, createdAt: new Date().toISOString() };
+        const saved = await setProductCountries([...productCountries, row]);
+        if (!saved) return;
+        selectedCountryId = row.id;
       }
     }
 
-    if (!formData.productName.trim() || !selectedGroup) {
+    if (!formData.productName.trim() || !selectedGroupId) {
       notify(t.required, "error");
       return;
     }
@@ -361,13 +349,14 @@ function Products() {
       return;
     }
 
+    const { group: _legacyGroup, madeIn: _legacyMadeIn, companyId: _legacyCompanyId, company: _legacyCompany, ...cleanFormData } = formData;
     const record = {
-      ...formData,
+      ...cleanFormData,
       id: editingId || `sale-product-${Date.now()}`,
       productName: formData.productName.trim(),
-      group: selectedGroup,
+      groupId: selectedGroupId,
       manufacturerId: formData.manufacturerId,
-      madeIn: selectedCountry,
+      countryId: selectedCountryId,
       cartonSize: formData.cartonSize.trim(),
       discount: Number(formData.discount || 0),
       salePrice: Number(formData.salePrice || 0),
@@ -379,15 +368,6 @@ function Products() {
         : new Date().toISOString(),
     };
 
-    if (addingGroup && !groups.some((group) => group.toLowerCase() === selectedGroup.toLowerCase())) {
-      const groupSaved = await setSavedGroups([...savedGroups, { id: `group-${Date.now()}`, name: selectedGroup }]);
-      if (!groupSaved) return;
-    }
-
-    if (addingCountry && !allCountries.some((country) => country.value.toLowerCase() === selectedCountry.toLowerCase())) {
-      const countrySaved = await setSavedCountries([...savedCountries, { id: `country-${Date.now()}`, name: selectedCountry }]);
-      if (!countrySaved) return;
-    }
 
     const nextProducts = editingId
       ? products.map((item) => (String(item.id) === String(editingId) ? record : item))
@@ -431,8 +411,8 @@ function Products() {
 
       <div className="sales-products-stats">
         <div className="sales-products-stat-card"><span>{t.totalProducts}</span><strong>{products.length}</strong></div>
-        <div className="sales-products-stat-card"><span>{t.groups}</span><strong>{groups.length}</strong></div>
-        <div className="sales-products-stat-card"><span>{t.countries}</span><strong>{new Set(products.map((item) => item.madeIn).filter(Boolean)).size}</strong></div>
+        <div className="sales-products-stat-card"><span>{t.groups}</span><strong>{productGroups.length}</strong></div>
+        <div className="sales-products-stat-card"><span>{t.countries}</span><strong>{new Set(products.map((item) => item.countryId).filter(Boolean)).size}</strong></div>
         <div className="sales-products-stat-card"><span>{t.avgDiscount}</span><strong>{averageDiscount.toFixed(1)}%</strong></div>
       </div>
 
@@ -463,11 +443,11 @@ function Products() {
               {filteredProducts.map((product) => (
                 <tr key={product.id} className="sales-product-clickable-row" role="button" tabIndex={0} onClick={() => navigate(`/product-detail/${product.id}`)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") navigate(`/product-detail/${product.id}`); }}>
                   <td className="sales-product-name-cell"><strong>{product.productName}</strong>{product.description && <small>{product.description}</small>}</td>
-                  <td><span className="sales-product-group-badge">{product.group || "—"}</span></td>
+                  <td><span className="sales-product-group-badge">{groupLabel(product)}</span></td>
                   <td>{product.cartonSize || "—"}</td>
                   <td>{Number(product.discount || 0)}%</td>
                   <td>{manufacturerNameById(product.manufacturerId || product.companyId, product.company)}</td>
-                  <td>{countryLabel(product.madeIn)}</td>
+                  <td>{countryLabel(product)}</td>
                   <td>{Number(product.salePrice || 0).toLocaleString("en-US")}</td>
                   <td>{Number(product.purchasePrice || 0).toLocaleString("en-US")}</td>
                   <td>
@@ -505,9 +485,9 @@ function Products() {
                 <div className="sales-product-field">
                   <span>{t.group} *</span>
                   <div className="sales-product-select-with-add">
-                    <select name="group" value={formData.group} onChange={handleChange}>
+                    <select name="groupId" value={formData.groupId} onChange={handleChange}>
                       <option value="" disabled>{t.selectGroup}</option>
-                      {groups.map((group) => <option key={group} value={group}>{group}</option>)}
+                      {groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
                     </select>
                     <button type="button" className="sales-product-inline-add" onClick={() => setAddingGroup((v) => !v)} title={t.addNewGroup} aria-label={t.addNewGroup}><Plus size={18} /></button>
                   </div>
@@ -539,9 +519,9 @@ function Products() {
                 <div className="sales-product-field">
                   <span>{t.madeIn}</span>
                   <div className="sales-product-select-with-add">
-                    <select name="madeIn" value={formData.madeIn} onChange={handleChange}>
+                    <select name="countryId" value={formData.countryId} onChange={handleChange}>
                       <option value="" disabled>{t.selectCountry}</option>
-                      {allCountries.map((country) => <option key={country.value} value={country.value}>{country[language] || country.en}</option>)}
+                      {allCountries.map((country) => <option key={country.id} value={country.id}>{country[language] || country.en || country.name}</option>)}
                     </select>
                     <button type="button" className="sales-product-inline-add" onClick={() => setAddingCountry((v) => !v)} title={t.addNewCountry} aria-label={t.addNewCountry}><Plus size={18} /></button>
                   </div>

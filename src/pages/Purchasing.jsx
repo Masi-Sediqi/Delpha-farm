@@ -18,6 +18,7 @@ import { useJsonCollection } from "../hooks/useJsonCollection";
 import { confirmAction } from "../utils/confirmDialog";
 import { formatDateTime } from "../utils/afghanDate";
 import { notify } from "../utils/notify";
+import { groupNameById } from "../utils/productMasterData";
 import {
   getProductStock,
   legacyProductStock,
@@ -233,6 +234,7 @@ function Purchasing() {
   const [purchaseItems, setPurchaseItems, , purchaseItemsLoaded] = useJsonCollection("purchaseItems");
   const [suppliers] = useJsonCollection("suppliers");
   const [products, setProducts] = useJsonCollection("products");
+  const [productGroups] = useJsonCollection("productGroups");
   const [stockMovements, setStockMovements] = useJsonCollection("stockMovements");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [search, setSearch] = useState("");
@@ -316,9 +318,9 @@ function Purchasing() {
     const q = productSearch.trim().toLowerCase();
     return products.filter((item) => {
       if (!q) return true;
-      return `${item.productName || ""} ${item.group || ""} ${item.companyName || ""}`.toLowerCase().includes(q);
+      return `${item.productName || ""} ${groupNameById(productGroups, item.groupId, item.group || "")} ${item.companyName || ""}`.toLowerCase().includes(q);
     });
-  }, [products, supplierId, productSearch]);
+  }, [products, supplierId, productSearch, productGroups]);
 
   const addProduct = (product) => {
     if (selectedItems.some((item) => String(item.productId) === String(product.id))) return;
@@ -327,7 +329,7 @@ function Purchasing() {
       {
         productId: product.id,
         productName: product.productName || "",
-        group: product.group || "",
+        group: groupNameById(productGroups, product.groupId, product.group || ""),
         cartonSize: product.cartonSize || "",
         purchasePrice: numeric(product.purchasePrice),
         cartons: 1,
@@ -588,7 +590,7 @@ function Purchasing() {
 
               <div className="purchasing-picker-section">
                 <div className="purchasing-section-heading"><div><h3>{t.availableProducts}</h3><p>{t.clickToAdd}</p></div>{supplierId && <div className="purchasing-product-search"><Search size={16} /><input value={productSearch} onChange={(e) => setProductSearch(e.target.value)} placeholder={t.productSearch} /></div>}</div>
-                {!supplierId ? <div className="purchasing-picker-empty">{t.chooseSupplierFirst}</div> : !availableProducts.length ? <div className="purchasing-picker-empty">{t.noProducts}</div> : <div className="purchasing-product-picker">{availableProducts.map((product) => { const active = selectedItems.some((item) => String(item.productId) === String(product.id)); return <button type="button" key={product.id} className={`purchasing-product-chip ${active ? "is-selected" : ""}`} onClick={() => addProduct(product)}><span>{product.productName}</span><small>{product.group || "—"}</small>{active && <Check size={16} />}</button>; })}</div>}
+                {!supplierId ? <div className="purchasing-picker-empty">{t.chooseSupplierFirst}</div> : !availableProducts.length ? <div className="purchasing-picker-empty">{t.noProducts}</div> : <div className="purchasing-product-picker">{availableProducts.map((product) => { const active = selectedItems.some((item) => String(item.productId) === String(product.id)); return <button type="button" key={product.id} className={`purchasing-product-chip ${active ? "is-selected" : ""}`} onClick={() => addProduct(product)}><span>{product.productName}</span><small>{groupNameById(productGroups, product.groupId, product.group || "—") || "—"}</small>{active && <Check size={16} />}</button>; })}</div>}
               </div>
 
               <div className="purchasing-selected-section">

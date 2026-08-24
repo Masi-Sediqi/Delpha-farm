@@ -1,944 +1,218 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BookOpenCheck, BadgeDollarSign, Download, FileSpreadsheet, FileText, Printer } from "lucide-react";
 import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+  ArrowRight,
+  BarChart3,
+  Boxes,
+  FileText,
+  Landmark,
+  FileSpreadsheet,
+  Printer,
+  ReceiptText,
+  Search,
+  ShoppingCart,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
-import { formatDateTime } from "../utils/afghanDate";
-import {
-  buildAssetInventoryInsights,
-  sumAssetRows,
-} from "../utils/assetInventoryInsights";
+import { getProductStock } from "../utils/stock";
+import { groupNameById } from "../utils/productMasterData";
 import ShamsiDateInput from "../components/ShamsiDateInput";
 import "./Reports.css";
 
-const money = (value) => Number(value || 0).toLocaleString("en-US");
-const clean = (value) => String(value || "").trim();
-const currencyLabel = (value) => clean(value || "AFN").toUpperCase();
-const formatCurrencyTotals = (totals) => {
-  const entries = Object.entries(totals || {}).filter(([, amount]) => Number(amount || 0) !== 0);
-  if (!entries.length) return "-";
-  return entries.map(([currency, amount]) => `${money(amount)} ${currencyLabel(currency)}`).join(" / ");
+const languageKey = "afghan-power-language";
+const rtlLanguages = new Set(["fa", "ps"]);
+const numeric = (value) => Number(value || 0) || 0;
+const dateOnly = (value) => String(value || "").slice(0, 10);
+const money = (value) => numeric(value).toLocaleString("en-US", { maximumFractionDigits: 2 });
+
+const translations = {
+  en: {
+    title: "Reports",
+    subtitle: "Simple, useful reports for daily pharmacy management.",
+    sales: "Sales Report",
+    salesHint: "Invoices, customers, totals, payments and remaining balances.",
+    purchases: "Purchase Report",
+    purchasesHint: "Supplier purchases, paid amounts and outstanding balances.",
+    inventory: "Inventory Report",
+    inventoryHint: "Current medicine stock calculated from stock movements.",
+    accounts: "Receivables & Payables",
+    accountsHint: "See what customers owe you and what you owe suppliers.",
+    cash: "Cash Flow",
+    cashHint: "Review cash receipts, payments and balances by currency.",
+    journal: "General Journal",
+    journalHint: "Open the accounting journal and ledger summaries.",
+    open: "Open",
+    reportWorkspace: "Report Workspace",
+    allDates: "All dates",
+    from: "From",
+    to: "To",
+    search: "Search this report...",
+    reset: "Reset",
+    export: "Export Excel",
+    print: "Print",
+    reportTitle: "Report",
+    dateRange: "Date range",
+    generatedOn: "Generated on",
+    records: "records",
+    total: "Total",
+    paid: "Paid",
+    remaining: "Remaining",
+    invoice: "Invoice",
+    bill: "Bill No.",
+    customer: "Customer",
+    supplier: "Supplier",
+    items: "Items",
+    date: "Date",
+    paymentType: "Payment Type",
+    cashPayment: "Cash",
+    installment: "Installment",
+    product: "Product",
+    group: "Group",
+    manufacturer: "Manufacturer",
+    currentStock: "Current Stock",
+    status: "Status",
+    inStock: "In stock",
+    outOfStock: "Out of stock",
+    noRows: "No records match the current filters.",
+    summarySales: "Sales in range",
+    summaryPurchases: "Purchases in range",
+    summaryStock: "Units currently in stock",
+    summaryProducts: "Products",
+  },
+  fa: {
+    title: "گزارشات",
+    subtitle: "گزارش‌های ساده و کاربردی برای مدیریت روزانه دواخانه.",
+    sales: "گزارش فروشات",
+    salesHint: "بل‌ها، مشتریان، جمله، پرداخت و باقی‌مانده فروشات.",
+    purchases: "گزارش خریداری",
+    purchasesHint: "خریدهای تأمین‌کننده‌گان، پرداخت و باقی‌مانده.",
+    inventory: "گزارش موجودی",
+    inventoryHint: "موجودی فعلی دواها بر اساس حرکات واقعی گدام.",
+    accounts: "طلبات و پرداختنی‌ها",
+    accountsHint: "ببینید مشتریان چقدر بدهکارند و ما به تأمین‌کننده‌گان چقدر بدهکاریم.",
+    cash: "جریان نقدی",
+    cashHint: "دریافت، پرداخت و بیلانس نقدی را به تفکیک اسعار ببینید.",
+    journal: "ژورنال عمومی",
+    journalHint: "ژورنال حسابداری و خلاصه لیجرها را باز کنید.",
+    open: "باز کردن",
+    reportWorkspace: "محیط گزارش",
+    allDates: "تمام تاریخ‌ها",
+    from: "از تاریخ",
+    to: "تا تاریخ",
+    search: "جستجو در گزارش...",
+    reset: "پاک کردن فلتر",
+    export: "خروجی Excel",
+    print: "پرنت",
+    reportTitle: "گزارش",
+    dateRange: "بازه تاریخ",
+    generatedOn: "تاریخ تهیه",
+    records: "ریکارد",
+    total: "جمله",
+    paid: "پرداخت",
+    remaining: "باقی‌مانده",
+    invoice: "بل فروش",
+    bill: "بل نمبر",
+    customer: "مشتری",
+    supplier: "تأمین‌کننده",
+    items: "اقلام",
+    date: "تاریخ",
+    paymentType: "نوع پرداخت",
+    cashPayment: "نقدی",
+    installment: "قسطی",
+    product: "دوا / محصول",
+    group: "گروپ",
+    manufacturer: "شرکت سازنده",
+    currentStock: "موجودی فعلی",
+    status: "وضعیت",
+    inStock: "موجود",
+    outOfStock: "خلاص شده",
+    noRows: "برای فلتر فعلی هیچ ریکاردی وجود ندارد.",
+    summarySales: "فروش در بازه",
+    summaryPurchases: "خرید در بازه",
+    summaryStock: "مجموع واحد موجود",
+    summaryProducts: "تعداد محصولات",
+  },
+  ps: {
+    title: "راپورونه",
+    subtitle: "د درملتون د ورځني مدیریت لپاره ساده او ګټور راپورونه.",
+    sales: "د خرڅلاو راپور",
+    salesHint: "بلونه، پېرودونکي، ټول مبلغ، تادیه او پاتې پیسې.",
+    purchases: "د پېرود راپور",
+    purchasesHint: "د عرضه کوونکو پېرودونه، تادیه او پاتې پورونه.",
+    inventory: "د موجودۍ راپور",
+    inventoryHint: "د ګدام د حقیقي حرکتونو له مخې د درملو اوسنی موجودي.",
+    accounts: "ترلاسه کېدونکي او ورکول کېدونکي",
+    accountsHint: "وګورئ پېرودونکي څومره پوروړي دي او موږ عرضه کوونکو ته څومره پوروړي یو.",
+    cash: "نغدي جریان",
+    cashHint: "نغدي ترلاسه کول، تادیات او بیلانس د اسعارو له مخې وګورئ.",
+    journal: "عمومي ژورنال",
+    journalHint: "د حسابدارۍ ژورنال او د لیجرونو لنډیز پرانیزئ.",
+    open: "پرانستل",
+    reportWorkspace: "د راپور ساحه",
+    allDates: "ټولې نېټې",
+    from: "له نېټې",
+    to: "تر نېټې",
+    search: "په راپور کې لټون...",
+    reset: "فلټر پاکول",
+    export: "Excel صادرول",
+    print: "پرنټ",
+    reportTitle: "راپور",
+    dateRange: "د نېټې موده",
+    generatedOn: "د جوړېدو نېټه",
+    records: "ریکارډونه",
+    total: "ټول",
+    paid: "تادیه",
+    remaining: "پاتې",
+    invoice: "د خرڅلاو بل",
+    bill: "بل نمبر",
+    customer: "پېرودونکی",
+    supplier: "عرضه کوونکی",
+    items: "توکي",
+    date: "نېټه",
+    paymentType: "د تادیې ډول",
+    cashPayment: "نغدي",
+    installment: "قسطی",
+    product: "درمل / محصول",
+    group: "ګروپ",
+    manufacturer: "جوړوونکی شرکت",
+    currentStock: "اوسنۍ موجودي",
+    status: "حالت",
+    inStock: "موجود",
+    outOfStock: "خلاص",
+    noRows: "د اوسني فلټر لپاره ریکارډ نشته.",
+    summarySales: "په موده کې خرڅلاو",
+    summaryPurchases: "په موده کې پېرود",
+    summaryStock: "ټول موجود واحدونه",
+    summaryProducts: "محصولات",
+  },
 };
-const sumAmountsByCurrency = (rows) =>
-  rows.reduce((totals, row) => {
-    const currency = currencyLabel(row.currency || row.depositCurrency || "AFN");
-    return {
-      ...totals,
-      [currency]: Number(totals[currency] || 0) + Number(row.amount || 0),
-    };
-  }, {});
-const keyOf = (value) => clean(value).toLowerCase();
-const isInactiveCustomer = (customer) =>
-  /inactive|disabled|disconnected|suspend/i.test(clean(customer?.status));
-const isRealTransfer = (transfer) =>
-  !transfer?.isSummaryRecord &&
-  !transfer?.summaryType &&
-  Number(transfer?.quantity || 0) > 0;
-const rowDate = (row) =>
-  clean(row.date || row.transferDate || row.purchaseDate || row.createdAt || row.updatedAt).slice(0, 10);
-const escapeHtml = (value) =>
-  String(value ?? "")
+
+function inRange(value, from, to) {
+  const date = dateOnly(value);
+  if (from && (!date || date < from)) return false;
+  if (to && (!date || date > to)) return false;
+  return true;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
-
-const sectionMeta = {
-  assets: {
-    title: "Current Assets",
-    subtitle: "Asset categories, quantities, and current holders.",
-    groupTitle: "Asset Categories",
-    rowTitle: "Assets",
-  },
-  activeCustomers: {
-    title: "Active Customers",
-    subtitle: "Active customer list and assets currently held by each customer.",
-    groupTitle: "Active Customers",
-    rowTitle: "Customer Assets",
-  },
-  inactiveCustomers: {
-    title: "Inactive / Suspend Customers",
-    subtitle: "Inactive or suspend customers and company assets still held by them.",
-    groupTitle: "Inactive / Suspend Customers",
-    rowTitle: "Customer Assets",
-  },
-  towers: {
-    title: "Towers",
-    subtitle: "Tower list and assets currently held by every tower.",
-    groupTitle: "Towers",
-    rowTitle: "Tower Assets",
-  },
-  suppliers: {
-    title: "Suppliers",
-    subtitle: "Supplier purchase contribution by category and quantity.",
-    groupTitle: "Suppliers",
-    rowTitle: "Supplier Purchase Records",
-  },
-  transfers: {
-    title: "Transfer Report",
-    subtitle: "Every transfer made in the system, with issued from, issued to, date, and status.",
-    groupTitle: "Transfer Destinations",
-    rowTitle: "Transfer Records",
-  },
-  deposits: {
-    title: "Deposit Recived / Deposit Paid Report",
-    subtitle: "Customer deposits received and refunds or withdraws paid back.",
-    groupTitle: "Deposit Recived / Deposit Paid Summary",
-    rowTitle: "Deposit Recived / Deposit Paid Records",
-  },
-};
-
-const sectionOrder = [
-  "assets",
-  "activeCustomers",
-  "inactiveCustomers",
-  "towers",
-  "suppliers",
-  "transfers",
-  "deposits",
-];
-
-const colors = ["#2563eb", "#14b8a6", "#f59e0b", "#8b5cf6", "#ef4444", "#22c55e", "#0ea5e9"];
-
-function Reports() {
-  const navigate = useNavigate();
-  const [settings] = useJsonCollection("settings");
-  const [assets] = useJsonCollection("assets");
-  const [assetMovements] = useJsonCollection("assetMovements");
-  const [customers] = useJsonCollection("customers");
-  const [towerAssets] = useJsonCollection("towerAssets");
-  const [suppliers] = useJsonCollection("suppliers");
-  const [supplierPurchases] = useJsonCollection("supplierPurchases");
-  const [deviceTransfers] = useJsonCollection("deviceTransfers");
-
-  const [activeSection, setActiveSection] = useState("");
-  const [selectedGroup, setSelectedGroup] = useState(null);
-  const [filters, setFilters] = useState({
-    search: "",
-    fromDate: "",
-    toDate: "",
-    status: "All",
-    type: "All",
-  });
-
-  const company = settings[0] || {};
-  const systemName = company.companyName || "ISP Assets";
-  const logo = company.logo || "";
-
-  const insights = useMemo(
-    () =>
-      buildAssetInventoryInsights({
-        assets,
-        assetMovements,
-        deviceTransfers,
-        towerAssets,
-        customers,
-      }),
-    [assets, assetMovements, customers, deviceTransfers, towerAssets]
-  );
-
-  const reportData = useMemo(
-    () =>
-      buildReportData({
-        assets,
-        customers,
-        towerAssets,
-        suppliers,
-        supplierPurchases,
-        deviceTransfers,
-        insights,
-      }),
-    [assets, customers, deviceTransfers, insights, supplierPurchases, suppliers, towerAssets]
-  );
-
-  const activeMeta = sectionMeta[activeSection] || null;
-  const activeGroups = activeSection ? reportData[activeSection]?.groups || [] : [];
-  const rawRows = activeSection
-    ? selectedGroup
-      ? selectedGroup.rows || []
-      : reportData[activeSection]?.rows || []
-    : [];
-  const columns = activeSection ? reportData[activeSection]?.columns || [] : [];
-  const chartData = activeSection
-    ? selectedGroup
-      ? summarizeRowsForChart(rawRows)
-      : activeGroups.map((group) => ({
-          name: group.name || group.category || group.type || "Unknown",
-          value: Number(group.quantity || group.total || group.records || 0),
-        }))
-    : overviewChartData(reportData);
-
-  const filteredRows = useMemo(
-    () =>
-      rawRows.filter((row) => {
-        const search = keyOf(filters.search);
-        const date = rowDate(row);
-        const haystack = keyOf(Object.values(row).join(" "));
-        if (search && !haystack.includes(search)) return false;
-        if (filters.fromDate && (!date || date < filters.fromDate)) return false;
-        if (filters.toDate && (!date || date > filters.toDate)) return false;
-        if (filters.status !== "All" && keyOf(row.status) !== keyOf(filters.status)) return false;
-        if (filters.type !== "All" && keyOf(row.type || row.destinationType || row.category) !== keyOf(filters.type)) return false;
-        return true;
-      }),
-    [filters, rawRows]
-  );
-  const filteredDepositReceivedTotals = activeSection === "deposits"
-    ? sumAmountsByCurrency(filteredRows.filter((row) => row.type === "Deposit Recived"))
-    : {};
-  const filteredDepositPaidTotals = activeSection === "deposits"
-    ? sumAmountsByCurrency(filteredRows.filter((row) => row.type === "Deposit Paid"))
-    : {};
-
-  const filterOptions = useMemo(
-    () => ({
-      status: ["All", ...Array.from(new Set(rawRows.map((row) => clean(row.status)).filter(Boolean))).sort()],
-      type: [
-        "All",
-        ...Array.from(
-          new Set(rawRows.map((row) => clean(row.type || row.destinationType || row.category)).filter(Boolean))
-        ).sort(),
-      ],
-    }),
-    [rawRows]
-  );
-
-  const currentTitle = activeMeta
-    ? selectedGroup
-      ? `${activeMeta.title} - ${selectedGroup.name || selectedGroup.category}`
-      : activeMeta.title
-    : "Reporting Center";
-
-  const resetFilters = () =>
-    setFilters({ search: "", fromDate: "", toDate: "", status: "All", type: "All" });
-
-  const openSection = (section) => {
-    setActiveSection(section);
-    setSelectedGroup(null);
-    resetFilters();
-  };
-
-  const backToOverview = () => {
-    setActiveSection("");
-    setSelectedGroup(null);
-    resetFilters();
-  };
-
-  const exportCsv = () => {
-    const rows = activeSection ? filteredRows : overviewRows(reportData);
-    const exportColumns = activeSection ? columns : overviewColumns;
-    const lines = [
-      exportColumns.map((column) => column.label).join(","),
-      ...rows.map((row) =>
-        exportColumns.map((column) => `"${String(row[column.key] ?? "").replaceAll('"', '""')}"`).join(",")
-      ),
-    ];
-    exportFile(`${currentTitle}.csv`, lines.join("\n"), "text/csv;charset=utf-8");
-  };
-
-  const exportExcel = () =>
-    exportFile(`${currentTitle}.xls`, `\ufeff${reportHtml()}`, "application/vnd.ms-excel;charset=utf-8");
-
-  const printReport = () => {
-    if (window.ispDesktop?.openPrintPreview) {
-      window.ispDesktop.openPrintPreview(reportHtml(), currentTitle);
-      return;
-    }
-
-    const frameId = "reports-print-frame";
-    let frame = document.getElementById(frameId);
-    if (!frame) {
-      frame = document.createElement("iframe");
-      frame.id = frameId;
-      frame.title = "Report print preview";
-      frame.style.position = "fixed";
-      frame.style.right = "0";
-      frame.style.bottom = "0";
-      frame.style.width = "0";
-      frame.style.height = "0";
-      frame.style.border = "0";
-      frame.style.opacity = "0";
-      document.body.appendChild(frame);
-    }
-
-    const frameWindow = frame.contentWindow;
-    const frameDocument = frame.contentDocument || frameWindow?.document;
-    if (!frameWindow || !frameDocument) return;
-
-    let didPrint = false;
-    const openPrintOptions = () => {
-      if (didPrint) return;
-      didPrint = true;
-      frameWindow.focus();
-      frameWindow.print();
-    };
-
-    frame.onload = () => setTimeout(openPrintOptions, 150);
-    frameDocument.open();
-    frameDocument.write(reportHtml());
-    frameDocument.close();
-    setTimeout(openPrintOptions, 350);
-  };
-
-  const reportHtml = () => {
-    const rows = activeSection ? filteredRows : overviewRows(reportData);
-    const exportColumns = activeSection ? columns : overviewColumns;
-    const cards = activeSection
-      ? activeSection === "deposits"
-        ? [
-            ["Records", filteredRows.length],
-            ["Groups", activeGroups.length],
-            ["Total Amount", `Deposit Recived: ${formatCurrencyTotals(filteredDepositReceivedTotals)} / Deposit Paid: ${formatCurrencyTotals(filteredDepositPaidTotals)}`],
-          ]
-        : [
-            ["Records", filteredRows.length],
-            ["Groups", activeGroups.length],
-            ["Total Quantity", money(sumQuantity(filteredRows))],
-          ]
-      : overviewRows(reportData).map((row) => [row.section, row.value]);
-    const printCards = activeSection
-      ? cards
-      : [
-          ...cards.filter(([label]) => label !== "Deposit Recived / Deposit Paid Report").slice(0, 5),
-          ["Deposit Recived / Deposit Paid Report", reportData.deposits.value],
-        ];
-    const renderPrintCell = (row, column) => {
-      if (!activeSection && row.section === "Deposit Recived / Deposit Paid Report" && column.key === "value") {
-        return `<span class="deposit-value">Deposit Recived: ${escapeHtml(formatCurrencyTotals(row.depositTotalsByCurrency))}</span><span class="withdraw-value">Deposit Paid: ${escapeHtml(formatCurrencyTotals(row.withdrawTotalsByCurrency))}</span>`;
-      }
-      if (!activeSection && row.section === "Deposit Recived / Deposit Paid Report" && column.key === "description") {
-        return `<span class="deposit-value">Deposit Recived: ${escapeHtml(formatCurrencyTotals(row.depositTotalsByCurrency))}</span> / <span class="withdraw-value">Deposit Paid: ${escapeHtml(formatCurrencyTotals(row.withdrawTotalsByCurrency))}</span>`;
-      }
-      return escapeHtml(row[column.key] ?? "-");
-    };
-    const tableRows = rows
-      .map(
-        (row) =>
-          `<tr>${exportColumns.map((column) => `<td>${renderPrintCell(row, column)}</td>`).join("")}</tr>`
-      )
-      .join("");
-    const logoHtml = logo
-      ? `<img src="${escapeHtml(logo)}" alt="System logo" />`
-      : `<span>${escapeHtml(systemName.slice(0, 1))}</span>`;
-
-    return `<!doctype html>
-      <html>
-        <head>
-          <meta charset="utf-8" />
-          <title>${escapeHtml(currentTitle)}</title>
-          <style>
-            * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            body { margin: 0; padding: 22px; font-family: Arial, sans-serif; color: #102033; background: #eef4ff; }
-            .page { background: #fff; border: 1px solid #dbeafe; border-radius: 20px; overflow: hidden; }
-            header { display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: center; padding: 24px; color: white; background: linear-gradient(135deg, #0f766e, #2563eb 56%, #4f46e5); }
-            .logo { width: 58px; height: 58px; border-radius: 16px; display: grid; place-items: center; background: rgba(255,255,255,.18); overflow: hidden; font-size: 26px; font-weight: 900; }
-            .logo img { width: 100%; height: 100%; object-fit: cover; }
-            h1 { margin: 0; font-size: 25px; }
-            p { margin: 6px 0 0; color: rgba(255,255,255,.86); font-size: 13px; }
-            .date { border: 1px solid rgba(255,255,255,.28); border-radius: 999px; padding: 9px 13px; background: rgba(255,255,255,.16); font-size: 12px; font-weight: 800; }
-            main { padding: 20px 24px 26px; }
-            .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
-            .card { border: 1px solid #bfdbfe; border-radius: 16px; padding: 14px; background: linear-gradient(180deg, #eff6ff, #fff); }
-            .card span { display: block; color: #64748b; font-size: 11px; font-weight: 800; }
-            .card strong { display: block; margin-top: 6px; font-size: 22px; color: #0f172a; }
-            .deposit-value, .withdraw-value { display: block; font-weight: 900; }
-            .deposit-value { color: #15803d; }
-            .withdraw-value { color: #dc2626; }
-            table { width: 100%; border-collapse: collapse; font-size: 11px; }
-            th, td { border: 1px solid #e5e7eb; padding: 8px; text-align: left; vertical-align: top; }
-            th { background: #dbeafe; color: #0f3f5f; }
-            tr:nth-child(even) td { background: #f8fafc; }
-            @media print { body { padding: 10px; background: #fff; } .page { border-radius: 0; } }
-          </style>
-        </head>
-        <body>
-          <section class="page">
-            <header>
-              <div class="logo">${logoHtml}</div>
-              <div><h1>${escapeHtml(systemName)}</h1><p>${escapeHtml(currentTitle)}</p></div>
-              <div class="date">${escapeHtml(formatDateTime(new Date()))}</div>
-            </header>
-            <main>
-              <section class="cards">
-                ${printCards.map(([label, value]) => {
-                  if (!activeSection && label === "Deposit Recived / Deposit Paid Report") {
-                    return `<div class="card"><span>${escapeHtml(label)}</span><strong class="deposit-value">Deposit Recived: ${escapeHtml(formatCurrencyTotals(reportData.deposits.depositTotalsByCurrency))}</strong><strong class="withdraw-value">Deposit Paid: ${escapeHtml(formatCurrencyTotals(reportData.deposits.withdrawTotalsByCurrency))}</strong></div>`;
-                  }
-                  return `<div class="card"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`;
-                }).join("")}
-              </section>
-              <table>
-                <thead><tr>${exportColumns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join("")}</tr></thead>
-                <tbody>${tableRows || `<tr><td colspan="${exportColumns.length}">No records found.</td></tr>`}</tbody>
-              </table>
-            </main>
-          </section>
-        </body>
-      </html>`;
-  };
-
-  return (
-    <div className="reports-page">
-      <div className="reports-header report-modern-header">
-        <div>
-          <span>Reporting</span>
-          <h1>Reporting Center</h1>
-          <p>System-wide reporting for assets, customers, towers, suppliers, transfers, deposits, and withdrawals.</p>
-        </div>
-
-        <div className="report-export-actions">
-          <button type="button" onClick={() => navigate("/receivables-payables")}><BadgeDollarSign size={16} /> AR / AP</button>
-          <button type="button" onClick={() => navigate("/general-journal")}><BookOpenCheck size={16} /> Journal</button>
-          <button type="button" onClick={exportExcel}><FileSpreadsheet size={16} /> Excel</button>
-          <button type="button" onClick={printReport}><FileText size={16} /> PDF</button>
-          <button type="button" onClick={exportCsv}><Download size={16} /> CSV</button>
-          <button type="button" onClick={printReport}><Printer size={16} /> Print</button>
-        </div>
-      </div>
-
-      {!activeSection ? (
-        <>
-          <section className="report-overview-grid">
-            {sectionOrder.map((section) => {
-              const data = reportData[section];
-              return (
-                <button
-                  type="button"
-                  key={section}
-                  className={`report-overview-card report-card-${section}`}
-                  onClick={() => openSection(section)}
-                >
-                  <span>{sectionMeta[section].title}</span>
-                  {section === "deposits" ? (
-                    <div className="report-money-split">
-                      <strong className="deposit">Deposit Recived: {formatCurrencyTotals(data.depositTotalsByCurrency)}</strong>
-                      <strong className="withdraw">Deposit Paid: {formatCurrencyTotals(data.withdrawTotalsByCurrency)}</strong>
-                    </div>
-                  ) : (
-                    <strong>{data.value}</strong>
-                  )}
-                  <p>{section === "deposits" ? `${data.value} records` : data.caption}</p>
-                </button>
-              );
-            })}
-          </section>
-
-          <section className="report-chart-grid">
-            <ReportChart title="Current Assets by Location" data={overviewChartData(reportData)} />
-            <ReportChart title="Customer Status" data={reportData.customerStatusChart} variant="pie" />
-            <ReportChart title="Transfers by Destination" data={reportData.transfers.groups.slice(0, 8)} />
-          </section>
-        </>
-      ) : (
-        <section className="report-workspace report-modern-workspace">
-          <div className="report-workspace-header">
-            <div>
-              <button type="button" className="report-back-btn" onClick={selectedGroup ? () => setSelectedGroup(null) : backToOverview}>
-                {selectedGroup ? "Back to Groups" : "Back to Reports"}
-              </button>
-              <h2>{currentTitle}</h2>
-              <p>{activeMeta.subtitle}</p>
-            </div>
-          </div>
-
-          <div className="report-filters pro-report-filters report-modern-filters">
-            <label><span>Search</span><input value={filters.search} onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))} placeholder="Search records..." /></label>
-            <label><span>From Date</span><ShamsiDateInput value={filters.fromDate} onChange={(event) => setFilters((current) => ({ ...current, fromDate: event.target.value }))} /></label>
-            <label><span>To Date</span><ShamsiDateInput value={filters.toDate} onChange={(event) => setFilters((current) => ({ ...current, toDate: event.target.value }))} /></label>
-            <label><span>Status</span><select value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}>{filterOptions.status.map((option) => <option key={option}>{option}</option>)}</select></label>
-            <label><span>Type / Category</span><select value={filters.type} onChange={(event) => setFilters((current) => ({ ...current, type: event.target.value }))}>{filterOptions.type.map((option) => <option key={option}>{option}</option>)}</select></label>
-            <div className="report-filter-buttons"><button type="button" onClick={resetFilters}>Reset</button></div>
-          </div>
-
-          <div className="report-summary-cards">
-            <div><span>Groups</span><strong>{money(activeGroups.length)}</strong></div>
-            <div><span>Records</span><strong>{money(filteredRows.length)}</strong></div>
-            {activeSection === "deposits" ? (
-              <div>
-                <span>Total Amount</span>
-                <div className="report-money-split compact">
-                  <strong className="deposit">Deposit Recived: {formatCurrencyTotals(filteredDepositReceivedTotals)}</strong>
-                  <strong className="withdraw">Deposit Paid: {formatCurrencyTotals(filteredDepositPaidTotals)}</strong>
-                </div>
-              </div>
-            ) : (
-              <div><span>Total Quantity</span><strong>{money(sumQuantity(filteredRows))}</strong></div>
-            )}
-          </div>
-
-          <section className="report-chart-grid report-chart-grid-inside">
-            <ReportChart title={`${activeMeta.title} Chart`} data={chartData} />
-            <ReportChart title="Share Chart" data={chartData.slice(0, 7)} variant="pie" />
-          </section>
-
-          {!selectedGroup && (
-            <ReportGroupTable
-              groups={activeGroups}
-              section={activeSection}
-              onSelect={(group) => {
-                setSelectedGroup(group);
-                resetFilters();
-              }}
-            />
-          )}
-
-          <ReportRowsTable rows={filteredRows} columns={columns} title={activeMeta.rowTitle} />
-        </section>
-      )}
-    </div>
-  );
 }
 
-function buildReportData({
-  assets,
-  customers,
-  towerAssets,
-  suppliers,
-  supplierPurchases,
-  deviceTransfers,
-  insights,
-}) {
-  const categoryGroups = insights.categoryGroups.map((group) => ({
-    ...group,
-    name: group.category,
-    quantity: group.total,
-    caption: `${money(group.stock)} stock, ${money(group.customer)} customer, ${money(group.tower)} tower, ${money(group.repair)} repair, ${money(group.wasted)} waste`,
-    rows: group.rows.map(assetReportRow),
-  }));
-
-  const activeCustomerGroups = insights.customerGroups
-    .filter((group) => group.type === "Active")
-    .map((group) => ({ ...group, caption: `${money(group.quantity)} asset(s)`, rows: group.rows.map(assetReportRow) }));
-
-  const inactiveCustomerGroups = insights.customerGroups
-    .filter((group) => group.type === "Inactive")
-    .map((group) => ({ ...group, caption: `${money(group.quantity)} asset(s)`, rows: group.rows.map(assetReportRow) }));
-
-  const towerGroups = insights.towerGroups.map((group) => ({
-    ...group,
-    caption: `${money(group.quantity)} asset(s)`,
-    rows: group.rows.map(assetReportRow),
-  }));
-
-  const supplierGroups = suppliers.map((supplier) => {
-    const rows = supplierPurchases
-      .filter(
-        (purchase) =>
-          keyOf(purchase.supplierName || purchase.supplier) === keyOf(supplier.supplierName) ||
-          keyOf(purchase.supplierRecordId) === keyOf(supplier.id)
-      )
-      .map(purchaseReportRow);
-    const categories = new Set(rows.map((row) => row.category).filter(Boolean));
-    return {
-      id: supplier.id || supplier.supplierName,
-      name: supplier.supplierName || supplier.companyName || "Supplier",
-      type: supplier.companyName || "Supplier",
-      quantity: rows.reduce((sum, row) => sum + Number(row.quantity || 0), 0),
-      categories: categories.size,
-      caption: `${categories.size} categories / ${money(rows.reduce((sum, row) => sum + Number(row.quantity || 0), 0))} pieces`,
-      rows,
-    };
-  });
-
-  const transferRows = deviceTransfers.filter(isRealTransfer).map(transferReportRow);
-  const transferGroups = groupBy(transferRows, (row) => row.issuedToType || row.issuedTo || "Unknown").map((group) => ({
-    ...group,
-    type: "Destination",
-    quantity: group.rows.reduce((sum, row) => sum + Number(row.quantity || 0), 0),
-    value: group.rows.reduce((sum, row) => sum + Number(row.quantity || 0), 0) || group.records,
-    caption: `${group.rows.length} transfers / ${money(group.rows.reduce((sum, row) => sum + Number(row.quantity || 0), 0))} assets`,
-  }));
-
-  const depositRows = deviceTransfers
-    .filter(isRealTransfer)
-    .filter((transfer) => Number(transfer.depositAmount || 0) > 0 || Number(transfer.refundAmount || 0) > 0)
-    .map(depositTransferRow);
-  const depositReceivedRows = depositRows.filter((row) => row.type === "Deposit Recived");
-  const depositPaidRows = depositRows.filter((row) => row.type === "Deposit Paid");
-  const depositTotal = depositRows
-    .filter((row) => row.type === "Deposit Recived")
-    .reduce((sum, row) => sum + Number(row.amount || 0), 0);
-  const withdrawTotal = depositRows
-    .filter((row) => row.type === "Deposit Paid")
-    .reduce((sum, row) => sum + Number(row.amount || 0), 0);
-  const depositTotalsByCurrency = sumAmountsByCurrency(depositReceivedRows);
-  const withdrawTotalsByCurrency = sumAmountsByCurrency(depositPaidRows);
-  const depositGroups = groupBy(depositRows, (row) => row.type).map((group) => ({
-    ...group,
-    quantity: group.rows.reduce((sum, row) => sum + Number(row.amount || 0), 0),
-    caption: `${group.rows.length} records / ${formatCurrencyTotals(sumAmountsByCurrency(group.rows))}`,
-  }));
-
-  const activeCustomers = customers.filter((customer) => !isInactiveCustomer(customer));
-  const inactiveCustomers = customers.filter(isInactiveCustomer);
-
-  return {
-    assets: {
-      value: `${money(categoryGroups.length)} categories`,
-      caption: `${money(sumAssetRows(insights.currentRows))} asset pieces currently tracked`,
-      groups: categoryGroups,
-      rows: categoryGroups.flatMap((group) => group.rows),
-      columns: assetColumns,
-    },
-    activeCustomers: {
-      value: money(activeCustomers.length),
-      caption: `${money(sumAssetRows(activeCustomerGroups.flatMap((group) => group.rows)))} assets with active customers`,
-      groups: activeCustomerGroups,
-      rows: activeCustomerGroups.flatMap((group) => group.rows),
-      columns: assetColumns,
-    },
-    inactiveCustomers: {
-      value: money(inactiveCustomers.length),
-      caption: `${money(sumAssetRows(inactiveCustomerGroups.flatMap((group) => group.rows)))} assets still with inactive/suspend customers`,
-      groups: inactiveCustomerGroups,
-      rows: inactiveCustomerGroups.flatMap((group) => group.rows),
-      columns: assetColumns,
-    },
-    towers: {
-      value: money(towerAssets.length),
-      caption: `${money(sumAssetRows(towerGroups.flatMap((group) => group.rows)))} assets at towers`,
-      groups: towerGroups,
-      rows: towerGroups.flatMap((group) => group.rows),
-      columns: assetColumns,
-    },
-    suppliers: {
-      value: money(suppliers.length),
-      caption: `${money(supplierGroups.reduce((sum, group) => sum + group.categories, 0))} category purchases`,
-      groups: supplierGroups,
-      rows: supplierGroups.flatMap((group) => group.rows),
-      columns: purchaseColumns,
-    },
-    transfers: {
-      value: money(transferRows.length),
-      caption: `${money(transferRows.reduce((sum, row) => sum + Number(row.quantity || 0), 0))} assets transferred`,
-      groups: transferGroups,
-      rows: transferRows,
-      columns: transferColumns,
-    },
-    deposits: {
-      value: money(depositRows.length),
-      caption: `${money(depositRows.reduce((sum, row) => sum + Number(row.amount || 0), 0))} total Deposit Recived / Deposit Paid value`,
-      depositTotal,
-      withdrawTotal,
-      depositTotalsByCurrency,
-      withdrawTotalsByCurrency,
-      groups: depositGroups,
-      rows: depositRows,
-      columns: depositColumns,
-    },
-    customerStatusChart: [
-      { name: "Active", value: activeCustomers.length },
-      { name: "Inactive / Suspend", value: inactiveCustomers.length },
-    ],
-  };
-}
-
-function assetReportRow(row) {
-  return {
-    date: row.date || row.createdAt || "",
-    assetId: row.assetId || "-",
-    category: row.category || "-",
-    deviceName: row.deviceName || "-",
-    model: row.model || "-",
-    quantity: Number(row.quantity || 0),
-    unit: row.unit || "Piece",
-    currentHolder: row.locationName || row.placeType || "-",
-    issuedFrom: row.transfer?.sourceLocation || row.sourceName || "-",
-    issuedTo: row.transfer?.destinationLocation || row.destinationName || row.locationName || "-",
-    status: row.status || row.placeType || "-",
-    macAddress: row.transfer?.macAddress || row.asset?.macAddress || row.macAddress || "-",
-    serialNumber: row.transfer?.serialNumber || row.asset?.serialNumber || row.serialNumber || "-",
-  };
-}
-
-function purchaseReportRow(purchase) {
-  return {
-    date: purchase.purchaseDate || purchase.date || purchase.createdAt || "",
-    supplier: purchase.supplierName || purchase.supplier || "-",
-    invoiceNumber: purchase.invoiceNumber || purchase.referenceNumber || "-",
-    assetId: purchase.assetId || "-",
-    category: purchase.category || "-",
-    deviceName: purchase.deviceName || purchase.assetName || "-",
-    quantity: Number(purchase.quantity || 0),
-    unit: purchase.unit || "Piece",
-    status: purchase.status || "Recorded",
-  };
-}
-
-function transferReportRow(transfer) {
-  return {
-    date: transfer.transferDate || transfer.date || transfer.createdAt || "",
-    transferId: transfer.transferId || transfer.id || "-",
-    type: transfer.transferType || "-",
-    issuedFromType: transfer.sourceType || "-",
-    issuedFrom: transfer.sourceLocation || transfer.sourceName || transfer.sourceType || "-",
-    issuedToType: transfer.destinationType || "-",
-    issuedTo: transfer.destinationLocation || transfer.destinationName || transfer.destinationType || "-",
-    assetId: transfer.assetId || "-",
-    category: transfer.category || "-",
-    deviceName: transfer.deviceName || "-",
-    quantity: Number(transfer.quantity || 0),
-    unit: transfer.unit || "Piece",
-    responsibleUser: transfer.responsibleUser || "-",
-    receivedBy: transfer.receivedBy || "-",
-    status: displayTransferStatus(transfer),
-  };
-}
-
-function depositTransferRow(transfer) {
-  const isRefund = Number(transfer.refundAmount || 0) > 0;
-  return {
-    date: isRefund ? transfer.refundDate || transfer.transferDate || transfer.createdAt : transfer.depositReceivedDate || transfer.transferDate || transfer.createdAt,
-    transferId: transfer.transferId || transfer.id || "-",
-    transferType: transfer.transferType || "-",
-    type: isRefund ? "Deposit Paid" : "Deposit Recived",
-    customer: transfer.destinationType === "Customer" ? transfer.destinationLocation : transfer.sourceLocation || "-",
-    assetId: transfer.assetId || "-",
-    category: transfer.category || "-",
-    deviceName: transfer.deviceName || "-",
-    amount: Number(isRefund ? transfer.refundAmount : transfer.depositAmount || 0),
-    currency: isRefund ? transfer.refundCurrency || transfer.depositCurrency || "AFN" : transfer.depositCurrency || "AFN",
-    issuedFrom: transfer.sourceLocation || "-",
-    issuedTo: transfer.destinationLocation || "-",
-    status: transfer.depositStatus || transfer.status || "-",
-  };
-}
-
-function displayTransferStatus(transfer) {
-  const destination = transfer.destinationType || transfer.toType || "";
-  if (destination === "Customer") return "Issued to Customer";
-  if (destination === "Tower") return "Issued to Tower";
-  if (destination === "Repair") return "Issued to Repair";
-  if (destination === "Waste") return "Issued to Waste";
-  if (destination === "Main Stock") return "In Stock";
-  return transfer.newStatus || transfer.status || "-";
-}
-
-function groupBy(rows, getName) {
-  const map = new Map();
-  rows.forEach((row) => {
-    const name = getName(row) || "Unknown";
-    const current = map.get(name) || { id: name, name, rows: [], records: 0 };
-    current.rows.push(row);
-    current.records += 1;
-    map.set(name, current);
-  });
-  return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
-}
-
-function overviewRows(reportData) {
-  return sectionOrder.map((section) => ({
-    section: sectionMeta[section].title,
-    value: reportData[section].value,
-    description: reportData[section].caption,
-    depositTotal: reportData[section].depositTotal,
-    withdrawTotal: reportData[section].withdrawTotal,
-    depositTotalsByCurrency: reportData[section].depositTotalsByCurrency,
-    withdrawTotalsByCurrency: reportData[section].withdrawTotalsByCurrency,
-  }));
-}
-
-const overviewColumns = [
-  { key: "section", label: "Report Section" },
-  { key: "value", label: "Value" },
-  { key: "description", label: "Description" },
-];
-
-const assetColumns = [
-  { key: "date", label: "Date" },
-  { key: "assetId", label: "Asset ID" },
-  { key: "category", label: "Category" },
-  { key: "deviceName", label: "Device Name" },
-  { key: "model", label: "Model" },
-  { key: "quantity", label: "Quantity" },
-  { key: "unit", label: "Unit" },
-  { key: "currentHolder", label: "Current Holder" },
-  { key: "issuedFrom", label: "Issued" },
-  { key: "issuedTo", label: "Recived" },
-  { key: "status", label: "Status" },
-  { key: "macAddress", label: "MAC Address" },
-  { key: "serialNumber", label: "Serial Number" },
-];
-
-const purchaseColumns = [
-  { key: "date", label: "Date" },
-  { key: "supplier", label: "Supplier" },
-  { key: "invoiceNumber", label: "Invoice No" },
-  { key: "assetId", label: "Asset ID" },
-  { key: "category", label: "Category" },
-  { key: "deviceName", label: "Device Name" },
-  { key: "quantity", label: "Quantity" },
-  { key: "unit", label: "Unit" },
-  { key: "status", label: "Status" },
-];
-
-const transferColumns = [
-  { key: "date", label: "Date" },
-  { key: "transferId", label: "Transfer ID" },
-  { key: "type", label: "Transfer Type" },
-  { key: "issuedFrom", label: "Issued" },
-  { key: "issuedTo", label: "Recived" },
-  { key: "category", label: "Category" },
-  { key: "deviceName", label: "Device Name" },
-  { key: "quantity", label: "Quantity" },
-  { key: "responsibleUser", label: "Responsible User" },
-  { key: "receivedBy", label: "Received By" },
-  { key: "status", label: "Status" },
-];
-
-const depositColumns = [
-  { key: "date", label: "Date" },
-  { key: "transferId", label: "Transfer ID" },
-  { key: "transferType", label: "Transfer Type" },
-  { key: "type", label: "Type" },
-  { key: "customer", label: "Customer" },
-  { key: "assetId", label: "Asset ID" },
-  { key: "category", label: "Category" },
-  { key: "deviceName", label: "Device Name" },
-  { key: "amount", label: "Amount" },
-  { key: "currency", label: "Currency" },
-  { key: "issuedFrom", label: "Issued" },
-  { key: "issuedTo", label: "Recived" },
-  { key: "status", label: "Status" },
-];
-
-function overviewChartData(reportData) {
-  return [
-    { name: "Stock", value: sumQuantity(reportData.assets.rows.filter((row) => row.currentHolder === "Main Stock")) },
-    { name: "Customers", value: sumQuantity(reportData.activeCustomers.rows) + sumQuantity(reportData.inactiveCustomers.rows) },
-    { name: "Towers", value: sumQuantity(reportData.towers.rows) },
-    { name: "Transfers", value: reportData.transfers.rows.length },
-    { name: "Deposits", value: reportData.deposits.rows.length },
-  ];
-}
-
-function summarizeRowsForChart(rows) {
-  return groupBy(rows, (row) => row.category || row.status || row.type || "Records").map((group) => ({
-    name: group.name,
-    value: sumQuantity(group.rows) || group.rows.length,
-  }));
-}
-
-function sumQuantity(rows) {
-  return rows.reduce((sum, row) => sum + Number(row.quantity || row.amount || 0), 0);
-}
-
-function ReportChart({ title, data, variant = "bar" }) {
-  const cleanData = data
-    .map((item) => ({
-      ...item,
-      value: Number(item.value || item.quantity || item.records || 0),
-    }))
-    .filter((item) => item.value > 0)
-    .slice(0, 10);
-  return (
-    <section className="report-chart-card">
-      <h3>{title}</h3>
-      <div className="report-chart-body">
-        <ResponsiveContainer width="100%" height="100%">
-          {variant === "pie" ? (
-            <PieChart>
-              <Pie data={cleanData} dataKey="value" nameKey="name" innerRadius={48} outerRadius={78} paddingAngle={4}>
-                {cleanData.map((item, index) => (
-                  <Cell key={item.name} fill={colors[index % colors.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          ) : (
-            <BarChart data={cleanData} margin={{ top: 8, right: 14, left: -12, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="4 4" vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
-              <Tooltip />
-              <Bar dataKey="value" radius={[7, 7, 0, 0]} fill="#2563eb" />
-            </BarChart>
-          )}
-        </ResponsiveContainer>
-      </div>
-    </section>
-  );
-}
-
-function ReportGroupTable({ groups, section, onSelect }) {
-  return (
-    <section className="report-table-card">
-      <div className="report-section-title">
-        <h3>{sectionMeta[section].groupTitle}</h3>
-        <span>Click a row to open detailed records.</span>
-      </div>
-      <div className="report-table-shell">
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Type</th>
-              <th>Quantity / Value</th>
-              <th>Summary</th>
-            </tr>
-          </thead>
-          <tbody>
-            {groups.map((group) => (
-              <tr key={group.id || group.name || group.category} className="report-click-row" onClick={() => onSelect(group)}>
-                <td>{group.name || group.category}</td>
-                <td>{group.type || "Group"}</td>
-                <td>{money(group.quantity || group.total || group.records || 0)}</td>
-                <td>{group.caption || `${group.rows?.length || 0} records`}</td>
-              </tr>
-            ))}
-            {!groups.length && (
-              <tr><td colSpan="4" className="report-empty">No group records found.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
-function ReportRowsTable({ rows, columns, title }) {
-  return (
-    <section className="report-table-card">
-      <div className="report-section-title">
-        <h3>{title}</h3>
-        <span>Filtered records with dates, issued from, issued to, status, and device details.</span>
-      </div>
-      <div className="report-table-shell">
-        <table>
-          <thead>
-            <tr>{columns.map((column) => <th key={column.key}>{column.label}</th>)}</tr>
-          </thead>
-          <tbody>
-            {rows.slice(0, 250).map((row, index) => (
-              <tr key={`${row.assetId || row.transferId || row.customer || row.supplier}-${index}`}>
-                {columns.map((column) => (
-                  <td key={column.key}>{column.key === "date" ? formatDateTime(row[column.key]) : row[column.key] ?? "-"}</td>
-                ))}
-              </tr>
-            ))}
-            {!rows.length && (
-              <tr><td colSpan={columns.length} className="report-empty">No records found for the selected filters.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
-function exportFile(filename, content, type) {
-  const blob = new Blob([content], { type });
+function exportExcel(filename, title, columns, rows, summary, direction = "ltr") {
+  const tableHead = columns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join("");
+  const tableBody = rows.map((row) => `<tr>${columns.map((column) => `<td>${escapeHtml(row[column.key])}</td>`).join("")}</tr>`).join("");
+  const html = `<!doctype html><html><head><meta charset="utf-8"><style>
+    body{font-family:Arial,sans-serif;direction:${direction};}
+    h2{margin:0 0 12px;} .summary{margin:0 0 14px;font-weight:700;}
+    table{border-collapse:collapse;width:100%;} th,td{border:1px solid #bfc7d1;padding:7px 9px;text-align:${direction === "rtl" ? "right" : "left"};}
+    th{background:#eef2f6;font-weight:700;}
+  </style></head><body><h2>${escapeHtml(title)}</h2><div class="summary">${escapeHtml(summary.primaryLabel)}: ${escapeHtml(summary.primary)} &nbsp;&nbsp; ${escapeHtml(summary.secondaryLabel)}: ${escapeHtml(summary.secondary)}</div><table><thead><tr>${tableHead}</tr></thead><tbody>${tableBody}</tbody></table></body></html>`;
+  const blob = new Blob(["\ufeff", html], { type: "application/vnd.ms-excel;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -949,4 +223,233 @@ function exportFile(filename, content, type) {
   URL.revokeObjectURL(url);
 }
 
-export default Reports;
+function printReport({ companyName, subtitle, title, columns, rows, summary, fromDate, toDate, direction, labels }) {
+  const popup = window.open("", "_blank", "width=1100,height=820");
+  if (!popup) return;
+  const tableHead = columns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join("");
+  const tableBody = rows.length
+    ? rows.map((row) => `<tr>${columns.map((column) => `<td>${escapeHtml(row[column.key])}</td>`).join("")}</tr>`).join("")
+    : `<tr><td colspan="${columns.length}" class="empty">—</td></tr>`;
+  const rangeText = fromDate || toDate ? `${fromDate || "—"}  —  ${toDate || "—"}` : "—";
+  popup.document.write(`<!doctype html><html dir="${direction}"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>
+    @page{size:A4 landscape;margin:12mm;} *{box-sizing:border-box;} body{margin:0;color:#111827;font-family:Arial,Tahoma,sans-serif;direction:${direction};font-size:11px;}
+    .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #111827;padding-bottom:10px;margin-bottom:12px;gap:20px;}
+    .brand h1{font-size:19px;margin:0 0 3px}.brand p{margin:0;color:#6b7280;font-size:10px}.report{text-align:${direction === "rtl" ? "left" : "right"};}.report h2{margin:0 0 4px;font-size:16px}.report p{margin:2px 0;color:#4b5563;}
+    .summary{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 12px}.summary div{border:1px solid #d1d5db;padding:8px 10px;border-radius:6px;background:#f9fafb}.summary small{display:block;color:#6b7280;margin-bottom:3px}.summary strong{font-size:14px}
+    table{width:100%;border-collapse:collapse;} th,td{border:1px solid #cbd5e1;padding:6px 7px;text-align:${direction === "rtl" ? "right" : "left"};white-space:nowrap;} th{background:#e5e7eb;font-weight:700;font-size:10px}.empty{text-align:center;color:#6b7280;padding:24px}.foot{margin-top:10px;padding-top:8px;border-top:1px solid #d1d5db;color:#6b7280;font-size:9px;display:flex;justify-content:space-between;}
+  </style></head><body>
+    <div class="head"><div class="brand"><h1>${escapeHtml(companyName)}</h1><p>${escapeHtml(subtitle)}</p></div><div class="report"><h2>${escapeHtml(title)}</h2><p>${escapeHtml(labels.dateRange)}: ${escapeHtml(rangeText)}</p><p>${escapeHtml(labels.generatedOn)}: ${escapeHtml(new Date().toLocaleString())}</p></div></div>
+    <div class="summary"><div><small>${escapeHtml(summary.primaryLabel)}</small><strong>${escapeHtml(summary.primary)}</strong></div><div><small>${escapeHtml(summary.secondaryLabel)}</small><strong>${escapeHtml(summary.secondary)}</strong></div></div>
+    <table><thead><tr>${tableHead}</tr></thead><tbody>${tableBody}</tbody></table>
+    <div class="foot"><span>${escapeHtml(companyName)}</span><span>${escapeHtml(title)}</span></div>
+    <script>window.onload=()=>{window.print();};<\/script>
+  </body></html>`);
+  popup.document.close();
+}
+
+export default function Reports() {
+  const navigate = useNavigate();
+  const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
+  const [active, setActive] = useState("sales");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [search, setSearch] = useState("");
+
+  const [sales] = useJsonCollection("salesRegister");
+  const [purchases] = useJsonCollection("purchases");
+  const [products] = useJsonCollection("products");
+  const [stockMovements] = useJsonCollection("stockMovements");
+  const [manufacturers] = useJsonCollection("manufacturers");
+  const [productGroups] = useJsonCollection("productGroups");
+  const [settings] = useJsonCollection("settings");
+
+  const t = translations[language] || translations.en;
+  const direction = rtlLanguages.has(language) ? "rtl" : "ltr";
+  const currentSettings = settings[0] || {};
+  const companyName = currentSettings.companyName || "APG";
+  const companySubtitle = currentSettings.subTitle || currentSettings.subtitle || "Pharmacy & Medicine Management System";
+
+  useEffect(() => {
+    const sync = () => setLanguage(localStorage.getItem(languageKey) || "en");
+    window.addEventListener("app-language-updated", sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener("app-language-updated", sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+
+  const manufacturerName = (product) => {
+    const id = product?.manufacturerId || product?.companyId;
+    const manufacturer = manufacturers.find((item) => String(item.id) === String(id));
+    return manufacturer?.manufacturerName || manufacturer?.name || manufacturer?.companyName || product?.manufacturerName || product?.companyName || "—";
+  };
+
+  const salesRows = useMemo(() => sales
+    .filter((row) => inRange(row.saleDate || row.createdAt, fromDate, toDate))
+    .map((row) => ({
+      invoice: row.invoiceNumber || "—",
+      customer: row.customerName || "—",
+      items: row.items?.length || 0,
+      total: money(row.totalAmount),
+      paid: money(row.paidAmount),
+      remaining: money(row.remainingAmount),
+      paymentType: row.paymentMode === "installment" ? t.installment : t.cashPayment,
+      date: dateOnly(row.saleDate || row.createdAt),
+      _raw: row,
+    })), [sales, fromDate, toDate, t]);
+
+  const purchaseRows = useMemo(() => purchases
+    .filter((row) => inRange(row.purchaseDate || row.createdAt, fromDate, toDate))
+    .map((row) => ({
+      bill: row.billNumber || "—",
+      supplier: row.supplierName || "—",
+      items: row.itemCount || row.items?.length || 0,
+      total: money(row.totalAmount),
+      paid: money(row.paidAmount),
+      remaining: money(row.remainingAmount),
+      paymentType: row.paymentMode === "installment" ? t.installment : t.cashPayment,
+      date: dateOnly(row.purchaseDate || row.createdAt),
+      _raw: row,
+    })), [purchases, fromDate, toDate, t]);
+
+  const inventoryRows = useMemo(() => products.map((product) => {
+    const stock = getProductStock(stockMovements, product.id, 0);
+    return {
+      product: product.productName || product.name || "—",
+      group: groupNameById(productGroups, product.groupId, product.groupName || product.group || "—") || "—",
+      manufacturer: manufacturerName(product),
+      currentStock: money(stock),
+      status: stock > 0 ? t.inStock : t.outOfStock,
+      _stock: stock,
+      _raw: product,
+    };
+  }), [products, stockMovements, manufacturers, productGroups, t]);
+
+  const activeRows = active === "sales" ? salesRows : active === "purchases" ? purchaseRows : inventoryRows;
+  const q = search.trim().toLowerCase();
+  const filteredRows = activeRows.filter((row) => !q || Object.entries(row)
+    .filter(([key]) => !key.startsWith("_"))
+    .some(([, value]) => String(value ?? "").toLowerCase().includes(q)));
+
+  const columns = active === "sales" ? [
+    { key: "invoice", label: t.invoice }, { key: "customer", label: t.customer }, { key: "items", label: t.items },
+    { key: "total", label: t.total }, { key: "paid", label: t.paid }, { key: "remaining", label: t.remaining },
+    { key: "paymentType", label: t.paymentType }, { key: "date", label: t.date },
+  ] : active === "purchases" ? [
+    { key: "bill", label: t.bill }, { key: "supplier", label: t.supplier }, { key: "items", label: t.items },
+    { key: "total", label: t.total }, { key: "paid", label: t.paid }, { key: "remaining", label: t.remaining },
+    { key: "paymentType", label: t.paymentType }, { key: "date", label: t.date },
+  ] : [
+    { key: "product", label: t.product }, { key: "group", label: t.group }, { key: "manufacturer", label: t.manufacturer },
+    { key: "currentStock", label: t.currentStock }, { key: "status", label: t.status },
+  ];
+
+  const summary = useMemo(() => {
+    if (active === "sales") {
+      const raw = sales.filter((row) => inRange(row.saleDate || row.createdAt, fromDate, toDate));
+      return { primary: money(raw.reduce((sum, row) => sum + numeric(row.totalAmount), 0)), secondary: raw.length, primaryLabel: t.summarySales, secondaryLabel: t.records };
+    }
+    if (active === "purchases") {
+      const raw = purchases.filter((row) => inRange(row.purchaseDate || row.createdAt, fromDate, toDate));
+      return { primary: money(raw.reduce((sum, row) => sum + numeric(row.totalAmount), 0)), secondary: raw.length, primaryLabel: t.summaryPurchases, secondaryLabel: t.records };
+    }
+    return {
+      primary: money(inventoryRows.reduce((sum, row) => sum + numeric(row._stock), 0)),
+      secondary: products.length,
+      primaryLabel: t.summaryStock,
+      secondaryLabel: t.summaryProducts,
+    };
+  }, [active, sales, purchases, inventoryRows, products.length, fromDate, toDate, t]);
+
+  const reportCards = [
+    { key: "sales", icon: TrendingUp, title: t.sales, hint: t.salesHint, onClick: () => setActive("sales") },
+    { key: "purchases", icon: ShoppingCart, title: t.purchases, hint: t.purchasesHint, onClick: () => setActive("purchases") },
+    { key: "inventory", icon: Boxes, title: t.inventory, hint: t.inventoryHint, onClick: () => setActive("inventory") },
+    { key: "accounts", icon: ReceiptText, title: t.accounts, hint: t.accountsHint, onClick: () => navigate("/receivables-payables") },
+    { key: "cash", icon: Wallet, title: t.cash, hint: t.cashHint, onClick: () => navigate("/cash-flow") },
+    { key: "journal", icon: Landmark, title: t.journal, hint: t.journalHint, onClick: () => navigate("/general-journal") },
+  ];
+
+  const activeTitle = active === "sales" ? t.sales : active === "purchases" ? t.purchases : t.inventory;
+  const resetFilters = () => { setFromDate(""); setToDate(""); setSearch(""); };
+  const handlePrint = () => printReport({
+    companyName,
+    subtitle: companySubtitle,
+    title: activeTitle,
+    columns,
+    rows: filteredRows,
+    summary,
+    fromDate,
+    toDate,
+    direction,
+    labels: t,
+  });
+  const handleExcel = () => exportExcel(`${active}-report.xls`, activeTitle, columns, filteredRows, summary, direction);
+
+  return (
+    <div className="ph-reports" dir={direction}>
+      <div className="ph-reports-head">
+        <div><h1>{t.title}</h1><p>{t.subtitle}</p></div>
+      </div>
+
+      <section className="ph-report-launcher">
+        {reportCards.map(({ key, icon: Icon, title, hint, onClick }) => (
+          <button key={key} type="button" className={`ph-report-card ${active === key ? "active" : ""}`} onClick={onClick}>
+            <span className="ph-report-card-icon"><Icon size={20} /></span>
+            <div><strong>{title}</strong><p>{hint}</p></div>
+            <ArrowRight className="ph-report-card-arrow" size={17} />
+          </button>
+        ))}
+      </section>
+
+      <section className="ph-report-workspace">
+        <div className="ph-report-workspace-head">
+          <div>
+            <span><BarChart3 size={15} />{t.reportWorkspace}</span>
+            <h2>{activeTitle}</h2>
+          </div>
+          <div className="ph-report-actions">
+            <button type="button" className="ph-report-action ph-report-print" onClick={handlePrint}>
+              <Printer size={16} />{t.print}
+            </button>
+            <button type="button" className="ph-report-action ph-report-excel" onClick={handleExcel}>
+              <FileSpreadsheet size={16} />{t.export}
+            </button>
+          </div>
+        </div>
+
+        <div className="ph-report-summary">
+          <div><small>{summary.primaryLabel}</small><strong>{summary.primary}</strong></div>
+          <div><small>{summary.secondaryLabel}</small><strong>{summary.secondary}</strong></div>
+        </div>
+
+        <div className="ph-report-filters">
+          {active !== "inventory" && <>
+            <label><span>{t.from}</span><ShamsiDateInput value={fromDate} onChange={(event) => setFromDate(event.target.value)} /></label>
+            <label><span>{t.to}</span><ShamsiDateInput value={toDate} onChange={(event) => setToDate(event.target.value)} /></label>
+          </>}
+          <label className="ph-report-search"><span>{t.search}</span><div><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t.search} /></div></label>
+          <button type="button" className="ph-report-reset" onClick={resetFilters}>{t.reset}</button>
+        </div>
+
+        <div className="ph-report-table-wrap">
+          <table>
+            <thead><tr>{columns.map((column) => <th key={column.key}>{column.label}</th>)}</tr></thead>
+            <tbody>
+              {filteredRows.map((row, index) => (
+                <tr key={row._raw?.id || index} onClick={() => {
+                  if (active === "sales" && row._raw?.id) navigate(`/sale-detail/${row._raw.id}`);
+                  if (active === "inventory" && row._raw?.id) navigate(`/product-detail/${row._raw.id}`);
+                }} className={active !== "purchases" ? "clickable" : ""}>
+                  {columns.map((column) => <td key={column.key}>{row[column.key]}</td>)}
+                </tr>
+              ))}
+              {!filteredRows.length && <tr><td colSpan={columns.length} className="ph-report-empty"><FileText size={22} /><span>{t.noRows}</span></td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+}

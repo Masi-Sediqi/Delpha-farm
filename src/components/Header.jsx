@@ -5,223 +5,135 @@ import {
   Box,
   CheckCheck,
   ChevronDown,
-  CreditCard,
+  Clock3,
   Globe2,
   LogOut,
+  PackageX,
   Search,
   Settings,
   Trash2,
   User,
-  Users,
-  Wrench,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useJsonCollection } from "../hooks/useJsonCollection";
-import { buildSystemSearchResults, money } from "../utils/systemSearch";
+import { getProductBatchBalances, getProductStock } from "../utils/stock";
+import { buildSystemSearchResults } from "../utils/systemSearch";
 
-const NOTIFICATION_STATE_KEY = "isp-notification-state";
+const NOTIFICATION_STATE_KEY = "medicine-notification-state";
 const LANGUAGE_STATE_KEY = "afghan-power-language";
 const languages = [
   { key: "fa", label: "دری", short: "DRI", direction: "rtl" },
   { key: "ps", label: "پشتو", short: "PS", direction: "rtl" },
   { key: "en", label: "English", short: "ENG", direction: "ltr" },
 ];
-const headerLabels = {
+
+const labels = {
   en: {
-    accounts: "Accounts",
-    currency: "Currency",
-    search: "Search any system data...",
-    language: "Language",
-    notifications: "Notifications",
-    noNotifications: "No notifications right now.",
-    systemSearch: "System Search",
-    openFullResult: "Open full result page",
+    currency: "Currency", search: "Search products, customers, suppliers, invoices...", language: "Language",
+    notifications: "Smart alerts", none: "No alerts right now.", systemSearch: "System Search", all: "All",
+    openFull: "Open all results", expired: "Expired batches", expiring: "Expiring within 60 days",
+    low: "Low stock", out: "Out of stock", expiredTitle: "Expired batch", expiringTitle: "Expiry warning",
+    lowTitle: "Low stock warning", outTitle: "Out of stock", read: "Read", unread: "New", settings: "Settings",
+    logout: "Logout", noResult: "No matching record found.",
+    types: { Product: "Product", Manufacturer: "Manufacturer", Supplier: "Supplier", Customer: "Customer", Purchase: "Purchase", Sale: "Sale", Payment: "Payment" },
   },
   fa: {
-    accounts: "حساب‌ها",
-    currency: "واحد پول",
-    search: "جستجو در تمام معلومات سیستم...",
-    language: "زبان",
-    notifications: "خبرتیاها",
-    noNotifications: "فعلا خبرتیا وجود ندارد.",
-    systemSearch: "جستجوی سیستم",
-    openFullResult: "باز کردن تمام نتایج",
+    currency: "واحد پول", search: "جستجوی محصول، مشتری، تأمین‌کننده یا بل...", language: "زبان",
+    notifications: "هشدارهای هوشمند", none: "فعلاً هشداری وجود ندارد.", systemSearch: "جستجوی سیستم", all: "همه",
+    openFull: "تمام نتایج", expired: "بچ‌های منقضی‌شده", expiring: "انقضا در ۶۰ روز آینده",
+    low: "موجودی کم", out: "محصولات خلاص‌شده", expiredTitle: "بچ منقضی شده", expiringTitle: "هشدار تاریخ انقضا",
+    lowTitle: "هشدار موجودی کم", outTitle: "موجودی خلاص شده", read: "خوانده‌شده", unread: "جدید", settings: "تنظیمات",
+    logout: "خروج", noResult: "ریکارد مطابق پیدا نشد.",
+    types: { Product: "محصول", Manufacturer: "شرکت سازنده", Supplier: "تأمین‌کننده", Customer: "مشتری", Purchase: "خریداری", Sale: "فروش", Payment: "پرداخت" },
   },
   ps: {
-    accounts: "حسابونه",
-    currency: "د پیسو واحد",
-    search: "د سیستم په معلوماتو کې لټون...",
-    language: "ژبه",
-    notifications: "خبرتیاوې",
-    noNotifications: "اوس خبرتیا نشته.",
-    systemSearch: "د سیستم لټون",
-    openFullResult: "ټولې پایلې پرانیزه",
+    currency: "د پیسو واحد", search: "د محصول، پېرودونکي، عرضه کوونکي یا بل لټون...", language: "ژبه",
+    notifications: "هوښیار خبرتیاوې", none: "اوس کومه خبرتیا نشته.", systemSearch: "د سیستم لټون", all: "ټول",
+    openFull: "ټولې پایلې", expired: "ختم شوي بچونه", expiring: "په ۶۰ ورځو کې ختمېدونکي",
+    low: "کمه موجودي", out: "خلاص شوي محصولات", expiredTitle: "بچ ختم شوی", expiringTitle: "د ختمېدو خبرتیا",
+    lowTitle: "د کمې موجودۍ خبرتیا", outTitle: "موجودي خلاصه ده", read: "لوستل شوی", unread: "نوی", settings: "تنظیمات",
+    logout: "وتل", noResult: "سم ریکارډ ونه موندل شو.",
+    types: { Product: "محصول", Manufacturer: "جوړوونکی شرکت", Supplier: "عرضه کوونکی", Customer: "پېرودونکی", Purchase: "پېرود", Sale: "خرڅلاو", Payment: "تادیه" },
   },
 };
 
-const readNotificationState = () => {
+const readState = () => {
   try {
     const parsed = JSON.parse(localStorage.getItem(NOTIFICATION_STATE_KEY) || "{}");
-
-    return {
-      readIds: Array.isArray(parsed.readIds) ? parsed.readIds : [],
-      clearedIds: Array.isArray(parsed.clearedIds) ? parsed.clearedIds : [],
-    };
+    return { readIds: Array.isArray(parsed.readIds) ? parsed.readIds : [], clearedIds: Array.isArray(parsed.clearedIds) ? parsed.clearedIds : [] };
   } catch {
-    return {
-      readIds: [],
-      clearedIds: [],
-    };
+    return { readIds: [], clearedIds: [] };
   }
 };
 
-const writeNotificationState = (state) => {
-  localStorage.setItem(NOTIFICATION_STATE_KEY, JSON.stringify(state));
+const dateOnly = (value) => String(value || "").slice(0, 10);
+const daysUntil = (value) => {
+  if (!value) return Infinity;
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  const target = new Date(`${dateOnly(value)}T00:00:00`);
+  return Number.isNaN(target.getTime()) ? Infinity : Math.ceil((target - now) / 86400000);
 };
 
 function HeaderActions({ currentUser, onLogout, compact = false }) {
+  const navigate = useNavigate();
   const [openMenu, setOpenMenu] = useState(null);
-  const [language, setLanguage] = useState(
-    () => localStorage.getItem(LANGUAGE_STATE_KEY) || "en"
-  );
-  const [notificationState, setNotificationState] = useState(readNotificationState);
+  const [language, setLanguage] = useState(() => localStorage.getItem(LANGUAGE_STATE_KEY) || "en");
+  const [notificationState, setNotificationState] = useState(readState);
   const [settings, setSettings] = useJsonCollection("settings");
+  const [products] = useJsonCollection("products");
+  const [stockMovements] = useJsonCollection("stockMovements");
   const currentSettings = settings[0] || {};
   const currency = currentSettings.currency || "AFN";
+  const t = labels[language] || labels.en;
 
-  const [assets] = useJsonCollection("assets");
-  const [towerAssets] = useJsonCollection("towerAssets");
-  const [securityDeposits] = useJsonCollection("securityDeposits");
+  const notificationGroups = useMemo(() => {
+    const expired = [], expiring = [], low = [], out = [];
+    const defaultLow = Math.max(Number(currentSettings.lowStockThreshold || 10), 0);
 
-  const damagedOrLostAssets = assets.filter((asset) =>
-    ["Damaged", "Lost"].includes(asset.status)
-  );
+    products.forEach((product) => {
+      const name = product.productName || product.name || "Product";
+      const stock = getProductStock(stockMovements, product.id, 0);
+      const threshold = Math.max(Number(product.lowStockThreshold ?? product.alertQuantity ?? product.reorderLevel ?? defaultLow), 0);
+      const path = `/product-detail/${product.id}`;
 
-  const pendingTowerAssets = towerAssets.filter(
-    (item) => item.installationStatus === "Pending"
-  );
+      if (stock <= 0) {
+        out.push({ id: `stock-out:${product.id}`, title: t.outTitle, description: name, path, icon: PackageX });
+      } else if (threshold > 0 && stock <= threshold) {
+        low.push({ id: `stock-low:${product.id}:${stock}:${threshold}`, title: t.lowTitle, description: `${name} · ${stock}`, path, icon: Box });
+      }
 
-  const outstandingDeposits = securityDeposits.filter((item) =>
-    ["Outstanding", "Held"].includes(item.status)
-  );
-
-  const lowStockAssets = assets.filter((asset) => {
-    const alertQuantity = Number(asset.alertQuantity || 0);
-    return alertQuantity > 0 && Number(asset.quantity || 0) <= alertQuantity;
-  });
-
-  const notificationGroups = [
-    {
-      key: "stock",
-      title: "Stock Alerts",
-      count: lowStockAssets.length,
-      icon: Box,
-      items: lowStockAssets.map((asset) => ({
-        id: `stock:${asset.id || asset.assetId || asset.deviceName}:${asset.quantity}:${asset.alertQuantity}`,
-        title: "Low Stock Alert",
-        description: `${asset.assetId || asset.deviceName || "Asset"} has only ${money(asset.quantity)} ${asset.purchaseUsageUnit || asset.purchaseUnit || "unit(s)"} left`,
-      })),
-    },
-    {
-      key: "asset-status",
-      title: "Asset Status Alerts",
-      count: damagedOrLostAssets.length,
-      icon: AlertTriangle,
-      items: damagedOrLostAssets.map((asset) => ({
-        id: `asset-status:${asset.id || asset.assetId || asset.deviceName}:${asset.status}`,
-        title: `${asset.status || "Asset"} Asset`,
-        description: `${asset.assetId || asset.deviceName || "Asset"} needs attention`,
-      })),
-    },
-    {
-      key: "tower",
-      title: "Tower Alerts",
-      count: pendingTowerAssets.length,
-      icon: Wrench,
-      items: pendingTowerAssets.map((tower) => ({
-        id: `tower:${tower.id || tower.towerName}:${tower.installationStatus}`,
-        title: "Pending Tower Installation",
-        description: `${tower.towerName || "Tower"} is still pending`,
-      })),
-    },
-    {
-      key: "deposit",
-      title: "Deposit Alerts",
-      count: outstandingDeposits.length,
-      icon: CreditCard,
-      items: outstandingDeposits.map((deposit) => ({
-        id: `deposit:${deposit.id || deposit.customerId || deposit.customerName}:${deposit.status}:${deposit.remainingAmount || deposit.amount || deposit.depositAmount}`,
-        title: "Outstanding Deposit",
-        description: `${deposit.customerName || deposit.customerId || "Customer"} has a deposit balance`,
-      })),
-    },
-  ].filter((group) => group.count > 0);
-
-  const notificationItems = notificationGroups.flatMap((group) =>
-    group.items.map((item) => ({ ...item, groupTitle: group.title, icon: group.icon }))
-  );
-
-  const clearedNotificationIds = new Set(notificationState.clearedIds);
-  const readNotificationIds = new Set(notificationState.readIds);
-
-  const visibleNotificationItems = notificationItems.filter(
-    (item) => !clearedNotificationIds.has(item.id)
-  );
-
-  const visibleNotificationGroups = notificationGroups
-    .map((group) => {
-      const items = group.items.filter((item) => !clearedNotificationIds.has(item.id));
-      return {
-        ...group,
-        count: items.length,
-        unreadCount: items.filter((item) => !readNotificationIds.has(item.id)).length,
-        items,
-      };
-    })
-    .filter((group) => group.count > 0);
-
-  const alertCount = visibleNotificationItems.filter(
-    (item) => !readNotificationIds.has(item.id)
-  ).length;
-
-  const persistNotificationState = (nextState) => {
-    setNotificationState(nextState);
-    writeNotificationState(nextState);
-  };
-
-  const markAllNotificationsRead = () => {
-    persistNotificationState({
-      ...notificationState,
-      readIds: Array.from(
-        new Set([
-          ...notificationState.readIds,
-          ...visibleNotificationItems.map((item) => item.id),
-        ])
-      ),
+      getProductBatchBalances(stockMovements, product.id)
+        .filter((batch) => Number(batch.available || 0) > 0 && batch.expiryDate)
+        .forEach((batch) => {
+          const days = daysUntil(batch.expiryDate);
+          const description = `${name} · ${batch.batchNo || "Batch"} · ${batch.expiryDate}`;
+          if (days < 0) expired.push({ id: `expired:${product.id}:${batch.batchNo}:${batch.expiryDate}`, title: t.expiredTitle, description, path, icon: AlertTriangle });
+          else if (days <= 60) expiring.push({ id: `expiring:${product.id}:${batch.batchNo}:${batch.expiryDate}`, title: t.expiringTitle, description, path, icon: Clock3 });
+        });
     });
-  };
 
-  const clearAllNotifications = () => {
-    persistNotificationState({
-      ...notificationState,
-      clearedIds: Array.from(
-        new Set([
-          ...notificationState.clearedIds,
-          ...visibleNotificationItems.map((item) => item.id),
-        ])
-      ),
-    });
-  };
+    return [
+      { key: "expired", title: t.expired, icon: AlertTriangle, items: expired },
+      { key: "expiring", title: t.expiring, icon: Clock3, items: expiring },
+      { key: "low", title: t.low, icon: Box, items: low },
+      { key: "out", title: t.out, icon: PackageX, items: out },
+    ].filter((group) => group.items.length);
+  }, [products, stockMovements, currentSettings.lowStockThreshold, t]);
 
-  const removeNotification = (notificationId) => {
-    persistNotificationState({
-      ...notificationState,
-      clearedIds: Array.from(new Set([...notificationState.clearedIds, notificationId])),
-    });
-  };
+  const cleared = new Set(notificationState.clearedIds);
+  const read = new Set(notificationState.readIds);
+  const visibleGroups = notificationGroups.map((group) => ({ ...group, items: group.items.filter((item) => !cleared.has(item.id)) })).filter((group) => group.items.length);
+  const visibleItems = visibleGroups.flatMap((group) => group.items.map((item) => ({ ...item, groupTitle: group.title })));
+  const alertCount = visibleItems.filter((item) => !read.has(item.id)).length;
 
-  const selectLanguage = (nextLanguage) => {
-    const selected = languages.find((item) => item.key === nextLanguage) || languages[2];
+  const persist = (next) => { setNotificationState(next); localStorage.setItem(NOTIFICATION_STATE_KEY, JSON.stringify(next)); };
+  const markAllRead = () => persist({ ...notificationState, readIds: [...new Set([...notificationState.readIds, ...visibleItems.map((item) => item.id)])] });
+  const clearAll = () => persist({ ...notificationState, clearedIds: [...new Set([...notificationState.clearedIds, ...visibleItems.map((item) => item.id)])] });
+  const remove = (id) => persist({ ...notificationState, clearedIds: [...new Set([...notificationState.clearedIds, id])] });
+  const openAlert = (item) => { persist({ ...notificationState, readIds: [...new Set([...notificationState.readIds, item.id])] }); setOpenMenu(null); navigate(item.path); };
+
+  const selectLanguage = (key) => {
+    const selected = languages.find((item) => item.key === key) || languages[2];
     localStorage.setItem(LANGUAGE_STATE_KEY, selected.key);
     document.documentElement.lang = selected.key;
     document.documentElement.dir = selected.direction;
@@ -232,463 +144,87 @@ function HeaderActions({ currentUser, onLogout, compact = false }) {
     setOpenMenu(null);
     window.dispatchEvent(new Event("app-language-updated"));
   };
-
   const activeLanguage = languages.find((item) => item.key === language) || languages[2];
-  const t = headerLabels[language] || headerLabels.en;
-
   const changeCurrency = async (event) => {
     const nextCurrency = event.target.value;
-    const saved = await setSettings([
-      { ...currentSettings, currency: nextCurrency, updatedAt: new Date().toISOString() },
-    ]);
+    const saved = await setSettings([{ ...currentSettings, currency: nextCurrency, updatedAt: new Date().toISOString() }]);
     if (saved) window.dispatchEvent(new Event("company-settings-updated"));
   };
 
   if (compact) {
-    return (
-      <div className="header-menu mobile-brand-actions">
-        <button
-          className="profile-btn mobile-actions-toggle"
-          onClick={() => setOpenMenu(openMenu === "mobile" ? null : "mobile")}
-          aria-label="Open mobile actions"
-          type="button"
-        >
-          <User size={17} />
-          {alertCount > 0 && <span className="alert-count">{alertCount}</span>}
-          <ChevronDown size={14} />
-        </button>
-
-        {openMenu === "mobile" && (
-          <div className="dropdown mobile-actions-dropdown">
-            <strong>
-              {currentUser?.fullName || currentUser?.email || currentUser?.username}
-            </strong>
-            <p>{currentUser?.email || "No email configured"}</p>
-
-            <Link to="/accounts" className="dropdown-action" onClick={() => setOpenMenu(null)}>
-              <Users size={15} />
-              Accounts
-            </Link>
-            <Link to="/settings" className="dropdown-action" onClick={() => setOpenMenu(null)}>
-              <Settings size={15} />
-              Settings
-            </Link>
-            <div className="dropdown-alerts">
-              <span>
-                <Globe2 size={15} />
-                {t.language}
-                <b>{activeLanguage.short}</b>
-              </span>
-              {languages.map((item) => (
-                <button
-                  type="button"
-                  key={item.key}
-                  className="dropdown-language-option"
-                  onClick={() => selectLanguage(item.key)}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-            <div className="dropdown-alerts">
-              <span>
-                <Bell size={15} />
-                Alerts
-                <b>{alertCount}</b>
-              </span>
-              <small>Low stock assets: {visibleNotificationGroups.find((group) => group.key === "stock")?.count || 0}</small>
-              <small>Damaged / lost assets: {visibleNotificationGroups.find((group) => group.key === "asset-status")?.count || 0}</small>
-              <small>Pending tower installations: {visibleNotificationGroups.find((group) => group.key === "tower")?.count || 0}</small>
-              <small>Outstanding deposits: {visibleNotificationGroups.find((group) => group.key === "deposit")?.count || 0}</small>
-            </div>
-
-            <button className="dropdown-logout" onClick={onLogout} type="button">
-              <LogOut size={15} />
-              Logout
-            </button>
-
-          </div>
-        )}
-      </div>
-    );
+    return <div className="header-menu mobile-brand-actions">
+      <button type="button" className="profile-btn mobile-actions-toggle" onClick={() => setOpenMenu(openMenu === "mobile" ? null : "mobile")}>
+        <User size={17}/>{alertCount > 0 && <span className="alert-count">{alertCount}</span>}<ChevronDown size={14}/>
+      </button>
+      {openMenu === "mobile" && <div className="dropdown mobile-actions-dropdown">
+        <strong>{currentUser?.fullName || currentUser?.email || "User"}</strong><p>{currentUser?.email || ""}</p>
+        <Link to="/settings" className="dropdown-action" onClick={() => setOpenMenu(null)}><Settings size={15}/>{t.settings}</Link>
+        <div className="dropdown-alerts"><span><Globe2 size={15}/>{t.language}<b>{activeLanguage.short}</b></span>{languages.map((item) => <button type="button" key={item.key} onClick={() => selectLanguage(item.key)}>{item.label}</button>)}</div>
+        <button type="button" className="dropdown-logout" onClick={onLogout}><LogOut size={15}/>{t.logout}</button>
+      </div>}
+    </div>;
   }
 
-  return (
-    <div className="top-actions">
-        <label className="header-account-link header-currency-control" title={t.currency}>
-          <CreditCard size={19} strokeWidth={1.9} />
-          <select value={currency} onChange={changeCurrency} aria-label={t.currency}>
-            <option value="AFN">AFN</option>
-            <option value="USD">USD</option>
-            <option value="INR">INR</option>
-          </select>
-        </label>
-
-        <div className="header-menu">
-          <button
-            className="icon-btn"
-            onClick={() => setOpenMenu(openMenu === "alerts" ? null : "alerts")}
-            aria-label="Alerts"
-          >
-            <Bell size={21} strokeWidth={1.9} />
-            {alertCount > 0 && <span className="alert-count">{alertCount}</span>}
-          </button>
-
-          {openMenu === "alerts" && (
-            <div className="dropdown alert-dropdown notification-dropdown">
-              <div className="notification-dropdown-header">
-  <div className="notification-dropdown-title">
-    <strong>{t.notifications}</strong>
-
-    {alertCount > 0 && (
-      <span>{alertCount}</span>
-    )}
-  </div>
-
-  <div className="notification-header-actions">
-    <button
-      type="button"
-      aria-label="Mark all notifications as read"
-      title="Mark all as read"
-      onClick={markAllNotificationsRead}
-      disabled={visibleNotificationItems.length === 0 || alertCount === 0}
-    >
-      <CheckCheck size={14} />
-    </button>
-
-    <button
-      type="button"
-      className="notification-clear-btn"
-      aria-label="Clear all notifications"
-      title="Clear notifications"
-      onClick={clearAllNotifications}
-      disabled={visibleNotificationItems.length === 0}
-    >
-      <Trash2 size={14} />
-    </button>
-  </div>
-</div>
-
-              {visibleNotificationGroups.length > 0 ? (
-                <>
-                  <div className="notification-group-list">
-                    {visibleNotificationGroups.map((group) => {
-                      const Icon = group.icon;
-                      return (
-                        <div key={group.key} className="notification-group-row">
-                          <Icon size={15} />
-                          <span>
-                            {group.title} ({group.unreadCount}/{group.count})
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="notification-item-list">
-                    {visibleNotificationItems.slice(0, 8).map((item, index) => {
-                      const Icon = item.icon;
-                      const isRead = readNotificationIds.has(item.id);
-                      return (
-                        <div
-  key={`${item.groupTitle}-${index}`}
-  className={`notification-item${isRead ? " read" : ""}`}
->
-  <span className="notification-icon">
-    <Icon size={15} strokeWidth={1.9} />
-  </span>
-
-  <div className="notification-item-content">
-    <strong>{item.title}</strong>
-    <p>{item.description}</p>
-    <small>{isRead ? "Read" : "Unread"}</small>
-  </div>
-
-  <button
-    type="button"
-    className="notification-remove-btn"
-    aria-label={`Remove ${item.title}`}
-    title="Remove notification"
-    onClick={() => removeNotification(item.id)}
-  >
-    <Trash2 size={13} />
-  </button>
-</div>
-                      );
-                    })}
-                  </div>
-                </>
-              ) : (
-                <div className="notification-empty">{t.noNotifications}</div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="header-menu">
-          <button
-            className="icon-btn header-language-btn"
-            onClick={() => setOpenMenu(openMenu === "language" ? null : "language")}
-            aria-label="Language"
-            title="Language"
-            type="button"
-          >
-            <Globe2 size={20} strokeWidth={1.9} />
-          </button>
-
-          {openMenu === "language" && (
-            <div className="dropdown language-dropdown">
-              {languages.map((item) => (
-                <button
-                  type="button"
-                  key={item.key}
-                  className={language === item.key ? "active" : ""}
-                  onClick={() => selectLanguage(item.key)}
-                >
-                  <span>{item.label}</span>
-                  <small>{item.direction.toUpperCase()}</small>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="header-menu profile-menu">
-          <button
-            className="profile-btn"
-            onClick={() => setOpenMenu(openMenu === "profile" ? null : "profile")}
-            aria-label="Profile"
-          >
-          <User size={21} strokeWidth={1.9} />
-          </button>
-
-          {openMenu === "profile" && (
-            <div className="dropdown profile-dropdown">
-              <strong>
-                {currentUser?.fullName || currentUser?.email || currentUser?.username}
-              </strong>
-              <p>{currentUser?.email || "No email configured"}</p>
-
-          <button className="dropdown-logout" onClick={onLogout}>
-                <LogOut size={15} />
-                Logout
-              </button>
-
-            </div>
-          )}
-        </div>
-      </div>
-  );
+  return <div className="topbar-actions">
+    <label className="currency-selector"><select value={currency} onChange={changeCurrency} aria-label={t.currency}><option>AFN</option><option>USD</option><option>PKR</option><option>EUR</option></select></label>
+    <div className="header-menu">
+      <button type="button" className="icon-btn" onClick={() => setOpenMenu(openMenu === "alerts" ? null : "alerts")} aria-label={t.notifications}><Bell size={20}/>{alertCount > 0 && <span className="alert-count">{alertCount}</span>}</button>
+      {openMenu === "alerts" && <div className="dropdown alert-dropdown notification-dropdown">
+        <div className="notification-dropdown-header"><div className="notification-dropdown-title"><strong>{t.notifications}</strong>{alertCount > 0 && <span>{alertCount}</span>}</div><div className="notification-header-actions"><button type="button" onClick={markAllRead} disabled={!visibleItems.length}><CheckCheck size={14}/></button><button type="button" onClick={clearAll} disabled={!visibleItems.length}><Trash2 size={14}/></button></div></div>
+        {visibleGroups.length ? <><div className="notification-group-list">{visibleGroups.map((group) => { const Icon = group.icon; return <div key={group.key} className="notification-group-row"><Icon size={15}/><span>{group.title} ({group.items.length})</span></div>; })}</div><div className="notification-item-list">{visibleItems.slice(0, 12).map((item) => { const Icon = item.icon; return <div key={item.id} className={`notification-item${read.has(item.id) ? " read" : ""}`}><button type="button" className="notification-icon" onClick={() => openAlert(item)}><Icon size={15}/></button><button type="button" className="notification-item-content" onClick={() => openAlert(item)}><strong>{item.title}</strong><p>{item.description}</p><small>{read.has(item.id) ? t.read : t.unread}</small></button><button type="button" className="notification-remove-btn" onClick={() => remove(item.id)}><Trash2 size={13}/></button></div>; })}</div></> : <div className="notification-empty">{t.none}</div>}
+      </div>}
+    </div>
+    <div className="header-menu"><button type="button" className="icon-btn header-language-btn" onClick={() => setOpenMenu(openMenu === "language" ? null : "language")}><Globe2 size={20}/></button>{openMenu === "language" && <div className="dropdown language-dropdown">{languages.map((item) => <button type="button" key={item.key} className={language === item.key ? "active" : ""} onClick={() => selectLanguage(item.key)}><span>{item.label}</span><small>{item.direction.toUpperCase()}</small></button>)}</div>}</div>
+    <div className="header-menu profile-menu"><button type="button" className="profile-btn" onClick={() => setOpenMenu(openMenu === "profile" ? null : "profile")}><User size={20}/></button>{openMenu === "profile" && <div className="dropdown profile-dropdown"><strong>{currentUser?.fullName || currentUser?.email || "User"}</strong><p>{currentUser?.email || ""}</p><Link to="/settings" className="dropdown-action" onClick={() => setOpenMenu(null)}><Settings size={15}/>{t.settings}</Link><button type="button" className="dropdown-logout" onClick={onLogout}><LogOut size={15}/>{t.logout}</button></div>}</div>
+  </div>;
 }
 
 function Header({ currentUser, onLogout }) {
   const navigate = useNavigate();
-  const searchRef = useRef(null);
+  const ref = useRef(null);
   const [query, setQuery] = useState("");
-  const [openSearch, setOpenSearch] = useState(false);
-  const [resultFilter, setResultFilter] = useState("All");
-  const [language, setLanguage] = useState(
-    () => localStorage.getItem(LANGUAGE_STATE_KEY) || "en"
-  );
-  const t = headerLabels[language] || headerLabels.en;
+  const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState("All");
+  const [language, setLanguage] = useState(() => localStorage.getItem(LANGUAGE_STATE_KEY) || "en");
+  const t = labels[language] || labels.en;
 
-  const [assets] = useJsonCollection("assets");
+  const [products] = useJsonCollection("products");
+  const [productGroups] = useJsonCollection("productGroups");
+  const [countries] = useJsonCollection("countries");
+  const [manufacturers] = useJsonCollection("manufacturers");
   const [suppliers] = useJsonCollection("suppliers");
-  const [supplierPurchases] = useJsonCollection("supplierPurchases");
-  const [customers] = useJsonCollection("customers");
-  const [towerAssets] = useJsonCollection("towerAssets");
-  const [deviceTransfers] = useJsonCollection("deviceTransfers");
-  const [assetMovements] = useJsonCollection("assetMovements");
-  const [towerAssetTransfers] = useJsonCollection("towerAssetTransfers");
-  const [deviceHistory] = useJsonCollection("deviceHistory");
-  const [securityDeposits] = useJsonCollection("securityDeposits");
-  const [customerDevices] = useJsonCollection("customerDevices");
+  const [customers] = useJsonCollection("customerRegistry");
+  const [purchases] = useJsonCollection("purchases");
+  const [sales] = useJsonCollection("salesRegister");
   const [customerPayments] = useJsonCollection("customerPayments");
-  const [transactions] = useJsonCollection("transactions");
-  const [packages] = useJsonCollection("packages");
-  const [customerPackages] = useJsonCollection("customerPackages");
-  const [disconnections] = useJsonCollection("disconnections");
+  const [supplierPayments] = useJsonCollection("supplierPayments");
 
-  useEffect(() => {
-    const handleOutside = (event) => {
-      if (searchRef.current && !searchRef.current.contains(event.target)) {
-        setOpenSearch(false);
-      }
-    };
+  useEffect(() => { const outside = (event) => { if (ref.current && !ref.current.contains(event.target)) setOpen(false); }; document.addEventListener("mousedown", outside); return () => document.removeEventListener("mousedown", outside); }, []);
+  useEffect(() => { const sync = () => setLanguage(localStorage.getItem(LANGUAGE_STATE_KEY) || "en"); window.addEventListener("app-language-updated", sync); return () => window.removeEventListener("app-language-updated", sync); }, []);
 
-    document.addEventListener("mousedown", handleOutside);
-    return () => document.removeEventListener("mousedown", handleOutside);
-  }, []);
+  const results = useMemo(() => {
+    const all = buildSystemSearchResults({ products, productGroups, countries, manufacturers, suppliers, customers, purchases, sales, customerPayments, supplierPayments }, query, { limit: 18 });
+    return (filter === "All" ? all : all.filter((row) => row.type === filter)).slice(0, 18);
+  }, [products, productGroups, countries, manufacturers, suppliers, customers, purchases, sales, customerPayments, supplierPayments, query, filter]);
+  const filters = ["All", "Product", "Manufacturer", "Supplier", "Customer", "Purchase", "Sale", "Payment"];
+  const openResult = (path) => { setOpen(false); setQuery(""); navigate(path); };
+  const fullResults = () => { if (query.trim().length >= 2) { setOpen(false); navigate(`/search-results?q=${encodeURIComponent(query.trim())}`); } };
 
-  useEffect(() => {
-    const syncLanguage = () => setLanguage(localStorage.getItem(LANGUAGE_STATE_KEY) || "en");
-    window.addEventListener("app-language-updated", syncLanguage);
-    return () => window.removeEventListener("app-language-updated", syncLanguage);
-  }, []);
-
-  const searchResults = useMemo(() => {
-    const keyword = query.trim();
-    if (keyword.length < 2) return [];
-
-    const allResults = buildSystemSearchResults(
-      {
-        assets,
-        customers,
-        suppliers,
-        supplierPurchases,
-        towerAssets,
-        deviceTransfers,
-        assetMovements,
-        towerAssetTransfers,
-        deviceHistory,
-        securityDeposits,
-        customerDevices,
-        customerPayments,
-        transactions,
-        packages,
-        customerPackages,
-        disconnections,
-      },
-      keyword,
-      { limit: 18 }
-    );
-    const filteredResults =
-      resultFilter === "All"
-        ? allResults
-        : allResults.filter((result) => result.type === resultFilter);
-
-    return filteredResults.slice(0, 18);
-  }, [
-    assetMovements,
-    assets,
-    customerDevices,
-    customerPackages,
-    customerPayments,
-    customers,
-    deviceHistory,
-    deviceTransfers,
-    disconnections,
-    packages,
-    query,
-    resultFilter,
-    securityDeposits,
-    supplierPurchases,
-    suppliers,
-    towerAssetTransfers,
-    towerAssets,
-    transactions,
-  ]);
-
-  const openResult = (path) => {
-    setOpenSearch(false);
-    setQuery("");
-    navigate(path);
-  };
-
-  const openSearchResultsPage = () => {
-    const keyword = query.trim();
-    if (keyword.length < 2) return;
-    setOpenSearch(false);
-    navigate(`/search-results?q=${encodeURIComponent(keyword)}`);
-  };
-
-  return (
-    <header className="topbar">
-      <div className="header-search global-search" ref={searchRef}>
-        <button
-          type="button"
-          className="global-search-submit"
-          onClick={openSearchResultsPage}
-          aria-label="Open search results"
-        >
-          <Search size={17} />
-        </button>
-        <input
-          placeholder={t.search}
-          aria-label="Search system"
-          value={query}
-          onChange={(event) => {
-            setQuery(event.target.value);
-            setOpenSearch(true);
-          }}
-          onFocus={() => setOpenSearch(true)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              openSearchResultsPage();
-            }
-          }}
-        />
-
-        {openSearch && query.trim().length >= 2 && (
-          <div className="global-search-results">
-            <div className="global-search-results-header">
-              <strong>{t.systemSearch}</strong>
-              <span>{searchResults.length} result(s)</span>
-            </div>
-            <button type="button" className="global-search-view-all" onClick={openSearchResultsPage}>
-              {t.openFullResult}
-            </button>
-
-            <div className="global-search-filters">
-              {[
-                "All",
-                "Asset",
-                "Customer",
-                "Tower",
-                "Supplier",
-                "Transfer",
-                "Purchase",
-                "Movement",
-                "Deposit",
-                "History",
-                "Payment",
-                "Transaction",
-                "Package",
-              ].map((filter) => (
-                <button
-                  type="button"
-                  key={filter}
-                  className={resultFilter === filter ? "active" : ""}
-                  onClick={() => setResultFilter(filter)}
-                >
-                  {filter}
-                </button>
-              ))}
-            </div>
-
-            {searchResults.map((result) => (
-              <button
-                type="button"
-                key={result.key}
-                className="global-search-result"
-                onClick={() => openResult(result.path)}
-              >
-                <span>{result.type}</span>
-                <strong>{result.title}</strong>
-                <em>{result.subtitle}</em>
-                <div>
-                  {result.details.slice(0, 6).map((detail) => (
-                    <small key={detail}>{detail}</small>
-                  ))}
-                </div>
-              </button>
-            ))}
-
-            {!searchResults.length && (
-              <div className="global-search-empty">
-                No exact result found. Try a partial MAC, serial number, asset ID, customer, tower, or supplier name.
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      <HeaderActions currentUser={currentUser} onLogout={onLogout} />
-    </header>
-  );
+  return <header className="topbar">
+    <div className="header-search global-search" ref={ref}>
+      <button type="button" className="global-search-submit" onClick={fullResults}><Search size={17}/></button>
+      <input placeholder={t.search} value={query} onChange={(event) => { setQuery(event.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); fullResults(); } }}/>
+      {open && query.trim().length >= 2 && <div className="global-search-results">
+        <div className="global-search-results-header"><strong>{t.systemSearch}</strong><span>{results.length}</span></div>
+        <button type="button" className="global-search-view-all" onClick={fullResults}>{t.openFull}</button>
+        <div className="global-search-filters">{filters.map((item) => <button type="button" key={item} className={filter === item ? "active" : ""} onClick={() => setFilter(item)}>{item === "All" ? t.all : (t.types[item] || item)}</button>)}</div>
+        {results.map((row) => <button type="button" key={row.key} className="global-search-result" onClick={() => openResult(row.path)}><span>{t.types[row.type] || row.type}</span><strong>{row.title}</strong><em>{row.subtitle}</em><div>{row.details.slice(0, 4).map((detail) => <small key={detail}>{detail}</small>)}</div></button>)}
+        {!results.length && <div className="global-search-empty">{t.noResult}</div>}
+      </div>}
+    </div>
+    <HeaderActions currentUser={currentUser} onLogout={onLogout}/>
+  </header>;
 }
 
 Header.Actions = HeaderActions;
-
 export default Header;
