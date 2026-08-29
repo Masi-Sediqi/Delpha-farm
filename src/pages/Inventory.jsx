@@ -9,7 +9,6 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   CalendarClock,
-  ChevronRight,
 } from "lucide-react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import {
@@ -318,7 +317,7 @@ export default function Inventory() {
         {activeTab === "products" && (
           <div className="inventory-table-wrap">
             <table>
-              <thead><tr><th>{t.product}</th><th>{t.group}</th><th>{t.manufacturer}</th><th>{t.currentStock}</th><th>{t.totalIn}</th><th>{t.totalOut}</th><th>{t.batchCount}</th><th>{t.nearestExpiry}</th><th>{t.status}</th><th></th></tr></thead>
+              <thead><tr><th>{t.product}</th><th>{t.group}</th><th>{t.manufacturer}</th><th>{t.currentStock}</th><th>{t.totalIn}</th><th>{t.totalOut}</th><th>{t.batchCount}</th><th>{t.nearestExpiry}</th><th>{t.status}</th></tr></thead>
               <tbody>
                 {filteredRows.length ? filteredRows.map((row) => (
                   <tr key={row.product.id} className="inventory-clickable-row" onClick={() => navigate(`/product-detail/${row.product.id}`)}>
@@ -331,9 +330,8 @@ export default function Inventory() {
                     <td>{row.activeBatches.length.toLocaleString("en-US")}</td>
                     <td>{row.nearestExpiry || "—"}</td>
                     <td><span className={`inventory-status ${row.stock > 0 ? "is-in" : "is-out"}`}>{row.stock > 0 ? t.inStock : t.noStock}</span></td>
-                    <td><button className="inventory-view-btn" onClick={(event) => { event.stopPropagation(); navigate(`/product-detail/${row.product.id}`); }}>{t.view}<ChevronRight size={14} /></button></td>
                   </tr>
-                )) : <tr><td colSpan="10" className="inventory-empty">{t.noData}</td></tr>}
+                )) : <tr><td colSpan="9" className="inventory-empty">{t.noData}</td></tr>}
               </tbody>
             </table>
           </div>

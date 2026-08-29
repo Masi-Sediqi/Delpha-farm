@@ -326,3 +326,92 @@ body.dark-mode .sales-register-product-search {
 /* Access-aligned header actions */
 .sales-register-header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.sales-register-secondary{border:1px solid var(--border-color,#dfe3e8);background:var(--card-bg,#fff);color:var(--text-color,#111827);border-radius:10px;padding:10px 14px;font-weight:700;display:inline-flex;align-items:center;gap:7px;cursor:pointer}.sales-register-secondary:hover{background:var(--hover-bg,#f4f5f7)}
 @media(max-width:640px){.sales-register-header-actions{width:100%}.sales-register-header-actions>button{flex:1}}
+
+/* Sales row actions use the same compact, vertical menu as Purchasing. */
+.sales-register-actions-cell{
+  width:46px!important;
+  min-width:46px!important;
+  padding:6px 8px!important;
+  text-align:center!important;
+  overflow:visible!important;
+}
+.sales-register-action-trigger{
+  width:31px!important;
+  min-width:31px!important;
+  height:31px!important;
+  min-height:31px!important;
+  padding:0!important;
+  border:1px solid #e5e7eb!important;
+  border-radius:8px!important;
+  background:#fff!important;
+  color:#475569!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  cursor:pointer!important;
+}
+.sales-register-action-trigger:hover,
+.sales-register-action-trigger[aria-expanded="true"]{
+  border-color:#c7d2fe!important;
+  background:#eef2ff!important;
+  color:#4f46e5!important;
+}
+.sales-register-action-trigger span{
+  display:block!important;
+  font-family:Arial,sans-serif!important;
+  font-size:15px!important;
+  font-weight:900!important;
+  line-height:1!important;
+  letter-spacing:1px!important;
+  transform:translateY(-2px)!important;
+}
+.sales-register-action-popover{
+  position:fixed!important;
+  z-index:2147483647!important;
+  width:148px!important;
+  max-width:calc(100vw - 20px)!important;
+  padding:5px!important;
+  border:1px solid #e5e7eb!important;
+  border-radius:8px!important;
+  background:#fff!important;
+  color:#1f2937!important;
+  box-shadow:0 12px 28px rgba(15,23,42,.18)!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:1px!important;
+  direction:ltr!important;
+  visibility:visible!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+}
+.sales-register-action-popover button{
+  width:100%!important;
+  height:30px!important;
+  min-height:30px!important;
+  margin:0!important;
+  padding:0 9px!important;
+  border:0!important;
+  border-radius:5px!important;
+  background:transparent!important;
+  color:#1f2937!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  gap:7px!important;
+  font:inherit!important;
+  font-size:11px!important;
+  font-weight:700!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+  text-align:left!important;
+  cursor:pointer!important;
+}
+.sales-register-action-popover button:hover{background:#f8fafc!important}
+.sales-register-action-popover button svg{width:13px!important;height:13px!important;min-width:13px!important;flex:0 0 13px!important}
+.sales-register-action-popover button.danger{color:#dc2626!important}
+.sales-register-action-popover button.danger:hover{background:#fff1f2!important}
+@media(max-width:850px){
+  .sales-register-actions-cell{width:44px!important;min-width:44px!important;padding-inline:6px!important}
+  .sales-register-action-trigger{width:30px!important;min-width:30px!important;height:30px!important;min-height:30px!important}
+  .sales-register-action-popover{width:144px!important}
+}

@@ -1007,7 +1007,7 @@ const removeCustomerPackageIncome = async (packageId) =>
 
     if (!saved) return;
 
-    notify("Customer device purchase saved successfully.");
+    notify("Customer device purchase saved successfully.", "success", { silent: true });
     resetBuybackForm();
     setShowBuybackModal(false);
   };
@@ -1102,7 +1102,7 @@ const saveEditedPayment = async (event) => {
     return;
   }
 
-  notify("Payment updated successfully.");
+  notify("Payment updated successfully.", "success", { silent: true });
   closePaymentModal();
 };
 
@@ -1203,7 +1203,7 @@ const confirmDeletePayment = async () => {
         return;
       }
 
-      notify("Package updated successfully.");
+      notify("Package updated successfully.", "success", { silent: true });
       setEditPackage(null);
     }
   };
@@ -1322,7 +1322,7 @@ const saveCustomerPayment = async (event) => {
     return;
   }
 
-  notify("Payment saved successfully.");
+  notify("Payment saved successfully.", "success", { silent: true });
   closePaymentModal();
 };
 

@@ -1457,7 +1457,7 @@ const deleteTransferRecord = async () => {
       if (!wasteExpenseSaved) return;
     }
 
-    notify("Device transfer saved and locked in Device History.");
+    notify("Device transfer saved and locked in Device History.", "success", { silent: true });
     setForm(emptyForm);
     setSelectedRows({});
     setRowQuantities({});

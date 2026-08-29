@@ -1164,7 +1164,7 @@ const handleEditPurchaseBillImageChange = (event) => {
 
         if (!movementSaved) return;
 
-        notify("Asset balance added successfully.");
+        notify("Asset balance added successfully.", "success", { silent: true });
         setPurchaseForm(emptyPurchaseForm);
         setModalType("");
     };
@@ -3251,7 +3251,7 @@ const handleEditPurchaseBillImageChange = (event) => {
             return;
         }
 
-        notify("Repair result saved successfully.");
+        notify("Repair result saved successfully.", "success", { silent: true });
         setRepairResultMovement(null);
     };
 
@@ -3815,7 +3815,7 @@ const handleEditPurchaseBillImageChange = (event) => {
 
             if (!saved) return;
 
-            notify("Balance record updated successfully.");
+            notify("Balance record updated successfully.", "success", { silent: true });
             setEditMovement(null);
             setEditMovementForm({});
             return;
@@ -4214,7 +4214,7 @@ const handleEditPurchaseBillImageChange = (event) => {
             }
         }
 
-        notify("Movement updated successfully.");
+        notify("Movement updated successfully.", "success", { silent: true });
         setEditMovement(null);
         setEditMovementForm({});
     };

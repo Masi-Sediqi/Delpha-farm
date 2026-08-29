@@ -218,7 +218,7 @@ function TowerLinks() {
       const saved = await setTowerLinks(updatedLinks);
 
       if (saved) {
-        notify("Tower link updated successfully.");
+        notify("Tower link updated successfully.", "success", { silent: true });
         closeModal();
       }
 
@@ -228,7 +228,7 @@ function TowerLinks() {
     const saved = await setTowerLinks([...towerLinks, cleanData]);
 
     if (saved) {
-      notify("Tower link saved successfully.");
+      notify("Tower link saved successfully.", "success", { silent: true });
       closeModal();
     }
   };

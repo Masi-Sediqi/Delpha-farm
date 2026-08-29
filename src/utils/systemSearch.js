@@ -44,7 +44,6 @@ export function buildSystemSearchResults(data, query, options = {}) {
     products = [],
     productGroups = [],
     countries = [],
-    manufacturers = [],
     suppliers = [],
     customers = [],
     purchases = [],
@@ -75,17 +74,6 @@ export function buildSystemSearchResults(data, query, options = {}) {
         `Sale price: ${money(item.salePrice || item.defaultSalePrice || 0)}`,
         `Purchase price: ${money(item.purchasePrice || item.defaultPurchasePrice || 0)}`,
       ],
-    }));
-  });
-
-  manufacturers.filter((item) => recordMatchesQuery(item, keyword)).forEach((item) => {
-    results.push(row({
-      type: "Manufacturer",
-      title: item.manufacturerName || item.companyName || item.name || "Manufacturer",
-      subtitle: item.country || item.phone || "",
-      path: "/manufacturers",
-      record: item,
-      details: [`Country: ${item.country || "-"}`, `Phone: ${item.phone || "-"}`],
     }));
   });
 

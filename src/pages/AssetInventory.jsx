@@ -222,7 +222,7 @@ const saveCustomCategory = async () => {
 
   setNewCategory("");
   setCategoryMode("select");
-  notify("Category saved successfully.");
+  notify("Category saved successfully.", "success", { silent: true });
 };
 
 const beginEditCustomCategory = (category) => {
@@ -268,7 +268,7 @@ const saveEditedCustomCategory = async (category) => {
   setEditingCategoryId(null);
   setEditingCategoryName("");
   setCategoryMode("select");
-  notify("Category updated successfully.");
+  notify("Category updated successfully.", "success", { silent: true });
 };
 
 const deleteCustomCategory = async (category) => {
@@ -475,7 +475,7 @@ assetImage:
 
     if (saved) {
       await syncLinkedAssetName(previousAsset, cleanData);
-      notify("Asset updated successfully.");
+      notify("Asset updated successfully.", "success", { silent: true });
       resetForm();
       setShowModal(false);
     }
@@ -486,7 +486,7 @@ assetImage:
   const saved = await setAssets([...assets, cleanData]);
 
   if (saved) {
-    notify("Asset saved successfully.");
+    notify("Asset saved successfully.", "success", { silent: true });
     resetForm();
     setShowModal(false);
   }

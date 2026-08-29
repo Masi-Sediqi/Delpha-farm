@@ -536,7 +536,7 @@ const saveIssueDevice = async (event) => {
       const saved = await setCustomers(updatedCustomers);
 
       if (saved) {
-        notify("Customer updated successfully.");
+        notify("Customer updated successfully.", "success", { silent: true });
         closeModal();
       }
 
@@ -546,7 +546,7 @@ const saveIssueDevice = async (event) => {
     const saved = await setCustomers([...customers, cleanData]);
 
     if (saved) {
-      notify("Customer saved successfully.");
+      notify("Customer saved successfully.", "success", { silent: true });
       closeModal();
     }
   };

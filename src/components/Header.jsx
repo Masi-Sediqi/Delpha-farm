@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useJsonCollection } from "../hooks/useJsonCollection";
-import { getProductBatchBalances, getProductStock } from "../utils/stock";
+import { getProductBatchBalances, getProductStock, legacyProductStock } from "../utils/stock";
 import { buildSystemSearchResults } from "../utils/systemSearch";
 
 const NOTIFICATION_STATE_KEY = "medicine-notification-state";
@@ -31,29 +31,29 @@ const labels = {
   en: {
     currency: "Currency", search: "Search products, customers, suppliers, invoices...", language: "Language",
     notifications: "Smart alerts", none: "No alerts right now.", systemSearch: "System Search", all: "All",
-    openFull: "Open all results", expired: "Expired batches", expiring: "Expiring within 60 days",
+    openFull: "Open all results", expired: "Expired batches", expiring: "Expiry alerts",
     low: "Low stock", out: "Out of stock", expiredTitle: "Expired batch", expiringTitle: "Expiry warning",
     lowTitle: "Low stock warning", outTitle: "Out of stock", read: "Read", unread: "New", settings: "Settings",
     logout: "Logout", noResult: "No matching record found.",
-    types: { Product: "Product", Manufacturer: "Manufacturer", Supplier: "Supplier", Customer: "Customer", Purchase: "Purchase", Sale: "Sale", Payment: "Payment" },
+    types: { Product: "Product", Supplier: "Supplier", Customer: "Customer", Purchase: "Purchase", Sale: "Sale", Payment: "Payment" },
   },
   fa: {
     currency: "واحد پول", search: "جستجوی محصول، مشتری، تأمین‌کننده یا بل...", language: "زبان",
     notifications: "هشدارهای هوشمند", none: "فعلاً هشداری وجود ندارد.", systemSearch: "جستجوی سیستم", all: "همه",
-    openFull: "تمام نتایج", expired: "بچ‌های منقضی‌شده", expiring: "انقضا در ۶۰ روز آینده",
+    openFull: "تمام نتایج", expired: "بچ‌های منقضی‌شده", expiring: "هشدارهای انقضا",
     low: "موجودی کم", out: "محصولات خلاص‌شده", expiredTitle: "بچ منقضی شده", expiringTitle: "هشدار تاریخ انقضا",
     lowTitle: "هشدار موجودی کم", outTitle: "موجودی خلاص شده", read: "خوانده‌شده", unread: "جدید", settings: "تنظیمات",
     logout: "خروج", noResult: "ریکارد مطابق پیدا نشد.",
-    types: { Product: "محصول", Manufacturer: "شرکت سازنده", Supplier: "تأمین‌کننده", Customer: "مشتری", Purchase: "خریداری", Sale: "فروش", Payment: "پرداخت" },
+    types: { Product: "محصول", Supplier: "تأمین‌کننده", Customer: "مشتری", Purchase: "خریداری", Sale: "فروش", Payment: "پرداخت" },
   },
   ps: {
     currency: "د پیسو واحد", search: "د محصول، پېرودونکي، عرضه کوونکي یا بل لټون...", language: "ژبه",
     notifications: "هوښیار خبرتیاوې", none: "اوس کومه خبرتیا نشته.", systemSearch: "د سیستم لټون", all: "ټول",
-    openFull: "ټولې پایلې", expired: "ختم شوي بچونه", expiring: "په ۶۰ ورځو کې ختمېدونکي",
+    openFull: "ټولې پایلې", expired: "ختم شوي بچونه", expiring: "د ختمېدو خبرتیاوې",
     low: "کمه موجودي", out: "خلاص شوي محصولات", expiredTitle: "بچ ختم شوی", expiringTitle: "د ختمېدو خبرتیا",
     lowTitle: "د کمې موجودۍ خبرتیا", outTitle: "موجودي خلاصه ده", read: "لوستل شوی", unread: "نوی", settings: "تنظیمات",
     logout: "وتل", noResult: "سم ریکارډ ونه موندل شو.",
-    types: { Product: "محصول", Manufacturer: "جوړوونکی شرکت", Supplier: "عرضه کوونکی", Customer: "پېرودونکی", Purchase: "پېرود", Sale: "خرڅلاو", Payment: "تادیه" },
+    types: { Product: "محصول", Supplier: "عرضه کوونکی", Customer: "پېرودونکی", Purchase: "پېرود", Sale: "خرڅلاو", Payment: "تادیه" },
   },
 };
 
@@ -92,8 +92,9 @@ function HeaderActions({ currentUser, onLogout, compact = false }) {
 
     products.forEach((product) => {
       const name = product.productName || product.name || "Product";
-      const stock = getProductStock(stockMovements, product.id, 0);
+      const stock = getProductStock(stockMovements, product.id, legacyProductStock(product));
       const threshold = Math.max(Number(product.lowStockThreshold ?? product.alertQuantity ?? product.reorderLevel ?? defaultLow), 0);
+      const expiryAlertDays = Math.max(Number(product.alertBeforeExpiryDays || 60), 0);
       const path = `/product-detail/${product.id}`;
 
       if (stock <= 0) {
@@ -102,13 +103,20 @@ function HeaderActions({ currentUser, onLogout, compact = false }) {
         low.push({ id: `stock-low:${product.id}:${stock}:${threshold}`, title: t.lowTitle, description: `${name} · ${stock}`, path, icon: Box });
       }
 
+      if (product.expiryDate) {
+        const days = daysUntil(product.expiryDate);
+        const description = `${name} · ${product.expiryDate}`;
+        if (days < 0) expired.push({ id: `expired-product:${product.id}:${product.expiryDate}`, title: t.expiredTitle, description, path, icon: AlertTriangle });
+        else if (days <= expiryAlertDays) expiring.push({ id: `expiring-product:${product.id}:${product.expiryDate}:${expiryAlertDays}`, title: t.expiringTitle, description, path, icon: Clock3 });
+      }
+
       getProductBatchBalances(stockMovements, product.id)
         .filter((batch) => Number(batch.available || 0) > 0 && batch.expiryDate)
         .forEach((batch) => {
           const days = daysUntil(batch.expiryDate);
           const description = `${name} · ${batch.batchNo || "Batch"} · ${batch.expiryDate}`;
           if (days < 0) expired.push({ id: `expired:${product.id}:${batch.batchNo}:${batch.expiryDate}`, title: t.expiredTitle, description, path, icon: AlertTriangle });
-          else if (days <= 60) expiring.push({ id: `expiring:${product.id}:${batch.batchNo}:${batch.expiryDate}`, title: t.expiringTitle, description, path, icon: Clock3 });
+          else if (days <= expiryAlertDays) expiring.push({ id: `expiring:${product.id}:${batch.batchNo}:${batch.expiryDate}:${expiryAlertDays}`, title: t.expiringTitle, description, path, icon: Clock3 });
         });
     });
 
@@ -191,7 +199,6 @@ function Header({ currentUser, onLogout }) {
   const [products] = useJsonCollection("products");
   const [productGroups] = useJsonCollection("productGroups");
   const [countries] = useJsonCollection("countries");
-  const [manufacturers] = useJsonCollection("manufacturers");
   const [suppliers] = useJsonCollection("suppliers");
   const [customers] = useJsonCollection("customerRegistry");
   const [purchases] = useJsonCollection("purchases");
@@ -203,10 +210,10 @@ function Header({ currentUser, onLogout }) {
   useEffect(() => { const sync = () => setLanguage(localStorage.getItem(LANGUAGE_STATE_KEY) || "en"); window.addEventListener("app-language-updated", sync); return () => window.removeEventListener("app-language-updated", sync); }, []);
 
   const results = useMemo(() => {
-    const all = buildSystemSearchResults({ products, productGroups, countries, manufacturers, suppliers, customers, purchases, sales, customerPayments, supplierPayments }, query, { limit: 18 });
+    const all = buildSystemSearchResults({ products, productGroups, countries, suppliers, customers, purchases, sales, customerPayments, supplierPayments }, query, { limit: 18 });
     return (filter === "All" ? all : all.filter((row) => row.type === filter)).slice(0, 18);
-  }, [products, productGroups, countries, manufacturers, suppliers, customers, purchases, sales, customerPayments, supplierPayments, query, filter]);
-  const filters = ["All", "Product", "Manufacturer", "Supplier", "Customer", "Purchase", "Sale", "Payment"];
+  }, [products, productGroups, countries, suppliers, customers, purchases, sales, customerPayments, supplierPayments, query, filter]);
+  const filters = ["All", "Product", "Supplier", "Customer", "Purchase", "Sale", "Payment"];
   const openResult = (path) => { setOpen(false); setQuery(""); navigate(path); };
   const fullResults = () => { if (query.trim().length >= 2) { setOpen(false); navigate(`/search-results?q=${encodeURIComponent(query.trim())}`); } };
 

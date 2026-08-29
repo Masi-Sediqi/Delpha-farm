@@ -353,10 +353,10 @@ export default function CashCount() {
     };
     if (editingId) {
       await setCounts(counts.map((item) => item.id === editingId ? { ...item, ...record } : item));
-      notify(t.updated, "success");
+      notify(t.updated, "success", { silent: true });
     } else {
       await setCounts([{ id: `cash-count-${Date.now()}`, ...record, createdAt: now }, ...counts]);
-      notify(t.saved, "success");
+      notify(t.saved, "success", { silent: true });
     }
     setActiveCurrency(form.currency);
     closeModal();

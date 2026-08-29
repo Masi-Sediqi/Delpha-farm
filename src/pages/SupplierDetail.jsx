@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   BadgeDollarSign,
@@ -8,8 +8,10 @@ import {
   CalendarDays,
   Edit3,
   FileText,
+  Lock,
   MapPin,
   Phone,
+  Printer,
   ReceiptText,
   Trash2,
   Truck,
@@ -33,6 +35,11 @@ const translations = {
     title: "Supplier Detail",
     subtitle: "Supplier profile, purchases, payments and running balance.",
     payment: "Payment",
+    print: "Print",
+    ledgerPrintTitle: "Supplier Ledger",
+    paymentReceipt: "Payment Receipt",
+    amountPaid: "Amount Paid",
+    supplierLabel: "Supplier",
     totalPurchases: "Total Purchases",
     totalPayments: "Total Payments",
     currentBalance: "Current Balance",
@@ -53,6 +60,10 @@ const translations = {
     credit: "Payment / Credit",
     balance: "Running Balance",
     actions: "Actions",
+    items: "Items",
+    purchaseTotal: "Purchase Total",
+    paidAtPurchase: "Paid",
+    remainingDebt: "Remaining",
     edit: "Edit",
     delete: "Delete",
     purchase: "Purchase",
@@ -84,6 +95,11 @@ const translations = {
     title: "جزئیات تأمین‌کننده",
     subtitle: "پروفایل، خریداری‌ها، پرداخت‌ها و بیلانس جاری تأمین‌کننده.",
     payment: "پرداخت",
+    print: "پرنت",
+    ledgerPrintTitle: "لیجر تأمین‌کننده",
+    paymentReceipt: "رسید پرداخت",
+    amountPaid: "مقدار پرداخت",
+    supplierLabel: "تأمین‌کننده",
     totalPurchases: "مجموع خریداری",
     totalPayments: "مجموع پرداخت",
     currentBalance: "بیلانس فعلی",
@@ -104,6 +120,10 @@ const translations = {
     credit: "پرداخت / بستانکار",
     balance: "بیلانس جاری",
     actions: "عملیات",
+    items: "تعداد اقلام",
+    purchaseTotal: "مجموع خرید",
+    paidAtPurchase: "پرداخت‌شده",
+    remainingDebt: "باقی / قرض",
     edit: "ویرایش",
     delete: "حذف",
     purchase: "خریداری",
@@ -135,6 +155,11 @@ const translations = {
     title: "د عرضه کوونکي جزئیات",
     subtitle: "د عرضه کوونکي پروفایل، پېرودونه، تادیات او روان بیلانس.",
     payment: "تادیه",
+    print: "پرنټ",
+    ledgerPrintTitle: "د عرضه کوونکي لیجر",
+    paymentReceipt: "د تادیې رسید",
+    amountPaid: "ورکړل شوی مبلغ",
+    supplierLabel: "عرضه کوونکی",
     totalPurchases: "ټول پېرودونه",
     totalPayments: "ټولې تادیې",
     currentBalance: "اوسنی بیلانس",
@@ -155,6 +180,10 @@ const translations = {
     credit: "تادیه / بستانکار",
     balance: "روان بیلانس",
     actions: "عملیات",
+    items: "د توکو شمېر",
+    purchaseTotal: "د پېرود ټول",
+    paidAtPurchase: "ورکړل شوي",
+    remainingDebt: "پاتې / پور",
     edit: "سمون",
     delete: "حذف",
     purchase: "پېرود",
@@ -202,14 +231,17 @@ const normalizeDate = (value) => {
 export default function SupplierDetail() {
   const { supplierId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [suppliers] = useJsonCollection("suppliers");
   const [purchases] = useJsonCollection("purchases");
+  const [purchaseItems] = useJsonCollection("purchaseItems");
   const [purchaseReturns] = useJsonCollection("purchaseReturns");
   const [payments, setPayments] = useJsonCollection("supplierPayments");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [showPayment, setShowPayment] = useState(false);
   const [editingPaymentId, setEditingPaymentId] = useState(null);
   const [paymentForm, setPaymentForm] = useState({ date: today(), amount: "", description: "" });
+  const [printMode, setPrintMode] = useState(null);
 
   const t = translations[language] || translations.en;
   const direction = rtlLanguages.has(language) ? "rtl" : "ltr";
@@ -227,6 +259,25 @@ export default function SupplierDetail() {
   }, []);
 
   useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const highlightPurchaseId = location.state?.highlightPurchaseId || params.get("highlightPurchase");
+    if (location.state?.openPayment) {
+      setEditingPaymentId(null);
+      setPaymentForm({ date: today(), amount: "", description: "" });
+      setShowPayment(true);
+    }
+    if (!highlightPurchaseId) return undefined;
+    const timer = window.setTimeout(() => {
+      const row = document.getElementById(`supplier-ledger-purchase-${highlightPurchaseId}`);
+      if (!row) return;
+      row.classList.add("supplier-ledger-highlight");
+      row.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+      window.setTimeout(() => row.classList.remove("supplier-ledger-highlight"), 5000);
+    }, 180);
+    return () => window.clearTimeout(timer);
+  }, [location.search, location.state]);
+
+  useEffect(() => {
     document.body.classList.toggle("supplier-payment-modal-open", showPayment);
     document.body.classList.toggle("app-modal-open", showPayment);
     return () => {
@@ -234,6 +285,17 @@ export default function SupplierDetail() {
       document.body.classList.remove("app-modal-open");
     };
   }, [showPayment]);
+
+  useEffect(() => {
+    if (!printMode) return undefined;
+    const timer = window.setTimeout(() => window.print(), 80);
+    const clearPrintMode = () => setPrintMode(null);
+    window.addEventListener("afterprint", clearPrintMode, { once: true });
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("afterprint", clearPrintMode);
+    };
+  }, [printMode]);
 
   const supplierPurchases = useMemo(
     () => purchases.filter((item) => String(item.supplierId) === String(supplierId)),
@@ -267,6 +329,14 @@ export default function SupplierDetail() {
     supplierPurchases.forEach((purchase) => {
       const purchaseDate = purchase.purchaseDate || purchase.date || purchase.createdAt || "";
       const order = new Date(purchaseDate || 0).getTime() || 0;
+      const purchaseTotal = numeric(purchase.totalAmount);
+      const paidAtPurchase = numeric(purchase.paidAmount ?? purchase.paid);
+      const storedItemCount = numeric(purchase.itemCount);
+      const derivedItemCount = purchaseItems.filter((item) =>
+        String(item.purchaseId || item.referenceId || "") === String(purchase.id)
+      ).length;
+      const itemCount = storedItemCount || derivedItemCount || (Array.isArray(purchase.items) ? purchase.items.length : 0);
+
       entries.push({
         id: `purchase-${purchase.id}`,
         date: purchaseDate,
@@ -274,23 +344,14 @@ export default function SupplierDetail() {
         description: t.purchase,
         kind: "purchase",
         sourceId: purchase.id,
-        debit: numeric(purchase.totalAmount),
-        credit: 0,
+        itemCount,
+        purchaseTotal,
+        paidAtPurchase,
+        remainingAmount: Math.max(numeric(purchase.remainingAmount ?? (purchaseTotal - paidAtPurchase)), 0),
+        debit: purchaseTotal,
+        credit: paidAtPurchase,
         order,
       });
-      if (numeric(purchase.paidAmount) > 0) {
-        entries.push({
-          id: `purchase-payment-${purchase.id}`,
-          date: purchaseDate,
-          reference: purchase.billNumber || purchase.id,
-          description: t.purchasePayment,
-          kind: "purchase-payment",
-          sourceId: purchase.id,
-          debit: 0,
-          credit: numeric(purchase.paidAmount),
-          order: order + 1,
-        });
-      }
     });
 
 
@@ -331,7 +392,7 @@ export default function SupplierDetail() {
       running += numeric(entry.debit) - numeric(entry.credit);
       return { ...entry, balance: running };
     });
-  }, [supplier, supplierId, supplierPurchases, supplierReturns, supplierPayments, t.opening, t.purchase, t.purchasePayment, t.purchaseReturn, t.manualPayment]);
+  }, [supplier, supplierId, supplierPurchases, purchaseItems, supplierReturns, supplierPayments, t.opening, t.purchase, t.purchasePayment, t.purchaseReturn, t.manualPayment]);
 
   const totalPurchases = supplierPurchases.reduce((sum, item) => sum + numeric(item.totalAmount), 0);
   const purchasePayments = supplierPurchases.reduce((sum, item) => sum + numeric(item.paidAmount), 0);
@@ -364,7 +425,7 @@ export default function SupplierDetail() {
       setShowPayment(true);
       return;
     }
-    if (entry.sourceId) navigate("/purchasing", { state: { editPurchaseId: entry.sourceId } });
+    if (entry.sourceId) navigate("/purchasing", { state: { highlightPurchaseId: entry.sourceId } });
   };
 
   const deleteLedgerEntry = async (entry) => {
@@ -409,6 +470,13 @@ export default function SupplierDetail() {
       notify(editingPaymentId ? t.updated : t.saved, "success");
       closePaymentModal();
     }
+  };
+
+  const printLedger = () => setPrintMode({ type: "ledger" });
+  const printPayment = (entry) => {
+    const payment = payments.find((item) => String(item.id) === String(entry.sourceId));
+    if (!payment) return;
+    setPrintMode({ type: "payment", payment, entry });
   };
 
   if (!supplier) {
@@ -474,7 +542,10 @@ export default function SupplierDetail() {
             </div>
           </div>
         </div>
-        <button type="button" className="supplier-detail-payment-btn" onClick={openPaymentModal}><Wallet size={18} />{t.payment}</button>
+        <div className="supplier-detail-hero-actions">
+          <button type="button" className="supplier-detail-print-btn" onClick={printLedger}><Printer size={17} />{t.print}</button>
+          <button type="button" className="supplier-detail-payment-btn" onClick={openPaymentModal}><Wallet size={18} />{t.payment}</button>
+        </div>
       </div>
 
       <div className="supplier-detail-stat-grid">
@@ -502,28 +573,56 @@ export default function SupplierDetail() {
           <div className="supplier-detail-section-head ledger"><ReceiptText size={18} /><div><h2>{t.transactions}</h2><p>{ledger.length} {t.transactions.toLowerCase()}</p></div></div>
           <div className="supplier-detail-ledger-wrap">
             <table>
-              <thead><tr><th>{t.date}</th><th>{t.reference}</th><th>{t.description}</th><th>{t.debit}</th><th>{t.credit}</th><th>{t.balance}</th><th>{t.actions}</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>{t.date}</th>
+                  <th>{t.reference}</th>
+                  <th>{t.description}</th>
+                  <th>{t.items}</th>
+                  <th>{t.purchaseTotal}</th>
+                  <th>{t.paidAtPurchase}</th>
+                  <th>{t.remainingDebt}</th>
+                  <th>{t.balance}</th>
+                  <th>{t.actions}</th>
+                </tr>
+              </thead>
               <tbody>
-                {ledger.length ? ledger.map((entry) => (
-                  <tr key={entry.id}>
-                    <td>{formatDateTime(entry.date)}</td>
-                    <td><span className="supplier-ledger-reference">{entry.reference || "—"}</span></td>
-                    <td><span className={`supplier-ledger-description ${entry.kind || ""}`}>{entry.description}</span></td>
-                    <td className="supplier-ledger-debit">{entry.debit ? entry.debit.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—"}</td>
-                    <td className="supplier-ledger-credit">{entry.credit ? entry.credit.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—"}</td>
-                    <td className={entry.balance > 0 ? "supplier-ledger-balance owe" : entry.balance < 0 ? "supplier-ledger-balance receivable" : "supplier-ledger-balance"}>{Math.abs(entry.balance).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
-                    <td>
-                      <div className="supplier-ledger-actions">
-                        {entry.kind !== "opening" && (
-                          <button type="button" className="edit" onClick={() => editLedgerEntry(entry)} aria-label={t.edit} title={t.edit}><Edit3 size={14} /></button>
-                        )}
-                        {entry.kind === "manual-payment" && (
-                          <button type="button" className="delete" onClick={() => deleteLedgerEntry(entry)} aria-label={t.delete} title={t.delete}><Trash2 size={14} /></button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                )) : <tr><td colSpan="7" className="supplier-ledger-empty">{t.noTransactions}</td></tr>}
+                {ledger.length ? ledger.map((entry) => {
+                  const isPurchase = entry.kind === "purchase";
+                  const remainingValue = isPurchase ? numeric(entry.remainingAmount) : 0;
+                  return (
+                    <tr key={entry.id} id={entry.kind === "purchase" ? `supplier-ledger-purchase-${entry.sourceId}` : undefined}>
+                      <td>{formatDateTime(entry.date)}</td>
+                      <td><span className="supplier-ledger-reference">{entry.reference || "—"}</span></td>
+                      <td>
+                        <span className={`supplier-ledger-description ${entry.kind || ""} ${entry.kind === "purchase" ? "is-purchase-badge" : entry.kind === "manual-payment" ? "is-payment-badge" : ""}`}>
+                          {entry.description}
+                        </span>
+                      </td>
+                      <td className="supplier-ledger-items">{isPurchase ? (entry.itemCount || 0) : "—"}</td>
+                      <td className="supplier-ledger-debit">{isPurchase ? numeric(entry.purchaseTotal).toLocaleString(undefined, { maximumFractionDigits: 2 }) : (entry.debit ? entry.debit.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—")}</td>
+                      <td className="supplier-ledger-credit">{isPurchase ? numeric(entry.paidAtPurchase).toLocaleString(undefined, { maximumFractionDigits: 2 }) : (entry.credit ? entry.credit.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—")}</td>
+                      <td className={remainingValue > 0 ? "supplier-ledger-remaining owe" : "supplier-ledger-remaining"}>{isPurchase ? remainingValue.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—"}</td>
+                      <td className={entry.balance > 0 ? "supplier-ledger-balance owe" : entry.balance < 0 ? "supplier-ledger-balance receivable" : "supplier-ledger-balance"}>{Math.abs(entry.balance).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
+                      <td>
+                        <div className="supplier-ledger-actions">
+                          {entry.kind === "manual-payment" && (
+                            <button type="button" className="print" onClick={() => printPayment(entry)} aria-label={t.print} title={t.print}><Printer size={13} strokeWidth={2} /></button>
+                          )}
+                          {entry.kind === "purchase" && (
+                            <button type="button" className="locked-purchase" onClick={() => editLedgerEntry(entry)} aria-label={t.purchase} title={t.purchase}><Lock size={13} strokeWidth={2} /></button>
+                          )}
+                          {entry.kind === "manual-payment" && (
+                            <button type="button" className="edit" onClick={() => editLedgerEntry(entry)} aria-label={t.edit} title={t.edit}><Edit3 size={15} strokeWidth={2} /></button>
+                          )}
+                          {entry.kind === "manual-payment" && (
+                            <button type="button" className="delete" onClick={() => deleteLedgerEntry(entry)} aria-label={t.delete} title={t.delete}><Trash2 size={13} strokeWidth={2} /></button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }) : <tr><td colSpan="9" className="supplier-ledger-empty">{t.noTransactions}</td></tr>}
               </tbody>
             </table>
           </div>
@@ -534,6 +633,42 @@ export default function SupplierDetail() {
         </section>
       </div>
 
+      {printMode && (
+        <section className="supplier-print-sheet" aria-hidden="true">
+          {printMode.type === "ledger" ? (
+            <>
+              <div className="supplier-print-head">
+                <div><small>{t.supplierLabel}</small><h1>{supplier.supplierName}</h1></div>
+                <div className="supplier-print-title"><Printer size={24}/><h2>{t.ledgerPrintTitle}</h2></div>
+              </div>
+              <div className="supplier-print-meta">
+                <span>{t.phone}: <b dir="ltr">{supplier.phone || "—"}</b></span>
+                <span>{t.currency}: <b>{currencyCode}</b></span>
+                <span>{t.currentBalance}: <b>{Math.abs(currentBalance).toLocaleString(undefined,{maximumFractionDigits:2})} {currencyCode}</b></span>
+              </div>
+              <table className="supplier-print-table">
+                <thead><tr><th>{t.date}</th><th>{t.reference}</th><th>{t.description}</th><th>{t.purchaseTotal}</th><th>{t.paidAtPurchase}</th><th>{t.remainingDebt}</th><th>{t.balance}</th></tr></thead>
+                <tbody>{ledger.map((entry)=><tr key={`print-${entry.id}`}><td>{formatDateTime(entry.date)}</td><td>{entry.reference||"—"}</td><td>{entry.description}</td><td>{entry.kind==="purchase"?numeric(entry.purchaseTotal).toLocaleString():entry.debit?entry.debit.toLocaleString():"—"}</td><td>{entry.kind==="purchase"?numeric(entry.paidAtPurchase).toLocaleString():entry.credit?entry.credit.toLocaleString():"—"}</td><td>{entry.kind==="purchase"?numeric(entry.remainingAmount).toLocaleString():"—"}</td><td>{Math.abs(entry.balance).toLocaleString()}</td></tr>)}</tbody>
+              </table>
+              <div className="supplier-print-total"><span>{balanceLabel}</span><strong>{Math.abs(currentBalance).toLocaleString(undefined,{maximumFractionDigits:2})} {currencyCode}</strong></div>
+            </>
+          ) : (
+            <>
+              <div className="supplier-print-head">
+                <div><small>{t.supplierLabel}</small><h1>{supplier.supplierName}</h1></div>
+                <div className="supplier-print-title"><Printer size={24}/><h2>{t.paymentReceipt}</h2></div>
+              </div>
+              <div className="supplier-payment-receipt-grid">
+                <div><span>{t.reference}</span><strong>{printMode.entry?.reference || printMode.payment?.reference || "—"}</strong></div>
+                <div><span>{t.paymentDate}</span><strong>{formatDateTime(printMode.payment?.date || printMode.payment?.createdAt)}</strong></div>
+                <div><span>{t.amountPaid}</span><strong>{numeric(printMode.payment?.amount).toLocaleString(undefined,{maximumFractionDigits:2})} {currencyCode}</strong></div>
+                <div><span>{t.paymentDescription}</span><strong>{printMode.payment?.description || t.manualPayment}</strong></div>
+              </div>
+              <div className="supplier-payment-receipt-signatures"><span>{t.supplierLabel}: ____________________</span><span>{t.payment}: ____________________</span></div>
+            </>
+          )}
+        </section>
+      )}
       {showPayment && createPortal(paymentModal, document.body)}
     </div>
   );

@@ -5,6 +5,7 @@ import {
   Check,
   CreditCard,
   Edit3,
+  Eye,
   FileText,
   PackageCheck,
   Printer,
@@ -88,6 +89,8 @@ const translations = {
     invalidPaid: "Paid amount cannot be greater than the total amount.",
     saved: "Sale saved successfully.",
     actions: "Actions",
+    menu: "Actions",
+    details: "Full Details",
     edit: "Edit",
     editModalTitle: "Edit Sale",
     updated: "Sale updated successfully.",
@@ -98,6 +101,7 @@ const translations = {
     dailyHint: "Sales registered on this date.",
     viewDay: "View day sales",
     print: "Print",
+    returnAction: "Return",
     dailyReport: "Daily Sales Report",
     invoices: "Invoices",
     products: "Products",
@@ -158,6 +162,8 @@ const translations = {
     invalidPaid: "مقدار پرداخت نمی‌تواند بیشتر از جمله باشد.",
     saved: "فروش با موفقیت ذخیره شد.",
     actions: "عملیات",
+    menu: "عملیات",
+    details: "معلومات مکمل",
     edit: "ویرایش",
     editModalTitle: "ویرایش فروش",
     updated: "فروش با موفقیت ویرایش شد.",
@@ -168,6 +174,7 @@ const translations = {
     dailyHint: "فروش‌های ثبت‌شده در این تاریخ.",
     viewDay: "دیدن فروشات همین روز",
     print: "چاپ",
+    returnAction: "برگشت",
     dailyReport: "راپور فروشات روزانه",
     invoices: "بل‌ها",
     products: "محصولات",
@@ -228,6 +235,8 @@ const translations = {
     invalidPaid: "ورکړل شوی مبلغ له ټول مبلغ څخه زیات نه شي کېدای.",
     saved: "خرڅلاو په بریالیتوب ثبت شو.",
     actions: "عملیات",
+    menu: "کړنې",
+    details: "بشپړ معلومات",
     edit: "سمون",
     editModalTitle: "د خرڅلاو سمون",
     updated: "خرڅلاو په بریالیتوب سم شو.",
@@ -238,6 +247,7 @@ const translations = {
     dailyHint: "په دې نېټه ثبت شوي خرڅلاو.",
     viewDay: "د همدې ورځې خرڅلاو وګورئ",
     print: "چاپ",
+    returnAction: "بېرته ستنول",
     dailyReport: "د ورځني خرڅلاو راپور",
     invoices: "بلونه",
     products: "محصولات",
@@ -270,6 +280,7 @@ export default function SalesRegister() {
   const [paymentMode, setPaymentMode] = useState("cash");
   const [paidAmount, setPaidAmount] = useState("");
   const [notes, setNotes] = useState("");
+  const [actionMenu, setActionMenu] = useState(null);
 
   const t = translations[language] || translations.en;
   const direction = rtlLanguages.has(language) ? "rtl" : "ltr";
@@ -289,6 +300,43 @@ export default function SalesRegister() {
     document.body.classList.toggle("sales-register-modal-open", showModal || Boolean(dailyDate));
     return () => document.body.classList.remove("sales-register-modal-open");
   }, [showModal, dailyDate]);
+
+  useEffect(() => {
+    if (!actionMenu) return undefined;
+    const close = () => setActionMenu(null);
+    const closeFromOutside = (event) => {
+      if (!event.target.closest(".sales-register-action-trigger, .sales-register-action-popover")) close();
+    };
+    window.addEventListener("resize", close);
+    window.addEventListener("scroll", close, true);
+    document.addEventListener("pointerdown", closeFromOutside, true);
+    return () => {
+      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", close, true);
+      document.removeEventListener("pointerdown", closeFromOutside, true);
+    };
+  }, [actionMenu]);
+
+  const toggleActionMenu = (event, sale) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (actionMenu?.id === sale.id) {
+      setActionMenu(null);
+      return;
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const menuWidth = Math.min(148, Math.max(window.innerWidth - 20, 1));
+    const menuHeight = 164;
+    const edge = 10;
+    const openBelow = window.innerHeight - rect.bottom >= menuHeight + 8;
+    const top = openBelow ? rect.bottom + 6 : Math.max(edge, rect.top - menuHeight - 6);
+    const left = Math.min(
+      Math.max(direction === "rtl" ? rect.left : rect.right - menuWidth, edge),
+      window.innerWidth - menuWidth - edge
+    );
+    setActionMenu({ id: sale.id, sale, top, left });
+  };
 
   const customerName = (id) => {
     const customer = customers.find((item) => String(item.id) === String(id));
@@ -318,26 +366,8 @@ export default function SalesRegister() {
   };
 
   const openEdit = (sale) => {
-    setEditingSaleId(sale.id);
-    setCustomerId(sale.customerId || "");
-    setInvoiceNumber(sale.invoiceNumber || "");
-    setSaleDate(sale.saleDate || today());
-    setSelectedItems((sale.items || []).map((item) => ({
-      productId: item.productId,
-      productName: item.productName || "",
-      group: item.group || "",
-      cartonSize: item.cartonSize || "",
-      currentStock: getStock(products.find((product) => String(product.id) === String(item.productId))) + numeric(item.quantity),
-      cartons: item.cartons || 0,
-      quantity: item.quantity || 1,
-      salePrice: numeric(item.salePrice),
-      discount: numeric(item.discount),
-    })));
-    setPaymentMode(sale.paymentMode || "cash");
-    setPaidAmount(String(sale.paidAmount ?? ""));
-    setNotes(sale.notes || "");
-    setProductSearch("");
-    setShowModal(true);
+    setActionMenu(null);
+    navigate(`/sales/${sale.id}/edit`);
   };
 
   const closeModal = () => {
@@ -508,6 +538,13 @@ export default function SalesRegister() {
   }, { sales: 0, paid: 0, due: 0 });
 
   const money = (value) => numeric(value).toLocaleString(undefined, { maximumFractionDigits: 2 });
+  const saleDiscount = (sale) => {
+    if (sale?.discountAmount !== undefined && sale?.discountAmount !== null) return numeric(sale.discountAmount);
+    if (Array.isArray(sale?.items)) {
+      return sale.items.reduce((sum, item) => sum + numeric(item.discountAmount ?? item.discount), 0);
+    }
+    return 0;
+  };
 
   const printDailySales = () => {
     const title = `${t.dailyReport} - ${formatDateTime(dailyDate)}`;
@@ -518,6 +555,7 @@ export default function SalesRegister() {
         <td>${sale.customerName || customerName(sale.customerId)}</td>
         <td>${sale.items?.length || 0}</td>
         <td>${money(sale.totalAmount)}</td>
+        <td>${money(saleDiscount(sale))}</td>
         <td>${money(sale.paidAmount)}</td>
         <td>${money(sale.remainingAmount)}</td>
         <td>${sale.paymentMode === "installment" ? t.installment : t.cash}</td>
@@ -565,8 +603,8 @@ export default function SalesRegister() {
               <div><span>${t.due}</span><strong>${money(dailyTotals.due)}</strong></div>
             </section>
             <table>
-              <thead><tr><th>${t.invoiceNo}</th><th>${t.customer}</th><th>${t.items}</th><th>${t.total}</th><th>${t.paid}</th><th>${t.due}</th><th>${t.paymentType}</th></tr></thead>
-              <tbody>${rows || `<tr><td colspan="7">${t.noSales}</td></tr>`}</tbody>
+              <thead><tr><th>${t.invoiceNo}</th><th>${t.customer}</th><th>${t.items}</th><th>${t.total}</th><th>${t.discount}</th><th>${t.paid}</th><th>${t.due}</th><th>${t.paymentType}</th></tr></thead>
+              <tbody>${rows || `<tr><td colspan="8">${t.noSales}</td></tr>`}</tbody>
             </table>
           </main>
           <script>window.onload = () => { window.print(); };</script>
@@ -583,7 +621,7 @@ export default function SalesRegister() {
         <div><h1>{t.title}</h1><p>{t.subtitle}</p></div>
         <div className="sales-register-header-actions">
           <button type="button" className="sales-register-secondary" onClick={() => navigate("/sale-returns")}><Undo2 size={18} />{t.saleReturns}</button>
-          <button type="button" className="sales-register-primary" onClick={openModal}><ShoppingBag size={18} />{t.newSale}</button>
+          <button type="button" className="sales-register-primary" onClick={() => navigate("/sales/new")}><ShoppingBag size={18} />{t.newSale}</button>
         </div>
       </div>
 
@@ -601,7 +639,7 @@ export default function SalesRegister() {
         </div>
         <div className="sales-register-table-wrap">
           <table>
-            <thead><tr><th>{t.invoiceNo}</th><th>{t.customer}</th><th>{t.items}</th><th>{t.total}</th><th>{t.paid}</th><th>{t.due}</th><th>{t.paymentType}</th><th>{t.date}</th><th>{t.actions}</th></tr></thead>
+            <thead><tr><th>{t.invoiceNo}</th><th>{t.customer}</th><th>{t.items}</th><th>{t.total}</th><th>{t.discount}</th><th>{t.paid}</th><th>{t.due}</th><th>{t.paymentType}</th><th>{t.date}</th><th>{t.actions}</th></tr></thead>
             <tbody>
               {filteredSales.map((sale) => (
                 <tr key={sale.id} className="sales-register-clickable-row" onClick={() => navigate(`/sale-detail/${sale.id}`)} title={t.clickRecord}>
@@ -609,6 +647,7 @@ export default function SalesRegister() {
                   <td>{sale.customerName || customerName(sale.customerId)}</td>
                   <td>{sale.items?.length || 0}</td>
                   <td>{money(sale.totalAmount)}</td>
+                  <td className="sales-register-discount">{money(saleDiscount(sale))}</td>
                   <td>{money(sale.paidAmount)}</td>
                   <td className={numeric(sale.remainingAmount) > 0 ? "sales-register-due" : ""}>{money(sale.remainingAmount)}</td>
                   <td>{sale.paymentMode === "installment" ? t.installment : t.cash}</td>
@@ -617,15 +656,22 @@ export default function SalesRegister() {
                       {formatDateTime(sale.saleDate || sale.createdAt)}
                     </button>
                   </td>
-                  <td>
-                    <div className="sales-register-row-actions">
-                      <button type="button" className="edit" onClick={(event) => { event.stopPropagation(); openEdit(sale); }} title={t.edit} aria-label={t.edit}><Edit3 size={15} /></button>
-                      <button type="button" className="delete" onClick={(event) => { event.stopPropagation(); deleteSale(sale); }} title={t.delete} aria-label={t.delete}><Trash2 size={15} /></button>
-                    </div>
+                  <td className="sales-register-actions-cell">
+                    <button
+                      type="button"
+                      className="sales-register-action-trigger"
+                      title={t.menu}
+                      aria-label={t.menu}
+                      aria-haspopup="menu"
+                      aria-expanded={actionMenu?.id === sale.id}
+                      onClick={(event) => toggleActionMenu(event, sale)}
+                    >
+                      <span aria-hidden="true">•••</span>
+                    </button>
                   </td>
                 </tr>
               ))}
-              {!filteredSales.length && <tr><td colSpan="9" className="sales-register-empty">{t.noSales}</td></tr>}
+              {!filteredSales.length && <tr><td colSpan="10" className="sales-register-empty">{t.noSales}</td></tr>}
             </tbody>
           </table>
         </div>
@@ -653,7 +699,7 @@ export default function SalesRegister() {
             </div>
             <div className="sales-daily-table-wrap">
               <table>
-                <thead><tr><th>{t.invoiceNo}</th><th>{t.customer}</th><th>{t.items}</th><th>{t.total}</th><th>{t.paid}</th><th>{t.due}</th><th>{t.paymentType}</th></tr></thead>
+                <thead><tr><th>{t.invoiceNo}</th><th>{t.customer}</th><th>{t.items}</th><th>{t.total}</th><th>{t.discount}</th><th>{t.paid}</th><th>{t.due}</th><th>{t.paymentType}</th></tr></thead>
                 <tbody>
                   {dailySales.map((sale) => (
                     <tr key={sale.id}>
@@ -661,16 +707,33 @@ export default function SalesRegister() {
                       <td>{sale.customerName || customerName(sale.customerId)}</td>
                       <td>{sale.items?.length || 0}</td>
                       <td>{money(sale.totalAmount)}</td>
+                      <td className="sales-register-discount">{money(saleDiscount(sale))}</td>
                       <td>{money(sale.paidAmount)}</td>
                       <td className={numeric(sale.remainingAmount) > 0 ? "sales-register-due" : ""}>{money(sale.remainingAmount)}</td>
                       <td>{sale.paymentMode === "installment" ? t.installment : t.cash}</td>
                     </tr>
                   ))}
-                  {!dailySales.length && <tr><td colSpan="7" className="sales-register-empty">{t.noSales}</td></tr>}
+                  {!dailySales.length && <tr><td colSpan="8" className="sales-register-empty">{t.noSales}</td></tr>}
                 </tbody>
               </table>
             </div>
           </section>
+        </div>,
+        document.body
+      )}
+
+      {actionMenu && createPortal(
+        <div
+          className="sales-register-action-popover"
+          role="menu"
+          style={{ top: actionMenu.top, left: actionMenu.left }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <button type="button" role="menuitem" onClick={() => { setActionMenu(null); navigate(`/sale-detail/${actionMenu.sale.id}`); }}><Eye size={14} /><span>{t.details}</span></button>
+          <button type="button" role="menuitem" onClick={() => { setActionMenu(null); openEdit(actionMenu.sale); }}><Edit3 size={14} /><span>{t.edit}</span></button>
+          <button type="button" role="menuitem" onClick={() => { setActionMenu(null); navigate(`/sale-detail/${actionMenu.sale.id}/print`); }}><Printer size={14} /><span>{t.print}</span></button>
+          <button type="button" role="menuitem" onClick={() => { setActionMenu(null); navigate(`/sale-returns?saleId=${encodeURIComponent(actionMenu.sale.id)}`); }}><Undo2 size={14} /><span>{t.returnAction}</span></button>
+          <button type="button" role="menuitem" className="danger" onClick={() => { const sale = actionMenu.sale; setActionMenu(null); deleteSale(sale); }}><Trash2 size={14} /><span>{t.delete}</span></button>
         </div>,
         document.body
       )}

@@ -499,7 +499,7 @@ export default function Repair() {
       return;
     }
 
-    notify("Repair result saved successfully.");
+    notify("Repair result saved successfully.", "success", { silent: true });
     closeResultModal();
   };
 

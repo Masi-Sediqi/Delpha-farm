@@ -410,7 +410,7 @@ export default function CustomerDetail() {
         : [record, ...payments]
     );
     if (saved) {
-      notify(editingPaymentId ? t.updated : t.saved, "success");
+      notify(editingPaymentId ? t.updated : t.saved, "success", { silent: true });
       closePaymentModal();
     }
   };

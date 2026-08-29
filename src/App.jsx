@@ -13,7 +13,6 @@ import {
   useNavigate,
 } from "react-router-dom";
 import {
-  Building2,
   FileBarChart,
   FileMinus2,
   LayoutDashboard,
@@ -22,6 +21,7 @@ import {
   Settings as SettingsIcon,
   ShoppingBag,
   ShoppingCart,
+  Trash2,
   Truck,
   Undo2,
   RotateCcw,
@@ -48,15 +48,20 @@ import { canViewModule } from "./utils/permissions";
 import { IS_DEMO, APP_MODE, environmentStorageKey } from "./config/appConfig";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Companies = lazy(() => import("./pages/Companies"));
 const Suppliers = lazy(() => import("./pages/Suppliers"));
 const SupplierDetail = lazy(() => import("./pages/SupplierDetail"));
 const Products = lazy(() => import("./pages/Products"));
 const ProductDetail = lazy(() => import("./pages/ProductDetail"));
 const Purchasing = lazy(() => import("./pages/Purchasing"));
+const Payables = lazy(() => import("./pages/Payables"));
+const PurchaseNew = lazy(() => import("./pages/PurchaseNew"));
+const PurchaseDetail = lazy(() => import("./pages/PurchaseDetail"));
+const PrintPurchase = lazy(() => import("./pages/PrintPurchase"));
 const CustomersRegistry = lazy(() => import("./pages/CustomersRegistry"));
 const CustomerDetail = lazy(() => import("./pages/CustomerDetail"));
 const SalesRegister = lazy(() => import("./pages/SalesRegister"));
+const SaleNew = lazy(() => import("./pages/SaleNew"));
+const Receivables = lazy(() => import("./pages/Receivables"));
 const PurchaseReturns = lazy(() => import("./pages/PurchaseReturns"));
 const SaleReturns = lazy(() => import("./pages/SaleReturns"));
 const CashFlow = lazy(() => import("./pages/CashFlow"));
@@ -68,6 +73,7 @@ const CashCount = lazy(() => import("./pages/CashCount"));
 const Inventory = lazy(() => import("./pages/Inventory"));
 const SaleDetail = lazy(() => import("./pages/SaleDetail"));
 const Reports = lazy(() => import("./pages/Reports"));
+const Trash = lazy(() => import("./pages/Trash"));
 const Settings = lazy(() => import("./pages/Settings"));
 const SearchResults = lazy(() => import("./pages/SearchResults"));
 const Login = lazy(() => import("./pages/Login"));
@@ -95,13 +101,14 @@ const rtlLanguages = new Set(["fa", "ps"]);
 const shellLabels = {
   en: {
     dashboard: "Dashboard",
-    companies: "Manufacturers",
     suppliers: "Suppliers",
     products: "Products",
     purchasing: "Purchasing",
+    payables: "Payables",
     purchaseReturns: "Purchase Returns",
     customerRegistry: "Customers",
     salesRegister: "Sales",
+    receivables: "Receivables",
     saleReturns: "Sale Returns",
     inventory: "Inventory",
     cashFlow: "Cash Flow",
@@ -111,17 +118,19 @@ const shellLabels = {
     receivablesPayables: "Receivables & Payables",
     generalJournal: "General Journal",
     reports: "Reports",
+    trash: "Trash",
     settings: "Settings",
   },
   fa: {
     dashboard: "داشبورد",
-    companies: "شرکت‌های سازنده",
     suppliers: "تأمین‌کننده‌گان",
     products: "محصولات",
     purchasing: "خریداری",
+    payables: "تادیات",
     purchaseReturns: "برگشت خرید",
     customerRegistry: "مشتریان",
     salesRegister: "فروشات",
+    receivables: "طلبات",
     saleReturns: "برگشت فروش",
     inventory: "موجودی",
     cashFlow: "جریان نقدی",
@@ -131,17 +140,19 @@ const shellLabels = {
     receivablesPayables: "دریافتنی و پرداختنی",
     generalJournal: "ژورنال عمومی",
     reports: "گزارشات",
+    trash: "سطل زباله",
     settings: "تنظیمات",
   },
   ps: {
     dashboard: "ډشبورد",
-    companies: "تولیدوونکي شرکتونه",
     suppliers: "عرضه کوونکي",
     products: "محصولات",
     purchasing: "پېرود",
+    payables: "تادیات",
     purchaseReturns: "د پېرود بېرته ستنول",
     customerRegistry: "پېرودونکي",
     salesRegister: "خرڅلاو",
+    receivables: "طلبات",
     saleReturns: "د خرڅلاو بېرته ستنول",
     inventory: "موجودي",
     cashFlow: "نغدي جریان",
@@ -151,6 +162,7 @@ const shellLabels = {
     receivablesPayables: "ترلاسه کېدونکي او ورکول کېدونکي",
     generalJournal: "عمومي ژورنال",
     reports: "راپورونه",
+    trash: "د کثافاتو ټوکرۍ",
     settings: "تنظیمات",
   },
 };
@@ -495,15 +507,17 @@ function App() {
   // through their parent modules instead of occupying permanent sidebar space.
   const menuItems = [
     { to: "/", label: labels.dashboard, moduleKey: "dashboard", icon: LayoutDashboard },
-    { to: "/manufacturers", label: labels.companies, moduleKey: "suppliers", icon: Building2 },
     { to: "/suppliers", label: labels.suppliers, moduleKey: "suppliers", icon: Truck },
     { to: "/products", label: labels.products, moduleKey: "customers", icon: ReceiptText },
     { to: "/purchasing", label: labels.purchasing, moduleKey: "suppliers", icon: ShoppingCart },
+    { to: "/payables", label: labels.payables, moduleKey: "suppliers", icon: BadgeDollarSign },
     { to: "/customer-registry", label: labels.customerRegistry, moduleKey: "customers", icon: Users },
     { to: "/sales-register", label: labels.salesRegister, moduleKey: "customers", icon: ShoppingBag },
+    { to: "/receivables", label: labels.receivables, moduleKey: "customers", icon: BadgeDollarSign },
     { to: "/inventory", label: labels.inventory, moduleKey: "reports", icon: Boxes },
     { to: "/cash-flow", label: labels.cashFlow, moduleKey: "reports", icon: Wallet },
     { to: "/reports", label: labels.reports, moduleKey: "reports", icon: FileBarChart },
+    { to: "/trash", label: labels.trash, moduleKey: "settings", icon: Trash2 },
     { to: "/settings", label: labels.settings, moduleKey: "settings", icon: SettingsIcon },
   ];
 
@@ -629,18 +643,24 @@ function App() {
               <Route path="/" element={protect("dashboard", <Dashboard />)} />
               <Route path="/search-results" element={protect("dashboard", <SearchResults />)} />
 
-              <Route path="/manufacturers" element={protect("suppliers", <Companies />)} />
-              <Route path="/companies" element={protect("suppliers", <Companies />)} />
               <Route path="/suppliers" element={protect("suppliers", <Suppliers />)} />
               <Route path="/supplier-detail/:supplierId" element={protect("suppliers", <SupplierDetail />)} />
               <Route path="/products" element={protect("customers", <Products />)} />
               <Route path="/product-detail/:productId" element={protect("customers", <ProductDetail />)} />
               <Route path="/purchasing" element={protect("suppliers", <Purchasing />)} />
+              <Route path="/payables" element={protect("suppliers", <Payables />)} />
+              <Route path="/purchasing/new" element={protect("suppliers", <PurchaseNew />)} />
+              <Route path="/purchasing/:purchaseId/print" element={protect("suppliers", <PrintPurchase />)} />
+              <Route path="/purchasing/:purchaseId" element={protect("suppliers", <PurchaseDetail />)} />
+              <Route path="/purchasing/:purchaseId/edit" element={protect("suppliers", <PurchaseNew />)} />
               <Route path="/purchase-returns" element={protect("suppliers", <PurchaseReturns />)} />
               <Route path="/customer-registry" element={protect("customers", <CustomersRegistry />)} />
               <Route path="/customer-detail/:customerId" element={protect("customers", <CustomerDetail />)} />
               <Route path="/sales-register" element={protect("customers", <SalesRegister />)} />
               <Route path="/sales" element={protect("customers", <SalesRegister />)} />
+              <Route path="/sales/new" element={protect("customers", <SaleNew />)} />
+              <Route path="/sales/:saleId/edit" element={protect("customers", <SaleNew />)} />
+              <Route path="/receivables" element={protect("customers", <Receivables />)} />
               <Route path="/sale-returns" element={protect("customers", <SaleReturns />)} />
               <Route path="/inventory" element={protect("reports", <Inventory />)} />
               <Route path="/cash-flow" element={protect("reports", <CashFlow />)} />
@@ -649,8 +669,10 @@ function App() {
               <Route path="/expenses" element={protect("reports", <Expenses />)} />
               <Route path="/receivables-payables" element={protect("reports", <ReceivablesPayables />)} />
               <Route path="/general-journal" element={protect("reports", <GeneralJournal />)} />
+              <Route path="/sale-detail/:saleId/print" element={protect("customers", <SaleDetail autoPrint />)} />
               <Route path="/sale-detail/:saleId" element={protect("customers", <SaleDetail />)} />
               <Route path="/reports" element={protect("reports", <Reports />)} />
+              <Route path="/trash" element={protect("settings", <Trash />)} />
 
               <Route path="/settings" element={protect("settings", <Settings accounts={effectiveAccounts} setAccounts={setAccounts} currentUser={currentUser} />)} />
 

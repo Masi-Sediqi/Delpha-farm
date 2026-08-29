@@ -1,0 +1,423 @@
+.print-purchase-page {
+  min-height: 100vh;
+  padding: 14px 18px 28px;
+  background: #eef1f4;
+  color: #111827;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+.print-purchase-toolbar {
+  width: min(780px, 100%);
+  margin: 0 auto 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.print-purchase-toolbar button {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 9px;
+  border: 1px solid #d8dee7;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.print-toolbar-back {
+  background: #fff;
+  color: #172033;
+}
+
+.print-toolbar-print {
+  background: #111827;
+  border-color: #111827 !important;
+  color: #fff;
+}
+
+.purchase-paper {
+  width: min(780px, 100%);
+  min-height: 0;
+  margin: 0 auto;
+  padding: 24px;
+  background: #fff;
+  border: 1px solid #111;
+  box-sizing: border-box;
+}
+
+.purchase-paper-header {
+  direction: ltr;
+  display: grid;
+  grid-template-areas: "system-name title logo";
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 18px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #111;
+}
+
+.purchase-paper-header h1 {
+  grid-area: title;
+  margin: 0;
+  font-size: 29px;
+  font-weight: 900;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.purchase-system-name {
+  grid-area: system-name;
+  direction: ltr;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.purchase-system-name strong {
+  font-size: 19px;
+  font-weight: 900;
+}
+
+.purchase-system-name span {
+  font-size: 11px;
+  color: #4b5563;
+}
+
+.purchase-system-logo {
+  grid-area: logo;
+  direction: ltr;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.purchase-system-logo img,
+.purchase-logo-placeholder {
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+}
+
+.purchase-logo-placeholder {
+  border: 1.5px solid #111;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.purchase-invoice-meta {
+  margin-top: 14px;
+  border: 1.5px solid #111;
+  border-radius: 12px;
+  padding: 11px 14px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 18px;
+}
+
+.purchase-invoice-meta div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.purchase-invoice-meta span {
+  font-size: 11px;
+  color: #4b5563;
+  white-space: nowrap;
+}
+
+.purchase-invoice-meta strong {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.purchase-paper-table-wrap {
+  margin-top: 12px;
+}
+
+.purchase-paper-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+
+.purchase-paper-table th,
+.purchase-paper-table td {
+  border-right: 1px solid #111;
+  border-bottom: 1px solid #111;
+  padding: 6px 7px;
+  text-align: center;
+  vertical-align: middle;
+  font-size: 12px;
+}
+
+.purchase-paper-table tr > *:first-child {
+  border-left: 1px solid #111;
+}
+
+.purchase-paper-table thead th {
+  border-top: 1px solid #111;
+  background: #f7f7f7;
+  font-weight: 900;
+}
+
+.purchase-paper-table thead th:first-child {
+  border-top-left-radius: 10px;
+}
+
+.purchase-paper-table thead th:last-child {
+  border-top-right-radius: 10px;
+}
+
+.serial-column {
+  width: 58px;
+}
+
+.description-column {
+  width: 42%;
+}
+
+.item-description {
+  text-align: start !important;
+}
+
+.item-description strong {
+  display: block;
+  font-size: 12px;
+}
+
+.item-description small {
+  display: block;
+  margin-top: 2px;
+  color: #6b7280;
+  font-size: 9px;
+}
+
+.purchase-paper-table .blank-row td {
+  height: 28px;
+  padding: 0;
+}
+
+/* Empty form rows are useful on paper, but make the on-screen preview unnecessarily tall. */
+@media screen {
+  .purchase-paper-table .blank-row {
+    display: none;
+  }
+}
+
+.purchase-paper-totals {
+  margin-top: 12px;
+  border: 1.5px solid #111;
+  border-radius: 11px;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.purchase-paper-totals div {
+  min-height: 40px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-inline-end: 1px solid #111;
+}
+
+.purchase-paper-totals div:last-child {
+  border-inline-end: 0;
+}
+
+.purchase-paper-totals span {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.purchase-paper-totals strong {
+  direction: ltr;
+  font-size: 13px;
+}
+
+.purchase-paper-notes {
+  min-height: 60px;
+  margin-top: 12px;
+  padding: 10px 13px;
+  border: 1px solid #111;
+  border-radius: 10px;
+}
+
+.purchase-paper-notes strong {
+  font-size: 12px;
+}
+
+.purchase-paper-notes p {
+  margin: 7px 0 0;
+  font-size: 11px;
+  line-height: 1.8;
+}
+
+.purchase-paper-signatures {
+  margin-top: 34px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+}
+
+.purchase-paper-signatures > div {
+  text-align: center;
+}
+
+.purchase-paper-signatures span {
+  display: block;
+  margin-bottom: 26px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.signature-line {
+  height: 1px;
+  background: #111;
+}
+
+.print-purchase-not-found {
+  width: min(720px, 100%);
+  margin: 60px auto;
+  padding: 28px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .print-purchase-page {
+    padding: 10px;
+  }
+
+  .purchase-paper {
+    min-height: auto;
+    padding: 15px;
+  }
+
+  .purchase-paper-header {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "system-name logo"
+      "title title";
+  }
+
+  .purchase-paper-header h1 {
+    font-size: 23px;
+  }
+
+  .purchase-system-name {
+    min-width: 0;
+  }
+
+  .purchase-system-logo {
+    justify-self: end;
+  }
+
+  .purchase-invoice-meta {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .purchase-paper-table-wrap {
+    overflow-x: auto;
+  }
+
+  .purchase-paper-table {
+    min-width: 650px;
+  }
+
+  .purchase-paper-totals {
+    grid-template-columns: 1fr;
+  }
+
+  .purchase-paper-totals div {
+    border-inline-end: 0;
+    border-bottom: 1px solid #111;
+  }
+
+  .purchase-paper-totals div:last-child {
+    border-bottom: 0;
+  }
+
+  .purchase-paper-signatures {
+    gap: 30px;
+  }
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 8mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .print-purchase-page,
+  .print-purchase-page * {
+    visibility: visible;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-purchase-page {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    min-height: 0;
+    padding: 0;
+    background: #fff !important;
+  }
+
+  .purchase-paper {
+    width: 100%;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .purchase-paper-table thead th {
+    background: #fff !important;
+  }
+
+  .purchase-paper-table .blank-row {
+    display: table-row !important;
+  }
+
+  .purchase-paper-table tr,
+  .purchase-invoice-meta,
+  .purchase-paper-totals,
+  .purchase-paper-notes {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

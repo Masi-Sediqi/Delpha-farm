@@ -48,6 +48,9 @@ const translations = {
     productName: "Product Name",
     group: "Group",
     cartonSize: "Carton Size",
+    productUnit: "Unit",
+    productForm: "Product Form",
+    unitCarton: "Carton", unitBox: "Box", unitPack: "Pack", unitBottle: "Bottle", unitStrip: "Strip", unitPiece: "Piece", unitDozen: "Dozen", unitTube: "Tube", unitSachet: "Sachet",
     manufacturer: "Manufacturer",
     madeIn: "Made In",
     purchasePrice: "Purchase Price",
@@ -103,6 +106,9 @@ const translations = {
     productName: "نام محصول",
     group: "گروپ",
     cartonSize: "سایز کارتن",
+    productUnit: "واحد",
+    productForm: "حالت محصول",
+    unitCarton: "کارتن", unitBox: "بکس", unitPack: "بسته", unitBottle: "بوتل", unitStrip: "ورق", unitPiece: "عدد", unitDozen: "درجن", unitTube: "تیوب", unitSachet: "پاکت",
     manufacturer: "کمپنی سازنده",
     madeIn: "ساخت",
     purchasePrice: "قیمت خرید",
@@ -158,6 +164,9 @@ const translations = {
     productName: "د محصول نوم",
     group: "ګروپ",
     cartonSize: "د کارتن سایز",
+    productUnit: "واحد",
+    productForm: "د محصول بڼه",
+    unitCarton: "کارتن", unitBox: "بکس", unitPack: "بسته", unitBottle: "بوتل", unitStrip: "پټه", unitPiece: "عدد", unitDozen: "درجن", unitTube: "ټیوب", unitSachet: "پاکټ",
     manufacturer: "جوړوونکی شرکت",
     madeIn: "جوړ شوی په",
     purchasePrice: "د پېرود بیه",
@@ -191,6 +200,16 @@ const translations = {
   },
 };
 
+const productUnitLabelKeys = {
+  carton: "unitCarton", box: "unitBox", pack: "unitPack", bottle: "unitBottle", strip: "unitStrip",
+  piece: "unitPiece", dozen: "unitDozen", tube: "unitTube", sachet: "unitSachet",
+};
+const unitsWithoutSize = new Set(["bottle", "piece", "dozen", "tube", "sachet"]);
+const productFormLabels = {
+  en: { tablet: "Tablet", capsule: "Capsule", syrup: "Syrup", suspension: "Suspension", injection: "Injection", ampoule: "Ampoule", vial: "Vial", cream: "Cream", ointment: "Ointment", gel: "Gel", drops: "Drops", "eye-drops": "Eye Drops", "ear-drops": "Ear Drops", "nasal-spray": "Nasal Spray", inhaler: "Inhaler", powder: "Powder", sachet: "Sachet", suppository: "Suppository", lozenge: "Lozenge", solution: "Solution", lotion: "Lotion", soap: "Medicated Soap", shampoo: "Medicated Shampoo", "oral-solution": "Oral Solution" },
+  fa: { tablet: "تابلیت", capsule: "کپسول", syrup: "شربت", suspension: "سوسپانسیون", injection: "آمپول / تزریقی", ampoule: "امپول", vial: "ویال", cream: "کریم", ointment: "مرهم", gel: "ژل", drops: "قطره", "eye-drops": "قطره چشم", "ear-drops": "قطره گوش", "nasal-spray": "اسپری بینی", inhaler: "انهیلر", powder: "پودر", sachet: "ساشه", suppository: "شیاف", lozenge: "قرص مکیدنی", solution: "محلول", lotion: "لوشن", soap: "صابون طبی", shampoo: "شامپوی طبی", "oral-solution": "محلول خوراکی" },
+  ps: { tablet: "ټابلیټ", capsule: "کپسول", syrup: "شربت", suspension: "سسپنشن", injection: "پیچکاري", ampoule: "امپول", vial: "ویال", cream: "کریم", ointment: "مرهم", gel: "جېل", drops: "څاڅکي", "eye-drops": "د سترګو څاڅکي", "ear-drops": "د غوږ څاڅکي", "nasal-spray": "د پوزې سپرې", inhaler: "انهیلر", powder: "پوډر", sachet: "ساشه", suppository: "شیاف", lozenge: "مکیدونکی ټابلیټ", solution: "محلول", lotion: "لوشن", soap: "طبي صابون", shampoo: "طبي شامپو", "oral-solution": "خوراکي محلول" },
+};
 const numeric = (value) => Math.max(Number(value || 0), 0);
 const money = (value) => numeric(value).toLocaleString(undefined, { maximumFractionDigits: 2 });
 
@@ -201,6 +220,7 @@ function ProductDetail() {
   const [manufacturers] = useJsonCollection("manufacturers");
   const [productGroups] = useJsonCollection("productGroups");
   const [productCountries] = useJsonCollection("countries");
+  const [customProductForms] = useJsonCollection("productForms");
   const [legacyCompanies] = useJsonCollection("companies");
   const [purchases] = useJsonCollection("purchases");
   const [purchaseItems] = useJsonCollection("purchaseItems");
@@ -262,6 +282,20 @@ function ProductDetail() {
     const manufacturer = source.find((item) => String(item.id) === String(manufacturerId));
     return manufacturer?.manufacturerName || manufacturer?.companyName || product.company || t.unknown;
   }, [manufacturers, legacyCompanies, product, t.unknown]);
+
+  const selectedUnit = product?.productUnit || "piece";
+  const unitLabel = t[productUnitLabelKeys[selectedUnit]] || product?.productUnit || t.unitPiece;
+  const sizeLabel = language === "en" ? `${unitLabel} Size` : language === "ps" ? `د ${unitLabel} سایز` : `سایز ${unitLabel}`;
+  const resolvedProductForm = (() => {
+    const value = String(product?.productForm || "");
+    if (!value) return t.unknown;
+    if (value.startsWith("custom:")) {
+      const customId = value.slice(7);
+      const row = customProductForms.find((item) => String(item.id) === customId);
+      return row?.name || row?.label || t.unknown;
+    }
+    return productFormLabels[language]?.[value] || productFormLabels.en[value] || value;
+  })();
 
   const tabs = [
     { id: "overview", label: t.overview, icon: ClipboardList },
@@ -336,19 +370,25 @@ function ProductDetail() {
       {activeTab === "overview" && (
         <section className="product-detail-content product-detail-card">
           <div className="product-detail-section-heading"><ClipboardList size={20} /><div><h2>{t.specifications}</h2></div></div>
-          <div className="product-detail-spec-grid">
-            <div><span>{t.productName}</span><strong>{product.productName || t.unknown}</strong></div>
-            <div><span>{t.group}</span><strong>{groupNameById(productGroups, product.groupId, product.group || t.unknown) || t.unknown}</strong></div>
-            <div><span>{t.cartonSize}</span><strong>{product.cartonSize || t.unknown}</strong></div>
-            <div><span>{t.manufacturer}</span><strong>{companyName}</strong></div>
-            <div><span>{t.madeIn}</span><strong>{countryNameById(productCountries, product.countryId, language, product.madeIn || t.unknown) || t.unknown}</strong></div>
-            <div><span>{t.purchasePrice}</span><strong>{money(product.purchasePrice)}</strong></div>
-            <div><span>{t.salePrice}</span><strong>{money(product.salePrice)}</strong></div>
-            <div><span>{t.discount}</span><strong>{numeric(product.discount)}%</strong></div>
-          </div>
-          <div className="product-detail-description">
-            <span>{t.description}</span>
-            <p>{product.description || t.noDescription}</p>
+          <div className="product-detail-spec-table-wrap">
+            <table className="product-detail-spec-table">
+              <tbody>
+                <tr><th>{t.productName}</th><td>{product.productName || t.unknown}</td></tr>
+                <tr><th>{t.group}</th><td>{groupNameById(productGroups, product.groupId, product.group || t.unknown) || t.unknown}</td></tr>
+                <tr><th>{t.productUnit}</th><td>{unitLabel}</td></tr>
+                {!unitsWithoutSize.has(selectedUnit) && <tr><th>{sizeLabel}</th><td>{product.cartonSize || product.piecesPerUnit || t.unknown}</td></tr>}
+                <tr><th>{t.productForm}</th><td>{resolvedProductForm}</td></tr>
+                <tr><th>{t.manufacturer}</th><td>{companyName}</td></tr>
+                <tr><th>{t.madeIn}</th><td>{countryNameById(productCountries, product.countryId, language, product.madeIn || t.unknown) || t.unknown}</td></tr>
+                <tr><th>{t.purchasePrice}</th><td>{money(product.purchasePrice)}</td></tr>
+                <tr><th>{t.salePrice}</th><td>{money(product.salePrice)}</td></tr>
+                <tr><th>{t.discount}</th><td>{numeric(product.discount)}%</td></tr>
+                <tr className="product-detail-spec-description-row">
+                  <th>{t.description}</th>
+                  <td>{product.description || t.noDescription}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </section>
       )}

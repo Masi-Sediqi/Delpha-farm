@@ -510,7 +510,7 @@ const handleSubmit = async (event) => {
     const saved = await setTowerAssets(updatedRecords);
 
     if (saved) {
-      notify("Tower asset record updated successfully.");
+      notify("Tower asset record updated successfully.", "success", { silent: true });
       closeModal();
     }
 
@@ -520,7 +520,7 @@ const handleSubmit = async (event) => {
   const saved = await setTowerAssets([...towerAssets, cleanData]);
 
   if (saved) {
-    notify("Tower asset record saved successfully.");
+    notify("Tower asset record saved successfully.", "success", { silent: true });
     closeModal();
   }
 };

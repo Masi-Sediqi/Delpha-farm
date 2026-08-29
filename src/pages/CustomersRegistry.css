@@ -88,7 +88,7 @@
 .customer-form-body {
   padding: 20px !important;
   display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 15px !important;
   overflow: visible !important;
 }
@@ -105,6 +105,11 @@
 .customer-field,
 .customer-input-icon {
   min-width: 0;
+}
+
+.customer-field,
+.customer-field.customer-span-6 {
+  grid-column: span 6;
 }
 
 .customer-field.customer-span-2 {
@@ -225,6 +230,8 @@ body.dark-mode .customer-input-icon {
     padding: 16px !important;
   }
 
+  .customer-field,
+  .customer-field.customer-span-6,
   .customer-field.customer-span-2 {
     grid-column: auto;
   }

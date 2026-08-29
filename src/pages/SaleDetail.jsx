@@ -95,7 +95,7 @@ const translations = {
 const numeric = (value) => Math.max(Number(value || 0), 0);
 const money = (value) => numeric(value).toLocaleString(undefined, { maximumFractionDigits: 2 });
 
-export default function SaleDetail() {
+export default function SaleDetail({ autoPrint = false }) {
   const { saleId } = useParams();
   const navigate = useNavigate();
   const [sales] = useJsonCollection("salesRegister");
@@ -125,7 +125,8 @@ export default function SaleDetail() {
     due: numeric(sale?.remainingAmount),
   }), [sale]);
 
-  const print = () => window.print();
+  const print = () => navigate(`/sale-detail/${sale.id}/print`);
+
 
   if (!sale) {
     return (

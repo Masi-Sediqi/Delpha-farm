@@ -38,7 +38,7 @@ const translations = {
     phone: "Phone Number",
     address: "Address",
     openingBalance: "Opening Balance (+ / -)",
-    ledgerPage: "Payment Ledger Page",
+    openingBalanceHint: "Positive means we owe the supplier. Negative means the supplier owes us.",
     notes: "Notes",
     status: "Status",
     actions: "Actions",
@@ -60,7 +60,19 @@ const translations = {
     dostHajiSharif: "Dost Haji Sharif",
     afn: "Afghani (AFN)",
     usd: "US Dollar (USD)",
-    pkr: "Kaldar (PKR)",
+    inr: "Indian Rupee (INR)",
+    addType: "Add supplier type",
+    newType: "New supplier type",
+    typeName: "Type name",
+    saveType: "Save Type",
+    updateType: "Update Type",
+    manageTypes: "Manage custom types",
+    noCustomTypes: "No custom supplier types yet.",
+    typeSaved: "Supplier type saved.",
+    typeUpdated: "Supplier type updated.",
+    typeDeleted: "Supplier type deleted.",
+    typeRequired: "Enter a supplier type name.",
+    typeInUse: "This supplier type is used by a supplier and cannot be deleted.",
     eur: "Euro (EUR)",
     save: "Save Supplier",
     update: "Update Supplier",
@@ -87,7 +99,7 @@ const translations = {
     phone: "شماره تماس",
     address: "آدرس",
     openingBalance: "بیلانس افتتاحیه (+ / -)",
-    ledgerPage: "صفحه کتاب تأدیات",
+    openingBalanceHint: "مثبت یعنی ما قرضدار تأمین‌کننده هستیم. منفی یعنی تأمین‌کننده قرضدار ما است.",
     notes: "ملاحظات",
     status: "حالت",
     actions: "عملیات",
@@ -109,7 +121,19 @@ const translations = {
     dostHajiSharif: "دوست حاجی شریف",
     afn: "افغانی (AFN)",
     usd: "دالر (USD)",
-    pkr: "کلدار (PKR)",
+    inr: "کلدار هندی (INR)",
+    addType: "افزودن نوع تأمین‌کننده",
+    newType: "نوع جدید تأمین‌کننده",
+    typeName: "نام نوع",
+    saveType: "ذخیره نوع",
+    updateType: "ثبت تغییرات",
+    manageTypes: "مدیریت نوع‌های اضافه‌شده",
+    noCustomTypes: "هنوز نوع جدیدی اضافه نشده است.",
+    typeSaved: "نوع تأمین‌کننده ذخیره شد.",
+    typeUpdated: "نوع تأمین‌کننده اصلاح شد.",
+    typeDeleted: "نوع تأمین‌کننده حذف شد.",
+    typeRequired: "نام نوع تأمین‌کننده را وارد کنید.",
+    typeInUse: "این نوع توسط یک تأمین‌کننده استفاده شده و قابل حذف نیست.",
     eur: "یورو (EUR)",
     save: "ذخیره تأمین‌کننده",
     update: "ثبت تغییرات",
@@ -136,7 +160,7 @@ const translations = {
     phone: "د اړیکې شمېره",
     address: "پته",
     openingBalance: "افتتاحي بیلانس (+ / -)",
-    ledgerPage: "د تادیاتو کتاب پاڼه",
+    openingBalanceHint: "مثبت یعنې موږ عرضه کوونکي ته قرضدار یو. منفي یعنې عرضه کوونکی موږ ته قرضدار دی.",
     notes: "یادښتونه",
     status: "حالت",
     actions: "کړنې",
@@ -158,7 +182,19 @@ const translations = {
     dostHajiSharif: "د حاجي شریف دوست",
     afn: "افغانۍ (AFN)",
     usd: "ډالر (USD)",
-    pkr: "کلدار (PKR)",
+    inr: "هندي روپۍ (INR)",
+    addType: "د عرضه کوونکي ډول اضافه کړئ",
+    newType: "د عرضه کوونکي نوی ډول",
+    typeName: "د ډول نوم",
+    saveType: "ډول خوندي کړئ",
+    updateType: "بدلونونه ثبت کړئ",
+    manageTypes: "اضافه شوي ډولونه اداره کړئ",
+    noCustomTypes: "تر اوسه نوی ډول نه دی اضافه شوی.",
+    typeSaved: "د عرضه کوونکي ډول خوندي شو.",
+    typeUpdated: "د عرضه کوونکي ډول سم شو.",
+    typeDeleted: "د عرضه کوونکي ډول حذف شو.",
+    typeRequired: "د عرضه کوونکي د ډول نوم ولیکئ.",
+    typeInUse: "دا ډول د عرضه کوونکي لخوا کارول شوی او حذف کېدای نشي.",
     eur: "یورو (EUR)",
     save: "عرضه کوونکی ذخیره کول",
     update: "بدلونونه ثبتول",
@@ -171,21 +207,7 @@ const translations = {
   },
 };
 
-const supplierTypes = [
-  "wholesale",
-  "retail",
-  "pharmacy",
-  "drugstore",
-  "company",
-  "representative",
-  "pharmacist",
-  "inventory",
-  "dostHajiZaman",
-  "dostHajiSharif",
-  "unknown",
-];
-
-const currencyOptions = ["afn", "usd", "pkr", "eur"];
+const currencyOptions = ["afn", "usd", "inr", "eur"];
 
 const emptyForm = {
   supplierName: "",
@@ -195,7 +217,6 @@ const emptyForm = {
   phone: "",
   address: "",
   openingBalance: "",
-  ledgerPage: "",
   notes: "",
   status: "active",
 };
@@ -203,11 +224,15 @@ const emptyForm = {
 export default function Suppliers() {
   const navigate = useNavigate();
   const [suppliers, setSuppliers] = useJsonCollection("suppliers");
+  const [customSupplierTypes, setCustomSupplierTypes] = useJsonCollection("supplierTypes");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [showTypeManager, setShowTypeManager] = useState(false);
+  const [typeDraft, setTypeDraft] = useState("");
+  const [editingTypeId, setEditingTypeId] = useState(null);
 
   const t = translations[language] || translations.en;
   const direction = rtlLanguages.has(language) ? "rtl" : "ltr";
@@ -227,6 +252,80 @@ export default function Suppliers() {
     return () => document.body.classList.remove("supplier-modal-open");
   }, [showModal]);
 
+
+  const customTypeOptions = useMemo(() =>
+    customSupplierTypes
+      .filter((item) => item && item.id && item.name)
+      .map((item) => ({ key: `custom:${item.id}`, name: String(item.name).trim() })),
+  [customSupplierTypes]);
+
+  const selectedCustomType = form.supplierType?.startsWith("custom:")
+    ? customSupplierTypes.find((item) => `custom:${item.id}` === form.supplierType)
+    : null;
+
+  const typeLabel = (value) => {
+    if (!value) return "—";
+    if (value.startsWith("custom:")) {
+      return customTypeOptions.find((item) => item.key === value)?.name || value.replace("custom:", "");
+    }
+    return t[value] || value;
+  };
+
+  const resetTypeDraft = () => {
+    setEditingTypeId(null);
+    setTypeDraft("");
+  };
+
+  const saveCustomType = async () => {
+    const name = typeDraft.trim();
+    if (!name) {
+      notify(t.typeRequired, "warning");
+      return;
+    }
+    const duplicate = customSupplierTypes.some((item) =>
+      String(item.name || "").trim().toLowerCase() === name.toLowerCase() && String(item.id) !== String(editingTypeId)
+    );
+    if (duplicate) {
+      notify(t.typeRequired, "warning");
+      return;
+    }
+
+    const newTypeId = editingTypeId || `ST-${Date.now()}`;
+    const next = editingTypeId
+      ? customSupplierTypes.map((item) => String(item.id) === String(editingTypeId) ? { ...item, name, updatedAt: new Date().toISOString() } : item)
+      : [{ id: newTypeId, name, createdAt: new Date().toISOString() }, ...customSupplierTypes];
+    const saved = await setCustomSupplierTypes(next);
+    if (!saved) return;
+    updateField("supplierType", `custom:${newTypeId}`);
+    notify(editingTypeId ? t.typeUpdated : t.typeSaved, "success", { silent: true });
+    resetTypeDraft();
+    setShowTypeManager(false);
+  };
+
+  const editCustomType = (item) => {
+    setEditingTypeId(item.id);
+    setTypeDraft(item.name || "");
+    setShowTypeManager(true);
+  };
+
+  const deleteCustomType = async (item) => {
+    const key = `custom:${item.id}`;
+    if (suppliers.some((supplier) => supplier.supplierType === key)) {
+      notify(t.typeInUse, "warning");
+      return;
+    }
+
+    // Supplier-type deletion is intentionally immediate. This action lives
+    // inside the supplier form, so opening a second confirmation modal would
+    // stack dialogs and break the form flow.
+    const saved = await setCustomSupplierTypes(customSupplierTypes.filter((type) => type.id !== item.id));
+    if (!saved) return;
+    if (form.supplierType === key) updateField("supplierType", "");
+    if (editingTypeId === item.id) resetTypeDraft();
+    setShowTypeManager(false);
+    notify(t.typeDeleted, "success");
+  };
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return suppliers;
@@ -241,12 +340,16 @@ export default function Suppliers() {
   const openNew = () => {
     setEditingId(null);
     setForm(emptyForm);
+    setShowTypeManager(false);
+    resetTypeDraft();
     setShowModal(true);
   };
 
   const openEdit = (item) => {
     setEditingId(item.id);
-    setForm({ ...emptyForm, ...item });
+    setForm({ ...emptyForm, ...item, currency: item.currency === "pkr" ? "inr" : (item.currency || "afn") });
+    setShowTypeManager(false);
+    resetTypeDraft();
     setShowModal(true);
   };
 
@@ -254,6 +357,8 @@ export default function Suppliers() {
     setShowModal(false);
     setEditingId(null);
     setForm(emptyForm);
+    setShowTypeManager(false);
+    resetTypeDraft();
   };
 
   const updateField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
@@ -276,7 +381,7 @@ export default function Suppliers() {
       saved = await setSuppliers(
         suppliers.map((item) => item.id === editingId ? { ...item, ...payload } : item)
       );
-      if (saved) notify(t.updated, "success");
+      if (saved) notify(t.updated, "success", { silent: true });
     } else {
       saved = await setSuppliers([
         {
@@ -286,7 +391,7 @@ export default function Suppliers() {
         },
         ...suppliers,
       ]);
-      if (saved) notify(t.saved, "success");
+      if (saved) notify(t.saved, "success", { silent: true });
     }
 
     if (saved) closeModal();
@@ -330,10 +435,60 @@ export default function Suppliers() {
               </div>
               <div className="supplier-field">
                 <label>{t.supplierType}</label>
-                <select value={form.supplierType} onChange={(e) => updateField("supplierType", e.target.value)}>
-                  <option value="">{t.selectType}</option>
-                  {supplierTypes.map((type) => <option key={type} value={type}>{t[type]}</option>)}
-                </select>
+                <div className={`supplier-type-row ${showTypeManager ? "is-editing" : ""}`}>
+                  {showTypeManager ? (
+                    <>
+                      <input
+                        className="supplier-type-inline-input"
+                        value={typeDraft}
+                        onChange={(e) => setTypeDraft(e.target.value)}
+                        placeholder={t.typeName}
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            saveCustomType();
+                          }
+                          if (e.key === "Escape") {
+                            resetTypeDraft();
+                            setShowTypeManager(false);
+                          }
+                        }}
+                      />
+                      <button type="button" className="supplier-type-save" onClick={saveCustomType} title={editingTypeId ? t.updateType : t.saveType}>
+                        {editingTypeId ? <Edit3 size={14} /> : <Plus size={14} />}
+                      </button>
+                      <button type="button" className="supplier-type-cancel" onClick={() => { resetTypeDraft(); setShowTypeManager(false); }} aria-label={t.cancel} title={t.cancel}>
+                        <X size={14} />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <select value={form.supplierType} onChange={(e) => updateField("supplierType", e.target.value)}>
+                        <option value="">{t.selectType}</option>
+                        {customTypeOptions.map((type) => <option key={type.key} value={type.key}>{type.name}</option>)}
+                      </select>
+                      {selectedCustomType && (
+                        <button type="button" className="supplier-type-edit" onClick={() => editCustomType(selectedCustomType)} aria-label={t.editTitle} title={t.editTitle}>
+                          <Edit3 size={13} />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="supplier-type-delete"
+                        onClick={() => selectedCustomType && deleteCustomType(selectedCustomType)}
+                        disabled={!selectedCustomType}
+                        aria-label={t.confirmDelete}
+                        title={selectedCustomType ? t.confirmDelete : t.selectType}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                      <button type="button" className="supplier-type-add" onClick={() => { resetTypeDraft(); setShowTypeManager(true); }} aria-label={t.addType} title={t.addType}>
+                        <Plus size={14} />
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
               <div className="supplier-field">
                 <label>{t.currency}</label>
@@ -368,11 +523,7 @@ export default function Suppliers() {
               <div className="supplier-field">
                 <label>{t.openingBalance}</label>
                 <input type="number" step="any" value={form.openingBalance} onChange={(e) => updateField("openingBalance", e.target.value)} />
-                <small>+ / -</small>
-              </div>
-              <div className="supplier-field">
-                <label>{t.ledgerPage}</label>
-                <input value={form.ledgerPage} onChange={(e) => updateField("ledgerPage", e.target.value)} />
+                <small>{t.openingBalanceHint}</small>
               </div>
               <div className="supplier-field">
                 <label>{t.status}</label>
@@ -384,7 +535,7 @@ export default function Suppliers() {
             </div>
           </div>
 
-          <div className="supplier-section">
+          <div className="supplier-section supplier-section-notes">
             <div className="supplier-section-title"><MapPin size={17} /><span>{t.notes}</span></div>
             <div className="supplier-field supplier-field-full">
               <label>{t.notes}</label>
@@ -440,16 +591,16 @@ export default function Suppliers() {
               {filtered.length ? filtered.map((item) => (
                 <tr key={item.id} className="supplier-clickable-row" onClick={() => navigate(`/supplier-detail/${item.id}`)}>
                   <td className="supplier-name-cell"><span className="supplier-avatar"><Building2 size={15} /></span><span>{item.supplierName}</span></td>
-                  <td>{item.supplierType ? (t[item.supplierType] || item.supplierType) : "—"}</td>
-                  <td>{t[item.currency] || String(item.currency || "—").toUpperCase()}</td>
+                  <td>{typeLabel(item.supplierType)}</td>
+                  <td>{t[item.currency === "pkr" ? "inr" : item.currency] || String(item.currency === "pkr" ? "INR" : (item.currency || "—")).toUpperCase()}</td>
                   <td>{item.contactPerson || "—"}</td>
-                  <td dir="ltr">{item.phone || "—"}</td>
+                  <td className="supplier-phone-cell"><span dir="ltr">{item.phone || "—"}</span></td>
                   <td className={Number(item.openingBalance || 0) < 0 ? "negative-balance" : ""}>{Number(item.openingBalance || 0).toLocaleString()}</td>
                   <td><span className={`supplier-status ${item.status === "inactive" ? "inactive" : "active"}`}>{item.status === "inactive" ? t.inactive : t.active}</span></td>
                   <td>
                     <div className="suppliers-actions">
-                      <button type="button" onClick={(event) => { event.stopPropagation(); openEdit(item); }} aria-label={t.editTitle}><Edit3 size={16} /></button>
-                      <button type="button" className="danger" onClick={(event) => { event.stopPropagation(); removeSupplier(item); }} aria-label={t.confirmDelete}><Trash2 size={16} /></button>
+                      <button type="button" onClick={(event) => { event.stopPropagation(); openEdit(item); }} aria-label={t.editTitle}><Edit3 size={14} strokeWidth={2} /></button>
+                      <button type="button" className="danger" onClick={(event) => { event.stopPropagation(); removeSupplier(item); }} aria-label={t.confirmDelete}><Trash2 size={14} strokeWidth={2} /></button>
                     </div>
                   </td>
                 </tr>

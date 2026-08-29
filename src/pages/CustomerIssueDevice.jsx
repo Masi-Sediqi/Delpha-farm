@@ -1262,7 +1262,7 @@ const displayOwnership = (value) =>
     ]);
     if (!expenseSaved) return;
 
-    notify(editBuybackRecord ? "Customer purchase updated successfully." : "Customer purchase saved successfully.");
+    notify(editBuybackRecord ? "Customer purchase updated successfully." : "Customer purchase saved successfully.", "success", { silent: true });
     resetBuybackForm();
     setShowBuybackModal(false);
   };

@@ -324,7 +324,7 @@ export default function Banks() {
       : [{ id: `bank-${Date.now()}`, ...record, createdAt: now }, ...banks];
     const ok = await setBanks(next);
     if (ok) {
-      notify(editingId ? t.updated : t.saved, "success");
+      notify(editingId ? t.updated : t.saved, "success", { silent: true });
       closeModal();
     }
   };
@@ -348,7 +348,7 @@ export default function Banks() {
       : [{ id: `bank-txn-${Date.now()}`, ...record, createdAt: now }, ...transactions];
     const ok = await setTransactions(next);
     if (ok) {
-      notify(editingId ? t.transactionUpdated : t.transactionSaved, "success");
+      notify(editingId ? t.transactionUpdated : t.transactionSaved, "success", { silent: true });
       closeModal();
     }
   };

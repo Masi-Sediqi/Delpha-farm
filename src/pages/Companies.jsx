@@ -209,7 +209,7 @@ export default function Companies() {
           : item
       ));
       if (!saved) return;
-      notify(t.updated, "success");
+      notify(t.updated, "success", { silent: true });
     } else {
       const saved = await setManufacturers([
         {
@@ -222,7 +222,7 @@ export default function Companies() {
         ...manufacturers,
       ]);
       if (!saved) return;
-      notify(t.saved, "success");
+      notify(t.saved, "success", { silent: true });
     }
     closeModal();
   };

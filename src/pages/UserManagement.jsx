@@ -180,7 +180,7 @@ function UserManagement({ accounts, setAccounts, currentUser }) {
     ]);
     if (!saved) return;
     setNewRole("");
-    notify("User category added.");
+    notify("User category added.", "success", { silent: true });
   };
 
   const saveUser = async (event) => {
@@ -275,7 +275,7 @@ function UserManagement({ accounts, setAccounts, currentUser }) {
         ]);
 
     if (!saved) return;
-    notify(editId ? "User account updated." : "User account created.");
+    notify(editId ? "User account updated." : "User account created.", "success", { silent: true });
     closeModal();
   };
 

@@ -90,7 +90,7 @@ function Accounts({ accounts, setAccounts, currentUser }) {
 
       if (!saved) return;
 
-      notify("Account updated successfully.");
+      notify("Account updated successfully.", "success", { silent: true });
     } else {
       saved = await setAccounts([
         ...accounts,
@@ -106,7 +106,7 @@ function Accounts({ accounts, setAccounts, currentUser }) {
 
       if (!saved) return;
 
-      notify("New account created successfully.");
+      notify("New account created successfully.", "success", { silent: true });
     }
 
     close();

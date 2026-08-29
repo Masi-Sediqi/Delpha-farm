@@ -480,10 +480,10 @@ export default function CashFlow() {
     };
     if (editingId) {
       setManualEntries((current) => current.map((item) => String(item.id) === String(editingId) ? { ...item, ...payload } : item));
-      notify(t.updated, "success");
+      notify(t.updated, "success", { silent: true });
     } else {
       setManualEntries((current) => [{ id: `cash-${Date.now()}`, ...payload, createdAt: now }, ...current]);
-      notify(t.saved, "success");
+      notify(t.saved, "success", { silent: true });
     }
     setActiveCurrency(payload.currency);
     closeModal();

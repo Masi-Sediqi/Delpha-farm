@@ -14,6 +14,8 @@ import {
   Trash2,
   Upload,
   UserPlus,
+  Volume2,
+  Play,
   Users,
   X,
 } from "lucide-react";
@@ -29,6 +31,20 @@ const defaultSystemName = "APG";
 const defaultSystemSubtitle = "Pharmacy & Medicine Management System";
 const themeStorageKey = "afghan-power-theme";
 const languageStorageKey = "afghan-power-language";
+const notificationSoundStorageKey = "afghan-power-notification-sound";
+const notificationSoundEnabledKey = "afghan-power-notification-sound-enabled";
+const notificationSounds = [
+  "bell.mp4",
+  "blip.mov",
+  "chime.mov",
+  "click.mp4",
+  "ding.mp4",
+  "ping.mp4",
+  "pop.mov",
+  "sparkle.mp4",
+  "water-drop.mp4",
+  "whoosh.mp4",
+];
 const settingsLabels = {
   en: {
     company: "Company",
@@ -62,26 +78,10 @@ const settingsLabels = {
   },
 };
 const themeOptions = [
-  {
-    key: "minimalism",
-    title: "Minimalism",
-    description: "Clean, focused, distraction-free",
-  },
-  {
-    key: "clay-minimalism",
-    title: "Graphite Mist",
-    description: "Layered gray gradients with charcoal navigation",
-  },
-  {
-    key: "black-white",
-    title: "Midnight Blue",
-    description: "Deep navy surfaces with luminous blue accents",
-  },
-  {
-    key: "aurora",
-    title: "Aurora Flow",
-    description: "Premium dark glass with company-colored aurora light",
-  },
+  { key: "minimalism" },
+  { key: "clay-minimalism" },
+  { key: "black-white" },
+  { key: "aurora" },
 ];
 
 function applyCompanyThemeIdentity(companyName = "") {
@@ -143,6 +143,12 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
   const [language, setLanguage] = useState(
     () => localStorage.getItem(languageStorageKey) || "en"
   );
+  const [notificationSound, setNotificationSound] = useState(
+    () => localStorage.getItem(notificationSoundStorageKey) || "chime.mov"
+  );
+  const [notificationSoundEnabled, setNotificationSoundEnabled] = useState(
+    () => localStorage.getItem(notificationSoundEnabledKey) !== "false"
+  );
   const t = settingsLabels[language] || settingsLabels.en;
 
   useEffect(() => {
@@ -157,6 +163,8 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
 
   const settingsText = {
     en: {
+      pageTitle: "Settings",
+      pageDescription: "Choose the system name, logo, and global values used across the app.",
       decimalsTab: "Currency Decimals",
       decimalsTitle: "Currency Decimal Places",
       decimalsDescription: "Set how many digits after the decimal point are allowed for each currency.",
@@ -164,27 +172,67 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
       decimalPlaces: "Decimal places", preview: "Preview", saveDecimals: "Save Decimal Settings",
       exchangeRateTitle: "Exchange Rates Against Afghani", exchangeRateDescription: "Enter how many Afghanis equal one unit of each foreign currency.",
       usdRate: "US Dollar", eurRate: "Euro", inrRate: "Indian Rupee", oneUnit: "1 {code} =", afnUnit: "AFN", saveExchangeRates: "Save Exchange Rates",
-      usersTab: "Users", usersTitle: "Users", usersDescription: "Create and manage the accounts that can sign in to this system.", addUser: "Add User", editUser: "Edit User", userName: "Name", email: "Email", password: "Password", confirmPassword: "Confirm Password", actions: "Actions", edit: "Edit", delete: "Delete", noUsers: "No user accounts found.", saveUser: "Save User", updateUser: "Update User", cancel: "Cancel", createUserHint: "Enter the user's account information.", editUserHint: "Update the account information. Leave password empty to keep the current password.", passwordOptional: "Leave empty to keep current password", activeAccount: "Current account",
+      usersTab: "Users", usersTitle: "Users", usersDescription: "Create and manage the accounts that can sign in to this system.", addUser: "Add User", editUser: "Edit User", userName: "Name", email: "Email", password: "Password", confirmPassword: "Confirm Password", actions: "Actions", edit: "Edit", delete: "Delete", noUsers: "No user accounts found.", saveUser: "Save User", updateUser: "Update User", cancel: "Cancel", createUserHint: "Enter the user's account information.", editUserHint: "Update the account information. Leave password empty to keep the current password.", passwordOptional: "Leave empty to keep current password", activeAccount: "Current account", close: "Close",
+      themeTab: "Theme Settings", printingTab: "Printing", securityTab: "Security", backupTab: "Backup", notificationSoundTab: "Notification Sound", notificationSoundTitle: "Notification Sound", notificationSoundDescription: "Choose the sound played whenever the system shows a notification.", soundEnabled: "Notification sound", soundOn: "On", soundOff: "Off", testSound: "Test", selectedSound: "Selected", saveSound: "Save Sound Settings", soundSaved: "Notification sound settings saved.",
+      companyDescription: "Company information used across receipts, reports, login and print layouts.", subTitle: "Sub Title", companyAddressPlaceholder: "Kabul, Afghanistan", removeLogo: "Remove Logo", saveSettings: "Save Settings", logoPreviewAlt: "System logo preview", companyAddressFallback: "Company address",
+      masterPrintMode: "Master Print Mode (Gold + Black HD)", masterPrintDescription: "Premium polished configuration for reports and receipts.", proPrintMode: "Pro Print Mode (Unified HD)", proPrintDescription: "Optimised black quality printing with Dari and Pashto RTL support.", footerNotesBox: "Footer Notes Box", footerNotesDescription: "Add address, phone, warranty or custom footer details.", footerNotesEn: "Footer Notes Box (EN)", footerNotesDari: "Footer Notes (Dari)", footerNotesPashto: "Footer Notes (Pashto)", footerPlaceholderEn: "Address, phone number, warranty note, return policy...", footerPlaceholderDari: "آدرس، شماره تماس، شرایط ضمانت...", footerPlaceholderPashto: "آدرس، د تماس شمېره، د ضمانت شرایط...", printConfiguration: "Print Configuration", defaultPaperSize: "Default Paper Size", billingPaperSize: "Billing Paper Size", defaultOrientation: "Default Orientation", pageDensity: "Page Density", thermal80: "Thermal 80mm", portrait: "Portrait", landscape: "Landscape", normal: "Normal", compact: "Compact", savePrinting: "Save Printing",
+      securityTitle: "Security", securityDescription: "Set a password for protected settings and sensitive system actions.", setPassword: "Set Password", enterPassword: "Enter password", savePassword: "Save Password",
+      themeTitle: "Theme Settings", themeDescription: "Select one of the available interface themes. Each theme uses the company name as its visual signature.", themes: {
+        minimalism: ["Minimalism", "Clean, focused, distraction-free"],
+        "clay-minimalism": ["Graphite Mist", "Layered gray gradients with charcoal navigation"],
+        "black-white": ["Midnight Blue", "Deep navy surfaces with luminous blue accents"],
+        aurora: ["Aurora Flow", "Premium dark glass with company-colored aurora light"],
+      },
+      appDataTitle: "App Data", appDataDescription: "Export a backup, import a backup, or clear all saved app data.", demoEnvironment: "Demo Environment", productionEnvironment: "Production Environment", demoEnvironmentDescription: "Demo data is isolated from the customer production environment.", productionEnvironmentDescription: "Production data is isolated from the demo environment.", exportData: "Export Data", importData: "Import Data", automaticallyBackup: "Automatically Backup", automaticallyBackupDescription: "The system checks this schedule while the app is open and reports when a backup is created.", backupSchedule: "Backup Schedule", off: "Off", daily: "Daily", weekly: "Weekly", monthly: "Monthly", custom: "Custom", customIntervalDays: "Custom Interval (Days)", saveBackupSetting: "Save Backup Setting", clearDemoData: "Clear Demo Data", clearDemoInstruction: "Type CLEAR, then press Clear Demo Data.",
+      themeUpdated: "Theme updated successfully.", invalidLogo: "Please select an image file for the logo.", settingsSaved: "System settings saved successfully.", exportSuccess: "App data exported successfully.", exportError: "Unable to export app data.", invalidBackup: "This file does not contain valid app data.", importTitle: "Import App Data", importConfirm: "Import will replace {count} data table(s). Continue?", importSuccess: "App data imported successfully. Refresh the app to see all changes.", importError: "Unable to import app data. Please select a valid JSON file.", clearDisabled: "Clear Data is disabled in Production mode.", clearTypeConfirm: "Type CLEAR to confirm data clearing.", clearAllTitle: "Clear All App Data", clearAllMessage: "This will clear all saved app data, including settings. This cannot be undone. Continue?", clearData: "Clear Data", clearSuccess: "App data cleared successfully. Refresh the app to start clean.", clearError: "Unable to clear app data.",
     },
     fa: {
+      pageTitle: "تنظیمات",
+      pageDescription: "نام سیستم، لوگو و تنظیمات عمومی مورد استفاده در سراسر برنامه را انتخاب کنید.",
       decimalsTab: "اعشار اسعار",
       decimalsTitle: "خانه‌های اعشاری اسعار",
       decimalsDescription: "تعداد رقم‌های بعد از ممیز را برای هر واحد پول مشخص کنید.",
-      afn: "افغانی", usd: "دالر", eur: "یورو", pkr: "کلدار",
+      afn: "افغانی", usd: "دالر", eur: "یورو", pkr: "کلدار پاکستانی",
       decimalPlaces: "خانه اعشاری", preview: "نمونه نمایش", saveDecimals: "ذخیره تنظیمات اعشار",
       exchangeRateTitle: "نرخ اسعار در مقابل افغانی", exchangeRateDescription: "مشخص کنید یک واحد از هر اسعار خارجی چند افغانی می‌شود.",
       usdRate: "دالر امریکایی", eurRate: "یورو", inrRate: "کلدار هندی", oneUnit: "1 {code} =", afnUnit: "افغانی", saveExchangeRates: "ذخیره نرخ اسعار",
-      usersTab: "کاربران", usersTitle: "کاربران", usersDescription: "اکانت‌هایی را که اجازه ورود به سیستم دارند ایجاد و مدیریت کنید.", addUser: "افزودن کاربر", editUser: "ویرایش کاربر", userName: "نام", email: "ایمیل", password: "پسورد", confirmPassword: "تکرار پسورد", actions: "عملیات", edit: "ویرایش", delete: "حذف", noUsers: "هیچ اکانت کاربری موجود نیست.", saveUser: "ذخیره کاربر", updateUser: "ذخیره تغییرات", cancel: "لغو", createUserHint: "معلومات اکانت کاربر را وارد کنید.", editUserHint: "معلومات اکانت را ویرایش کنید. برای حفظ پسورد فعلی، فیلد پسورد را خالی بگذارید.", passwordOptional: "برای حفظ پسورد فعلی خالی بگذارید", activeAccount: "اکانت فعلی",
+      usersTab: "کاربران", usersTitle: "کاربران", usersDescription: "اکانت‌هایی را که اجازه ورود به سیستم دارند ایجاد و مدیریت کنید.", addUser: "افزودن کاربر", editUser: "ویرایش کاربر", userName: "نام", email: "ایمیل", password: "پسورد", confirmPassword: "تکرار پسورد", actions: "عملیات", edit: "ویرایش", delete: "حذف", noUsers: "هیچ اکانت کاربری موجود نیست.", saveUser: "ذخیره کاربر", updateUser: "ذخیره تغییرات", cancel: "لغو", createUserHint: "معلومات اکانت کاربر را وارد کنید.", editUserHint: "معلومات اکانت را ویرایش کنید. برای حفظ پسورد فعلی، فیلد پسورد را خالی بگذارید.", passwordOptional: "برای حفظ پسورد فعلی خالی بگذارید", activeAccount: "اکانت فعلی", close: "بستن",
+      themeTab: "تنظیمات پوسته", printingTab: "چاپ", securityTab: "امنیت", backupTab: "بکاپ", notificationSoundTab: "صدای هشدار", notificationSoundTitle: "صدای هشدار", notificationSoundDescription: "صدایی را انتخاب کنید که هنگام نمایش هر هشدار سیستم پخش شود.", soundEnabled: "صدای هشدار", soundOn: "روشن", soundOff: "خاموش", testSound: "تست", selectedSound: "انتخاب شده", saveSound: "ذخیره تنظیمات صدا", soundSaved: "تنظیمات صدای هشدار ذخیره شد.",
+      companyDescription: "معلومات کمپنی که در رسیدها، گزارش‌ها، صفحه ورود و قالب‌های چاپ استفاده می‌شود.", subTitle: "عنوان فرعی", companyAddressPlaceholder: "کابل، افغانستان", removeLogo: "حذف لوگو", saveSettings: "ذخیره تنظیمات", logoPreviewAlt: "پیش‌نمایش لوگوی سیستم", companyAddressFallback: "آدرس کمپنی",
+      masterPrintMode: "حالت چاپ اصلی (طلایی + سیاه HD)", masterPrintDescription: "تنظیم حرفه‌ای و باکیفیت برای گزارش‌ها و رسیدها.", proPrintMode: "حالت چاپ حرفه‌ای (Unified HD)", proPrintDescription: "چاپ سیاه با کیفیت بهینه همراه با پشتیبانی راست‌به‌چپ دری و پشتو.", footerNotesBox: "بخش یادداشت پایانی", footerNotesDescription: "آدرس، شماره تماس، ضمانت یا توضیحات دلخواه فوتر را اضافه کنید.", footerNotesEn: "یادداشت فوتر (انگلیسی)", footerNotesDari: "یادداشت فوتر (دری)", footerNotesPashto: "یادداشت فوتر (پشتو)", footerPlaceholderEn: "آدرس، شماره تماس، یادداشت ضمانت، شرایط بازگشت...", footerPlaceholderDari: "آدرس، شماره تماس، شرایط ضمانت...", footerPlaceholderPashto: "آدرس، د تماس شمېره، د ضمانت شرایط...", printConfiguration: "تنظیمات چاپ", defaultPaperSize: "اندازه پیش‌فرض کاغذ", billingPaperSize: "اندازه کاغذ بل", defaultOrientation: "جهت پیش‌فرض", pageDensity: "تراکم صفحه", thermal80: "حرارتی 80 میلی‌متر", portrait: "عمودی", landscape: "افقی", normal: "عادی", compact: "فشرده", savePrinting: "ذخیره تنظیمات چاپ",
+      securityTitle: "امنیت", securityDescription: "برای تنظیمات محافظت‌شده و عملیات حساس سیستم پسورد تعیین کنید.", setPassword: "تعیین پسورد", enterPassword: "پسورد را وارد کنید", savePassword: "ذخیره پسورد",
+      themeTitle: "تنظیمات پوسته", themeDescription: "یکی از پوسته‌های موجود را انتخاب کنید. هر پوسته از نام کمپنی به‌عنوان امضای بصری استفاده می‌کند.", themes: {
+        minimalism: ["مینیمال", "ساده، متمرکز و بدون عناصر اضافی"],
+        "clay-minimalism": ["مه گرافیتی", "گرادیانت‌های خاکستری لایه‌ای با ناوبری زغالی"],
+        "black-white": ["آبی نیمه‌شب", "سطوح سرمه‌ای عمیق با جلوه‌های آبی روشن"],
+        aurora: ["جریان شفق", "شیشه تیره حرفه‌ای با نور شفق هماهنگ با رنگ کمپنی"],
+      },
+      appDataTitle: "دیتای برنامه", appDataDescription: "از اطلاعات بکاپ بگیرید، بکاپ را وارد کنید یا تمام دیتای ذخیره‌شده برنامه را پاک کنید.", demoEnvironment: "محیط دمو", productionEnvironment: "محیط اصلی", demoEnvironmentDescription: "دیتای دمو از محیط اصلی مشتری جدا نگهداری می‌شود.", productionEnvironmentDescription: "دیتای اصلی از محیط دمو جدا نگهداری می‌شود.", exportData: "خروجی گرفتن از دیتا", importData: "وارد کردن دیتا", automaticallyBackup: "بکاپ خودکار", automaticallyBackupDescription: "سیستم هنگام باز بودن برنامه این زمان‌بندی را بررسی می‌کند و پس از ایجاد بکاپ اطلاع می‌دهد.", backupSchedule: "زمان‌بندی بکاپ", off: "خاموش", daily: "روزانه", weekly: "هفتگی", monthly: "ماهانه", custom: "دلخواه", customIntervalDays: "فاصله دلخواه (روز)", saveBackupSetting: "ذخیره تنظیمات بکاپ", clearDemoData: "پاک کردن دیتای دمو", clearDemoInstruction: "عبارت CLEAR را بنویسید، سپس روی پاک کردن دیتای دمو کلیک کنید.",
+      themeUpdated: "پوسته با موفقیت تغییر کرد.", invalidLogo: "لطفاً یک فایل تصویری برای لوگو انتخاب کنید.", settingsSaved: "تنظیمات سیستم با موفقیت ذخیره شد.", exportSuccess: "دیتای برنامه با موفقیت خروجی گرفته شد.", exportError: "خروجی گرفتن از دیتای برنامه انجام نشد.", invalidBackup: "این فایل دیتای معتبر برنامه را ندارد.", importTitle: "وارد کردن دیتای برنامه", importConfirm: "با وارد کردن بکاپ، {count} جدول داده جایگزین می‌شود. ادامه می‌دهید؟", importSuccess: "دیتای برنامه با موفقیت وارد شد. برای مشاهده همه تغییرات برنامه را تازه‌سازی کنید.", importError: "وارد کردن دیتا انجام نشد. لطفاً یک فایل JSON معتبر انتخاب کنید.", clearDisabled: "پاک کردن دیتا در حالت اصلی غیرفعال است.", clearTypeConfirm: "برای تأیید پاک کردن دیتا، CLEAR را وارد کنید.", clearAllTitle: "پاک کردن تمام دیتای برنامه", clearAllMessage: "تمام دیتای ذخیره‌شده برنامه، شامل تنظیمات، پاک می‌شود و قابل بازگشت نیست. ادامه می‌دهید؟", clearData: "پاک کردن دیتا", clearSuccess: "دیتای برنامه با موفقیت پاک شد. برای شروع دوباره برنامه را تازه‌سازی کنید.", clearError: "پاک کردن دیتای برنامه انجام نشد.",
     },
     ps: {
+      pageTitle: "تنظیمات",
+      pageDescription: "د سیسټم نوم، لوګو او هغه عمومي ارزښتونه وټاکئ چې په ټول اپ کې کارېږي.",
       decimalsTab: "د اسعارو اعشار",
       decimalsTitle: "د اسعارو اعشاري خانې",
       decimalsDescription: "د هرې پیسې لپاره له اعشاریې وروسته د شمېرو شمېر وټاکئ.",
-      afn: "افغانۍ", usd: "ډالر", eur: "یورو", pkr: "کلدار",
+      afn: "افغانۍ", usd: "امریکایي ډالر", eur: "یورو", pkr: "پاکستانۍ کلدارې",
       decimalPlaces: "اعشاري خانې", preview: "بېلګه", saveDecimals: "د اعشاریو تنظیمات خوندي کړئ",
       exchangeRateTitle: "د افغانیو په مقابل کې د اسعارو نرخ", exchangeRateDescription: "وټاکئ چې د هرې بهرنۍ پیسې یو واحد څو افغانۍ کېږي.",
       usdRate: "امریکایي ډالر", eurRate: "یورو", inrRate: "هندي روپۍ", oneUnit: "1 {code} =", afnUnit: "افغانۍ", saveExchangeRates: "د اسعارو نرخونه خوندي کړئ",
-      usersTab: "کاروونکي", usersTitle: "کاروونکي", usersDescription: "هغه حسابونه جوړ او اداره کړئ چې دې سیسټم ته ننوتلی شي.", addUser: "کاروونکی اضافه کړئ", editUser: "کاروونکی سمول", userName: "نوم", email: "برېښنالیک", password: "پټنوم", confirmPassword: "پټنوم بیا ولیکئ", actions: "کړنې", edit: "سمول", delete: "حذف", noUsers: "هیڅ کارن حساب نشته.", saveUser: "کاروونکی خوندي کړئ", updateUser: "بدلونونه خوندي کړئ", cancel: "لغوه", createUserHint: "د کاروونکي د حساب معلومات ولیکئ.", editUserHint: "د حساب معلومات بدل کړئ. د اوسني پټنوم ساتلو لپاره د پټنوم برخه تشه پرېږدئ.", passwordOptional: "د اوسني پټنوم ساتلو لپاره تش پرېږدئ", activeAccount: "اوسنی حساب",
+      usersTab: "کاروونکي", usersTitle: "کاروونکي", usersDescription: "هغه حسابونه جوړ او اداره کړئ چې دې سیسټم ته ننوتلی شي.", addUser: "کاروونکی اضافه کړئ", editUser: "کاروونکی سمول", userName: "نوم", email: "برېښنالیک", password: "پټنوم", confirmPassword: "پټنوم بیا ولیکئ", actions: "کړنې", edit: "سمول", delete: "حذف", noUsers: "هیڅ کارن حساب نشته.", saveUser: "کاروونکی خوندي کړئ", updateUser: "بدلونونه خوندي کړئ", cancel: "لغوه", createUserHint: "د کاروونکي د حساب معلومات ولیکئ.", editUserHint: "د حساب معلومات بدل کړئ. د اوسني پټنوم ساتلو لپاره د پټنوم برخه تشه پرېږدئ.", passwordOptional: "د اوسني پټنوم ساتلو لپاره تش پرېږدئ", activeAccount: "اوسنی حساب", close: "بندول",
+      themeTab: "د بڼې تنظیمات", printingTab: "چاپ", securityTab: "امنیت", backupTab: "بیک اپ", notificationSoundTab: "د خبرتیا غږ", notificationSoundTitle: "د خبرتیا غږ", notificationSoundDescription: "هغه غږ وټاکئ چې د سیسټم د هرې خبرتیا پر مهال غږول کېږي.", soundEnabled: "د خبرتیا غږ", soundOn: "چالان", soundOff: "بند", testSound: "ازموینه", selectedSound: "ټاکل شوی", saveSound: "د غږ تنظیمات ذخیره کړئ", soundSaved: "د خبرتیا د غږ تنظیمات ذخیره شول.",
+      companyDescription: "د شرکت هغه معلومات چې په رسیدونو، راپورونو، ننوتلو او چاپي بڼو کې کارېږي.", subTitle: "فرعي سرلیک", companyAddressPlaceholder: "کابل، افغانستان", removeLogo: "لوګو لرې کړئ", saveSettings: "تنظیمات خوندي کړئ", logoPreviewAlt: "د سیسټم لوګو مخکتنه", companyAddressFallback: "د شرکت پته",
+      masterPrintMode: "اصلي چاپ حالت (طلایي + تور HD)", masterPrintDescription: "د راپورونو او رسیدونو لپاره مسلکي او لوړ کیفیت تنظیم.", proPrintMode: "مسلکي چاپ حالت (Unified HD)", proPrintDescription: "له دري او پښتو RTL ملاتړ سره د لوړ کیفیت تور چاپ لپاره غوره شوی.", footerNotesBox: "د پای یادښتونو برخه", footerNotesDescription: "پته، د اړیکې شمېره، تضمین یا د فوتر ځانګړي معلومات اضافه کړئ.", footerNotesEn: "د فوتر یادښت (انګلیسي)", footerNotesDari: "د فوتر یادښت (دري)", footerNotesPashto: "د فوتر یادښت (پښتو)", footerPlaceholderEn: "پته، د اړیکې شمېره، د تضمین یادښت، د بېرته ستنولو تګلاره...", footerPlaceholderDari: "آدرس، شماره تماس، شرایط ضمانت...", footerPlaceholderPashto: "پته، د اړیکې شمېره، د تضمین شرایط...", printConfiguration: "د چاپ تنظیمات", defaultPaperSize: "د کاغذ اصلي اندازه", billingPaperSize: "د بل کاغذ اندازه", defaultOrientation: "اصلي جهت", pageDensity: "د پاڼې تراکم", thermal80: "حرارتي 80 ملي متر", portrait: "عمودي", landscape: "افقي", normal: "عادي", compact: "متراکم", savePrinting: "د چاپ تنظیمات خوندي کړئ",
+      securityTitle: "امنیت", securityDescription: "د خوندي تنظیماتو او حساسو سیسټمي کړنو لپاره پټنوم وټاکئ.", setPassword: "پټنوم وټاکئ", enterPassword: "پټنوم ولیکئ", savePassword: "پټنوم خوندي کړئ",
+      themeTitle: "د بڼې تنظیمات", themeDescription: "له شته بڼو څخه یوه وټاکئ. هره بڼه د شرکت نوم د خپل لیدیز پېژند په توګه کاروي.", themes: {
+        minimalism: ["مینیمال", "پاکه، متمرکزه او له اضافي ګډوډۍ پرته بڼه"],
+        "clay-minimalism": ["ګرافایټي مه", "پوړیز خړ تدریجونه له تیاره ناوبري سره"],
+        "black-white": ["د نیمې شپې شین", "ژور تیاره شین سطحې له روښانه شینو اغېزو سره"],
+        aurora: ["د شفق جریان", "مسلکي تیاره ښیښه له د شرکت رنګ سره همغږې شفق رڼا"],
+      },
+      appDataTitle: "د اپ معلومات", appDataDescription: "بیک اپ صادر کړئ، بیک اپ وارد کړئ یا د اپ ټول خوندي معلومات پاک کړئ.", demoEnvironment: "ډیمو چاپېریال", productionEnvironment: "اصلي چاپېریال", demoEnvironmentDescription: "د ډیمو معلومات د پیرودونکي له اصلي چاپېریال څخه جلا ساتل کېږي.", productionEnvironmentDescription: "اصلي معلومات د ډیمو له چاپېریال څخه جلا ساتل کېږي.", exportData: "معلومات صادر کړئ", importData: "معلومات وارد کړئ", automaticallyBackup: "اتومات بیک اپ", automaticallyBackupDescription: "سیسټم د اپ د خلاصېدو پر مهال دا مهالویش ګوري او د بیک اپ له جوړېدو وروسته خبر ورکوي.", backupSchedule: "د بیک اپ مهالویش", off: "بند", daily: "ورځنی", weekly: "اوونیز", monthly: "میاشتنی", custom: "ځانګړی", customIntervalDays: "ځانګړی واټن (ورځې)", saveBackupSetting: "د بیک اپ تنظیم خوندي کړئ", clearDemoData: "د ډیمو معلومات پاک کړئ", clearDemoInstruction: "CLEAR ولیکئ، بیا د ډیمو معلومات پاک کړئ تڼۍ کېکاږئ.",
+      themeUpdated: "بڼه په بریالیتوب بدله شوه.", invalidLogo: "مهرباني وکړئ د لوګو لپاره انځوریز فایل وټاکئ.", settingsSaved: "د سیسټم تنظیمات په بریالیتوب خوندي شول.", exportSuccess: "د اپ معلومات په بریالیتوب صادر شول.", exportError: "د اپ معلومات صادر نه شول.", invalidBackup: "دا فایل د اپ معتبر معلومات نه لري.", importTitle: "د اپ معلومات واردول", importConfirm: "واردول به {count} ډیټا جدولونه بدل کړي. دوام ورکړئ؟", importSuccess: "د اپ معلومات په بریالیتوب وارد شول. د ټولو بدلونونو د لیدلو لپاره اپ تازه کړئ.", importError: "معلومات وارد نه شول. مهرباني وکړئ معتبر JSON فایل وټاکئ.", clearDisabled: "په اصلي حالت کې د معلوماتو پاکول غیرفعال دي.", clearTypeConfirm: "د معلوماتو پاکول د تایید لپاره CLEAR ولیکئ.", clearAllTitle: "د اپ ټول معلومات پاکول", clearAllMessage: "د اپ ټول خوندي معلومات، د تنظیماتو په ګډون، پاکېږي او بېرته نه راګرځي. دوام ورکړئ؟", clearData: "معلومات پاک کړئ", clearSuccess: "د اپ معلومات په بریالیتوب پاک شول. د نوي پیل لپاره اپ تازه کړئ.", clearError: "د اپ معلومات پاک نه شول.",
     },
   };
   const st = settingsText[language] || settingsText.en;
@@ -210,6 +258,12 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
     setLogo(current.logo || "");
     setAutoBackupMode(current.autoBackupMode || "off");
     setAutoBackupCustomDays(String(current.autoBackupCustomDays || "7"));
+    const savedSound = current.notificationSound || localStorage.getItem(notificationSoundStorageKey) || "chime.mov";
+    const savedSoundEnabled = current.notificationSoundEnabled ?? (localStorage.getItem(notificationSoundEnabledKey) !== "false");
+    setNotificationSound(savedSound);
+    setNotificationSoundEnabled(Boolean(savedSoundEnabled));
+    localStorage.setItem(notificationSoundStorageKey, savedSound);
+    localStorage.setItem(notificationSoundEnabledKey, String(Boolean(savedSoundEnabled)));
   }, [
     current.autoBackupCustomDays,
     current.autoBackupMode,
@@ -222,6 +276,8 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
     current.securityPassword,
     current.systemSubtitle,
     current.logo,
+    current.notificationSound,
+    current.notificationSoundEnabled,
   ]);
 
   useEffect(() => {
@@ -295,7 +351,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
       : [...accounts, { id: Date.now(), ...payload, createdAt: new Date().toISOString() }];
     const saved = await setAccounts(next);
     if (!saved) return;
-    notify(language === "fa" ? (editingUserId ? "کاربر ویرایش شد." : "کاربر اضافه شد.") : language === "ps" ? (editingUserId ? "کاروونکی سم شو." : "کاروونکی اضافه شو.") : (editingUserId ? "User updated." : "User added."));
+    notify(language === "fa" ? (editingUserId ? "کاربر ویرایش شد." : "کاربر اضافه شد.") : language === "ps" ? (editingUserId ? "کاروونکی سم شو." : "کاروونکی اضافه شو.") : (editingUserId ? "User updated." : "User added."), "success", { silent: true });
     closeUserModal();
   };
 
@@ -320,7 +376,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
     setActiveTheme(theme);
     applyTheme(theme);
     applyCompanyThemeIdentity(companyName);
-    notify("Theme updated successfully.");
+    notify(st.themeUpdated);
   };
 
   const handleLogoChange = (event) => {
@@ -328,7 +384,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      notify("Please select an image file for the logo.", "error");
+      notify(st.invalidLogo, "error");
       return;
     }
 
@@ -358,6 +414,8 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
         logo,
         autoBackupMode,
         autoBackupCustomDays: Math.max(Number(autoBackupCustomDays || 7), 1),
+        notificationSound,
+        notificationSoundEnabled,
         updatedAt: new Date().toISOString(),
       },
     ];
@@ -365,9 +423,12 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
     const saved = await setSettings(nextSettings);
     if (!saved) return;
 
+    localStorage.setItem(notificationSoundStorageKey, notificationSound);
+    localStorage.setItem(notificationSoundEnabledKey, String(notificationSoundEnabled));
+    window.dispatchEvent(new Event("notification-sound-updated"));
     applyCompanyThemeIdentity(nextSettings[0].companyName);
     window.dispatchEvent(new Event("company-settings-updated"));
-    notify("System settings saved successfully.");
+    notify(st.settingsSaved, "success", { silent: true });
   };
 
   const loadCollectionNames = async () => {
@@ -378,10 +439,10 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
     try {
       setAppDataBusy(true);
       await downloadBackup("manual");
-      notify("App data exported successfully.");
+      notify(st.exportSuccess);
     } catch (error) {
       console.error("Unable to export app data:", error);
-      notify("Unable to export app data.", "error");
+      notify(st.exportError, "error");
     } finally {
       setAppDataBusy(false);
     }
@@ -403,24 +464,24 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
       const importable = collections.filter((name) => Array.isArray(data[name]));
 
       if (!importable.length) {
-        notify("This file does not contain valid app data.", "error");
+        notify(st.invalidBackup, "error");
         return;
       }
 
       const ok = await confirmAction({
-        title: "Import App Data",
-        message: `Import will replace ${importable.length} data table(s). Continue?`,
-        confirmText: "Import Data",
+        title: st.importTitle,
+        message: st.importConfirm.replace("{count}", String(importable.length)),
+        confirmText: st.importData,
       });
       if (!ok) return;
 
       await Promise.all(
         importable.map((name) => writeBrowserCollection(name, data[name]))
       );
-      notify("App data imported successfully. Refresh the app to see all changes.");
+      notify(st.importSuccess);
     } catch (error) {
       console.error("Unable to import app data:", error);
-      notify("Unable to import app data. Please select a valid JSON file.", "error");
+      notify(st.importError, "error");
     } finally {
       setAppDataBusy(false);
     }
@@ -428,20 +489,19 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
 
   const clearData = async () => {
     if (!IS_DEMO) {
-      notify("Clear Data is disabled in Production mode.", "error");
+      notify(st.clearDisabled, "error");
       return;
     }
 
     if (clearConfirm.trim().toUpperCase() !== "CLEAR") {
-      notify("Type CLEAR to confirm data clearing.", "error");
+      notify(st.clearTypeConfirm, "error");
       return;
     }
 
     const ok = await confirmAction({
-      title: "Clear All App Data",
-      message:
-        "This will clear all saved app data, including settings. This cannot be undone. Continue?",
-      confirmText: "Clear Data",
+      title: st.clearAllTitle,
+      message: st.clearAllMessage,
+      confirmText: st.clearData,
     });
     if (!ok) return;
 
@@ -450,20 +510,30 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
       const collections = await loadCollectionNames();
       await Promise.all(collections.map((name) => writeBrowserCollection(name, [])));
       setClearConfirm("");
-      notify("App data cleared successfully. Refresh the app to start clean.");
+      notify(st.clearSuccess);
     } catch (error) {
       console.error("Unable to clear app data:", error);
-      notify("Unable to clear app data.", "error");
+      notify(st.clearError, "error");
     } finally {
       setAppDataBusy(false);
+    }
+  };
+
+  const testNotificationSound = (soundName) => {
+    try {
+      const audio = new Audio(`/sounds/${encodeURIComponent(soundName)}`);
+      audio.volume = 0.9;
+      audio.play().catch(() => {});
+    } catch (error) {
+      console.warn("Unable to test notification sound:", error);
     }
   };
 
   return (
     <div className="settings-page">
       <div className="settings-header">
-        <h1>Settings</h1>
-        <p>Choose the system name, logo, and global values used across the app.</p>
+        <h1>{st.pageTitle}</h1>
+        <p>{st.pageDescription}</p>
       </div>
 
       <div className="settings-tabs">
@@ -497,7 +567,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
           onClick={() => setActiveTab("theme")}
         >
           <Palette size={16} />
-          Theme Settings
+          {st.themeTab}
         </button>
         <button
           type="button"
@@ -505,7 +575,15 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
           onClick={() => setActiveTab("printing")}
         >
           <Printer size={16} />
-          Printing
+          {st.printingTab}
+        </button>
+        <button
+          type="button"
+          className={activeTab === "notification-sound" ? "active" : ""}
+          onClick={() => setActiveTab("notification-sound")}
+        >
+          <Volume2 size={16} />
+          {st.notificationSoundTab}
         </button>
         <button
           type="button"
@@ -513,7 +591,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
           onClick={() => setActiveTab("security")}
         >
           <LockKeyhole size={16} />
-          Security
+          {st.securityTab}
         </button>
         <button
           type="button"
@@ -521,7 +599,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
           onClick={() => setActiveTab("app-data")}
         >
           <Database size={16} />
-          Backup
+          {st.backupTab}
         </button>
         <button
           type="button"
@@ -539,7 +617,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
           <div className="settings-preview tab-visible">
             <div className="settings-logo">
               {logo ? (
-                <img src={logo} alt="System logo preview" />
+                <img src={logo} alt={st.logoPreviewAlt} />
               ) : (
                 <span>{(companyName || defaultSystemName).slice(0, 1)}</span>
               )}
@@ -548,7 +626,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
             <div>
               <h2>{companyName || defaultSystemName}</h2>
               <p>{systemSubtitle || defaultSystemSubtitle}</p>
-              <small>{companyAddress || "Company address"}</small>
+              <small>{companyAddress || st.companyAddressFallback}</small>
             </div>
           </div>
 
@@ -556,7 +634,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
             <section className="settings-panel">
               <div className="settings-section-title">
                 <h3>{t.company}</h3>
-                <p>Company information used across receipts, reports, login and print layouts.</p>
+                <p>{st.companyDescription}</p>
               </div>
 
               <div className="settings-form-grid">
@@ -570,7 +648,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
                 </label>
 
                 <label>
-                  Sub Title
+                  {st.subTitle}
                   <input
                     value={systemSubtitle}
                     onChange={(event) => setSystemSubtitle(event.target.value)}
@@ -583,7 +661,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
                   <input
                     value={companyAddress}
                     onChange={(event) => setCompanyAddress(event.target.value)}
-                    placeholder="Kabul, Afghanistan"
+                    placeholder={st.companyAddressPlaceholder}
                   />
                 </label>
 
@@ -612,14 +690,14 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
                   onClick={() => setLogo("")}
                 >
                   <Trash2 size={15} />
-                  Remove Logo
+                  {st.removeLogo}
                 </button>
               )}
             </section>
 
             <button type="submit" className="settings-save">
               <Save size={16} />
-              Save Settings
+              {st.saveSettings}
             </button>
           </div>
         </form>
@@ -725,53 +803,118 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
           <section className="settings-panel">
             <div className="settings-print-toggle">
               <div>
-                <strong>Master Print Mode (Gold + Black HD)</strong>
-                <span>Premium polished configuration for reports and receipts.</span>
+                <strong>{st.masterPrintMode}</strong>
+                <span>{st.masterPrintDescription}</span>
               </div>
               <input type="checkbox" />
             </div>
             <div className="settings-print-toggle">
               <div>
-                <strong>Pro Print Mode (Unified HD)</strong>
-                <span>Optimised black quality printing with Dari and Pashto RTL support.</span>
+                <strong>{st.proPrintMode}</strong>
+                <span>{st.proPrintDescription}</span>
               </div>
               <input type="checkbox" />
             </div>
 
             <div className="settings-section-title">
-              <h3>Footer Notes Box</h3>
-              <p>Add address, phone, warranty or custom footer details.</p>
+              <h3>{st.footerNotesBox}</h3>
+              <p>{st.footerNotesDescription}</p>
             </div>
 
             <div className="settings-print-notes">
               <label>
-                Footer Notes Box (EN)
-                <textarea placeholder="Address, phone number, warranty note, return policy..." />
+                {st.footerNotesEn}
+                <textarea placeholder={st.footerPlaceholderEn} />
               </label>
               <label>
-                Footer Notes (Dari)
-                <textarea dir="rtl" placeholder="آدرس، شماره تماس، شرایط ضمانت..." />
+                {st.footerNotesDari}
+                <textarea dir="rtl" placeholder={st.footerPlaceholderDari} />
               </label>
               <label>
-                Footer Notes (Pashto)
-                <textarea dir="rtl" placeholder="آدرس، د تماس شمېره، د ضمانت شرایط..." />
+                {st.footerNotesPashto}
+                <textarea dir="rtl" placeholder={st.footerPlaceholderPashto} />
               </label>
             </div>
 
             <div className="settings-section-title">
-              <h3>Print Configuration</h3>
+              <h3>{st.printConfiguration}</h3>
             </div>
 
             <div className="settings-form-grid">
-              <label>Default Paper Size<select defaultValue="A4"><option>A4 (210x297mm)</option><option>Thermal 80mm</option></select></label>
-              <label>Billing Paper Size<select defaultValue="Thermal 80mm"><option>Thermal 80mm</option><option>A5</option></select></label>
-              <label>Default Orientation<select defaultValue="Portrait"><option>Portrait</option><option>Landscape</option></select></label>
-              <label>Page Density<select defaultValue="Normal"><option>Normal</option><option>Compact</option></select></label>
+              <label>{st.defaultPaperSize}<select defaultValue="A4"><option>A4 (210x297mm)</option><option>{st.thermal80}</option></select></label>
+              <label>{st.billingPaperSize}<select defaultValue="Thermal 80mm"><option value="Thermal 80mm">{st.thermal80}</option><option>A5</option></select></label>
+              <label>{st.defaultOrientation}<select defaultValue="Portrait"><option value="Portrait">{st.portrait}</option><option value="Landscape">{st.landscape}</option></select></label>
+              <label>{st.pageDensity}<select defaultValue="Normal"><option value="Normal">{st.normal}</option><option value="Compact">{st.compact}</option></select></label>
             </div>
 
             <button type="submit" className="settings-save">
               <Save size={16} />
-              Save Printing
+              {st.savePrinting}
+            </button>
+          </section>
+        </form>
+      )}
+
+      {activeTab === "notification-sound" && (
+        <form className="settings-card settings-card-single settings-full-width-card" onSubmit={save}>
+          <section className="settings-panel settings-full-width-panel settings-sound-panel">
+            <div className="settings-section-title">
+              <h3>{st.notificationSoundTitle}</h3>
+              <p>{st.notificationSoundDescription}</p>
+            </div>
+
+            <div className="settings-sound-master">
+              <div>
+                <Volume2 size={19} />
+                <span>
+                  <strong>{st.soundEnabled}</strong>
+                  <small>{notificationSoundEnabled ? st.soundOn : st.soundOff}</small>
+                </span>
+              </div>
+              <button
+                type="button"
+                className={notificationSoundEnabled ? "active" : ""}
+                onClick={() => setNotificationSoundEnabled((value) => !value)}
+                aria-pressed={notificationSoundEnabled}
+              >
+                <span />
+              </button>
+            </div>
+
+            <div className="settings-sound-grid">
+              {notificationSounds.map((soundName) => {
+                const selected = notificationSound === soundName;
+                const label = soundName.replace(/\.(mp4|mov)$/i, "").replace(/[-_]/g, " ");
+                return (
+                  <article className={`settings-sound-card ${selected ? "selected" : ""}`} key={soundName}>
+                    <button
+                      type="button"
+                      className="settings-sound-select"
+                      onClick={() => setNotificationSound(soundName)}
+                    >
+                      <span className="settings-sound-icon"><Volume2 size={18} /></span>
+                      <span className="settings-sound-name">
+                        <strong>{label}</strong>
+                        <small>{soundName}</small>
+                      </span>
+                      {selected && <span className="settings-sound-selected">{st.selectedSound}</span>}
+                    </button>
+                    <button
+                      type="button"
+                      className="settings-sound-test"
+                      onClick={() => testNotificationSound(soundName)}
+                    >
+                      <Play size={14} />
+                      {st.testSound}
+                    </button>
+                  </article>
+                );
+              })}
+            </div>
+
+            <button type="submit" className="settings-save settings-save-full">
+              <Save size={16} />
+              {st.saveSound}
             </button>
           </section>
         </form>
@@ -781,23 +924,23 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
         <form className="settings-card settings-card-single" onSubmit={save}>
           <section className="settings-panel">
             <div className="settings-section-title">
-              <h3>Security</h3>
-              <p>Set Password for protected settings and sensitive system actions.</p>
+              <h3>{st.securityTitle}</h3>
+              <p>{st.securityDescription}</p>
             </div>
 
             <label>
-              Set Password
+              {st.setPassword}
               <input
                 type="password"
                 value={securityPassword}
                 onChange={(event) => setSecurityPassword(event.target.value)}
-                placeholder="Enter password"
+                placeholder={st.enterPassword}
               />
             </label>
 
             <button type="submit" className="settings-save">
               <Save size={16} />
-              Save Password
+              {st.savePassword}
             </button>
           </section>
         </form>
@@ -856,8 +999,8 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
         <div className="settings-theme-card">
           <section className="settings-panel">
             <div className="settings-section-title">
-              <h3>Theme Settings</h3>
-              <p>Select one of the available interface themes. Each theme uses the company name as its visual signature.</p>
+              <h3>{st.themeTitle}</h3>
+              <p>{st.themeDescription}</p>
             </div>
 
             <div className="settings-theme-grid">
@@ -868,8 +1011,8 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
                   className={activeTheme === theme.key ? "active" : ""}
                   onClick={() => selectTheme(theme.key)}
                 >
-                  <strong>{theme.title}</strong>
-                  <span>{theme.description}</span>
+                  <strong>{st.themes[theme.key]?.[0] || theme.key}</strong>
+                  <span>{st.themes[theme.key]?.[1] || ""}</span>
                 </button>
               ))}
             </div>
@@ -881,25 +1024,25 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
         <div className="settings-data-card">
           <section className="settings-panel">
             <div className="settings-section-title">
-              <h3>App Data</h3>
-              <p>Export a backup, import a backup, or clear all saved app data.</p>
+              <h3>{st.appDataTitle}</h3>
+              <p>{st.appDataDescription}</p>
             </div>
 
             <div className={`settings-environment-status ${IS_DEMO ? "is-demo" : "is-production"}`}>
-              <strong>{IS_DEMO ? "Demo Environment" : "Production Environment"}</strong>
-              <span>{IS_DEMO ? "Demo data is isolated from the customer production environment." : "Production data is isolated from the demo environment."}</span>
+              <strong>{IS_DEMO ? st.demoEnvironment : st.productionEnvironment}</strong>
+              <span>{IS_DEMO ? st.demoEnvironmentDescription : st.productionEnvironmentDescription}</span>
               <code>{APP_MODE}</code>
             </div>
 
             <div className="settings-data-actions">
               <button type="button" onClick={exportData} disabled={appDataBusy}>
                 <Download size={16} />
-                Export Data
+                {st.exportData}
               </button>
 
               <label className={appDataBusy ? "disabled" : ""}>
                 <Upload size={16} />
-                Import Data
+                {st.importData}
                 <input
                   type="file"
                   accept="application/json,.json"
@@ -913,28 +1056,28 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
               <div className="settings-auto-backup-title">
                 <Database size={18} />
                 <div>
-                  <strong>Automatically Backup</strong>
-                  <span>The system checks this schedule while the app is open and reports when a backup is created.</span>
+                  <strong>{st.automaticallyBackup}</strong>
+                  <span>{st.automaticallyBackupDescription}</span>
                 </div>
               </div>
 
               <label>
-                Backup Schedule
+                {st.backupSchedule}
                 <select
                   value={autoBackupMode}
                   onChange={(event) => setAutoBackupMode(event.target.value)}
                 >
-                  <option value="off">Off</option>
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="custom">Custom</option>
+                  <option value="off">{st.off}</option>
+                  <option value="daily">{st.daily}</option>
+                  <option value="weekly">{st.weekly}</option>
+                  <option value="monthly">{st.monthly}</option>
+                  <option value="custom">{st.custom}</option>
                 </select>
               </label>
 
               {autoBackupMode === "custom" && (
                 <label>
-                  Custom Interval (Days)
+                  {st.customIntervalDays}
                   <input
                     type="number"
                     min="1"
@@ -946,7 +1089,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
 
               <button type="button" onClick={save} disabled={appDataBusy}>
                 <Save size={16} />
-                Save Backup Setting
+                {st.saveBackupSetting}
               </button>
             </div>
 
@@ -954,8 +1097,8 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
               <div className="settings-clear-zone">
                 <div>
                   <Database size={18} />
-                  <strong>Clear Demo Data</strong>
-                  <span>Type CLEAR, then press Clear Demo Data.</span>
+                  <strong>{st.clearDemoData}</strong>
+                  <span>{st.clearDemoInstruction}</span>
                 </div>
 
                 <input
@@ -967,7 +1110,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
 
                 <button type="button" onClick={clearData} disabled={appDataBusy}>
                   <Trash2 size={16} />
-                  Clear Demo Data
+                  {st.clearDemoData}
                 </button>
               </div>
             )}
@@ -984,7 +1127,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
                 <h3>{editingUserId ? st.editUser : st.addUser}</h3>
                 <p>{editingUserId ? st.editUserHint : st.createUserHint}</p>
               </div>
-              <button type="button" onClick={closeUserModal} aria-label="Close"><X size={18} /></button>
+              <button type="button" onClick={closeUserModal} aria-label={st.close}><X size={18} /></button>
             </div>
             <form className="settings-user-form" onSubmit={saveUserAccount}>
               <div className="settings-user-form-grid">

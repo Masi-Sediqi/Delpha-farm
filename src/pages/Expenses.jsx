@@ -296,10 +296,10 @@ export default function Expenses() {
     };
     if (editingExpenseId) {
       setExpenses((current) => current.map((item) => String(item.id) === String(editingExpenseId) ? { ...item, ...payload } : item));
-      notify(t.updated, "success");
+      notify(t.updated, "success", { silent: true });
     } else {
       setExpenses((current) => [{ id: `exp-${Date.now()}`, ...payload, createdAt: now }, ...current]);
-      notify(t.saved, "success");
+      notify(t.saved, "success", { silent: true });
     }
     closeExpense();
   };
@@ -338,7 +338,7 @@ export default function Expenses() {
     } else {
       setter((current) => [{ id: `${masterKind}-${Date.now()}`, name, status: masterForm.status, createdAt: now }, ...current]);
     }
-    notify(masterKind === "account" ? t.accountSaved : t.reasonSaved, "success");
+    notify(masterKind === "account" ? t.accountSaved : t.reasonSaved, "success", { silent: true });
     closeMaster();
   };
 

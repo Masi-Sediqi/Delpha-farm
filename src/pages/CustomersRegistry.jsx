@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import { Building2, Edit3, Mail, MapPin, Phone, Plus, Search, Trash2, UserRound, X } from "lucide-react";
+import { Building2, Edit3, MapPin, Phone, Plus, Search, Trash2, UserRound, X } from "lucide-react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import { confirmAction } from "../utils/confirmDialog";
 import { notify } from "../utils/notify";
@@ -27,7 +27,7 @@ const labelsByLanguage = {
     alternatePhone: "Alternate Phone",
     email: "Email Address",
     idNumber: "National ID / Tax ID",
-    address: "Street Address",
+    address: "Address",
     city: "City",
     province: "Province / State",
     country: "Country",
@@ -189,19 +189,11 @@ const labelsByLanguage = {
 };
 
 const blankForm = {
-  customerType: "individual",
   fullName: "",
   companyName: "",
   phone: "",
-  alternatePhone: "",
-  email: "",
-  idNumber: "",
   address: "",
-  city: "",
-  province: "",
-  country: "Afghanistan",
   openingBalance: "0",
-  creditLimit: "0",
   status: "active",
   notes: "",
 };
@@ -230,7 +222,7 @@ export default function CustomersRegistry() {
     const q = query.trim().toLowerCase();
     if (!q) return customers;
     return customers.filter((item) =>
-      [item.fullName, item.companyName, item.phone, item.alternatePhone, item.email, item.idNumber, item.city, item.province]
+      [item.fullName, item.companyName, item.phone, item.address]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(q))
     );
@@ -258,19 +250,25 @@ export default function CustomersRegistry() {
       return;
     }
 
+    const {
+      customerType: _customerType,
+      alternatePhone: _alternatePhone,
+      email: _email,
+      idNumber: _idNumber,
+      city: _city,
+      province: _province,
+      country: _country,
+      creditLimit: _creditLimit,
+      ...visibleForm
+    } = form;
+
     const record = {
-      ...form,
+      ...visibleForm,
       fullName: form.fullName.trim(),
       companyName: form.companyName.trim(),
       phone: form.phone.trim(),
-      alternatePhone: form.alternatePhone.trim(),
-      email: form.email.trim(),
-      idNumber: form.idNumber.trim(),
       address: form.address.trim(),
-      city: form.city.trim(),
-      province: form.province.trim(),
       openingBalance: Number(form.openingBalance || 0),
-      creditLimit: Number(form.creditLimit || 0),
       updatedAt: new Date().toISOString(),
     };
 
@@ -279,7 +277,7 @@ export default function CustomersRegistry() {
       return [{ ...record, id: `CUS-${Date.now()}`, createdAt: new Date().toISOString() }, ...current];
     });
     if (ok !== false) {
-      notify(t.saved, "success");
+      notify(t.saved, "success", { silent: true });
       closeModal();
     }
   };
@@ -336,11 +334,11 @@ export default function CustomersRegistry() {
                   <td>
                     <div className="customer-name-cell">
                       <span className="customer-avatar"><UserRound size={18} /></span>
-                      <div><strong>{item.fullName}</strong><small>{item.customerType === "business" ? (item.companyName || t.business) : t.individual}</small></div>
+                      <div><strong>{item.fullName}</strong><small>{item.companyName || "—"}</small></div>
                     </div>
                   </td>
-                  <td><strong>{item.phone}</strong><small>{item.email || item.alternatePhone || "—"}</small></td>
-                  <td>{[item.city, item.province, item.country].filter(Boolean).join(", ") || "—"}</td>
+                  <td><strong>{item.phone}</strong></td>
+                  <td>{item.address || "—"}</td>
                   <td>{Number(item.openingBalance || 0).toLocaleString()}</td>
                   <td><span className={`customer-status ${item.status}`}>{item.status === "inactive" ? t.inactive : t.active}</span></td>
                   <td>
@@ -384,9 +382,8 @@ export default function CustomersRegistry() {
                 <section className="customer-form-section">
                   <div className="customer-section-title"><UserRound size={18} /><span>{t.customer}</span></div>
                   <div className="customer-form-grid">
-                    <label className="customer-field"><span>{t.customerType}</span><select value={form.customerType} onChange={(e) => change("customerType", e.target.value)}><option value="individual">{t.individual}</option><option value="business">{t.business}</option></select></label>
                     <label className="customer-field"><span>{t.fullName} *</span><input value={form.fullName} onChange={(e) => change("fullName", e.target.value)} autoFocus /></label>
-                    <label className="customer-field customer-span-2"><span>{t.companyName}</span><div className="customer-input-icon"><Building2 size={17} /><input value={form.companyName} onChange={(e) => change("companyName", e.target.value)} /></div></label>
+                    <label className="customer-field customer-span-6"><span>{t.companyName}</span><div className="customer-input-icon"><Building2 size={17} /><input value={form.companyName} onChange={(e) => change("companyName", e.target.value)} /></div></label>
                   </div>
                 </section>
 
@@ -394,19 +391,13 @@ export default function CustomersRegistry() {
                   <div className="customer-section-title"><Phone size={18} /><span>{t.contact}</span></div>
                   <div className="customer-form-grid">
                     <label className="customer-field"><span>{t.phone} *</span><input value={form.phone} onChange={(e) => change("phone", e.target.value)} /></label>
-                    <label className="customer-field"><span>{t.alternatePhone}</span><input value={form.alternatePhone} onChange={(e) => change("alternatePhone", e.target.value)} /></label>
-                    <label className="customer-field"><span>{t.email}</span><div className="customer-input-icon"><Mail size={17} /><input type="email" value={form.email} onChange={(e) => change("email", e.target.value)} /></div></label>
-                    <label className="customer-field"><span>{t.idNumber}</span><input value={form.idNumber} onChange={(e) => change("idNumber", e.target.value)} /></label>
                   </div>
                 </section>
 
                 <section className="customer-form-section">
                   <div className="customer-section-title"><MapPin size={18} /><span>{t.location}</span></div>
                   <div className="customer-form-grid">
-                    <label className="customer-field customer-span-2"><span>{t.address}</span><input value={form.address} onChange={(e) => change("address", e.target.value)} /></label>
-                    <label className="customer-field"><span>{t.city}</span><input value={form.city} onChange={(e) => change("city", e.target.value)} /></label>
-                    <label className="customer-field"><span>{t.province}</span><input value={form.province} onChange={(e) => change("province", e.target.value)} /></label>
-                    <label className="customer-field customer-span-2"><span>{t.country}</span><input value={form.country} onChange={(e) => change("country", e.target.value)} /></label>
+                    <label className="customer-field customer-span-6"><span>{t.address}</span><input value={form.address} onChange={(e) => change("address", e.target.value)} /></label>
                   </div>
                 </section>
 
@@ -414,8 +405,7 @@ export default function CustomersRegistry() {
                   <div className="customer-section-title"><Building2 size={18} /><span>{t.balance}</span></div>
                   <div className="customer-form-grid">
                     <label className="customer-field"><span>{t.openingBalance}</span><input type="number" step="any" value={form.openingBalance} onChange={(e) => change("openingBalance", e.target.value)} /></label>
-                    <label className="customer-field"><span>{t.creditLimit}</span><input type="number" min="0" step="any" value={form.creditLimit} onChange={(e) => change("creditLimit", e.target.value)} /></label>
-                    <label className="customer-field customer-span-2"><span>{t.status}</span><select value={form.status} onChange={(e) => change("status", e.target.value)}><option value="active">{t.active}</option><option value="inactive">{t.inactive}</option></select></label>
+                    <label className="customer-field customer-span-6"><span>{t.status}</span><select value={form.status} onChange={(e) => change("status", e.target.value)}><option value="active">{t.active}</option><option value="inactive">{t.inactive}</option></select></label>
                     <label className="customer-field customer-span-2"><span>{t.notes}</span><textarea rows="4" value={form.notes} onChange={(e) => change("notes", e.target.value)} /></label>
                   </div>
                 </section>

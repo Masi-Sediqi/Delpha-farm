@@ -446,7 +446,7 @@ export default function GeneralJournal() {
     const entry = { id: `journal-${Date.now()}`, date: form.date, reference: form.reference.trim() || `JV-${String(Date.now()).slice(-7)}`, currency: normalizeCurrency(form.currency), debitAccount: form.debitAccount.trim(), creditAccount: form.creditAccount.trim(), amount, description: form.description.trim(), createdAt: now, updatedAt: now };
     const ok = await setManualEntries([entry, ...manualEntries]);
     if (ok) {
-      notify(t.saved, "success");
+      notify(t.saved, "success", { silent: true });
       setShowModal(false);
     }
   };

@@ -1397,6 +1397,20 @@ body.dark-mode .dashboard-date-filter-actions button:hover {
   color: #64748b;
 }
 
+.search-result-clickable-row,
+tr[class*="clickable-row"],
+tr[role="button"] {
+  cursor: pointer;
+}
+
+.search-result-clickable-row {
+  transition: background 0.16s ease;
+}
+
+.search-result-clickable-row:hover td {
+  background: color-mix(in srgb, var(--company-accent, #4f46e5) 6%, var(--card-bg, #fff));
+}
+
 .search-result-type,
 .search-money {
   display: inline-flex;
@@ -2231,6 +2245,17 @@ body.dark-mode .notification-item:hover { background: #111c31 !important; }
 .app-toast.error span {
   background: #fee2e2;
   color: #dc2626;
+}
+
+/* Keep transient alerts compact when several important messages arrive together. */
+.toast-host {
+  gap: 6px;
+}
+
+.app-toast {
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
 }
 
 @keyframes toastShow {
@@ -8757,6 +8782,7 @@ body[data-theme="black-white"].dark-mode :is([role="tab"][aria-selected="true"],
   .notification-icon,
   .notification-remove-btn,
   .notification-clear-btn,
+  .purchasing-payment-modes button,
   .ph-stat-card,
   .ph-activity-row,
   .sales-product-inline-add,
@@ -8806,6 +8832,7 @@ body[data-theme="black-white"].dark-mode :is([role="tab"][aria-selected="true"],
   .notification-icon,
   .notification-remove-btn,
   .notification-clear-btn,
+  .purchasing-payment-modes button,
   .ph-stat-card,
   .ph-activity-row,
   .sales-product-inline-add,
@@ -8836,6 +8863,7 @@ body[data-theme="black-white"].dark-mode :is([role="tab"][aria-selected="true"],
   .notification-icon,
   .notification-remove-btn,
   .notification-clear-btn,
+  .purchasing-payment-modes button,
   .ph-stat-card,
   .ph-activity-row,
   .sales-product-inline-add,
@@ -8862,6 +8890,7 @@ body[data-theme="black-white"].dark-mode :is([role="tab"][aria-selected="true"],
   .notification-icon,
   .notification-remove-btn,
   .notification-clear-btn,
+  .purchasing-payment-modes button,
   .ph-stat-card,
   .ph-activity-row,
   .sales-product-inline-add,
@@ -9153,3 +9182,122 @@ button.notification-icon {
 .notification-dropdown-title{display:flex;align-items:center;gap:8px}.notification-dropdown-title>span{min-width:22px;height:22px;padding:0 6px;border-radius:999px;display:grid;place-items:center;background:var(--company-accent,#4f46e5);color:#fff;font-size:11px;font-weight:800}
 .notification-header-actions{display:flex;align-items:center;gap:6px}.notification-header-actions button{width:30px;height:30px;padding:0;display:grid;place-items:center;border-radius:8px}
 @media(max-width:640px){.notification-dropdown{position:fixed !important;inset-inline:10px !important;top:74px !important;width:auto !important;max-width:none !important;max-height:calc(100vh - 90px) !important}.global-search-results{max-width:calc(100vw - 28px) !important}}
+/* Keep table edit/delete action buttons aligned with the Products page size. */
+:is(
+  .suppliers-actions,
+  .supplier-ledger-actions,
+  .customer-row-actions,
+  .settings-user-actions,
+  .purchasing-row-actions,
+  .sales-product-row-actions,
+  .trash-actions
+) button {
+  width: 31px !important;
+  min-width: 31px !important;
+  height: 31px !important;
+  min-height: 31px !important;
+  padding: 0 !important;
+}
+
+:is(
+  .suppliers-actions,
+  .supplier-ledger-actions,
+  .customer-row-actions,
+  .settings-user-actions,
+  .purchasing-row-actions,
+  .sales-product-row-actions,
+  .trash-actions
+) button svg {
+  width: 15px !important;
+  height: 15px !important;
+}
+
+/* Final compact layout for the smart-alert menu. */
+.notification-dropdown {
+  width: min(310px, calc(100vw - 24px)) !important;
+  max-height: min(460px, calc(100vh - 96px)) !important;
+}
+
+.notification-dropdown-header {
+  min-height: 38px !important;
+  padding: 4px 10px !important;
+}
+
+.notification-dropdown-title {
+  gap: 6px !important;
+}
+
+.notification-dropdown-title > span {
+  min-width: 20px !important;
+  height: 20px !important;
+}
+
+.notification-header-actions {
+  gap: 3px !important;
+}
+
+.notification-header-actions button {
+  width: 27px !important;
+  min-width: 27px !important;
+  height: 27px !important;
+}
+
+.notification-group-list {
+  gap: 4px !important;
+  padding: 5px 8px !important;
+}
+
+.notification-group-row {
+  min-height: 24px !important;
+  padding: 3px 7px !important;
+  gap: 5px !important;
+  font-size: 10px !important;
+}
+
+.notification-item-list {
+  max-height: 330px !important;
+}
+
+.notification-item {
+  grid-template-columns: 26px minmax(0, 1fr) 24px !important;
+  gap: 7px !important;
+  padding: 7px 8px !important;
+}
+
+.notification-icon {
+  width: 24px !important;
+  height: 24px !important;
+  border-radius: 8px !important;
+}
+
+.notification-item-content strong {
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+}
+
+.notification-item-content p {
+  margin: 2px 0 3px !important;
+  font-size: 10px !important;
+  line-height: 1.25 !important;
+}
+
+.notification-item-content small {
+  font-size: 9px !important;
+  line-height: 1.2 !important;
+}
+
+.notification-remove-btn {
+  width: 24px !important;
+  min-width: 24px !important;
+  height: 24px !important;
+}
+
+@media (max-width: 640px) {
+  .notification-dropdown {
+    max-height: calc(100vh - 86px) !important;
+  }
+
+  .notification-item-list {
+    max-height: calc(100vh - 180px) !important;
+  }
+}
