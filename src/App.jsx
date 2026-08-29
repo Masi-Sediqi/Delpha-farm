@@ -515,6 +515,7 @@ function App() {
     { to: "/sales-register", label: labels.salesRegister, moduleKey: "customers", icon: ShoppingBag },
     { to: "/receivables", label: labels.receivables, moduleKey: "customers", icon: BadgeDollarSign },
     { to: "/inventory", label: labels.inventory, moduleKey: "reports", icon: Boxes },
+    { to: "/expenses", label: labels.expenses, moduleKey: "reports", icon: FileMinus2 },
     { to: "/cash-flow", label: labels.cashFlow, moduleKey: "reports", icon: Wallet },
     { to: "/reports", label: labels.reports, moduleKey: "reports", icon: FileBarChart },
     { to: "/trash", label: labels.trash, moduleKey: "settings", icon: Trash2 },
@@ -659,7 +660,6 @@ function App() {
               <Route path="/sales-register" element={protect("customers", <SalesRegister />)} />
               <Route path="/sales" element={protect("customers", <SalesRegister />)} />
               <Route path="/sales/new" element={protect("customers", <SaleNew />)} />
-              <Route path="/sales/:saleId/edit" element={protect("customers", <SaleNew />)} />
               <Route path="/receivables" element={protect("customers", <Receivables />)} />
               <Route path="/sale-returns" element={protect("customers", <SaleReturns />)} />
               <Route path="/inventory" element={protect("reports", <Inventory />)} />
