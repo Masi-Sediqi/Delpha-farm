@@ -41,6 +41,8 @@ const labelsByLanguage = {
     update: "Update Customer",
     cancel: "Cancel",
     required: "Full name and phone number are required.",
+    fullNameRequired: "Please enter the full name.",
+    phoneRequired: "Please enter the phone number.",
     saved: "Customer saved successfully.",
     deleted: "Customer deleted successfully.",
     confirmDelete: "Delete this customer?",
@@ -100,6 +102,8 @@ const labelsByLanguage = {
     update: "ثبت تغییرات",
     cancel: "لغو",
     required: "نام مکمل و شماره تماس ضروری است.",
+    fullNameRequired: "لطفاً نام مکمل را وارد کنید.",
+    phoneRequired: "لطفاً شماره تماس را وارد کنید.",
     saved: "مشتری با موفقیت ذخیره شد.",
     deleted: "مشتری حذف شد.",
     confirmDelete: "این مشتری حذف شود؟",
@@ -159,6 +163,8 @@ const labelsByLanguage = {
     update: "بدلونونه ثبت کړئ",
     cancel: "لغوه",
     required: "بشپړ نوم او د اړیکې شمېره اړینه ده.",
+    fullNameRequired: "مهرباني وکړئ بشپړ نوم ولیکئ.",
+    phoneRequired: "مهرباني وکړئ د اړیکې شمېره ولیکئ.",
     saved: "پېرودونکی په بریالیتوب ثبت شو.",
     deleted: "پېرودونکی حذف شو.",
     confirmDelete: "دا پېرودونکی حذف شي؟",
@@ -207,6 +213,7 @@ export default function CustomersRegistry() {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(blankForm);
+  const [fieldErrors, setFieldErrors] = useState({});
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -231,24 +238,42 @@ export default function CustomersRegistry() {
   const openCreate = () => {
     setEditingId(null);
     setForm(blankForm);
+    setFieldErrors({});
     setIsOpen(true);
   };
 
   const openEdit = (item) => {
     setEditingId(item.id);
     setForm({ ...blankForm, ...item });
+    setFieldErrors({});
     setIsOpen(true);
   };
 
-  const closeModal = () => setIsOpen(false);
-  const change = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const closeModal = () => {
+    setIsOpen(false);
+    setFieldErrors({});
+  };
+  const change = (key, value) => {
+    setForm((current) => ({ ...current, [key]: value }));
+    if (fieldErrors[key]) {
+      setFieldErrors((current) => {
+        const next = { ...current };
+        delete next[key];
+        return next;
+      });
+    }
+  };
 
   const saveCustomer = async (event) => {
     event.preventDefault();
-    if (!form.fullName.trim() || !form.phone.trim()) {
-      notify(t.required, "warning");
+    const nextErrors = {};
+    if (!form.fullName.trim()) nextErrors.fullName = t.fullNameRequired;
+    if (!form.phone.trim()) nextErrors.phone = t.phoneRequired;
+    if (Object.keys(nextErrors).length) {
+      setFieldErrors(nextErrors);
       return;
     }
+    setFieldErrors({});
 
     const {
       customerType: _customerType,
@@ -382,7 +407,7 @@ export default function CustomersRegistry() {
                 <section className="customer-form-section">
                   <div className="customer-section-title"><UserRound size={18} /><span>{t.customer}</span></div>
                   <div className="customer-form-grid">
-                    <label className="customer-field"><span>{t.fullName} *</span><input value={form.fullName} onChange={(e) => change("fullName", e.target.value)} autoFocus /></label>
+                    <label className={`customer-field ${fieldErrors.fullName ? "has-error" : ""}`}><span>{t.fullName} *</span><input value={form.fullName} onChange={(e) => change("fullName", e.target.value)} aria-invalid={Boolean(fieldErrors.fullName)} aria-describedby={fieldErrors.fullName ? "customer-full-name-error" : undefined} autoFocus />{fieldErrors.fullName && <small id="customer-full-name-error" className="customer-field-error" role="alert">{fieldErrors.fullName}</small>}</label>
                     <label className="customer-field customer-span-6"><span>{t.companyName}</span><div className="customer-input-icon"><Building2 size={17} /><input value={form.companyName} onChange={(e) => change("companyName", e.target.value)} /></div></label>
                   </div>
                 </section>
@@ -390,7 +415,7 @@ export default function CustomersRegistry() {
                 <section className="customer-form-section">
                   <div className="customer-section-title"><Phone size={18} /><span>{t.contact}</span></div>
                   <div className="customer-form-grid">
-                    <label className="customer-field"><span>{t.phone} *</span><input value={form.phone} onChange={(e) => change("phone", e.target.value)} /></label>
+                    <label className={`customer-field ${fieldErrors.phone ? "has-error" : ""}`}><span>{t.phone} *</span><input value={form.phone} onChange={(e) => change("phone", e.target.value)} aria-invalid={Boolean(fieldErrors.phone)} aria-describedby={fieldErrors.phone ? "customer-phone-error" : undefined} />{fieldErrors.phone && <small id="customer-phone-error" className="customer-field-error" role="alert">{fieldErrors.phone}</small>}</label>
                   </div>
                 </section>
 

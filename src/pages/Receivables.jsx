@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronRight, CircleDollarSign, ReceiptText, Search, UserRound, WalletCards } from "lucide-react";
+import { createPortal } from "react-dom";
+import { CircleDollarSign, CreditCard, MoreHorizontal, Plus, Printer, ReceiptText, Search, UserRound, WalletCards } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useJsonCollection } from "../hooks/useJsonCollection";
+import { confirmAction } from "../utils/confirmDialog";
+import { notify } from "../utils/notify";
 import "./Payables.css";
 
 const languageKey = "afghan-power-language";
@@ -32,7 +35,17 @@ const tr = {
     balance: "Receivable",
     currency: "Currency",
     actions: "Actions",
-    details: "Details",
+    menu: "Actions",
+    registerReceivables: "Collect Receivables",
+    receive: "Receive",
+    markReceived: "Mark as Received",
+    print: "Print",
+    bill: "Bill",
+    receivedSuccess: "Customer balance marked as received.",
+    markReceivedTitle: "Mark customer balance as received?",
+    markReceivedMessage: "This will record a receipt for the full outstanding balance.",
+    confirm: "Confirm",
+    cancel: "Cancel",
     noData: "No outstanding receivables",
     settled: "All customer balances are currently settled.",
   },
@@ -52,7 +65,17 @@ const tr = {
     balance: "باقی طلب",
     currency: "واحد پول",
     actions: "عملیات",
-    details: "معلومات",
+    menu: "عملیات",
+    registerReceivables: "ثبت طلبات",
+    receive: "دریافت",
+    markReceived: "دریافت مکمل",
+    print: "پرنت",
+    bill: "بل",
+    receivedSuccess: "حساب مشتری مکمل دریافت شد.",
+    markReceivedTitle: "حساب مشتری مکمل دریافت شود؟",
+    markReceivedMessage: "به اندازه تمام باقی‌مانده یک دریافت جدید ثبت می‌شود.",
+    confirm: "تأیید",
+    cancel: "لغو",
     noData: "هیچ طلب باقی‌مانده نیست",
     settled: "در حال حاضر حساب تمام مشتریان تصفیه است.",
   },
@@ -72,7 +95,17 @@ const tr = {
     balance: "پاتې طلب",
     currency: "اسعار",
     actions: "کړنې",
-    details: "معلومات",
+    menu: "عملیات",
+    registerReceivables: "د طلباتو ثبت",
+    receive: "ترلاسه کول",
+    markReceived: "بشپړ ترلاسه کول",
+    print: "چاپ",
+    bill: "بل",
+    receivedSuccess: "د پېرودونکي حساب بشپړ ترلاسه شو.",
+    markReceivedTitle: "د پېرودونکي حساب بشپړ ترلاسه شي؟",
+    markReceivedMessage: "د ټول پاتې مبلغ په اندازه نوی ترلاسه کول ثبتېږي.",
+    confirm: "تایید",
+    cancel: "لغوه",
     noData: "هیڅ پاتې طلب نشته",
     settled: "اوس د ټولو پېرودونکو حسابونه تصفیه دي.",
   },
@@ -84,8 +117,9 @@ export default function Receivables() {
   const [customers] = useJsonCollection("customerRegistry");
   const [sales] = useJsonCollection("salesRegister");
   const [saleReturns] = useJsonCollection("saleReturns");
-  const [customerPayments] = useJsonCollection("customerPayments");
+  const [customerPayments, setCustomerPayments] = useJsonCollection("customerPayments");
   const [search, setSearch] = useState("");
+  const [actionMenu, setActionMenu] = useState(null);
   const t = tr[language] || tr.en;
   const direction = language === "en" ? "ltr" : "rtl";
 
@@ -98,6 +132,17 @@ export default function Receivables() {
       window.removeEventListener("storage", sync);
     };
   }, []);
+
+  useEffect(() => {
+    if (!actionMenu) return undefined;
+    const close = () => setActionMenu(null);
+    window.addEventListener("resize", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [actionMenu]);
 
   const rows = useMemo(() => customers.map((customer) => {
     const id = String(customer.id);
@@ -112,6 +157,13 @@ export default function Receivables() {
     const openingCredit = Math.max(-num(customer.openingBalance), 0);
     const totalPaid = paidAtSale + laterPaid + returned + openingCredit;
     const balance = Math.max(openingDebit + totalSold - totalPaid, 0);
+    const unpaid = customerSales
+      .map((sale) => ({
+        ...sale,
+        calculatedRemaining: Math.max(num(sale.remainingAmount ?? (num(sale.totalAmount) - num(sale.paidAmount))), 0),
+      }))
+      .filter((sale) => sale.calculatedRemaining > 0.0001)
+      .sort((a, b) => new Date(a.saleDate || a.createdAt || 0) - new Date(b.saleDate || b.createdAt || 0));
     return {
       customer,
       invoiceCount: customerSales.length,
@@ -119,6 +171,7 @@ export default function Receivables() {
       totalPaid: paidAtSale + laterPaid,
       balance,
       currency: normalizeCurrency(customer.currency || customerSales[0]?.currency),
+      focusSale: unpaid[0] || customerSales[customerSales.length - 1] || null,
     };
   }).filter((row) => row.balance > 0.000001), [customers, sales, saleReturns, customerPayments]);
 
@@ -135,6 +188,47 @@ export default function Receivables() {
     return `${customer.fullName || ""} ${customer.companyName || ""} ${customer.phone || ""}`.toLowerCase().includes(q);
   });
 
+  const openCustomerLedger = (row, openPayment = false) => {
+    navigate(`/customer-detail/${row.customer.id}`, { state: { openPayment } });
+  };
+
+  const openMenu = (event, payload) => {
+    event.stopPropagation();
+    const rect = event.currentTarget.getBoundingClientRect();
+    const width = 150;
+    const height = 156;
+    const gap = 5;
+    const below = window.innerHeight - rect.bottom > height + 12;
+    const top = below ? rect.bottom + gap : Math.max(8, rect.top - height - gap);
+    let left = direction === "rtl" ? rect.right - width : rect.left;
+    left = Math.min(Math.max(8, left), window.innerWidth - width - 8);
+    setActionMenu({ payload, top, left });
+  };
+
+  const markAsReceived = async (row) => {
+    const ok = await confirmAction({
+      title: t.markReceivedTitle,
+      message: t.markReceivedMessage,
+      confirmText: t.confirm,
+      cancelText: t.cancel,
+    });
+    if (!ok) return;
+    const now = new Date();
+    const record = {
+      id: `CPAY-${Date.now()}`,
+      customerId: row.customer.id,
+      customerName: row.customer.fullName || row.customer.companyName || "",
+      date: now.toISOString().slice(0, 10),
+      amount: row.balance,
+      currency: row.currency,
+      description: t.markReceived,
+      reference: `REC-${String(Date.now()).slice(-7)}`,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+    };
+    if (await setCustomerPayments([record, ...customerPayments])) notify(t.receivedSuccess, "success");
+  };
+
   return (
     <div className="payables-page" dir={direction}>
       <header className="payables-header">
@@ -142,6 +236,7 @@ export default function Receivables() {
           <div className="payables-title-line"><WalletCards size={24} /><h1>{t.title}</h1></div>
           <p>{t.subtitle}</p>
         </div>
+        <button type="button" className="payables-batch-btn" onClick={() => navigate("/receivables/payments/new")}><Plus size={15} />{t.registerReceivables}</button>
       </header>
 
       <section className="payables-stats">
@@ -159,10 +254,11 @@ export default function Receivables() {
           <table className="payables-table">
             <thead><tr><th>{t.customer}</th><th>{t.phone}</th><th>{t.invoices}</th><th>{t.sold}</th><th>{t.paid}</th><th>{t.balance}</th><th>{t.currency}</th><th>{t.actions}</th></tr></thead>
             <tbody>
-              {filteredRows.map(({ customer, invoiceCount, totalSold, totalPaid, balance, currency }) => {
+              {filteredRows.map((row) => {
+                const { customer, invoiceCount, totalSold, totalPaid, balance, currency } = row;
                 const name = customer.fullName || customer.companyName || "—";
                 return (
-                  <tr key={customer.id}>
+                  <tr key={customer.id} className="payables-clickable-row" onClick={() => openCustomerLedger(row)}>
                     <td><div className="payables-supplier-cell"><span className="payables-supplier-icon"><UserRound size={15} /></span><div><strong>{name}</strong><small>{customer.companyName && customer.companyName !== name ? customer.companyName : ""}</small></div></div></td>
                     <td className="payables-phone">{customer.phone || "—"}</td>
                     <td>{invoiceCount}</td>
@@ -170,7 +266,9 @@ export default function Receivables() {
                     <td>{money(totalPaid)}</td>
                     <td><span className="payables-balance-pill">{money(balance)}</span></td>
                     <td><span className="payables-currency-pill">{currency}</span></td>
-                    <td><button type="button" className="payables-detail-btn" onClick={() => navigate(`/customer-detail/${customer.id}`)} title={t.details}><span>{t.details}</span><ChevronRight size={14} /></button></td>
+                    <td className="payables-actions-cell" onClick={(event) => event.stopPropagation()}>
+                      <button type="button" className="payables-action-trigger" onClick={(event) => openMenu(event, row)} aria-label={t.menu} title={t.menu}><MoreHorizontal size={16} /></button>
+                    </td>
                   </tr>
                 );
               })}
@@ -179,6 +277,15 @@ export default function Receivables() {
           </table>
         </div>
       </section>
+      {actionMenu && createPortal(
+        <div className="payables-action-popover" style={{ top: actionMenu.top, left: actionMenu.left }}>
+          <button type="button" onClick={() => { const row = actionMenu.payload; setActionMenu(null); openCustomerLedger(row, true); }}><CreditCard size={14} /><span>{t.receive}</span></button>
+          <button type="button" onClick={() => { const row = actionMenu.payload; setActionMenu(null); markAsReceived(row); }}><WalletCards size={14} /><span>{t.markReceived}</span></button>
+          <button type="button" disabled={!actionMenu.payload.focusSale} onClick={() => { const sale = actionMenu.payload.focusSale; setActionMenu(null); if (sale) navigate(`/sale-detail/${sale.id}/print`); }}><Printer size={14} /><span>{t.print}</span></button>
+          <button type="button" disabled={!actionMenu.payload.focusSale} onClick={() => { const sale = actionMenu.payload.focusSale; setActionMenu(null); if (sale) navigate(`/sale-detail/${sale.id}`); }}><ReceiptText size={14} /><span>{t.bill}</span></button>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

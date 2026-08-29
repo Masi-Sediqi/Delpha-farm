@@ -9301,3 +9301,47 @@ button.notification-icon {
     max-height: calc(100vh - 180px) !important;
   }
 }
+
+
+/* Header currency compact dropdown */
+.main > .topbar .currency-menu{
+  position:relative !important;
+}
+.main > .topbar .header-currency-btn{
+  position:relative !important;
+}
+.main > .topbar .currency-dropdown{
+  min-width:112px !important;
+  width:112px !important;
+  padding:6px !important;
+  display:grid !important;
+  gap:3px !important;
+}
+.main > .topbar .currency-dropdown button{
+  width:100% !important;
+  min-height:34px !important;
+  border:0 !important;
+  background:transparent !important;
+  border-radius:8px !important;
+  padding:0 8px !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:space-between !important;
+  gap:8px !important;
+  cursor:pointer !important;
+  font:inherit !important;
+  font-size:12px !important;
+  color:inherit !important;
+}
+.main > .topbar .currency-dropdown button:hover,
+.main > .topbar .currency-dropdown button.active{
+  background:var(--surface-muted, #f3f4f6) !important;
+}
+.main > .topbar .currency-dropdown button span{
+  font-weight:700 !important;
+  letter-spacing:0 !important;
+}
+.main > .topbar .currency-dropdown button small{
+  font-size:11px !important;
+  font-weight:800 !important;
+}

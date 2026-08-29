@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   BadgeDollarSign,
@@ -205,6 +205,7 @@ const normalizeDate = (value) => {
 export default function CustomerDetail() {
   const { customerId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [customers] = useJsonCollection("customerRegistry");
   const [sales] = useJsonCollection("salesRegister");
   const [saleReturns] = useJsonCollection("saleReturns");
@@ -237,6 +238,10 @@ export default function CustomerDetail() {
       document.body.classList.remove("app-modal-open");
     };
   }, [showPayment]);
+
+  useEffect(() => {
+    if (location.state?.openPayment) openPaymentModal();
+  }, [location.state?.openPayment]);
 
   const customerSales = useMemo(
     () => sales.filter((item) => String(item.customerId) === String(customerId)),

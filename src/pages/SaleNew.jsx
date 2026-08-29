@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -30,6 +30,7 @@ import "./SaleNew.css";
 const languageKey = "afghan-power-language";
 const currencies = ["AFN", "USD", "EUR", "INR"];
 const num = (value) => Math.max(Number(value || 0), 0);
+const positiveUnitCount = (value) => Math.max(Number(value || 1) || 1, 1);
 const today = () => {
   const date = new Date();
   const offset = date.getTimezoneOffset() * 60000;
@@ -51,6 +52,7 @@ const text = {
     add: "Add",
     cancel: "Cancel",
     currency: "Currency",
+    billNumber: "Bill number",
     date: "Sale date (Solar Hijri)",
     paymentStatus: "Payment status",
     paidFull: "Fully paid",
@@ -62,7 +64,8 @@ const text = {
     invoiceItems: "Sale items",
     emptyTitle: "No medicine added yet",
     emptyText: "Search above and select medicines to add them to this sale.",
-    qty: "Quantity",
+    qty: "Quantity by main unit",
+    actualQty: "Quantity by piece",
     salePrice: "Sale price",
     purchasePrice: "Purchase price",
     addMedicine: "Add",
@@ -106,6 +109,7 @@ const text = {
     add: "اضافه",
     cancel: "لغو",
     currency: "واحد پول",
+    billNumber: "بل نمبر",
     date: "تاریخ فروش (شمسی)",
     paymentStatus: "وضعیت پرداخت",
     paidFull: "مکمل پرداخت",
@@ -117,7 +121,8 @@ const text = {
     invoiceItems: "اقلام فروش",
     emptyTitle: "هنوز دوایی اضافه نشده",
     emptyText: "از جستجوی بالا چندین دوا را پیدا کرده و به این فروش اضافه کنید.",
-    qty: "مقدار",
+    qty: "مقدار به واحد اصلی",
+    actualQty: "مقدار به دانه",
     salePrice: "قیمت فروش",
     purchasePrice: "قیمت خرید",
     addMedicine: "اضافه",
@@ -161,6 +166,7 @@ const text = {
     add: "اضافه",
     cancel: "لغوه",
     currency: "اسعار",
+    billNumber: "بل نمبر",
     date: "د خرڅلاو نېټه (لمریز)",
     paymentStatus: "د ورکړې حالت",
     paidFull: "بشپړ ورکړل شوی",
@@ -172,7 +178,8 @@ const text = {
     invoiceItems: "د خرڅلاو توکي",
     emptyTitle: "تر اوسه درمل نه دي اضافه شوي",
     emptyText: "له پورته لټون څخه څو درمل پیدا او دې خرڅلاو ته یې اضافه کړئ.",
-    qty: "مقدار",
+    qty: "په اصلي واحد مقدار",
+    actualQty: "په دانه مقدار",
     salePrice: "د پلور بیه",
     purchasePrice: "د پېرود بیه",
     addMedicine: "اضافه",
@@ -219,13 +226,19 @@ function SaleNew() {
   const [quickOpen, setQuickOpen] = useState(false);
   const [quickName, setQuickName] = useState("");
   const [currency, setCurrency] = useState("AFN");
+  const [billNumber, setBillNumber] = useState(() => `SAL-${Date.now().toString().slice(-8)}`);
   const [saleDate, setSaleDate] = useState(today());
   const [paymentStatus, setPaymentStatus] = useState("paid");
   const [paidAmount, setPaidAmount] = useState("");
   const [query, setQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
+  const [activeResultIndex, setActiveResultIndex] = useState(0);
   const [items, setItems] = useState([]);
   const [editInitialized, setEditInitialized] = useState(false);
+  const searchInputRef = useRef(null);
+  const resultButtonRefs = useRef(new Map());
+  const customerSelectRef = useRef(null);
+  const packageQuantityInputRefs = useRef(new Map());
 
   const t = text[language] || text.en;
   const direction = language === "en" ? "ltr" : "rtl";
@@ -250,30 +263,75 @@ function SaleNew() {
     .trim();
 
   const productDisplayName = (product) => product?.productName || product?.name || product?.title || product?.medicineName || "—";
+  const unitLabels = {
+    en: { carton: "Carton", box: "Box", pack: "Pack", bottle: "Bottle", strip: "Strip", piece: "Piece", dozen: "Dozen", tube: "Tube", sachet: "Sachet" },
+    fa: { carton: "کارتن", box: "بکس", pack: "بسته", bottle: "بوتل", strip: "ورق", piece: "دانه", dozen: "درجن", tube: "تیوب", sachet: "پاکت" },
+    ps: { carton: "کارتن", box: "بکس", pack: "بسته", bottle: "بوتل", strip: "پټه", piece: "دانه", dozen: "درجن", tube: "ټیوب", sachet: "پاکټ" },
+  };
+  const unitLabel = (unit) => unitLabels[language]?.[String(unit || "piece").toLowerCase()] || unit || "—";
+  const productPiecesPerUnit = (product) => positiveUnitCount(
+    product?.piecesPerUnit ?? product?.unitsPerUnit ?? product?.quantityPerUnit ?? product?.piecesPerBox ?? product?.cartonSize ?? 1
+  );
   const editingSale = isEditMode ? sales.find((row) => String(row.id) === String(saleId)) : null;
   const effectiveStockMovements = useMemo(
     () => (isEditMode && editingSale ? replaceReferenceMovements(stockMovements, "sale", editingSale.id, []) : stockMovements),
     [isEditMode, editingSale, stockMovements]
   );
-  const getStock = (product) => Math.max(getProductStock(effectiveStockMovements, product?.id, legacyProductStock(product)), 0);
+  const pieceStockMovements = useMemo(
+    () => effectiveStockMovements.map((movement) => {
+      const isLegacyOpening = movement.referenceType === "opening"
+        && movement.stockUnit !== "piece"
+        && movement.quantityUnit !== "piece";
+      if (!isLegacyOpening) return movement;
+      const product = products.find((row) => String(row.id) === String(movement.productId));
+      const multiplier = productPiecesPerUnit(product);
+      return {
+        ...movement,
+        quantityIn: num(movement.quantityIn) * multiplier,
+        quantityOut: num(movement.quantityOut) * multiplier,
+      };
+    }),
+    [effectiveStockMovements, products]
+  );
+  const getStock = useCallback(
+    (product) => {
+      const productId = String(product?.id || "");
+      const movements = pieceStockMovements.filter((movement) => String(movement.productId) === productId);
+      const unitsPerUnit = productPiecesPerUnit(product);
+      if (!movements.length) {
+        const fallback = product?.totalPieceQuantity !== undefined && product?.totalPieceQuantity !== null && product?.totalPieceQuantity !== ""
+          ? num(product.totalPieceQuantity)
+          : num(legacyProductStock(product)) * unitsPerUnit;
+        return fallback;
+      }
+      return Math.max(getProductStock(pieceStockMovements, productId, 0), 0);
+    },
+    [pieceStockMovements]
+  );
 
   useEffect(() => {
     if (!isEditMode || editInitialized || !editingSale) return;
     setCustomerId(editingSale.customerId || "");
     setCurrency(editingSale.currency || "AFN");
+    setBillNumber(editingSale.invoiceNumber || editingSale.billNumber || editingSale.billNo || `SAL-${Date.now().toString().slice(-8)}`);
     setSaleDate(editingSale.saleDate || today());
     const debt = num(editingSale.remainingAmount) > 0 || editingSale.paymentStatus === "debt" || editingSale.paymentMode === "installment";
     setPaymentStatus(debt ? "debt" : "paid");
     setPaidAmount(String(editingSale.paidAmount ?? ""));
     setItems((editingSale.items || []).map((item) => {
       const product = products.find((row) => String(row.id) === String(item.productId));
+      const unitsPerUnit = positiveUnitCount(item.unitsPerUnit ?? productPiecesPerUnit(product));
+      const pieceQuantity = num(item.quantity);
       return {
         productId: item.productId,
         productName: item.productName || productDisplayName(product),
         image: item.image || productImageSrc(product),
         group: item.group || groupNameById(productGroups, product?.groupId, product?.group || ""),
         unit: item.unit || product?.unit || "piece",
-        quantity: num(item.quantity),
+        purchaseUnit: item.purchaseUnit || item.packageUnit || product?.productUnit || product?.purchaseUnit || product?.packageUnit || product?.unit || "piece",
+        unitsPerUnit,
+        packageQuantity: num(item.packageQuantity ?? item.purchaseQuantity) || (pieceQuantity / unitsPerUnit),
+        quantity: pieceQuantity,
         purchasePrice: num(item.purchasePrice ?? product?.purchasePrice),
         salePrice: num(item.salePrice ?? product?.salePrice),
         discountAmount: num(item.discountAmount ?? item.discount),
@@ -281,45 +339,197 @@ function SaleNew() {
       };
     }));
     setEditInitialized(true);
-  }, [isEditMode, editInitialized, editingSale, products, productGroups, effectiveStockMovements]);
+  }, [isEditMode, editInitialized, editingSale, products, productGroups, effectiveStockMovements, getStock]);
 
   const results = useMemo(() => {
     const q = normalizeSearchText(query);
-    if (!searchFocused && !q) return [];
-    return (Array.isArray(products) ? products : [])
+    if (!searchFocused || !q) return [];
+
+    const available = (Array.isArray(products) ? products : [])
       .filter((product) => product && product.status !== "inactive" && product.active !== false)
-      .filter((product) => {
-        if (!q) return true;
+      .filter((product) => !items.some((row) => String(row.productId) === String(product.id)));
+
+    const scored = available.map((product, originalIndex) => {
         const group = groupNameById(productGroups, product.groupId, product.group || "");
-        const searchable = [
+      const fields = [
           productDisplayName(product), group, product.companyName, product.company,
           product.manufacturerName, product.barcode, product.barcodeNumber,
           product.serial, product.serialNumber, product.sku,
-        ].map(normalizeSearchText).join(" ");
-        return searchable.includes(q);
-      })
-      .slice(0, 20);
-  }, [products, productGroups, query, searchFocused, effectiveStockMovements]);
+      ].map(normalizeSearchText).filter(Boolean);
+      const name = normalizeSearchText(productDisplayName(product));
+      let score = 0;
+      if (name === q) score = 100;
+      else if (name.startsWith(q)) score = 80;
+      else if (fields.some((value) => value.startsWith(q))) score = 60;
+      else if (fields.some((value) => value.includes(q))) score = 40;
+      return { product, score, originalIndex };
+    });
+
+    const matching = scored
+      .filter((row) => row.score > 0)
+      .sort((a, b) => b.score - a.score || a.originalIndex - b.originalIndex);
+    const fallback = scored
+      .filter((row) => row.score === 0)
+      .sort((a, b) => a.originalIndex - b.originalIndex);
+
+    return [...matching, ...fallback].slice(0, 20).map((row) => row.product);
+  }, [products, productGroups, query, searchFocused, items]);
+
+  useEffect(() => {
+    setActiveResultIndex(0);
+  }, [query, results.length]);
+
+  useEffect(() => {
+    const active = document.querySelector(`.sale-inline-result[data-result-index="${activeResultIndex}"]`);
+    active?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+  }, [activeResultIndex]);
 
   const addProduct = (product) => {
     const stock = getStock(product);
     if (stock <= 0) return;
+    const unitsPerUnit = productPiecesPerUnit(product);
+    const pieceQuantity = Math.min(unitsPerUnit, stock);
+    const productKey = String(product.id);
+    let shouldFocusQuantity = true;
     setItems((current) => {
-      if (current.some((row) => String(row.productId) === String(product.id))) return current;
+      if (current.some((row) => String(row.productId) === productKey)) {
+        shouldFocusQuantity = true;
+        return current;
+      }
       return [...current, {
         productId: product.id,
         productName: productDisplayName(product),
         image: productImageSrc(product),
         group: groupNameById(productGroups, product.groupId, product.group || ""),
         unit: product.unit || "piece",
-        quantity: 1,
+        purchaseUnit: product.productUnit || product.purchaseUnit || product.packageUnit || product.unit || "piece",
+        unitsPerUnit,
+        packageQuantity: Number((pieceQuantity / unitsPerUnit).toFixed(4)),
+        quantity: pieceQuantity,
         purchasePrice: num(product.purchasePrice),
         salePrice: num(product.salePrice),
         discountAmount: 0,
         currentStock: stock,
       }];
     });
+    setQuery("");
+    setSearchFocused(false);
+    setActiveResultIndex(0);
+    window.setTimeout(() => {
+      if (!shouldFocusQuantity) return;
+      const input = packageQuantityInputRefs.current.get(productKey);
+      input?.focus();
+      input?.select?.();
+    }, 0);
+  };
+
+  const focusSearchResult = (index) => {
+    if (!results.length) return;
+    const nextIndex = (index + results.length) % results.length;
+    setActiveResultIndex(nextIndex);
+    resultButtonRefs.current.get(nextIndex)?.focus();
+  };
+
+  const moveSearchResult = (index, step) => {
+    focusSearchResult(index + step);
+  };
+
+  const handleSearchKeyDown = (event) => {
+    if (event.key === "Tab" && !event.shiftKey && results.length) {
+      event.preventDefault();
+      focusSearchResult(Math.min(activeResultIndex, results.length - 1));
+      return;
+    }
+    if (event.key === "Tab" && !event.shiftKey && !results.length) {
+      event.preventDefault();
+      customerSelectRef.current?.focus();
+      return;
+    }
+    if (event.key === "Home" && results.length) {
+      event.preventDefault();
+      focusSearchResult(0);
+      return;
+    }
+    if (event.key === "End" && results.length) {
+      event.preventDefault();
+      focusSearchResult(results.length - 1);
+      return;
+    }
+    if ((event.key === "ArrowLeft" || event.key === "ArrowRight") && results.length) {
+      event.preventDefault();
+      const visualStep = direction === "rtl"
+        ? (event.key === "ArrowLeft" ? 1 : -1)
+        : (event.key === "ArrowRight" ? 1 : -1);
+      moveSearchResult(activeResultIndex, visualStep);
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      if (results.length) addProduct(results[Math.min(activeResultIndex, results.length - 1)]);
+      return;
+    }
+    if (event.key === "Escape") setSearchFocused(false);
+  };
+
+  const handleResultKeyDown = (event, product, index) => {
+    if (event.key === "Tab") {
+      event.preventDefault();
+      if (event.shiftKey) {
+        if (index === 0) searchInputRef.current?.focus();
+        else moveSearchResult(index, -1);
+      } else if (index === results.length - 1) {
+        customerSelectRef.current?.focus();
+      } else {
+        moveSearchResult(index, 1);
+      }
+      return;
+    }
+    if (event.key === "Home") {
+      event.preventDefault();
+      focusSearchResult(0);
+      return;
+    }
+    if (event.key === "End") {
+      event.preventDefault();
+      focusSearchResult(results.length - 1);
+      return;
+    }
+    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      event.preventDefault();
+      const visualStep = direction === "rtl"
+        ? (event.key === "ArrowLeft" ? 1 : -1)
+        : (event.key === "ArrowRight" ? 1 : -1);
+      moveSearchResult(index, visualStep);
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      addProduct(product);
+      return;
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setSearchFocused(false);
+      searchInputRef.current?.focus();
+    }
+  };
+
+  const handleSearchAreaBlur = (event) => {
+    if (event.currentTarget.contains(event.relatedTarget)) return;
+    window.setTimeout(() => setSearchFocused(false), 80);
+  };
+
+  const focusSaleSearch = () => {
+    setQuery("");
     setSearchFocused(true);
+    window.setTimeout(() => searchInputRef.current?.focus(), 0);
+  };
+
+  const handleSaleRemoveKeyDown = (event, index) => {
+    if (event.key === "Tab" && !event.shiftKey && index === items.length - 1) {
+      event.preventDefault();
+      focusSaleSearch();
+    }
   };
 
   const updateItem = (productId, key, value) => {
@@ -345,7 +555,44 @@ function SaleNew() {
       return { ...row, [key]: value };
     }));
   };
+
+  const updatePackageQuantity = (productId, value) => {
+    setItems((current) => current.map((row) => {
+      if (String(row.productId) !== String(productId)) return row;
+      const unitsPerUnit = positiveUnitCount(row.unitsPerUnit);
+      const maxPackages = num(row.currentStock) / unitsPerUnit;
+      if (value === "") return { ...row, packageQuantity: "", quantity: "" };
+      const raw = Number(value);
+      if (!Number.isFinite(raw)) return { ...row, packageQuantity: "", quantity: "" };
+      const packageQuantity = Math.min(Math.max(raw, 0), maxPackages);
+      const pieceQuantity = Number((packageQuantity * unitsPerUnit).toFixed(4));
+      const nextGross = num(pieceQuantity) * num(row.salePrice);
+      return { ...row, packageQuantity, quantity: pieceQuantity, discountAmount: Math.min(num(row.discountAmount), nextGross) };
+    }));
+  };
+
+  const updatePieceQuantity = (productId, value) => {
+    setItems((current) => current.map((row) => {
+      if (String(row.productId) !== String(productId)) return row;
+      const raw = Number(value);
+      if (!Number.isFinite(raw)) return { ...row, quantity: "", packageQuantity: "" };
+      const clamped = Math.min(Math.max(raw, 0), num(row.currentStock));
+      const unitsPerUnit = positiveUnitCount(row.unitsPerUnit);
+      const nextGross = clamped * num(row.salePrice);
+      return {
+        ...row,
+        quantity: clamped,
+        packageQuantity: Number((clamped / unitsPerUnit).toFixed(4)),
+        discountAmount: Math.min(num(row.discountAmount), nextGross),
+      };
+    }));
+  };
   const removeItem = (productId) => setItems((current) => current.filter((row) => String(row.productId) !== String(productId)));
+  const maxPackageQuantity = (row) => num(row.currentStock) / positiveUnitCount(row.unitsPerUnit);
+  const formatQuantity = (value) => {
+    const number = num(value);
+    return Number.isInteger(number) ? String(number) : number.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+  };
   const lineGross = (row) => Math.max(num(row.quantity) * num(row.salePrice), 0);
   const lineDiscount = (row) => Math.min(num(row.discountAmount), lineGross(row));
   const lineTotal = (row) => Math.max(lineGross(row) - lineDiscount(row), 0);
@@ -399,14 +646,14 @@ function SaleNew() {
       if (num(item.quantity) <= 0 || num(item.quantity) > num(item.currentStock)) {
         return notify(`${t.insufficientStock} ${item.productName}.`, "warning");
       }
-      const allocation = allocateProductBatchesFEFO(effectiveStockMovements, item.productId, num(item.quantity));
+      const allocation = allocateProductBatchesFEFO(pieceStockMovements, item.productId, num(item.quantity));
       if (allocation.unallocated > 0) return notify(`${t.insufficientStock} ${item.productName}.`, "warning");
       allocationByProduct.set(String(item.productId), allocation.allocations);
     }
 
     const now = new Date().toISOString();
     const recordId = isEditMode ? editingSale.id : `sale-${Date.now()}`;
-    const invoiceNumber = isEditMode ? (editingSale.invoiceNumber || `SAL-${Date.now().toString().slice(-8)}`) : `SAL-${Date.now().toString().slice(-8)}`;
+    const invoiceNumber = String(billNumber || "").trim() || (isEditMode ? (editingSale.invoiceNumber || editingSale.billNumber) : "") || `SAL-${Date.now().toString().slice(-8)}`;
     const customer = customers.find((row) => String(row.id) === String(customerId));
     const sale = {
       id: recordId,
@@ -425,6 +672,9 @@ function SaleNew() {
       itemCount: items.length,
       items: items.map((row) => ({
         ...row,
+        packageQuantity: num(row.packageQuantity),
+        unitsPerUnit: positiveUnitCount(row.unitsPerUnit),
+        purchaseUnit: row.purchaseUnit || row.unit || "piece",
         lineGross: lineGross(row),
         discountAmount: lineDiscount(row),
         lineTotal: lineTotal(row),
@@ -464,6 +714,66 @@ function SaleNew() {
     navigate("/sales-register");
   };
 
+  const saleSearchField = (
+    <div
+      className="purchase-inline-search-row sale-inline-search-row"
+      onBlur={handleSearchAreaBlur}
+    >
+      <div className="purchase-inline-search-box">
+        <Search size={18} />
+        <input
+          ref={searchInputRef}
+          value={query}
+          onFocus={() => setSearchFocused(true)}
+          onChange={(event) => { setQuery(event.target.value); setSearchFocused(true); }}
+          onKeyDown={handleSearchKeyDown}
+          placeholder={t.searchPlaceholder}
+          autoComplete="off"
+        />
+      </div>
+      {searchFocused && query.trim() && (
+        <div className="purchase-inline-search-results">
+          <div className="purchase-search-results-head"><span>{t.results}</span><small>{results.length}</small></div>
+          {results.length ? (
+            <div className="purchase-inline-result-list">
+              {results.map((product, index) => {
+                const stock = getStock(product);
+                const unavailable = stock <= 0;
+                return (
+                  <button
+                    ref={(node) => {
+                      if (node) resultButtonRefs.current.set(index, node);
+                      else resultButtonRefs.current.delete(index);
+                    }}
+                    type="button"
+                    className={`purchase-inline-result sale-inline-result sale-search-result ${index === activeResultIndex ? "active" : ""} ${unavailable ? "is-out-of-stock" : ""}`}
+                    data-result-index={index}
+                    key={product.id}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onFocus={() => setActiveResultIndex(index)}
+                    onMouseEnter={() => setActiveResultIndex(index)}
+                    onKeyDown={(event) => handleResultKeyDown(event, product, index)}
+                    onClick={() => addProduct(product)}
+                    aria-disabled={unavailable}
+                  >
+                    <img src={productImageSrc(product)} alt="" />
+                    <span>
+                      <strong>{productDisplayName(product)}</strong>
+                      <small>{groupNameById(productGroups, product.groupId, product.group || "—")} · {t.stock}: {stock}</small>
+                    </span>
+                    <em>{unavailable ? t.outOfStock : `${num(product.salePrice).toFixed(2)} ${currency}`}</em>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="purchase-no-result"><PackageSearch size={22} /><span>{t.searchHint}</span></div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="purchase-entry-page" dir={direction}>
       <header className="purchase-entry-header">
@@ -477,66 +787,31 @@ function SaleNew() {
 
       <div className="purchase-entry-layout">
         <main className="purchase-entry-main">
-          <section className="purchase-search-card">
-            <div className="purchase-search-box">
-              <Search size={19} />
-              <input value={query} onFocus={() => setSearchFocused(true)} onChange={(e) => { setQuery(e.target.value); setSearchFocused(true); }} placeholder={t.searchPlaceholder} />
-            </div>
-            {(searchFocused || query) && (
-              <div className="purchase-search-results">
-                <div className="purchase-search-results-head"><span>{t.results}</span><small>{results.length}</small></div>
-                {results.length ? (
-                  <div className="purchase-search-grid">
-                    {results.map((product) => {
-                      const stock = getStock(product);
-                      const unavailable = stock <= 0;
-                      return (
-                        <button
-                          type="button"
-                          className={`purchase-search-result sale-search-result ${unavailable ? "is-out-of-stock" : ""}`}
-                          key={product.id}
-                          onClick={() => addProduct(product)}
-                          disabled={unavailable}
-                          aria-disabled={unavailable}
-                        >
-                          <img src={productImageSrc(product)} alt="" />
-                          <span className="purchase-result-info"><strong>{productDisplayName(product)}</strong><small>{groupNameById(productGroups, product.groupId, product.group || "—")} · {product.companyName || product.company || "—"}</small></span>
-                          <span className="purchase-result-prices">
-                            <small><b>{t.purchasePrice}</b><strong>{num(product.purchasePrice).toFixed(2)} {currency}</strong></small>
-                            <small><b>{t.salePrice}</b><strong>{num(product.salePrice).toFixed(2)} {currency}</strong></small>
-                          </span>
-                          <span className="purchase-result-footer">
-                            <small>{t.stock}: <b>{stock}</b></small>
-                            {unavailable ? <em className="sale-out-of-stock-label">{t.outOfStock}</em> : <em><Plus size={14} />{t.addMedicine}</em>}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : <div className="purchase-no-result"><PackageSearch size={24} /><span>{t.searchHint}</span></div>}
-              </div>
-            )}
-          </section>
-
           <section className="purchase-items-card">
             <div className="purchase-section-title"><ShoppingBag size={18} /><h2>{t.invoiceItems}</h2><span>{items.length}</span></div>
-            {!items.length ? (
-              <div className="purchase-items-empty"><ImageIcon size={34} /><strong>{t.emptyTitle}</strong><p>{t.emptyText}</p></div>
-            ) : (
-              <div className="purchase-items-list">
-                {items.map((row) => (
-                  <article className="purchase-item-row sale-entry-item-row" key={row.productId}>
-                    <img src={row.image} alt="" />
-                    <div className="purchase-item-name"><strong>{row.productName}</strong><small>{row.group || "—"} · {t.unit}: {row.unit || "—"}</small></div>
-                    <label><span>{t.qty}</span><input type="number" min="0" max={row.currentStock} value={row.quantity} title={`${t.maxStock}: ${row.currentStock}`} onChange={(e) => updateItem(row.productId, "quantity", e.target.value)} /><small className="sale-stock-limit">{t.maxStock}: {row.currentStock}</small></label>
-                    <label><span>{t.salePrice}</span><input type="number" min="0" step="0.01" value={row.salePrice} onChange={(e) => updateItem(row.productId, "salePrice", e.target.value)} /></label>
-                    <label><span>{t.discount}</span><input type="number" min="0" max={lineGross(row)} step="0.01" value={row.discountAmount ?? 0} onChange={(e) => updateItem(row.productId, "discountAmount", e.target.value)} /></label>
-                    <div className="purchase-line-total"><span>{t.total}</span><strong>{lineTotal(row).toFixed(2)} {currency}</strong></div>
-                    <button className="purchase-remove" type="button" title={t.remove} onClick={() => removeItem(row.productId)}><Trash2 size={16} /></button>
-                  </article>
-                ))}
-              </div>
-            )}
+            <div className="purchase-items-list">
+              {!items.length && saleSearchField}
+              {!items.length && (
+                <div className="purchase-items-empty sale-inline-empty"><ImageIcon size={34} /><strong>{t.emptyTitle}</strong><p>{t.emptyText}</p></div>
+              )}
+              {items.map((row, index) => (
+                <article className="purchase-item-row sale-entry-item-row" key={row.productId}>
+                  <img src={row.image} alt="" />
+                  <div className="purchase-item-name"><strong>{row.productName}</strong><small>{row.group || "—"} · {t.unit}: {row.unit || "—"}</small></div>
+                  <label><span>{t.qty} ({unitLabel(row.purchaseUnit)})</span><input ref={(node) => {
+                    const key = String(row.productId);
+                    if (node) packageQuantityInputRefs.current.set(key, node);
+                    else packageQuantityInputRefs.current.delete(key);
+                  }} type="number" min="0" max={maxPackageQuantity(row)} step="any" value={row.packageQuantity} title={`${t.maxStock}: ${formatQuantity(maxPackageQuantity(row))} ${unitLabel(row.purchaseUnit)}`} onFocus={(e) => e.target.select()} onChange={(e) => updatePackageQuantity(row.productId, e.target.value)} /><small className="sale-stock-limit">{t.maxStock}: {formatQuantity(maxPackageQuantity(row))} {unitLabel(row.purchaseUnit)}</small></label>
+                  <label><span>{t.actualQty}</span><input type="number" min="0" max={row.currentStock} step="any" value={row.quantity} title={`${t.maxStock}: ${formatQuantity(row.currentStock)} ${unitLabel("piece")}`} onChange={(e) => updatePieceQuantity(row.productId, e.target.value)} /><small className="sale-stock-limit">{t.maxStock}: {formatQuantity(row.currentStock)} {unitLabel("piece")}</small></label>
+                  <label><span>{t.salePrice}</span><input type="number" min="0" step="0.01" value={row.salePrice} onChange={(e) => updateItem(row.productId, "salePrice", e.target.value)} /></label>
+                  <label><span>{t.discount}</span><input type="number" min="0" max={lineGross(row)} step="0.01" value={row.discountAmount ?? 0} onChange={(e) => updateItem(row.productId, "discountAmount", e.target.value)} /></label>
+                  <div className="purchase-line-total"><span>{t.total}</span><strong>{lineTotal(row).toFixed(2)} {currency}</strong></div>
+                  <button className="purchase-remove" type="button" title={t.remove} onKeyDown={(event) => handleSaleRemoveKeyDown(event, index)} onClick={() => removeItem(row.productId)}><Trash2 size={16} /></button>
+                </article>
+              ))}
+              {!!items.length && saleSearchField}
+            </div>
           </section>
         </main>
 
@@ -552,7 +827,7 @@ function SaleNew() {
                 </>
               ) : (
                 <>
-                  <select value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
+                  <select ref={customerSelectRef} value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
                     <option value="">{t.selectCustomer}</option>
                     {customers.filter((row) => row.status !== "inactive").map((row) => <option value={row.id} key={row.id}>{row.fullName || row.companyName || "—"}</option>)}
                   </select>
@@ -562,9 +837,12 @@ function SaleNew() {
             </div>
           </section>
 
-          <section className="purchase-side-card">
-            <label className="purchase-field"><span>{t.currency}</span><select value={currency} onChange={(e) => setCurrency(e.target.value)}>{currencies.map((code) => <option key={code} value={code}>{code}</option>)}</select></label>
-            <label className="purchase-field"><span>{t.date}</span><ShamsiDateInput value={saleDate} onChange={(e) => setSaleDate(e.target.value)} /></label>
+          <section className="purchase-side-card purchase-meta-card">
+            <div className="purchase-meta-grid">
+              <label className="purchase-field purchase-meta-bill"><span>{t.billNumber}</span><input value={billNumber} onChange={(e) => setBillNumber(e.target.value)} /></label>
+              <label className="purchase-field purchase-meta-currency"><span>{t.currency}</span><select value={currency} onChange={(e) => setCurrency(e.target.value)}>{currencies.map((code) => <option key={code} value={code}>{code}</option>)}</select></label>
+              <label className="purchase-field purchase-meta-date"><span>{t.date}</span><ShamsiDateInput value={saleDate} onChange={(e) => setSaleDate(e.target.value)} /></label>
+            </div>
           </section>
 
           <section className="purchase-side-card purchase-summary-card">

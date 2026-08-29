@@ -230,6 +230,7 @@ export default function Suppliers() {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [showTypeManager, setShowTypeManager] = useState(false);
   const [typeDraft, setTypeDraft] = useState("");
   const [editingTypeId, setEditingTypeId] = useState(null);
@@ -340,6 +341,7 @@ export default function Suppliers() {
   const openNew = () => {
     setEditingId(null);
     setForm(emptyForm);
+    setFieldErrors({});
     setShowTypeManager(false);
     resetTypeDraft();
     setShowModal(true);
@@ -348,6 +350,7 @@ export default function Suppliers() {
   const openEdit = (item) => {
     setEditingId(item.id);
     setForm({ ...emptyForm, ...item, currency: item.currency === "pkr" ? "inr" : (item.currency || "afn") });
+    setFieldErrors({});
     setShowTypeManager(false);
     resetTypeDraft();
     setShowModal(true);
@@ -357,18 +360,28 @@ export default function Suppliers() {
     setShowModal(false);
     setEditingId(null);
     setForm(emptyForm);
+    setFieldErrors({});
     setShowTypeManager(false);
     resetTypeDraft();
   };
 
-  const updateField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+  const updateField = (key, value) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    setFieldErrors((current) => {
+      if (!current[key]) return current;
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!form.supplierName.trim()) {
-      notify(t.required, "warning");
+      setFieldErrors({ supplierName: t.required });
       return;
     }
+    setFieldErrors({});
 
     const payload = {
       ...form,
@@ -429,9 +442,18 @@ export default function Suppliers() {
           <div className="supplier-section supplier-section-main">
             <div className="supplier-section-title"><Building2 size={17} /><span>{t.supplierName}</span></div>
             <div className="supplier-fields-grid">
-              <div className="supplier-field supplier-field-full">
+              <div className={`supplier-field supplier-field-full ${fieldErrors.supplierName ? "has-error" : ""}`}>
                 <label>{t.supplierName} *</label>
-                <input autoFocus value={form.supplierName} onChange={(e) => updateField("supplierName", e.target.value)} />
+                <input
+                  autoFocus
+                  value={form.supplierName}
+                  onChange={(e) => updateField("supplierName", e.target.value)}
+                  aria-invalid={Boolean(fieldErrors.supplierName)}
+                  aria-describedby={fieldErrors.supplierName ? "supplier-name-error" : undefined}
+                />
+                {fieldErrors.supplierName && (
+                  <span id="supplier-name-error" className="supplier-field-error" role="alert">{fieldErrors.supplierName}</span>
+                )}
               </div>
               <div className="supplier-field">
                 <label>{t.supplierType}</label>

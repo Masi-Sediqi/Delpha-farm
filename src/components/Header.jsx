@@ -5,6 +5,7 @@ import {
   Box,
   CheckCheck,
   ChevronDown,
+  CircleDollarSign,
   Clock3,
   Globe2,
   LogOut,
@@ -83,7 +84,7 @@ function HeaderActions({ currentUser, onLogout, compact = false }) {
   const [products] = useJsonCollection("products");
   const [stockMovements] = useJsonCollection("stockMovements");
   const currentSettings = settings[0] || {};
-  const currency = currentSettings.currency || "AFN";
+  const currency = currentSettings.currency === "PKR" ? "INR" : (currentSettings.currency || "AFN");
   const t = labels[language] || labels.en;
 
   const notificationGroups = useMemo(() => {
@@ -153,10 +154,10 @@ function HeaderActions({ currentUser, onLogout, compact = false }) {
     window.dispatchEvent(new Event("app-language-updated"));
   };
   const activeLanguage = languages.find((item) => item.key === language) || languages[2];
-  const changeCurrency = async (event) => {
-    const nextCurrency = event.target.value;
+  const changeCurrency = async (nextCurrency) => {
     const saved = await setSettings([{ ...currentSettings, currency: nextCurrency, updatedAt: new Date().toISOString() }]);
     if (saved) window.dispatchEvent(new Event("company-settings-updated"));
+    setOpenMenu(null);
   };
 
   if (compact) {
@@ -174,7 +175,12 @@ function HeaderActions({ currentUser, onLogout, compact = false }) {
   }
 
   return <div className="topbar-actions">
-    <label className="currency-selector"><select value={currency} onChange={changeCurrency} aria-label={t.currency}><option>AFN</option><option>USD</option><option>PKR</option><option>EUR</option></select></label>
+    <div className="header-menu currency-menu">
+      <button type="button" className="icon-btn header-currency-btn" onClick={() => setOpenMenu(openMenu === "currency" ? null : "currency")} aria-label={t.currency} title={`${t.currency}: ${currency}`}><CircleDollarSign size={20}/></button>
+      {openMenu === "currency" && <div className="dropdown currency-dropdown">
+        {["AFN", "USD", "INR", "EUR"].map((item) => <button type="button" key={item} className={currency === item ? "active" : ""} onClick={() => changeCurrency(item)}><span>{item}</span>{currency === item && <small>✓</small>}</button>)}
+      </div>}
+    </div>
     <div className="header-menu">
       <button type="button" className="icon-btn" onClick={() => setOpenMenu(openMenu === "alerts" ? null : "alerts")} aria-label={t.notifications}><Bell size={20}/>{alertCount > 0 && <span className="alert-count">{alertCount}</span>}</button>
       {openMenu === "alerts" && <div className="dropdown alert-dropdown notification-dropdown">

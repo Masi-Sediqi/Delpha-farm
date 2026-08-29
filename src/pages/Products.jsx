@@ -113,6 +113,8 @@ const translations = {
     save: "Save Product",
     update: "Update Product",
     required: "Please enter the product name and select a group.",
+    requiredProductName: "Product name is required.",
+    requiredGroup: "Please select a group.",
     groupRequired: "Please enter a name for the new group.",
     companyRequired: "Please select a supplier.",
     countryRequired: "Please enter a name for the new country.",
@@ -227,6 +229,8 @@ const translations = {
     save: "ذخیره جنس",
     update: "ثبت تغییرات",
     required: "لطفاً نام جنس را وارد و گروپ را انتخاب کنید.",
+    requiredProductName: "لطفاً نام جنس را وارد کنید.",
+    requiredGroup: "لطفاً یک گروپ را انتخاب کنید.",
     groupRequired: "لطفاً نام گروپ جدید را وارد کنید.",
     companyRequired: "لطفاً تأمین‌کننده را انتخاب کنید.",
     countryRequired: "لطفاً نام کشور جدید را وارد کنید.",
@@ -341,6 +345,8 @@ const translations = {
     save: "توکی ذخیره کول",
     update: "بدلونونه ثبتول",
     required: "مهرباني وکړئ د توکي نوم ولیکئ او ګروپ وټاکئ.",
+    requiredProductName: "مهرباني وکړئ د توکي نوم ولیکئ.",
+    requiredGroup: "مهرباني وکړئ یو ګروپ وټاکئ.",
     groupRequired: "مهرباني وکړئ د نوي ګروپ نوم ولیکئ.",
     companyRequired: "مهرباني وکړئ عرضه کوونکی وټاکئ.",
     countryRequired: "مهرباني وکړئ د نوي هېواد نوم ولیکئ.",
@@ -446,6 +452,7 @@ function Products() {
   const [newCountry, setNewCountry] = useState("");
   const [addingProductForm, setAddingProductForm] = useState(false);
   const [newProductForm, setNewProductForm] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const t = translations[language] || translations.en;
   const direction = language === "en" ? "ltr" : "rtl";
@@ -504,6 +511,7 @@ function Products() {
   const openNew = () => {
     setEditingId(null);
     setFormData({ ...emptyForm, groupId: defaultGroupId, countryId: defaultCountryId });
+    setFieldErrors({});
     setAddingGroup(false);
     setNewGroup("");
     setAddingCountry(false);
@@ -515,6 +523,7 @@ function Products() {
 
   const openEdit = (product) => {
     setEditingId(product.id);
+    setFieldErrors({});
     const legacyGroup = productGroups.find((item) => normalizeMasterName(item.name) === normalizeMasterName(product.group));
     const legacyCountry = productCountries.find((item) => normalizeMasterName(item.name || item.en) === normalizeMasterName(product.madeIn));
     setFormData({
@@ -537,6 +546,7 @@ function Products() {
   const closeModal = () => {
     setShowModal(false);
     setEditingId(null);
+    setFieldErrors({});
     setAddingGroup(false);
     setNewGroup("");
     setAddingCountry(false);
@@ -547,6 +557,13 @@ function Products() {
 
   const handleChange = (event) => {
     const { name, value } = event.target;
+    const errorKey = name === "groupId" ? "group" : name === "countryId" ? "country" : name === "productForm" ? "productForm" : name;
+    setFieldErrors((current) => {
+      if (!current[errorKey]) return current;
+      const next = { ...current };
+      delete next[errorKey];
+      return next;
+    });
     setFormData((previous) => {
       if (name === "productUnit") {
         return { ...previous, productUnit: value, cartonSize: unitsWithoutSize.has(value) ? "" : previous.cartonSize };
@@ -567,7 +584,10 @@ function Products() {
 
   const saveInlineGroup = async () => {
     const name = newGroup.trim();
-    if (!name) { notify(t.groupRequired, "error"); return; }
+    if (!name) {
+      setFieldErrors((current) => ({ ...current, group: t.groupRequired }));
+      return;
+    }
     const existing = productGroups.find((item) => normalizeMasterName(item.name) === normalizeMasterName(name));
     if (existing) {
       setFormData((previous) => ({ ...previous, groupId: existing.id }));
@@ -579,11 +599,19 @@ function Products() {
     }
     setAddingGroup(false);
     setNewGroup("");
+    setFieldErrors((current) => {
+      const next = { ...current };
+      delete next.group;
+      return next;
+    });
   };
 
   const saveInlineCountry = async () => {
     const name = newCountry.trim();
-    if (!name) { notify(t.countryRequired, "error"); return; }
+    if (!name) {
+      setFieldErrors((current) => ({ ...current, country: t.countryRequired }));
+      return;
+    }
     const existing = productCountries.find((item) => normalizeMasterName(item.name || item.en) === normalizeMasterName(name));
     if (existing) {
       setFormData((previous) => ({ ...previous, countryId: existing.id }));
@@ -595,11 +623,19 @@ function Products() {
     }
     setAddingCountry(false);
     setNewCountry("");
+    setFieldErrors((current) => {
+      const next = { ...current };
+      delete next.country;
+      return next;
+    });
   };
 
   const saveInlineProductForm = async () => {
     const name = newProductForm.trim();
-    if (!name) { notify(t.productFormRequired, "error"); return; }
+    if (!name) {
+      setFieldErrors((current) => ({ ...current, productForm: t.productFormRequired }));
+      return;
+    }
     const existingDefault = productFormOptions.find((item) => normalizeMasterName(t[item.labelKey]) === normalizeMasterName(name));
     const existingCustom = customProductForms.find((item) => normalizeMasterName(item.name) === normalizeMasterName(name));
     if (existingDefault) {
@@ -614,17 +650,26 @@ function Products() {
     }
     setAddingProductForm(false);
     setNewProductForm("");
+    setFieldErrors((current) => {
+      const next = { ...current };
+      delete next.productForm;
+      return next;
+    });
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setFieldErrors({});
 
     let selectedGroupId = formData.groupId;
     let selectedCountryId = formData.countryId;
 
     if (addingGroup) {
       const name = newGroup.trim();
-      if (!name) { notify(t.groupRequired, "error"); return; }
+      if (!name) {
+        setFieldErrors({ group: t.groupRequired });
+        return;
+      }
       const existing = productGroups.find((item) => normalizeMasterName(item.name) === normalizeMasterName(name));
       if (existing) selectedGroupId = existing.id;
       else {
@@ -637,7 +682,10 @@ function Products() {
 
     if (addingCountry) {
       const name = newCountry.trim();
-      if (!name) { notify(t.countryRequired, "error"); return; }
+      if (!name) {
+        setFieldErrors({ country: t.countryRequired });
+        return;
+      }
       const existing = productCountries.find((item) => normalizeMasterName(item.name || item.en) === normalizeMasterName(name));
       if (existing) selectedCountryId = existing.id;
       else {
@@ -648,8 +696,11 @@ function Products() {
       }
     }
 
-    if (!formData.productName.trim() || !selectedGroupId) {
-      notify(t.required, "error");
+    const nextErrors = {};
+    if (!formData.productName.trim()) nextErrors.productName = t.requiredProductName;
+    if (!selectedGroupId) nextErrors.group = t.requiredGroup;
+    if (Object.keys(nextErrors).length) {
+      setFieldErrors(nextErrors);
       return;
     }
 
@@ -704,8 +755,13 @@ function Products() {
         referenceType: "opening",
         referenceId: productId,
         referenceNumber: record.productName,
-        quantityIn: openingQuantity,
+        // Stock movements are kept in the base piece unit; the form quantity is in main units.
+        quantityIn: openingQuantity * unitMultiplier,
         quantityOut: 0,
+        purchaseQuantity: openingQuantity,
+        purchaseUnit: record.productUnit,
+        unitsPerUnit: unitMultiplier,
+        stockUnit: "piece",
         unitCost: Number(formData.purchasePrice || 0),
         batchNo: "OPENING",
         expiryDate: formData.expiryDate || "",
@@ -817,12 +873,13 @@ function Products() {
 
             <form onSubmit={handleSubmit} className="sales-product-form">
               <div className="sales-product-form-grid">
-                <label className="sales-product-field sales-product-field-wide">
+                <label className={`sales-product-field sales-product-field-wide ${fieldErrors.productName ? "has-error" : ""}`}>
                   <span>{t.productName} *</span>
-                  <input name="productName" value={formData.productName} onChange={handleChange} placeholder={t.productPlaceholder} autoFocus />
+                  <input name="productName" value={formData.productName} onChange={handleChange} placeholder={t.productPlaceholder} autoFocus aria-invalid={Boolean(fieldErrors.productName)} aria-describedby={fieldErrors.productName ? "product-name-error" : undefined} />
+                  {fieldErrors.productName && <span id="product-name-error" className="sales-product-field-error" role="alert">{fieldErrors.productName}</span>}
                 </label>
 
-                <div className="sales-product-field">
+                <div className={`sales-product-field ${fieldErrors.group ? "has-error" : ""}`}>
                   <span>{t.group} *</span>
                   <div className={`sales-product-inline-manager ${addingGroup ? "is-editing" : ""}`}>
                     {addingGroup ? (
@@ -852,7 +909,7 @@ function Products() {
                       </>
                     ) : (
                       <>
-                        <select name="groupId" value={formData.groupId} onChange={handleChange}>
+                        <select name="groupId" value={formData.groupId} onChange={handleChange} aria-invalid={Boolean(fieldErrors.group)} aria-describedby={fieldErrors.group ? "group-error" : undefined}>
                           <option value="" disabled>{t.selectGroup}</option>
                           {groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
                         </select>
@@ -860,6 +917,7 @@ function Products() {
                       </>
                     )}
                   </div>
+                  {fieldErrors.group && <span id="group-error" className="sales-product-field-error" role="alert">{fieldErrors.group}</span>}
                 </div>
 
                 <label className="sales-product-field">
@@ -877,7 +935,7 @@ function Products() {
                   </label>
                 )}
 
-                <div className="sales-product-field">
+                <div className={`sales-product-field ${fieldErrors.productForm ? "has-error" : ""}`}>
                   <span>{t.productForm}</span>
                   <div className={`sales-product-inline-manager ${addingProductForm ? "is-editing" : ""}`}>
                     {addingProductForm ? (
@@ -906,10 +964,11 @@ function Products() {
                       </>
                     )}
                   </div>
+                  {fieldErrors.productForm && <span className="sales-product-field-error" role="alert">{fieldErrors.productForm}</span>}
                 </div>
 
 
-                <div className="sales-product-field">
+                <div className={`sales-product-field ${fieldErrors.country ? "has-error" : ""}`}>
                   <span>{t.madeIn}</span>
                   <div className={`sales-product-inline-manager ${addingCountry ? "is-editing" : ""}`}>
                     {addingCountry ? (
@@ -947,6 +1006,7 @@ function Products() {
                       </>
                     )}
                   </div>
+                  {fieldErrors.country && <span className="sales-product-field-error" role="alert">{fieldErrors.country}</span>}
                 </div>
 
                 <label className="sales-product-field">

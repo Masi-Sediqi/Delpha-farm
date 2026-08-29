@@ -240,3 +240,28 @@ body.dark-mode .customer-input-icon {
     margin: 0 16px;
   }
 }
+
+/* Inline validation for required customer fields (same pattern as product/supplier forms). */
+.customer-field.has-error input,
+.customer-field.has-error select,
+.customer-field.has-error textarea,
+.customer-field.has-error .customer-input-icon {
+  border-color: #f87171 !important;
+}
+
+.customer-field.has-error input:focus,
+.customer-field.has-error select:focus,
+.customer-field.has-error textarea:focus,
+.customer-field.has-error .customer-input-icon:focus-within {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, .1) !important;
+}
+
+.customer-field-error {
+  display: block;
+  margin-top: -2px;
+  color: #dc2626 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  line-height: 1.35;
+}

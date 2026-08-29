@@ -54,6 +54,8 @@ const Products = lazy(() => import("./pages/Products"));
 const ProductDetail = lazy(() => import("./pages/ProductDetail"));
 const Purchasing = lazy(() => import("./pages/Purchasing"));
 const Payables = lazy(() => import("./pages/Payables"));
+const PayablesBatch = lazy(() => import("./pages/PayablesBatch"));
+const PrintPayablesBatch = lazy(() => import("./pages/PrintPayablesBatch"));
 const PurchaseNew = lazy(() => import("./pages/PurchaseNew"));
 const PurchaseDetail = lazy(() => import("./pages/PurchaseDetail"));
 const PrintPurchase = lazy(() => import("./pages/PrintPurchase"));
@@ -62,6 +64,8 @@ const CustomerDetail = lazy(() => import("./pages/CustomerDetail"));
 const SalesRegister = lazy(() => import("./pages/SalesRegister"));
 const SaleNew = lazy(() => import("./pages/SaleNew"));
 const Receivables = lazy(() => import("./pages/Receivables"));
+const ReceivablesBatch = lazy(() => import("./pages/ReceivablesBatch"));
+const PrintReceivablesBatch = lazy(() => import("./pages/PrintReceivablesBatch"));
 const PurchaseReturns = lazy(() => import("./pages/PurchaseReturns"));
 const SaleReturns = lazy(() => import("./pages/SaleReturns"));
 const CashFlow = lazy(() => import("./pages/CashFlow"));
@@ -650,6 +654,9 @@ function App() {
               <Route path="/product-detail/:productId" element={protect("customers", <ProductDetail />)} />
               <Route path="/purchasing" element={protect("suppliers", <Purchasing />)} />
               <Route path="/payables" element={protect("suppliers", <Payables />)} />
+              <Route path="/payables/payments/new" element={protect("suppliers", <PayablesBatch />)} />
+              <Route path="/payables/payments/:batchId/edit" element={protect("suppliers", <PayablesBatch />)} />
+              <Route path="/payables/payments/:batchId/print" element={protect("suppliers", <PrintPayablesBatch />)} />
               <Route path="/purchasing/new" element={protect("suppliers", <PurchaseNew />)} />
               <Route path="/purchasing/:purchaseId/print" element={protect("suppliers", <PrintPurchase />)} />
               <Route path="/purchasing/:purchaseId" element={protect("suppliers", <PurchaseDetail />)} />
@@ -660,7 +667,11 @@ function App() {
               <Route path="/sales-register" element={protect("customers", <SalesRegister />)} />
               <Route path="/sales" element={protect("customers", <SalesRegister />)} />
               <Route path="/sales/new" element={protect("customers", <SaleNew />)} />
+              <Route path="/sales/:saleId/edit" element={protect("customers", <SaleNew />)} />
               <Route path="/receivables" element={protect("customers", <Receivables />)} />
+              <Route path="/receivables/payments/new" element={protect("customers", <ReceivablesBatch />)} />
+              <Route path="/receivables/payments/:batchId/edit" element={protect("customers", <ReceivablesBatch />)} />
+              <Route path="/receivables/payments/:batchId/print" element={protect("customers", <PrintReceivablesBatch />)} />
               <Route path="/sale-returns" element={protect("customers", <SaleReturns />)} />
               <Route path="/inventory" element={protect("reports", <Inventory />)} />
               <Route path="/cash-flow" element={protect("reports", <CashFlow />)} />

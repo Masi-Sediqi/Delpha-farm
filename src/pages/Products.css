@@ -391,6 +391,32 @@
   font-weight: 800;
 }
 
+.sales-product-field-error {
+  display: block;
+  margin-top: -2px;
+  color: #dc2626 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  line-height: 1.35;
+}
+
+.sales-product-field.has-error > input,
+.sales-product-field.has-error > select,
+.sales-product-field.has-error > textarea,
+.sales-product-field.has-error .sales-product-inline-manager input,
+.sales-product-field.has-error .sales-product-inline-manager select {
+  border-color: #f87171;
+}
+
+.sales-product-field.has-error > input:focus,
+.sales-product-field.has-error > select:focus,
+.sales-product-field.has-error > textarea:focus,
+.sales-product-field.has-error .sales-product-inline-manager input:focus,
+.sales-product-field.has-error .sales-product-inline-manager select:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, .1);
+}
+
 .sales-product-field input,
 .sales-product-field select,
 .sales-product-field textarea {
@@ -449,6 +475,11 @@
 body[data-theme="black-white"].dark-mode .sales-product-field-help,
 body[data-theme="neon"].dark-mode .sales-product-field-help {
   color: #94a3b8;
+}
+
+body[data-theme="black-white"].dark-mode .sales-product-field-error,
+body[data-theme="neon"].dark-mode .sales-product-field-error {
+  color: #fca5a5 !important;
 }
 
 body[data-theme="black-white"].dark-mode .sales-product-quantity-total,
