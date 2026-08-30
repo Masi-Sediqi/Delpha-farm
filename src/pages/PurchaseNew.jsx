@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   Check,
+  Info,
   PackageSearch,
   Plus,
   Search,
@@ -38,6 +39,12 @@ const text = {
     quickSupplier: "Add supplier",
     supplierName: "Supplier name",
     supplierPlaceholder: "Enter supplier name",
+    supplierInfo: "Supplier information",
+    supplierInfoEmpty: "Select a supplier to view information.",
+    contactPerson: "Contact person",
+    phone: "Phone",
+    address: "Address",
+    openingBalance: "Opening balance",
     add: "Add",
     cancel: "Cancel",
     currency: "Currency",
@@ -93,6 +100,12 @@ const text = {
     quickSupplier: "افزودن تأمین‌کننده",
     supplierName: "نام تأمین‌کننده",
     supplierPlaceholder: "نام تأمین‌کننده را وارد کنید",
+    supplierInfo: "معلومات تأمین‌کننده",
+    supplierInfoEmpty: "برای دیدن معلومات، تأمین‌کننده را انتخاب کنید.",
+    contactPerson: "شخص تماس",
+    phone: "شماره تماس",
+    address: "آدرس",
+    openingBalance: "بیلانس شروع",
     add: "اضافه",
     cancel: "لغو",
     currency: "واحد پول",
@@ -148,6 +161,12 @@ const text = {
     quickSupplier: "عرضه کوونکی اضافه کړئ",
     supplierName: "د عرضه کوونکي نوم",
     supplierPlaceholder: "د عرضه کوونکي نوم ولیکئ",
+    supplierInfo: "د عرضه کوونکي معلومات",
+    supplierInfoEmpty: "د معلوماتو لپاره عرضه کوونکی وټاکئ.",
+    contactPerson: "د اړیکې کس",
+    phone: "د اړیکې شمېره",
+    address: "پته",
+    openingBalance: "پیل بیلانس",
     add: "اضافه",
     cancel: "لغوه",
     currency: "اسعار",
@@ -231,6 +250,7 @@ function PurchaseNew() {
 
   const [supplierId, setSupplierId] = useState("");
   const [quickOpen, setQuickOpen] = useState(false);
+  const [supplierInfoOpen, setSupplierInfoOpen] = useState(false);
   const [quickName, setQuickName] = useState("");
   const [currency, setCurrency] = useState("AFN");
   const [billNumber, setBillNumber] = useState(() => `PUR-${Date.now().toString().slice(-8)}`);
@@ -249,6 +269,11 @@ function PurchaseNew() {
   const t = text[language] || text.en;
   const direction = language === "en" ? "ltr" : "rtl";
   const isEditing = Boolean(purchaseId);
+  const selectedSupplier = useMemo(
+    () => suppliers.find((row) => String(row.id) === String(supplierId)) || null,
+    [suppliers, supplierId]
+  );
+  const supplierBalanceCurrency = (supplier) => String(supplier?.currency || currency || "AFN").toUpperCase();
   const receivedQuantity = (row) => num(row.receivedQuantity ?? (num(row.quantity) * positiveUnitCount(row.unitsPerUnit)));
   const unitLabels = {
     en: { carton: "Carton", box: "Box", pack: "Pack", bottle: "Bottle", strip: "Strip", piece: "Piece", dozen: "Dozen", tube: "Tube", sachet: "Sachet" },
@@ -292,6 +317,10 @@ function PurchaseNew() {
       window.removeEventListener("storage", sync);
     };
   }, []);
+
+  useEffect(() => {
+    if (!supplierId) setSupplierInfoOpen(false);
+  }, [supplierId]);
 
 
   useEffect(() => {
@@ -728,8 +757,10 @@ function PurchaseNew() {
               <div className="purchase-top-meta">
                 <div className="purchase-top-meta-supplier">
                   <label className="purchase-field purchase-top-field">
-                    <span><Truck size={13} />{t.supplier}</span>
-                    <div className={`purchase-select-with-add ${quickOpen ? "is-quick-entry" : ""}`}>
+                    <span className="purchase-supplier-label">
+                      <span className="purchase-supplier-label-text"><Truck size={13} />{t.supplier}</span>
+                    </span>
+                    <div className={`purchase-select-with-add purchase-supplier-control ${quickOpen ? "is-quick-entry" : ""}`}>
                       {quickOpen ? (
                         <>
                           <input
@@ -746,15 +777,54 @@ function PurchaseNew() {
                         </>
                       ) : (
                         <>
-                          <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
+                          <button
+                            className={`purchase-supplier-info-toggle ${supplierInfoOpen ? "active" : ""}`}
+                            type="button"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              setSupplierInfoOpen((open) => !open);
+                            }}
+                            aria-label={t.supplierInfo}
+                            title={t.supplierInfo}
+                          >
+                            <Info size={14} />
+                          </button>
+                          <select
+                            value={supplierId}
+                            onChange={(e) => {
+                              setSupplierId(e.target.value);
+                              setSupplierInfoOpen(false);
+                            }}
+                          >
                             <option value="">{t.selectSupplier}</option>
                             {suppliers.filter((row) => row.status !== "inactive").map((row) => <option value={row.id} key={row.id}>{row.supplierName}</option>)}
                           </select>
-                          <button className="purchase-inline-supplier-add" type="button" onClick={() => setQuickOpen(true)} aria-label={t.quickSupplier}><Plus size={17} /></button>
+                          <button className="purchase-inline-supplier-add" type="button" onClick={() => { setSupplierInfoOpen(false); setQuickOpen(true); }} aria-label={t.quickSupplier}><Plus size={17} /></button>
                         </>
                       )}
                     </div>
                   </label>
+
+                  {supplierInfoOpen && (
+                    <div className="purchase-supplier-info-panel">
+                      {selectedSupplier ? (
+                        <>
+                          <div className="purchase-supplier-info-head">
+                            <strong>{selectedSupplier.supplierName || "—"}</strong>
+                            <small>{t.supplierInfo}</small>
+                          </div>
+                          <div className="purchase-supplier-info-grid">
+                            <div><span>{t.contactPerson}</span><strong>{selectedSupplier.contactPerson || "—"}</strong></div>
+                            <div><span>{t.phone}</span><strong dir="ltr">{selectedSupplier.phone || selectedSupplier.contact || "—"}</strong></div>
+                            <div className="purchase-supplier-info-wide"><span>{t.address}</span><strong>{selectedSupplier.address || "—"}</strong></div>
+                            <div><span>{t.openingBalance}</span><strong dir="ltr">{money(selectedSupplier.openingBalance || 0)} {supplierBalanceCurrency(selectedSupplier)}</strong></div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="purchase-supplier-info-empty">{t.supplierInfoEmpty}</div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <label className="purchase-field purchase-top-field purchase-top-bill">

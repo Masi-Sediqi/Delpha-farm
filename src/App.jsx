@@ -79,6 +79,7 @@ const SaleDetail = lazy(() => import("./pages/SaleDetail"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Trash = lazy(() => import("./pages/Trash"));
 const Settings = lazy(() => import("./pages/Settings"));
+const Accounts = lazy(() => import("./pages/Accounts"));
 const SearchResults = lazy(() => import("./pages/SearchResults"));
 const Login = lazy(() => import("./pages/Login"));
 const License = lazy(() => import("./pages/License"));
@@ -119,6 +120,7 @@ const shellLabels = {
     banks: "Banks",
     cashCount: "Cash Count",
     expenses: "Expenses",
+    accounts: "Accounts",
     receivablesPayables: "Receivables & Payables",
     generalJournal: "General Journal",
     reports: "Reports",
@@ -141,6 +143,7 @@ const shellLabels = {
     banks: "بانک‌ها",
     cashCount: "شمارش نقدی",
     expenses: "مصارف",
+    accounts: "اکونت‌ها",
     receivablesPayables: "دریافتنی و پرداختنی",
     generalJournal: "ژورنال عمومی",
     reports: "گزارشات",
@@ -163,6 +166,7 @@ const shellLabels = {
     banks: "بانکونه",
     cashCount: "د نغدو شمېرنه",
     expenses: "مصارف",
+    accounts: "اکونټونه",
     receivablesPayables: "ترلاسه کېدونکي او ورکول کېدونکي",
     generalJournal: "عمومي ژورنال",
     reports: "راپورونه",
@@ -294,6 +298,7 @@ function App() {
   const [sessionId, setSessionId] = useState(() =>
     localStorage.getItem(sessionStorageKey)
   );
+  const [bootstrapSession, setBootstrapSession] = useState(false);
   const routeClassName = location.pathname === "/"
     ? "route-dashboard"
     : `route-${location.pathname.replace(/^\/+/, "").replace(/[^a-zA-Z0-9]+/g, "-") || "dashboard"}`;
@@ -366,11 +371,13 @@ function App() {
   );
   const hasUserAccounts = effectiveAccounts.length > 0;
 
-  // When there are no user-created accounts, open the application directly.
-  // As soon as a real account exists, normal account login is required.
-  const currentUser = hasUserAccounts
-    ? effectiveAccounts.find((account) => String(account.id) === String(sessionId))
-    : defaultAdminAccount;
+  // With no user-created accounts the first run opens directly with an
+  // in-memory bootstrap administrator. If the first account is created during
+  // that session, keep the operator inside until they explicitly log out.
+  // On the next app start, existing accounts require normal login.
+  const currentUser = (bootstrapSession || (accountsLoaded && !hasUserAccounts))
+    ? defaultAdminAccount
+    : effectiveAccounts.find((account) => String(account.id) === String(sessionId));
 
   useEffect(() => {
     window.addEventListener("company-settings-updated", loadSettings);
@@ -502,12 +509,19 @@ function App() {
   }, [accountsLoaded, accounts, setAccounts]);
 
   useEffect(() => {
-    if (!accountsLoaded || !hasUserAccounts) return;
-    if (String(sessionId) !== "default-admin") return;
+    if (!accountsLoaded) return;
 
-    // Do not allow an old bootstrap session to bypass login once a real account exists.
-    localStorage.removeItem(sessionStorageKey);
-    setSessionId(null);
+    if (!hasUserAccounts && !sessionId) {
+      setBootstrapSession(true);
+      return;
+    }
+
+    // Never restore the bootstrap identity from persistent storage. It is only
+    // valid for the current first-run session before an explicit logout.
+    if (String(sessionId) === "default-admin") {
+      localStorage.removeItem(sessionStorageKey);
+      setSessionId(null);
+    }
   }, [accountsLoaded, hasUserAccounts, sessionId]);
 
   const login = async (account) => {
@@ -521,11 +535,13 @@ function App() {
     }
 
     localStorage.setItem(sessionStorageKey, String(account.id));
+    setBootstrapSession(false);
     setSessionId(String(account.id));
   };
 
   const logout = () => {
     localStorage.removeItem(sessionStorageKey);
+    setBootstrapSession(false);
     setSessionId(null);
   };
 
@@ -543,6 +559,7 @@ function App() {
     { to: "/receivables", label: labels.receivables, moduleKey: "customers", icon: BadgeDollarSign },
     { to: "/inventory", label: labels.inventory, moduleKey: "reports", icon: Boxes },
     { to: "/expenses", label: labels.expenses, moduleKey: "reports", icon: FileMinus2 },
+    { to: "/accounts", label: labels.accounts, moduleKey: "settings", icon: Users },
     { to: "/cash-flow", label: labels.cashFlow, moduleKey: "reports", icon: Wallet },
     { to: "/reports", label: labels.reports, moduleKey: "reports", icon: FileBarChart },
     { to: "/trash", label: labels.trash, moduleKey: "settings", icon: Trash2 },
@@ -668,7 +685,7 @@ function App() {
           <Suspense fallback={<BusyLoader label="Loading module..." />}>
             <div className={`page-fade-shell ${routeClassName}`} key={location.pathname}>
             <Routes>
-              <Route path="/" element={protect("dashboard", <Dashboard />)} />
+              <Route path="/" element={protect("dashboard", <Dashboard currentUser={currentUser} />)} />
               <Route path="/search-results" element={protect("dashboard", <SearchResults />)} />
 
               <Route path="/suppliers" element={protect("suppliers", <Suppliers />)} />
@@ -707,6 +724,7 @@ function App() {
               <Route path="/sale-detail/:saleId" element={protect("customers", <SaleDetail />)} />
               <Route path="/reports" element={protect("reports", <Reports />)} />
               <Route path="/trash" element={protect("settings", <Trash />)} />
+              <Route path="/accounts" element={protect("settings", <Accounts accounts={effectiveAccounts} setAccounts={setAccounts} currentUser={currentUser} />)} />
 
               <Route path="/settings" element={protect("settings", <Settings accounts={effectiveAccounts} setAccounts={setAccounts} currentUser={currentUser} />)} />
 

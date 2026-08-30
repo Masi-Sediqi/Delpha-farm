@@ -1,330 +1,376 @@
-import { useState } from "react";
-import { Pencil, Trash2, UserPlus } from "lucide-react";
-import { notify } from "../utils/notify";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { Edit3, Mail, Search, ShieldCheck, Trash2, UserPlus, UserRound, X } from "lucide-react";
 import { confirmAction } from "../utils/confirmDialog";
+import { notify } from "../utils/notify";
 import { todayDateValue } from "../utils/afghanDate";
 import "./Accounts.css";
 
-const emptyForm = {
-  fullName: "",
-  email: "",
-  password: "",
-  confirmPassword: "",
+const languageKey = "afghan-power-language";
+const rtlLanguages = new Set(["fa", "ps"]);
+
+const translations = {
+  en: {
+    title: "Accounts",
+    subtitle: "Create and manage system login accounts.",
+    addAccount: "Add Account",
+    totalAccounts: "Total Accounts",
+    activeAccounts: "Active Accounts",
+    search: "Search username or email...",
+    username: "User Name",
+    email: "Email",
+    password: "Password",
+    rePassword: "Re-enter Password",
+    newPassword: "New Password (optional)",
+    reNewPassword: "Re-enter New Password",
+    status: "Status",
+    role: "Role",
+    created: "Created",
+    actions: "Actions",
+    active: "Active",
+    administrator: "Administrator",
+    noAccounts: "No accounts have been registered yet.",
+    createTitle: "Create New Account",
+    editTitle: "Edit Account",
+    formHint: "This account can be used from the login screen after logout.",
+    usernamePlaceholder: "Enter user name",
+    emailPlaceholder: "name@example.com",
+    passwordPlaceholder: "Enter password",
+    rePasswordPlaceholder: "Enter password again",
+    cancel: "Cancel",
+    save: "Save Account",
+    update: "Save Changes",
+    requiredUsername: "Please enter a user name.",
+    requiredEmail: "Please enter an email address.",
+    invalidEmail: "Please enter a valid email address.",
+    requiredPassword: "Please enter a password.",
+    shortPassword: "Password must be at least 4 characters.",
+    mismatch: "The passwords do not match.",
+    duplicateEmail: "This email is already used by another account.",
+    duplicateUsername: "This user name is already used by another account.",
+    saved: "Account created successfully.",
+    updated: "Account updated successfully.",
+    deleted: "Account deleted successfully.",
+    deleteTitle: "Delete Account",
+    deleteMessage: "Are you sure you want to delete this account?",
+    delete: "Delete",
+    cannotDeleteCurrent: "You cannot delete the account currently in use.",
+  },
+  fa: {
+    title: "اکونت‌ها",
+    subtitle: "اکونت‌های ورود به سیستم را ثبت و مدیریت کنید.",
+    addAccount: "افزودن اکونت",
+    totalAccounts: "مجموع اکونت‌ها",
+    activeAccounts: "اکونت‌های فعال",
+    search: "جستجوی نام کاربری یا ایمیل...",
+    username: "نام کاربری",
+    email: "ایمیل",
+    password: "پسورد",
+    rePassword: "تکرار پسورد",
+    newPassword: "پسورد جدید (اختیاری)",
+    reNewPassword: "تکرار پسورد جدید",
+    status: "وضعیت",
+    role: "صلاحیت",
+    created: "تاریخ ثبت",
+    actions: "عملیات",
+    active: "فعال",
+    administrator: "مدیر سیستم",
+    noAccounts: "هنوز هیچ اکونتی ثبت نشده است.",
+    createTitle: "ثبت اکونت جدید",
+    editTitle: "ویرایش اکونت",
+    formHint: "بعد از خروج از سیستم می‌توانید با این اکونت وارد شوید.",
+    usernamePlaceholder: "نام کاربری را وارد کنید",
+    emailPlaceholder: "name@example.com",
+    passwordPlaceholder: "پسورد را وارد کنید",
+    rePasswordPlaceholder: "پسورد را دوباره وارد کنید",
+    cancel: "لغو",
+    save: "ذخیره اکونت",
+    update: "ثبت تغییرات",
+    requiredUsername: "لطفاً نام کاربری را وارد کنید.",
+    requiredEmail: "لطفاً ایمیل را وارد کنید.",
+    invalidEmail: "لطفاً یک ایمیل معتبر وارد کنید.",
+    requiredPassword: "لطفاً پسورد را وارد کنید.",
+    shortPassword: "پسورد باید حداقل ۴ کاراکتر باشد.",
+    mismatch: "پسورد و تکرار پسورد یکسان نیست.",
+    duplicateEmail: "این ایمیل قبلاً برای یک اکونت دیگر استفاده شده است.",
+    duplicateUsername: "این نام کاربری قبلاً استفاده شده است.",
+    saved: "اکونت با موفقیت ثبت شد.",
+    updated: "اکونت با موفقیت ویرایش شد.",
+    deleted: "اکونت با موفقیت حذف شد.",
+    deleteTitle: "حذف اکونت",
+    deleteMessage: "آیا از حذف این اکونت مطمئن هستید؟",
+    delete: "حذف",
+    cannotDeleteCurrent: "اکونتی را که فعلاً با آن وارد شده‌اید نمی‌توانید حذف کنید.",
+  },
+  ps: {
+    title: "اکونټونه",
+    subtitle: "سیسټم ته د ننوتلو اکونټونه ثبت او مدیریت کړئ.",
+    addAccount: "اکونټ اضافه کړئ",
+    totalAccounts: "ټول اکونټونه",
+    activeAccounts: "فعال اکونټونه",
+    search: "د کارن نوم یا ایمیل ولټوئ...",
+    username: "د کارن نوم",
+    email: "برېښنالیک",
+    password: "پټنوم",
+    rePassword: "پټنوم بیا ولیکئ",
+    newPassword: "نوی پټنوم (اختیاري)",
+    reNewPassword: "نوی پټنوم بیا ولیکئ",
+    status: "حالت",
+    role: "صلاحیت",
+    created: "د ثبت نېټه",
+    actions: "عملیات",
+    active: "فعال",
+    administrator: "د سیستم مدیر",
+    noAccounts: "تر اوسه هېڅ اکونټ نه دی ثبت شوی.",
+    createTitle: "نوی اکونټ ثبت کړئ",
+    editTitle: "اکونټ سمول",
+    formHint: "له سیسټم څخه تر وتلو وروسته په دې اکونټ ننوتلی شئ.",
+    usernamePlaceholder: "د کارن نوم ولیکئ",
+    emailPlaceholder: "name@example.com",
+    passwordPlaceholder: "پټنوم ولیکئ",
+    rePasswordPlaceholder: "پټنوم بیا ولیکئ",
+    cancel: "لغوه",
+    save: "اکونټ ذخیره کړئ",
+    update: "بدلونونه ذخیره کړئ",
+    requiredUsername: "مهرباني وکړئ د کارن نوم ولیکئ.",
+    requiredEmail: "مهرباني وکړئ برېښنالیک ولیکئ.",
+    invalidEmail: "مهرباني وکړئ سم برېښنالیک ولیکئ.",
+    requiredPassword: "مهرباني وکړئ پټنوم ولیکئ.",
+    shortPassword: "پټنوم باید لږ تر لږه ۴ توري ولري.",
+    mismatch: "پټنومونه یو شان نه دي.",
+    duplicateEmail: "دا برېښنالیک د بل اکونټ لپاره کارول شوی دی.",
+    duplicateUsername: "دا د کارن نوم مخکې کارول شوی دی.",
+    saved: "اکونټ په بریالیتوب ثبت شو.",
+    updated: "اکونټ په بریالیتوب بدل شو.",
+    deleted: "اکونټ په بریالیتوب حذف شو.",
+    deleteTitle: "اکونټ حذف کړئ",
+    deleteMessage: "ایا ډاډه یاست چې دا اکونټ حذف کړئ؟",
+    delete: "حذف",
+    cannotDeleteCurrent: "هغه اکونټ چې اوس ورسره ننوتلي یاست نشئ حذف کولی.",
+  },
 };
 
-function Accounts({ accounts, setAccounts, currentUser }) {
+const emptyForm = { username: "", email: "", password: "", confirmPassword: "" };
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export default function Accounts({ accounts = [], setAccounts, currentUser }) {
+  const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
+  const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState(emptyForm);
-  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    const syncLanguage = () => setLanguage(localStorage.getItem(languageKey) || "en");
+    window.addEventListener("app-language-updated", syncLanguage);
+    window.addEventListener("storage", syncLanguage);
+    return () => {
+      window.removeEventListener("app-language-updated", syncLanguage);
+      window.removeEventListener("storage", syncLanguage);
+    };
+  }, []);
+
+  useEffect(() => {
+    document.body.classList.toggle("app-modal-open", showModal);
+    return () => document.body.classList.remove("app-modal-open");
+  }, [showModal]);
+
+  const t = translations[language] || translations.en;
+  const direction = rtlLanguages.has(language) ? "rtl" : "ltr";
+  const activeCount = accounts.filter((item) => String(item.status || "Active").toLowerCase() !== "inactive").length;
+
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return accounts;
+    return accounts.filter((account) =>
+      [account.username, account.fullName, account.email]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query))
+    );
+  }, [accounts, search]);
+
+  const openCreate = () => {
+    setEditId(null);
+    setForm(emptyForm);
+    setShowModal(true);
+  };
 
   const openEdit = (account) => {
     setEditId(account.id);
-
     setForm({
-      fullName: account.fullName || "",
+      username: account.username || account.fullName || "",
       email: account.email || "",
       password: "",
       confirmPassword: "",
     });
-
     setShowModal(true);
   };
 
-  const close = () => {
+  const closeModal = () => {
     setShowModal(false);
     setEditId(null);
     setForm(emptyForm);
   };
 
-  const save = async (event) => {
+  const saveAccount = async (event) => {
     event.preventDefault();
-
-    if (!form.fullName.trim()) {
-      return notify("Please enter the full name.", "error");
-    }
-
-    if (!form.email.trim()) {
-      return notify("Please enter the email address.", "error");
-    }
-
-    if (!editId && !form.password) {
-      return notify("Please enter a password.", "error");
-    }
-
-    if (form.password && form.password.length < 4) {
-      return notify("The password must be at least four characters.", "error");
-    }
-
-    if (form.password !== form.confirmPassword) {
-      return notify("The password confirmation does not match.", "error");
-    }
-
+    const username = form.username.trim();
     const email = form.email.trim().toLowerCase();
 
-    if (
-      accounts.some(
-        (item) =>
-          item.id !== editId &&
-          String(item.email || "").toLowerCase() === email
-      )
-    ) {
-      return notify("This email address is already in use.", "error");
-    }
+    if (!username) return notify(t.requiredUsername, "error");
+    if (!email) return notify(t.requiredEmail, "error");
+    if (!emailPattern.test(email)) return notify(t.invalidEmail, "error");
+    if (!editId && !form.password) return notify(t.requiredPassword, "error");
+    if (form.password && form.password.length < 4) return notify(t.shortPassword, "error");
+    if (form.password !== form.confirmPassword) return notify(t.mismatch, "error");
 
-    let saved;
+    const duplicateUsername = accounts.some(
+      (item) => String(item.id) !== String(editId) && String(item.username || item.fullName || "").trim().toLowerCase() === username.toLowerCase()
+    );
+    if (duplicateUsername) return notify(t.duplicateUsername, "error");
 
+    const duplicateEmail = accounts.some(
+      (item) => String(item.id) !== String(editId) && String(item.email || "").trim().toLowerCase() === email
+    );
+    if (duplicateEmail) return notify(t.duplicateEmail, "error");
+
+    let nextAccounts;
     if (editId) {
-      saved = await setAccounts(
-        accounts.map((item) =>
-          item.id === editId
-            ? {
-                ...item,
-                fullName: form.fullName.trim(),
-                email,
-                ...(form.password ? { password: form.password } : {}),
-              }
-            : item
-        )
+      nextAccounts = accounts.map((item) =>
+        String(item.id) === String(editId)
+          ? {
+              ...item,
+              username,
+              fullName: username,
+              email,
+              ...(form.password ? { password: form.password } : {}),
+              status: item.status || "Active",
+              role: item.role || "Admin",
+              updatedAt: new Date().toISOString(),
+            }
+          : item
       );
-
-      if (!saved) return;
-
-      notify("Account updated successfully.", "success", { silent: true });
     } else {
-      saved = await setAccounts([
+      nextAccounts = [
         ...accounts,
         {
-          id: Date.now(),
-          fullName: form.fullName.trim(),
+          id: `ACC-${Date.now()}`,
+          username,
+          fullName: username,
           email,
           password: form.password,
-          role: "Full Administrator",
+          secondaryPassword: "",
+          role: "Admin",
+          status: "Active",
+          permissions: {},
           createdAt: todayDateValue(),
+          updatedAt: new Date().toISOString(),
         },
-      ]);
-
-      if (!saved) return;
-
-      notify("New account created successfully.", "success", { silent: true });
+      ];
     }
 
-    close();
+    const saved = await setAccounts(nextAccounts);
+    if (!saved) return;
+    notify(editId ? t.updated : t.saved, "success", { silent: true });
+    closeModal();
   };
 
-  const remove = async (account) => {
-    if (account.id === currentUser.id) {
-      return notify("You cannot delete your active account.", "error");
-    }
-
-    const ok = await confirmAction({
-      title: "Delete Account",
-      message: `Are you sure you want to delete the account ${
-        account.fullName || account.email || account.username
-      }?`,
-      confirmText: "Delete",
-    });
-
-    if (!ok) {
+  const removeAccount = async (account) => {
+    if (String(account.id) === String(currentUser?.id)) {
+      notify(t.cannotDeleteCurrent, "error");
       return;
     }
-
-    const saved = await setAccounts(
-      accounts.filter((item) => item.id !== account.id)
-    );
-
-    if (!saved) return;
-
-    notify("Account deleted successfully.");
+    const confirmed = await confirmAction({
+      title: t.deleteTitle,
+      message: `${t.deleteMessage} ${account.username || account.email || ""}`,
+      confirmText: t.delete,
+      cancelText: t.cancel,
+    });
+    if (!confirmed) return;
+    const saved = await setAccounts(accounts.filter((item) => String(item.id) !== String(account.id)));
+    if (saved) notify(t.deleted, "success", { silent: true });
   };
 
-  const filtered = accounts.filter(
-    (account) =>
-      (account.fullName || "").includes(search) ||
-      (account.email || account.username || "").includes(search)
-  );
+  const modal = showModal ? (
+    <div className="account-manager-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && closeModal()}>
+      <section className="account-manager-modal" role="dialog" aria-modal="true" dir={direction}>
+        <div className="account-manager-modal-head">
+          <div>
+            <span className="account-manager-kicker"><ShieldCheck size={15} />{editId ? t.editTitle : t.createTitle}</span>
+            <h2>{editId ? t.editTitle : t.createTitle}</h2>
+            <p>{t.formHint}</p>
+          </div>
+          <button type="button" onClick={closeModal} aria-label={t.cancel}><X size={18} /></button>
+        </div>
+
+        <form className="account-manager-form" onSubmit={saveAccount} noValidate>
+          <label>
+            <span>{t.username}</span>
+            <input autoFocus value={form.username} onChange={(e) => setForm((prev) => ({ ...prev, username: e.target.value }))} placeholder={t.usernamePlaceholder} />
+          </label>
+          <label>
+            <span>{t.email}</span>
+            <input type="email" value={form.email} onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))} placeholder={t.emailPlaceholder} autoComplete="email" />
+          </label>
+          <label>
+            <span>{editId ? t.newPassword : t.password}</span>
+            <input type="password" value={form.password} onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))} placeholder={t.passwordPlaceholder} autoComplete="new-password" />
+          </label>
+          <label>
+            <span>{editId ? t.reNewPassword : t.rePassword}</span>
+            <input type="password" value={form.confirmPassword} onChange={(e) => setForm((prev) => ({ ...prev, confirmPassword: e.target.value }))} placeholder={t.rePasswordPlaceholder} autoComplete="new-password" />
+          </label>
+          <div className="account-manager-form-actions">
+            <button type="button" className="secondary" onClick={closeModal}>{t.cancel}</button>
+            <button type="submit" className="primary">{editId ? t.update : t.save}</button>
+          </div>
+        </form>
+      </section>
+    </div>
+  ) : null;
 
   return (
-    <div className="accounts-page">
-      <div className="accounts-header">
+    <div className="account-manager-page" dir={direction}>
+      <div className="account-manager-header">
         <div>
-          <h1>Account Management</h1>
-          <p>All accounts currently have full system permissions.</p>
+          <h1>{t.title}</h1>
+          <p>{t.subtitle}</p>
         </div>
-
-        <button type="button" onClick={() => setShowModal(true)}>
-          <UserPlus size={17} />
-          Create Account
-        </button>
+        <button type="button" className="account-manager-add" onClick={openCreate}><UserPlus size={17} />{t.addAccount}</button>
       </div>
 
-      <div className="accounts-card">
-        <div className="accounts-card-header">
-          <div>
-            <h3>Account List</h3>
-            <p>
-              {accounts.length} registered{" "}
-              {accounts.length === 1 ? "account" : "accounts"}
-            </p>
-          </div>
-
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search accounts..."
-          />
-        </div>
-
-        <div className="accounts-grid">
-          {filtered.map((account) => (
-            <article key={account.id} className="account-item">
-              <div className="account-avatar">
-                {(account.fullName || account.email || account.username).slice(
-                  0,
-                  1
-                )}
-              </div>
-
-              <div className="account-info">
-                <h3>
-                  {account.fullName || account.email || account.username}
-                </h3>
-
-                <p>
-                  {account.email ||
-                    `Legacy account: ${account.username}`}
-                </p>
-
-                <span>{account.role || "Full Administrator"}</span>
-              </div>
-
-              <div className="account-actions">
-                <button
-                  type="button"
-                  onClick={() => openEdit(account)}
-                  aria-label="Edit account"
-                  title="Edit Account"
-                >
-                  <Pencil size={15} />
-                </button>
-
-                <button
-                  type="button"
-                  className="danger"
-                  onClick={() => remove(account)}
-                  aria-label="Delete account"
-                  title="Delete Account"
-                >
-                  <Trash2 size={15} />
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
+      <div className="account-manager-stats">
+        <article><span>{t.totalAccounts}</span><strong>{accounts.length}</strong></article>
+        <article><span>{t.activeAccounts}</span><strong>{activeCount}</strong></article>
       </div>
 
-      {showModal && (
-        <div className="account-modal-backdrop">
-          <div
-            className="account-modal"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="account-modal-header">
-              <div>
-                <h3>
-                  {editId ? "Edit Account" : "Create New Account"}
-                </h3>
-                <p>This account will have full system permissions.</p>
-              </div>
-
-              <button
-                type="button"
-                onClick={close}
-                aria-label="Close modal"
-              >
-                ×
-              </button>
-            </div>
-
-            <form onSubmit={save} noValidate>
-              <label>
-                Full Name
-                <input
-                  value={form.fullName}
-                  onChange={(event) =>
-                    setForm({
-                      ...form,
-                      fullName: event.target.value,
-                    })
-                  }
-                  placeholder="Enter full name"
-                />
-              </label>
-
-              <label>
-                Email
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(event) =>
-                    setForm({
-                      ...form,
-                      email: event.target.value,
-                    })
-                  }
-                  placeholder="name@example.com"
-                />
-              </label>
-
-              <label>
-                {editId ? "New Password (Optional)" : "Password"}
-                <input
-                  type="password"
-                  value={form.password}
-                  onChange={(event) =>
-                    setForm({
-                      ...form,
-                      password: event.target.value,
-                    })
-                  }
-                  placeholder={
-                    editId
-                      ? "Leave empty to keep the current password"
-                      : "Enter password"
-                  }
-                />
-              </label>
-
-              <label>
-                Confirm Password
-                <input
-                  type="password"
-                  value={form.confirmPassword}
-                  onChange={(event) =>
-                    setForm({
-                      ...form,
-                      confirmPassword: event.target.value,
-                    })
-                  }
-                  placeholder="Confirm password"
-                />
-              </label>
-
-              <div>
-                <button type="button" onClick={close}>
-                  Cancel
-                </button>
-
-                <button type="submit">
-                  Save Account
-                </button>
-              </div>
-            </form>
-          </div>
+      <section className="account-manager-card">
+        <div className="account-manager-toolbar">
+          <div className="account-manager-search"><Search size={16} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t.search} /></div>
         </div>
-      )}
+
+        <div className="account-manager-table-wrap">
+          <table className="account-manager-table">
+            <thead>
+              <tr><th>{t.username}</th><th>{t.email}</th><th>{t.role}</th><th>{t.status}</th><th>{t.created}</th><th>{t.actions}</th></tr>
+            </thead>
+            <tbody>
+              {filtered.length ? filtered.map((account) => (
+                <tr key={account.id}>
+                  <td><div className="account-manager-user"><span><UserRound size={18} /></span><strong>{account.username || account.fullName || "—"}</strong></div></td>
+                  <td><div className="account-manager-email"><Mail size={14} />{account.email || "—"}</div></td>
+                  <td><span className="account-manager-role">{t.administrator}</span></td>
+                  <td><span className="account-manager-status">{t.active}</span></td>
+                  <td>{account.createdAt || "—"}</td>
+                  <td><div className="account-manager-actions"><button type="button" onClick={() => openEdit(account)} title={t.editTitle}><Edit3 size={15} /></button><button type="button" className="danger" onClick={() => removeAccount(account)} title={t.delete}><Trash2 size={15} /></button></div></td>
+                </tr>
+              )) : <tr><td colSpan="6" className="account-manager-empty">{t.noAccounts}</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {showModal && createPortal(modal, document.body)}
     </div>
   );
 }
-
-export default Accounts;

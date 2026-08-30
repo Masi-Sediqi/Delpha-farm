@@ -3,11 +3,14 @@ import { useNavigate } from "react-router-dom";
 import {
   BadgeDollarSign,
   Boxes,
+  CalendarDays,
   CalendarClock,
   PackageCheck,
   Plus,
   ShoppingBag,
   ShoppingCart,
+  TrendingDown,
+  TrendingUp,
   Truck,
   UserPlus,
   Wallet,
@@ -63,6 +66,14 @@ const text = {
     healthy: "healthy",
     noChange: "no change",
     overview: "Dashboard Overview",
+    welcomeUser: (name) => `Welcome back, ${name}`,
+    periodFilter: "Chart period",
+    daily: "Daily",
+    weekly: "Weekly",
+    monthly: "Monthly",
+    custom: "Custom",
+    from: "From",
+    to: "To",
     productOverview: "Products overview",
     supplierOverview: "Suppliers overview",
     customerOverview: "Customers overview",
@@ -117,6 +128,14 @@ const text = {
     healthy: "وضعیت خوب",
     noChange: "بدون تغییر",
     overview: "نمای کلی داشبورد",
+    welcomeUser: (name) => `خوش آمدید ${name}`,
+    periodFilter: "بازه نمودار",
+    daily: "روزانه",
+    weekly: "هفته‌وار",
+    monthly: "ماهانه",
+    custom: "سفارشی",
+    from: "از تاریخ",
+    to: "تا تاریخ",
     productOverview: "خلاصه محصولات",
     supplierOverview: "خلاصه تأمین‌کننده‌گان",
     customerOverview: "خلاصه مشتریان",
@@ -171,6 +190,14 @@ const text = {
     healthy: "ښه حالت",
     noChange: "بدلون نشته",
     overview: "د ډشبورد عمومي کتنه",
+    welcomeUser: (name) => `${name}، ښه راغلاست`,
+    periodFilter: "د چارت موده",
+    daily: "ورځنی",
+    weekly: "اوونیز",
+    monthly: "میاشتنی",
+    custom: "دودیز",
+    from: "له نېټې",
+    to: "تر نېټې",
     productOverview: "د محصولاتو لنډیز",
     supplierOverview: "د عرضه کوونکو لنډیز",
     customerOverview: "د پېرودونکو لنډیز",
@@ -199,6 +226,18 @@ const currentMonthDays = () => {
     return { date, label: now.toLocaleString("en-US", { month: "short" }).replace(".", "") + ` ${day}` };
   });
 };
+const localIsoDate = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+const chartDateLabel = (date) => date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+const datesBetween = (startValue, endValue) => {
+  const start = new Date(`${dateOnly(startValue)}T00:00:00`);
+  const end = new Date(`${dateOnly(endValue)}T00:00:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) return [];
+  const dates = [];
+  for (const cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
+    dates.push(localIsoDate(cursor));
+  }
+  return dates;
+};
 const shiftDay = (dateValue, amount) => {
   const date = new Date(`${dateValue}T00:00:00`);
   date.setDate(date.getDate() + amount);
@@ -223,7 +262,13 @@ const relativeAge = (value) => {
   return "just now";
 };
 
-export default function Dashboard() {
+const statTrend = (value, label, positive = true) => ({
+  value: Number(value || 0),
+  label,
+  tone: Number(value || 0) === 0 ? "neutral" : positive ? "up" : "down",
+});
+
+export default function Dashboard({ currentUser }) {
   const navigate = useNavigate();
   const [products] = useJsonCollection("products");
   const [stockMovements] = useJsonCollection("stockMovements");
@@ -232,7 +277,11 @@ export default function Dashboard() {
   const [sales] = useJsonCollection("salesRegister");
   const [purchases] = useJsonCollection("purchases");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
+  const [chartPeriod, setChartPeriod] = useState("monthly");
+  const [customFrom, setCustomFrom] = useState(() => shiftDay(today(), -29));
+  const [customTo, setCustomTo] = useState(() => today());
   const t = text[language] || text.en;
+  const userName = currentUser?.fullName || currentUser?.username || currentUser?.email || "User";
 
   useEffect(() => {
     const sync = () => setLanguage(localStorage.getItem(languageKey) || "en");
@@ -305,47 +354,69 @@ export default function Dashboard() {
     {
       title: t.productOverview,
       cards: [
-        { icon: PackageCheck, label: t.totalProducts, value: stats.productCount, path: "/products", accent: "navy" },
-        { icon: Boxes, label: t.totalMedicineQty, value: money(stats.stockUnits), path: "/inventory", accent: "sky" },
-        { icon: BadgeDollarSign, label: t.totalProductValue, value: `${money(stats.productValue)} ؋`, path: "/inventory", accent: "green" },
-        { icon: CalendarClock, label: t.expiringProducts, value: stats.expiring, path: "/inventory", accent: "amber" },
+        { icon: PackageCheck, label: t.totalProducts, value: stats.productCount, path: "/products", accent: "navy", trend: statTrend(stats.productsToday, t.addedToday) },
+        { icon: Boxes, label: t.totalMedicineQty, value: money(stats.stockUnits), path: "/inventory", accent: "sky", trend: statTrend(stats.stockNetToday, t.netToday, stats.stockNetToday >= 0) },
+        { icon: BadgeDollarSign, label: t.totalProductValue, value: `${money(stats.productValue)} ؋`, path: "/inventory", accent: "green", trend: statTrend(stats.stockUnits, t.healthy) },
+        { icon: CalendarClock, label: t.expiringProducts, value: stats.expiring, path: "/inventory", accent: "amber", trend: statTrend(stats.expiring, t.days60, false) },
       ],
     },
     {
       title: t.supplierOverview,
       cards: [
-        { icon: Truck, label: t.totalSuppliers, value: stats.supplierCount, path: "/suppliers", accent: "violet" },
-        { icon: ShoppingCart, label: t.suppliersWeOwe, value: stats.suppliersWithDebt, path: "/purchasing", accent: "red" },
+        { icon: Truck, label: t.totalSuppliers, value: stats.supplierCount, path: "/suppliers", accent: "violet", trend: statTrend(stats.suppliersToday, t.addedToday) },
+        { icon: ShoppingCart, label: t.suppliersWeOwe, value: stats.suppliersWithDebt, path: "/purchasing", accent: "red", trend: statTrend(stats.suppliersWithDebt, t.needsAttention, false) },
       ],
     },
     {
       title: t.customerOverview,
       cards: [
-        { icon: UserPlus, label: t.totalCustomers, value: stats.customerCount, path: "/customer-registry", accent: "sky" },
-        { icon: Wallet, label: t.customersOweUs, value: stats.customersWithDebt, path: "/sales-register", accent: "green" },
+        { icon: UserPlus, label: t.totalCustomers, value: stats.customerCount, path: "/customer-registry", accent: "sky", trend: statTrend(stats.customersToday, t.addedToday) },
+        { icon: Wallet, label: t.customersOweUs, value: stats.customersWithDebt, path: "/sales-register", accent: "green", trend: statTrend(stats.customersWithDebt, t.needsAttention, false) },
       ],
     },
   ];
 
-  const chartData = useMemo(() => currentMonthDays().map((day) => {
-    const salesTotal = sales
-      .filter((row) => dateOnly(row.saleDate || row.createdAt) === day.date)
-      .reduce((sum, row) => sum + Number(row.totalAmount || row.grandTotal || row.total || 0), 0);
-    const purchaseTotal = purchases
-      .filter((row) => dateOnly(row.purchaseDate || row.createdAt) === day.date)
-      .reduce((sum, row) => sum + Number(row.totalAmount || row.grandTotal || row.total || 0), 0);
-    const paidTotal = [...sales, ...purchases]
-      .filter((row) => dateOnly(row.saleDate || row.purchaseDate || row.createdAt) === day.date)
-      .reduce((sum, row) => sum + Number(row.paidAmount || row.cashAmount || 0), 0);
-    return {
-      name: day.label,
-      revenue: salesTotal,
-      expenses: purchaseTotal,
-      refunds: 0,
-      pending: Math.max(0, purchaseTotal - paidTotal),
-      sales: salesTotal,
-    };
-  }), [sales, purchases]);
+  const chartData = useMemo(() => {
+    const endDate = today();
+    let buckets;
+
+    if (chartPeriod === "daily") {
+      buckets = datesBetween(shiftDay(endDate, -6), endDate).map((date) => ({ name: chartDateLabel(new Date(`${date}T00:00:00`)), dates: [date] }));
+    } else if (chartPeriod === "weekly") {
+      const startDate = shiftDay(endDate, -55);
+      buckets = Array.from({ length: 8 }, (_, index) => {
+        const bucketStart = shiftDay(startDate, index * 7);
+        const bucketEnd = index === 7 ? endDate : shiftDay(bucketStart, 6);
+        return { name: chartDateLabel(new Date(`${bucketStart}T00:00:00`)), dates: datesBetween(bucketStart, bucketEnd) };
+      });
+    } else if (chartPeriod === "custom") {
+      buckets = datesBetween(customFrom, customTo).map((date) => ({ name: chartDateLabel(new Date(`${date}T00:00:00`)), dates: [date] }));
+    } else {
+      buckets = currentMonthDays().map((day) => ({ name: day.label, dates: [day.date] }));
+    }
+
+    if (!buckets.length) buckets = [{ name: chartDateLabel(new Date(`${endDate}T00:00:00`)), dates: [endDate] }];
+
+    return buckets.map((bucket) => {
+      const salesTotal = sales
+        .filter((row) => bucket.dates.includes(dateOnly(row.saleDate || row.createdAt)))
+        .reduce((sum, row) => sum + Number(row.totalAmount || row.grandTotal || row.total || 0), 0);
+      const purchaseTotal = purchases
+        .filter((row) => bucket.dates.includes(dateOnly(row.purchaseDate || row.createdAt)))
+        .reduce((sum, row) => sum + Number(row.totalAmount || row.grandTotal || row.total || 0), 0);
+      const paidTotal = [...sales, ...purchases]
+        .filter((row) => bucket.dates.includes(dateOnly(row.saleDate || row.purchaseDate || row.createdAt)))
+        .reduce((sum, row) => sum + Number(row.paidAmount || row.cashAmount || 0), 0);
+      return {
+        name: bucket.name,
+        revenue: salesTotal,
+        expenses: purchaseTotal,
+        refunds: 0,
+        pending: Math.max(0, purchaseTotal - paidTotal),
+        sales: salesTotal,
+      };
+    });
+  }, [sales, purchases, chartPeriod, customFrom, customTo]);
 
   const recentActivity = useMemo(() => [
     ...stockMovements.map((record) => ({
@@ -379,20 +450,61 @@ export default function Dashboard() {
     <div className="ph-dashboard" dir={rtl.has(language) ? "rtl" : "ltr"}>
       <section className="ph-overview-card">
         <div className="ph-overview-head">
-          <h2>{t.overview}</h2>
+          <div className="ph-overview-title">
+            <h2>{t.overview}</h2>
+            <p>{t.welcomeUser(userName)}</p>
+          </div>
+          <div className="ph-dashboard-period-filter">
+            <div className="ph-period-filter-label"><CalendarDays size={15} aria-hidden="true" /><span>{t.periodFilter}</span></div>
+            <div className="ph-period-filter-options" role="group" aria-label={t.periodFilter}>
+              {["daily", "weekly", "monthly", "custom"].map((period) => (
+                <button
+                  type="button"
+                  className={chartPeriod === period ? "is-active" : ""}
+                  key={period}
+                  aria-pressed={chartPeriod === period}
+                  onClick={() => setChartPeriod(period)}
+                >
+                  {t[period]}
+                </button>
+              ))}
+            </div>
+            {chartPeriod === "custom" && (
+              <div className="ph-custom-period-fields">
+                <label><span>{t.from}</span><input type="date" value={customFrom} max={customTo} onChange={(event) => setCustomFrom(event.target.value)} /></label>
+                <label><span>{t.to}</span><input type="date" value={customTo} min={customFrom} onChange={(event) => setCustomTo(event.target.value)} /></label>
+              </div>
+            )}
+          </div>
         </div>
         {overviewSections.map((section, sectionIndex) => (
           <div className="ph-overview-section" key={section.title}>
             {sectionIndex > 0 && <div className="ph-overview-divider" />}
             <h3>{section.title}</h3>
-            <div className="ph-dashboard-cards">
-              {section.cards.map(({ icon: Icon, label, value, path, accent }) => (
+            <div className={`ph-dashboard-cards count-${section.cards.length}`}>
+              {section.cards.map(({ icon: Icon, label, value, path, accent, trend }) => (
                 <button type="button" className={`ph-stat-card is-${accent}`} key={label} onClick={() => navigate(path)}>
-                  <span className="ph-stat-icon"><Icon size={20} /></span>
+                  <span className="ph-stat-icon" aria-hidden="true"><Icon size={18} /></span>
                   <div className="ph-stat-copy">
                     <div className="ph-stat-label">{label}</div>
                     <div className="ph-stat-value">{value}</div>
+                    <div className={`ph-stat-trend is-${trend.tone}`}>
+                      {trend.tone === "down" ? <TrendingDown size={13} /> : <TrendingUp size={13} />}
+                      <span>{trend.value > 0 ? `${trend.tone === "down" ? "" : "+"}${money(trend.value)}` : "0"} {trend.label}</span>
+                    </div>
                   </div>
+                  <span className="ph-stat-spark" aria-hidden="true">
+                    <svg viewBox="0 0 96 50" preserveAspectRatio="none">
+                      <defs>
+                        <linearGradient id={`spark-${accent}`} x1="0" x2="0" y1="0" y2="1">
+                          <stop offset="0%" stopColor="currentColor" stopOpacity=".22" />
+                          <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+                        </linearGradient>
+                      </defs>
+                      <path className="ph-stat-spark-fill" d="M0 33 C12 18 22 19 34 28 S57 36 68 20 S85 16 96 4 L96 50 L0 50 Z" />
+                      <path className="ph-stat-spark-line" d="M0 33 C12 18 22 19 34 28 S57 36 68 20 S85 16 96 4" />
+                    </svg>
+                  </span>
                 </button>
               ))}
             </div>
