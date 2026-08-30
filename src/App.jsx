@@ -87,8 +87,8 @@ const License = lazy(() => import("./pages/License"));
 const defaultAdminAccount = {
   id: "default-admin",
   fullName: "System Admin",
-  email: "admin@gmail.com",
-  password: "mynameisadmin",
+  email: "",
+  password: "",
   secondaryPassword: "",
   role: "Admin",
   status: "Active",
@@ -359,12 +359,18 @@ function App() {
   const systemName = company.companyName || "APG";
   const systemSubtitle = company.systemSubtitle || "Pharmacy & Medicine Management System";
   const systemLogo = company.logo || appLogo;
-  const effectiveAccounts = accounts.some((account) => String(account.id) === "default-admin")
-    ? accounts
-    : [defaultAdminAccount, ...accounts];
-  const currentUser = effectiveAccounts.find(
-    (account) => String(account.id) === String(sessionId)
+  // The built-in administrator is only an internal bootstrap identity.
+  // It must not be shown in the account chooser or stored as a normal account.
+  const effectiveAccounts = accounts.filter(
+    (account) => String(account.id) !== "default-admin"
   );
+  const hasUserAccounts = effectiveAccounts.length > 0;
+
+  // When there are no user-created accounts, open the application directly.
+  // As soon as a real account exists, normal account login is required.
+  const currentUser = hasUserAccounts
+    ? effectiveAccounts.find((account) => String(account.id) === String(sessionId))
+    : defaultAdminAccount;
 
   useEffect(() => {
     window.addEventListener("company-settings-updated", loadSettings);
@@ -483,9 +489,26 @@ function App() {
 
   useEffect(() => {
     if (!accountsLoaded) return;
-    if (accounts.some((account) => String(account.id) === "default-admin")) return;
-    setAccounts([defaultAdminAccount, ...accounts]);
+
+    // Migrate older installations by removing the old persisted default admin.
+    // The bootstrap administrator now exists only in memory when there are no
+    // real accounts, so it never appears on the Choose an Account screen.
+    const containsLegacyDefaultAdmin = accounts.some(
+      (account) => String(account.id) === "default-admin"
+    );
+    if (!containsLegacyDefaultAdmin) return;
+
+    setAccounts(accounts.filter((account) => String(account.id) !== "default-admin"));
   }, [accountsLoaded, accounts, setAccounts]);
+
+  useEffect(() => {
+    if (!accountsLoaded || !hasUserAccounts) return;
+    if (String(sessionId) !== "default-admin") return;
+
+    // Do not allow an old bootstrap session to bypass login once a real account exists.
+    localStorage.removeItem(sessionStorageKey);
+    setSessionId(null);
+  }, [accountsLoaded, hasUserAccounts, sessionId]);
 
   const login = async (account) => {
     if (window.ispDesktop?.startLicenseSession) {

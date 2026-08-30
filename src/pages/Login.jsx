@@ -72,9 +72,19 @@ function Login({ accounts = [], onLogin, company }) {
 
   const selectedAccount = activeAccounts.find((account) => String(account.id) === String(selectedAccountId));
 
-  const chooseAccount = (account) => {
-    setSelectedAccountId(String(account.id));
+  const chooseAccount = async (account) => {
     setPassword("");
+
+    // The built-in default administrator has no stored email/password.
+    // Selecting that account opens the system directly. User-created accounts
+    // can still keep their own passwords.
+    const hasPassword = Boolean(account.password || account.secondaryPassword);
+    if (!hasPassword) {
+      await onLogin(account);
+      return;
+    }
+
+    setSelectedAccountId(String(account.id));
   };
 
   const submit = async (event) => {
