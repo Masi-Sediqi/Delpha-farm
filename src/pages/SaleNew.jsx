@@ -732,10 +732,10 @@ function SaleNew() {
         />
       </div>
       {searchFocused && query.trim() && (
-        <div className="purchase-inline-search-results">
+        <div className={`purchase-inline-search-results sale-inline-search-results ${results.length ? "has-results" : "is-empty"}`}>
           <div className="purchase-search-results-head"><span>{t.results}</span><small>{results.length}</small></div>
           {results.length ? (
-            <div className="purchase-inline-result-list">
+            <div className="purchase-inline-result-list sale-inline-result-list">
               {results.map((product, index) => {
                 const stock = getStock(product);
                 const unavailable = stock <= 0;
@@ -762,6 +762,7 @@ function SaleNew() {
                       <small>{groupNameById(productGroups, product.groupId, product.group || "—")} · {t.stock}: {stock}</small>
                     </span>
                     <em>{unavailable ? t.outOfStock : `${num(product.salePrice).toFixed(2)} ${currency}`}</em>
+                    <b className="sale-result-check" aria-hidden="true"><Check size={13} /></b>
                   </button>
                 );
               })}
@@ -788,7 +789,64 @@ function SaleNew() {
       <div className="purchase-entry-layout">
         <main className="purchase-entry-main">
           <section className="purchase-items-card">
-            <div className="purchase-section-title"><ShoppingBag size={18} /><h2>{t.invoiceItems}</h2><span>{items.length}</span></div>
+            <div className="purchase-section-title purchase-section-title-with-meta sale-section-title-with-meta">
+              <div className="purchase-section-heading">
+                <ShoppingBag size={18} />
+                <h2>{t.invoiceItems}</h2>
+              </div>
+
+              <div className="purchase-top-meta sale-top-meta">
+                <div className="purchase-top-meta-supplier sale-top-meta-customer">
+                  <label className="purchase-field purchase-top-field">
+                    <span><UserRound size={13} />{t.customer}</span>
+                    <div className={`purchase-select-with-add ${quickOpen ? "is-quick-entry" : ""}`}>
+                      {quickOpen ? (
+                        <>
+                          <input
+                            className="purchase-inline-supplier-input"
+                            autoFocus
+                            value={quickName}
+                            onChange={(e) => setQuickName(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") addQuickCustomer(); if (e.key === "Escape") { setQuickOpen(false); setQuickName(""); } }}
+                            placeholder={t.customerPlaceholder}
+                            aria-label={t.customerName}
+                          />
+                          <button className="purchase-inline-supplier-save" type="button" onClick={addQuickCustomer} aria-label={t.add}><Check size={16} /></button>
+                          <button className="purchase-inline-supplier-cancel" type="button" onClick={() => { setQuickOpen(false); setQuickName(""); }} aria-label={t.cancel}>×</button>
+                        </>
+                      ) : (
+                        <>
+                          <select ref={customerSelectRef} value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
+                            <option value="">{t.selectCustomer}</option>
+                            {customers.filter((row) => row.status !== "inactive").map((row) => <option value={row.id} key={row.id}>{row.fullName || row.companyName || "—"}</option>)}
+                          </select>
+                          <button className="purchase-inline-supplier-add" type="button" onClick={() => setQuickOpen(true)} aria-label={t.quickCustomer}><Plus size={17} /></button>
+                        </>
+                      )}
+                    </div>
+                  </label>
+                </div>
+
+                <label className="purchase-field purchase-top-field purchase-top-bill">
+                  <span>{t.billNumber}</span>
+                  <input value={billNumber} onChange={(e) => setBillNumber(e.target.value)} />
+                </label>
+
+                <label className="purchase-field purchase-top-field purchase-top-currency">
+                  <span>{t.currency}</span>
+                  <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+                    {currencies.map((code) => <option key={code} value={code}>{code}</option>)}
+                  </select>
+                </label>
+
+                <label className="purchase-field purchase-top-field purchase-top-date">
+                  <span>{t.date}</span>
+                  <ShamsiDateInput value={saleDate} onChange={(e) => setSaleDate(e.target.value)} />
+                </label>
+              </div>
+
+              <span className="purchase-items-count">{items.length}</span>
+            </div>
             <div className="purchase-items-list">
               {!items.length && saleSearchField}
               {!items.length && (
@@ -816,35 +874,6 @@ function SaleNew() {
         </main>
 
         <aside className="purchase-entry-sidebar">
-          <section className="purchase-side-card">
-            <div className="purchase-side-title"><UserRound size={17} /><strong>{t.customer}</strong></div>
-            <div className={`purchase-select-with-add ${quickOpen ? "is-quick-entry" : ""}`}>
-              {quickOpen ? (
-                <>
-                  <input className="purchase-inline-supplier-input" autoFocus value={quickName} onChange={(e) => setQuickName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addQuickCustomer(); if (e.key === "Escape") { setQuickOpen(false); setQuickName(""); } }} placeholder={t.customerPlaceholder} aria-label={t.customerName} />
-                  <button className="purchase-inline-supplier-save" type="button" onClick={addQuickCustomer} aria-label={t.add}><Check size={16} /></button>
-                  <button className="purchase-inline-supplier-cancel" type="button" onClick={() => { setQuickOpen(false); setQuickName(""); }} aria-label={t.cancel}>×</button>
-                </>
-              ) : (
-                <>
-                  <select ref={customerSelectRef} value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
-                    <option value="">{t.selectCustomer}</option>
-                    {customers.filter((row) => row.status !== "inactive").map((row) => <option value={row.id} key={row.id}>{row.fullName || row.companyName || "—"}</option>)}
-                  </select>
-                  <button className="purchase-inline-supplier-add" type="button" onClick={() => setQuickOpen(true)} aria-label={t.quickCustomer}><Plus size={17} /></button>
-                </>
-              )}
-            </div>
-          </section>
-
-          <section className="purchase-side-card purchase-meta-card">
-            <div className="purchase-meta-grid">
-              <label className="purchase-field purchase-meta-bill"><span>{t.billNumber}</span><input value={billNumber} onChange={(e) => setBillNumber(e.target.value)} /></label>
-              <label className="purchase-field purchase-meta-currency"><span>{t.currency}</span><select value={currency} onChange={(e) => setCurrency(e.target.value)}>{currencies.map((code) => <option key={code} value={code}>{code}</option>)}</select></label>
-              <label className="purchase-field purchase-meta-date"><span>{t.date}</span><ShamsiDateInput value={saleDate} onChange={(e) => setSaleDate(e.target.value)} /></label>
-            </div>
-          </section>
-
           <section className="purchase-side-card purchase-summary-card">
             <div className="purchase-side-title"><ShoppingBag size={17} /><strong>{t.grandTotal}</strong></div>
             <div className="purchase-summary-row"><span>{t.totalBeforeDiscount}</span><strong>{subtotal.toFixed(2)} {currency}</strong></div>

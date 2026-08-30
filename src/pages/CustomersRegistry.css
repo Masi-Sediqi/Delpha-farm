@@ -112,6 +112,10 @@
   grid-column: span 6;
 }
 
+.customer-field.customer-span-4 {
+  grid-column: span 4;
+}
+
 .customer-field.customer-span-2 {
   grid-column: 1 / -1;
 }
@@ -232,6 +236,7 @@ body.dark-mode .customer-input-icon {
 
   .customer-field,
   .customer-field.customer-span-6,
+  .customer-field.customer-span-4,
   .customer-field.customer-span-2 {
     grid-column: auto;
   }

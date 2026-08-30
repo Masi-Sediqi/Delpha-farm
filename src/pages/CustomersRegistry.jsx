@@ -31,6 +31,7 @@ const labelsByLanguage = {
     city: "City",
     province: "Province / State",
     country: "Country",
+    currency: "Currency",
     openingBalance: "Opening Balance",
     creditLimit: "Credit Limit",
     status: "Status",
@@ -92,6 +93,7 @@ const labelsByLanguage = {
     city: "شهر",
     province: "ولایت",
     country: "کشور",
+    currency: "واحد پولی",
     openingBalance: "بیلانس افتتاحیه",
     creditLimit: "حد اعتبار",
     status: "حالت",
@@ -153,6 +155,7 @@ const labelsByLanguage = {
     city: "ښار",
     province: "ولایت",
     country: "هېواد",
+    currency: "د پیسو واحد",
     openingBalance: "افتتاحي بیلانس",
     creditLimit: "د اعتبار حد",
     status: "حالت",
@@ -199,6 +202,7 @@ const blankForm = {
   companyName: "",
   phone: "",
   address: "",
+  currency: "AFN",
   openingBalance: "0",
   status: "active",
   notes: "",
@@ -429,8 +433,9 @@ export default function CustomersRegistry() {
                 <section className="customer-form-section">
                   <div className="customer-section-title"><Building2 size={18} /><span>{t.balance}</span></div>
                   <div className="customer-form-grid">
-                    <label className="customer-field"><span>{t.openingBalance}</span><input type="number" step="any" value={form.openingBalance} onChange={(e) => change("openingBalance", e.target.value)} /></label>
-                    <label className="customer-field customer-span-6"><span>{t.status}</span><select value={form.status} onChange={(e) => change("status", e.target.value)}><option value="active">{t.active}</option><option value="inactive">{t.inactive}</option></select></label>
+                    <label className="customer-field customer-span-4"><span>{t.currency}</span><select value={form.currency} onChange={(e) => change("currency", e.target.value)}><option value="AFN">AFN</option><option value="USD">USD</option><option value="INR">INR</option><option value="EUR">EUR</option></select></label>
+                    <label className="customer-field customer-span-4"><span>{t.openingBalance}</span><input type="number" step="any" value={form.openingBalance} onChange={(e) => change("openingBalance", e.target.value)} /></label>
+                    <label className="customer-field customer-span-4"><span>{t.status}</span><select value={form.status} onChange={(e) => change("status", e.target.value)}><option value="active">{t.active}</option><option value="inactive">{t.inactive}</option></select></label>
                     <label className="customer-field customer-span-2"><span>{t.notes}</span><textarea rows="4" value={form.notes} onChange={(e) => change("notes", e.target.value)} /></label>
                   </div>
                 </section>
