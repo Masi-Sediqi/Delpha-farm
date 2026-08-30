@@ -1107,3 +1107,201 @@ body.dark-mode .purchase-inline-search-results{box-shadow:0 18px 45px rgba(0,0,0
     justify-content:flex-start;
   }
 }
+
+/* Full-width purchase form: totals now live below the selected items. */
+.purchase-entry-layout{
+  grid-template-columns:minmax(0,1fr) !important;
+}
+.purchase-entry-page[dir="rtl"] .purchase-entry-layout{
+  grid-template-columns:minmax(0,1fr) !important;
+}
+.purchase-entry-main{
+  width:100%;
+}
+.purchase-entry-page .purchase-save-top{display:none}
+.purchase-final-panel{
+  margin-top:14px;
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+  align-items:stretch;
+}
+.purchase-entry-page input[inputmode="decimal"],
+.purchase-line-total strong,
+.purchase-inline-result em,
+.purchase-summary-row strong,
+.purchase-payment-record strong{
+  direction:ltr;
+  unicode-bidi:plaintext;
+  font-variant-numeric:tabular-nums;
+  font-feature-settings:"tnum" 1,"lnum" 1;
+}
+.purchase-summary-inline{
+  margin-top:0;
+  padding:14px;
+  border-radius:12px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--button-primary-bg,#111827) 4%,var(--card-bg,#fff)),var(--card-bg,#fff));
+  border-color:color-mix(in srgb,var(--button-primary-bg,#111827) 12%,var(--border-color,#e2e8f0));
+  box-shadow:0 8px 24px rgba(15,23,42,.055);
+}
+.purchase-final-payment-card{
+  padding:14px;
+  border-radius:12px;
+  box-shadow:0 8px 24px rgba(15,23,42,.055);
+}
+.purchase-entry-page[dir="rtl"] .purchase-summary-inline{
+  grid-column:1;
+}
+.purchase-entry-page[dir="rtl"] .purchase-final-payment-card{
+  grid-column:2;
+}
+.purchase-summary-inline .purchase-side-title{
+  margin-bottom:10px;
+  padding-bottom:10px;
+}
+.purchase-summary-grid{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:8px;
+}
+.purchase-summary-inline .purchase-summary-row{
+  min-height:44px;
+  padding:9px 11px;
+  border:1px solid var(--border-color,#edf0f4);
+  border-radius:10px;
+  background:var(--card-bg,#fff);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.purchase-summary-inline .purchase-summary-row strong{
+  margin-top:0;
+  font-size:14px;
+}
+.purchase-summary-inline .purchase-summary-grand{
+  margin:0;
+  background:color-mix(in srgb,#4f7cff 9%,var(--card-bg,#fff));
+  color:var(--text-primary,#0f172a) !important;
+  border-color:color-mix(in srgb,#4f7cff 28%,var(--border-color,#e2e8f0)) !important;
+  box-shadow:0 8px 20px rgba(79,124,255,.10);
+}
+.purchase-summary-inline .purchase-summary-grand span,
+.purchase-summary-inline .purchase-summary-grand strong{
+  color:var(--text-primary,#0f172a) !important;
+}
+.purchase-summary-inline .purchase-summary-grand span{
+  color:var(--text-secondary,#64748b) !important;
+  opacity:1;
+}
+.purchase-summary-inline .purchase-summary-grand strong{
+  font-size:17px;
+}
+.purchase-final-payment-card{
+  align-content:start;
+  gap:14px;
+}
+.purchase-final-payment-card .purchase-side-title{
+  margin-bottom:2px;
+}
+.purchase-final-payment-card .purchase-payment-options{
+  gap:9px;
+}
+.purchase-final-payment-card .purchase-payment-options button{
+  min-height:44px;
+  border-radius:10px;
+  font-size:12px;
+}
+.purchase-final-payment-card .purchase-field input{
+  height:42px;
+  border-radius:10px;
+}
+.purchase-final-payment-card .purchase-field input:disabled{
+  opacity:.72;
+  cursor:not-allowed;
+  background:var(--soft-bg,#f8fafc);
+}
+.purchase-final-payment-card .purchase-payment-record{
+  min-height:42px;
+  border:1px solid var(--border-color,#edf0f4);
+  border-radius:10px;
+}
+.purchase-final-save{
+  width:100%;
+  min-height:44px;
+  border:0;
+  border-radius:10px;
+  background:var(--button-primary-bg,#111827);
+  color:var(--button-primary-text,#fff);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  font:inherit;
+  font-size:13px;
+  font-weight:850;
+  cursor:pointer;
+  box-shadow:0 10px 22px color-mix(in srgb,var(--button-primary-bg,#111827) 18%,transparent);
+  transition:transform .15s ease,box-shadow .15s ease,filter .15s ease;
+}
+.purchase-final-save:hover{
+  transform:translateY(-1px);
+  filter:brightness(1.02);
+  box-shadow:0 14px 28px color-mix(in srgb,var(--button-primary-bg,#111827) 22%,transparent);
+}
+body.dark-mode .purchase-summary-inline{
+  background:color-mix(in srgb,var(--button-primary-bg,#111827) 10%,var(--card-bg,#111827));
+}
+
+@media(max-width:900px){
+  .purchase-final-panel{
+    grid-template-columns:1fr;
+  }
+  .purchase-entry-page[dir="rtl"] .purchase-summary-inline,
+  .purchase-entry-page[dir="rtl"] .purchase-final-payment-card{
+    grid-column:auto;
+  }
+}
+
+@media(max-width:560px){
+  .purchase-summary-inline .purchase-summary-row{
+    min-height:54px;
+  }
+}
+
+/* Purchase row: manufacturer selector + Gregorian expiry date */
+.purchase-item-row.purchase-keyboard-row{
+  grid-template-columns:44px minmax(135px,1.2fr) minmax(125px,.8fr) minmax(105px,.7fr) minmax(115px,.76fr) minmax(108px,.72fr) minmax(135px,.84fr) minmax(110px,.72fr) 32px !important;
+}
+.purchase-keyboard-row select{
+  width:100%;
+  height:38px;
+  border:1px solid var(--border-color,#dce3ea);
+  border-radius:8px;
+  background:var(--input-bg,#fff);
+  color:inherit;
+  padding:0 8px;
+  font:inherit;
+  font-size:11px;
+  box-sizing:border-box;
+}
+.purchase-expiry-field input[type="date"]{font-size:11px}
+
+@media(max-width:1280px){
+  .purchase-item-row.purchase-keyboard-row{
+    grid-template-columns:42px minmax(125px,1.05fr) repeat(3,minmax(92px,.7fr)) minmax(118px,.78fr) minmax(100px,.7fr) 32px !important;
+  }
+  .purchase-keyboard-row .purchase-expiry-field{grid-column:auto}
+}
+@media(max-width:1020px){
+  .purchase-item-row.purchase-keyboard-row{
+    grid-template-columns:46px minmax(0,1fr) repeat(2,minmax(110px,1fr)) 34px !important;
+  }
+  .purchase-keyboard-row .purchase-company-field,
+  .purchase-keyboard-row .purchase-expiry-field{grid-column:auto !important}
+  .purchase-keyboard-row .purchase-line-total{grid-column:auto}
+}
+@media(max-width:640px){
+  .purchase-keyboard-row .purchase-company-field,
+  .purchase-keyboard-row .purchase-expiry-field{grid-column:1/-1 !important}
+}

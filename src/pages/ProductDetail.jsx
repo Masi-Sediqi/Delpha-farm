@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import Box from "@mui/material/Box";
+import { LineChart } from "@mui/x-charts/LineChart";
+import {
+  GaugeContainer,
+  GaugeValueArc,
+  GaugeReferenceArc,
+  useGaugeState,
+} from "@mui/x-charts/Gauge";
 import {
   BadgeDollarSign,
   Boxes,
@@ -78,6 +86,20 @@ const translations = {
     customer: "Customer",
     noPurchases: "No purchase record exists for this product yet.",
     noSales: "No sales record exists for this product yet.",
+    stockGauge: "Stock Level",
+    stockGaugeHint: "Current stock as a percentage of total available inflow",
+    movementTrend: "Product Movement Trend",
+    batchTrend: "Batch Movement Trend",
+    purchaseTrend: "Purchase Trend",
+    salesTrend: "Sales Trend",
+    purchasedSeries: "Purchased",
+    soldSeries: "Sold",
+    receivedSeries: "Received",
+    issuedSeries: "Issued",
+    availableSeries: "Available",
+    quantitySeries: "Quantity",
+    bonusSeries: "Bonus",
+    noChartData: "Not enough data to draw the chart yet.",
     productNotFound: "Product not found",
     productNotFoundHint: "This product may have been deleted or the link is no longer valid.",
     unknown: "—",
@@ -136,6 +158,20 @@ const translations = {
     customer: "مشتری",
     noPurchases: "هنوز برای این محصول خریدی ثبت نشده است.",
     noSales: "هنوز برای این محصول فروشی ثبت نشده است.",
+    stockGauge: "سطح موجودی",
+    stockGaugeHint: "نسبت موجودی فعلی به مجموع ورودی قابل دسترس",
+    movementTrend: "روند حرکت محصول",
+    batchTrend: "روند موجودی بچ‌ها",
+    purchaseTrend: "روند خریداری",
+    salesTrend: "روند فروش",
+    purchasedSeries: "خریداری",
+    soldSeries: "فروش",
+    receivedSeries: "ورودی",
+    issuedSeries: "خروجی",
+    availableSeries: "موجود",
+    quantitySeries: "مقدار",
+    bonusSeries: "بونس",
+    noChartData: "هنوز معلومات کافی برای رسم گراف وجود ندارد.",
     productNotFound: "محصول پیدا نشد",
     productNotFoundHint: "ممکن است محصول حذف شده باشد یا لینک دیگر معتبر نباشد.",
     unknown: "—",
@@ -194,6 +230,20 @@ const translations = {
     customer: "پېرودونکی",
     noPurchases: "د دې محصول لپاره تر اوسه پېرود نه دی ثبت شوی.",
     noSales: "د دې محصول لپاره تر اوسه خرڅلاو نه دی ثبت شوی.",
+    stockGauge: "د موجودۍ کچه",
+    stockGaugeHint: "اوسنۍ موجودي د ټولې داخلې په تناسب",
+    movementTrend: "د محصول د حرکت بهیر",
+    batchTrend: "د بچونو د موجودۍ بهیر",
+    purchaseTrend: "د پېرود بهیر",
+    salesTrend: "د خرڅلاو بهیر",
+    purchasedSeries: "پېرود",
+    soldSeries: "خرڅلاو",
+    receivedSeries: "داخل",
+    issuedSeries: "وتلی",
+    availableSeries: "موجود",
+    quantitySeries: "مقدار",
+    bonusSeries: "بونس",
+    noChartData: "د ګراف لپاره تر اوسه کافي معلومات نشته.",
     productNotFound: "محصول ونه موندل شو",
     productNotFoundHint: "کېدای شي محصول حذف شوی وي یا لینک نور اعتبار ونه لري.",
     unknown: "—",
@@ -212,6 +262,25 @@ const productFormLabels = {
 };
 const numeric = (value) => Math.max(Number(value || 0), 0);
 const money = (value) => numeric(value).toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+
+function GaugePointer() {
+  const { valueAngle, outerRadius, cx, cy } = useGaugeState();
+
+  if (valueAngle === null) return null;
+
+  const target = {
+    x: cx + outerRadius * Math.sin(valueAngle),
+    y: cy - outerRadius * Math.cos(valueAngle),
+  };
+
+  return (
+    <g className="product-detail-gauge-pointer">
+      <circle cx={cx} cy={cy} r={5} />
+      <path d={`M ${cx} ${cy} L ${target.x} ${target.y}`} />
+    </g>
+  );
+}
 
 function ProductDetail() {
   const { productId } = useParams();
@@ -274,6 +343,50 @@ function ProductDetail() {
     .filter(Boolean)
     .sort()
     .at(-1) || product?.lastExpiryDate || "";
+
+
+  const dateValue = (value) => {
+    const parsed = new Date(value || 0).getTime();
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  const chartDateLabel = (value, fallback) => {
+    if (!value) return fallback || t.unknown;
+    const formatted = formatDateTime(value, { fallback: fallback || t.unknown });
+    return String(formatted || fallback || t.unknown).replace(/\s+\d{1,2}:\d{2}.*$/, "");
+  };
+
+  const recentPurchases = [...productPurchases]
+    .sort((a, b) => dateValue(a.purchase?.purchaseDate || a.purchase?.createdAt) - dateValue(b.purchase?.purchaseDate || b.purchase?.createdAt))
+    .slice(-12);
+
+  const recentSales = [...productSales]
+    .sort((a, b) => dateValue(a.sale?.saleDate || a.sale?.createdAt) - dateValue(b.sale?.saleDate || b.sale?.createdAt))
+    .slice(-12);
+
+  const movementEvents = [
+    ...productPurchases.map((row) => ({
+      type: "purchase",
+      date: row.purchase?.purchaseDate || row.purchase?.createdAt,
+      quantity: numeric(row.quantity) + numeric(row.bonus),
+      label: row.purchase?.billNumber || chartDateLabel(row.purchase?.purchaseDate || row.purchase?.createdAt),
+    })),
+    ...productSales.map((row) => ({
+      type: "sale",
+      date: row.sale?.saleDate || row.sale?.createdAt,
+      quantity: numeric(row.quantity),
+      label: row.sale?.invoiceNumber || chartDateLabel(row.sale?.saleDate || row.sale?.createdAt),
+    })),
+  ]
+    .sort((a, b) => dateValue(a.date) - dateValue(b.date))
+    .slice(-14);
+
+  const stockGaugeMax = Math.max(
+    numeric(movementTotals.quantityIn),
+    numeric(currentStock) + numeric(totalSold),
+    numeric(currentStock),
+    1
+  );
+  const stockGaugeValue = Math.max(0, Math.min(100, (numeric(currentStock) / stockGaugeMax) * 100));
 
   const companyName = useMemo(() => {
     if (!product) return t.unknown;
@@ -390,12 +503,72 @@ function ProductDetail() {
               </tbody>
             </table>
           </div>
+
+          <div className="product-detail-chart-block">
+            <div className="product-detail-chart-head">
+              <div>
+                <strong>{t.movementTrend}</strong>
+                <span>{product.productName}</span>
+              </div>
+            </div>
+            {movementEvents.length ? (
+              <Box className="product-detail-line-chart">
+                <LineChart
+                  height={250}
+                  series={[
+                    {
+                      data: movementEvents.map((row) => row.type === "purchase" ? row.quantity : 0),
+                      label: t.purchasedSeries,
+                      shape: "cross",
+                      showMark: ({ index }) => index % 2 === 0,
+                    },
+                    {
+                      data: movementEvents.map((row) => row.type === "sale" ? row.quantity : 0),
+                      label: t.soldSeries,
+                      shape: "diamond",
+                      showMark: ({ index }) => index % 2 === 0,
+                    },
+                  ]}
+                  xAxis={[{ scaleType: "point", data: movementEvents.map((row) => row.label), height: 34 }]}
+                  yAxis={[{ width: 54 }]}
+                  margin={{ right: 24, left: 8, top: 16, bottom: 8 }}
+                  grid={{ horizontal: true }}
+                />
+              </Box>
+            ) : (
+              <div className="product-detail-chart-empty">{t.noChartData}</div>
+            )}
+          </div>
         </section>
       )}
 
       {activeTab === "inventory" && (
         <section className="product-detail-content product-detail-card">
           <div className="product-detail-section-heading"><Boxes size={20} /><div><h2>{t.inventorySummary}</h2></div></div>
+
+          <div className="product-detail-gauge-card">
+            <div className="product-detail-gauge-copy">
+              <span>{t.stockGauge}</span>
+              <strong>{Math.round(stockGaugeValue)}%</strong>
+              <small>{t.stockGaugeHint}</small>
+              <div>
+                <b>{money(currentStock)} {unitLabel}</b>
+                <em>/ {money(stockGaugeMax)}</em>
+              </div>
+            </div>
+            <GaugeContainer
+              width={230}
+              height={180}
+              startAngle={-110}
+              endAngle={110}
+              value={stockGaugeValue}
+            >
+              <GaugeReferenceArc />
+              <GaugeValueArc />
+              <GaugePointer />
+            </GaugeContainer>
+          </div>
+
           <div className="product-detail-inventory-grid">
             <article><span>{t.openingOrLegacyStock}</span><strong>{money(movementTotals.opening)}</strong></article>
             <article><span>{t.purchasedUnits}</span><strong>{money(totalPurchased)}</strong></article>
@@ -410,6 +583,25 @@ function ProductDetail() {
       {activeTab === "batches" && (
         <section className="product-detail-content product-detail-card">
           <div className="product-detail-section-heading"><Layers3 size={20} /><div><h2>{t.batchInventory}</h2></div></div>
+          <div className="product-detail-chart-block">
+            <div className="product-detail-chart-head"><div><strong>{t.batchTrend}</strong><span>{product.productName}</span></div></div>
+            {batchBalances.length ? (
+              <Box className="product-detail-line-chart">
+                <LineChart
+                  height={250}
+                  series={[
+                    { data: batchBalances.map((row) => numeric(row.quantityIn)), label: t.receivedSeries, shape: "cross", showMark: ({ index }) => index % 2 === 0 },
+                    { data: batchBalances.map((row) => numeric(row.quantityOut)), label: t.issuedSeries, shape: "diamond", showMark: ({ index }) => index % 2 === 0 },
+                    { data: batchBalances.map((row) => numeric(row.available)), label: t.availableSeries, showMark: true },
+                  ]}
+                  xAxis={[{ scaleType: "point", data: batchBalances.map((row) => row.batchNo || t.unknown), height: 34 }]}
+                  yAxis={[{ width: 54 }]}
+                  margin={{ right: 24, left: 8, top: 16, bottom: 8 }}
+                  grid={{ horizontal: true }}
+                />
+              </Box>
+            ) : <div className="product-detail-chart-empty">{t.noChartData}</div>}
+          </div>
           <div className="product-detail-table-wrap">
             <table>
               <thead><tr><th>{t.batchNo}</th><th>{t.expiryDate}</th><th>{t.receivedQty}</th><th>{t.issuedQty}</th><th>{t.availableQty}</th></tr></thead>
@@ -433,6 +625,24 @@ function ProductDetail() {
       {activeTab === "purchases" && (
         <section className="product-detail-content product-detail-card">
           <div className="product-detail-section-heading"><ShoppingCart size={20} /><div><h2>{t.purchaseHistory}</h2></div></div>
+          <div className="product-detail-chart-block">
+            <div className="product-detail-chart-head"><div><strong>{t.purchaseTrend}</strong><span>{product.productName}</span></div></div>
+            {recentPurchases.length ? (
+              <Box className="product-detail-line-chart">
+                <LineChart
+                  height={250}
+                  series={[
+                    { data: recentPurchases.map((row) => numeric(row.quantity)), label: t.quantitySeries, shape: "cross", showMark: ({ index }) => index % 2 === 0 },
+                    { data: recentPurchases.map((row) => numeric(row.bonus)), label: t.bonusSeries, shape: "diamond", showMark: ({ index }) => index % 2 === 0 },
+                  ]}
+                  xAxis={[{ scaleType: "point", data: recentPurchases.map((row) => row.purchase?.billNumber || chartDateLabel(row.purchase?.purchaseDate || row.purchase?.createdAt)), height: 34 }]}
+                  yAxis={[{ width: 54 }]}
+                  margin={{ right: 24, left: 8, top: 16, bottom: 8 }}
+                  grid={{ horizontal: true }}
+                />
+              </Box>
+            ) : <div className="product-detail-chart-empty">{t.noChartData}</div>}
+          </div>
           <div className="product-detail-table-wrap">
             <table>
               <thead><tr><th>{t.billNo}</th><th>{t.supplier}</th><th>{t.date}</th><th>{t.quantity}</th><th>{t.bonus}</th><th>{t.unitPrice}</th><th>{t.lineTotal}</th></tr></thead>
@@ -458,6 +668,23 @@ function ProductDetail() {
       {activeTab === "sales" && (
         <section className="product-detail-content product-detail-card">
           <div className="product-detail-section-heading"><ShoppingBag size={20} /><div><h2>{t.salesHistory}</h2></div></div>
+          <div className="product-detail-chart-block">
+            <div className="product-detail-chart-head"><div><strong>{t.salesTrend}</strong><span>{product.productName}</span></div></div>
+            {recentSales.length ? (
+              <Box className="product-detail-line-chart">
+                <LineChart
+                  height={250}
+                  series={[
+                    { data: recentSales.map((row) => numeric(row.quantity)), label: t.quantitySeries, shape: "cross", showMark: ({ index }) => index % 2 === 0 },
+                  ]}
+                  xAxis={[{ scaleType: "point", data: recentSales.map((row) => row.sale?.invoiceNumber || chartDateLabel(row.sale?.saleDate || row.sale?.createdAt)), height: 34 }]}
+                  yAxis={[{ width: 54 }]}
+                  margin={{ right: 24, left: 8, top: 16, bottom: 8 }}
+                  grid={{ horizontal: true }}
+                />
+              </Box>
+            ) : <div className="product-detail-chart-empty">{t.noChartData}</div>}
+          </div>
           <div className="product-detail-table-wrap">
             <table>
               <thead><tr><th>{t.invoiceNo}</th><th>{t.customer}</th><th>{t.date}</th><th>{t.quantity}</th><th>{t.unitPrice}</th><th>{t.discount}</th><th>{t.lineTotal}</th></tr></thead>

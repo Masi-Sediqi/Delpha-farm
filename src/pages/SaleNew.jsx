@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   Check,
   Image as ImageIcon,
+  Info,
   PackageSearch,
   Plus,
   Search,
@@ -49,6 +50,12 @@ const text = {
     quickCustomer: "Add customer",
     customerName: "Customer name",
     customerPlaceholder: "Enter customer name",
+    customerInfo: "Customer information",
+    customerInfoEmpty: "Select a customer to view information.",
+    phone: "Phone",
+    company: "Company / Business",
+    address: "Address",
+    openingBalance: "Opening balance",
     add: "Add",
     cancel: "Cancel",
     currency: "Currency",
@@ -68,6 +75,10 @@ const text = {
     actualQty: "Quantity by piece",
     salePrice: "Sale price",
     purchasePrice: "Purchase price",
+    cartonSize: "Carton / unit size",
+    costPrice: "Cost price",
+    manufacturer: "Manufacturer",
+    expiryDate: "Expiry date",
     addMedicine: "Add",
     total: "Total",
     discount: "Discount",
@@ -106,6 +117,12 @@ const text = {
     quickCustomer: "افزودن مشتری",
     customerName: "نام مشتری",
     customerPlaceholder: "نام مشتری را وارد کنید",
+    customerInfo: "معلومات مشتری",
+    customerInfoEmpty: "برای دیدن معلومات، مشتری را انتخاب کنید.",
+    phone: "شماره تماس",
+    company: "نام شرکت / تجارت",
+    address: "آدرس",
+    openingBalance: "بیلانس افتتاحیه",
     add: "اضافه",
     cancel: "لغو",
     currency: "واحد پول",
@@ -125,6 +142,10 @@ const text = {
     actualQty: "مقدار به دانه",
     salePrice: "قیمت فروش",
     purchasePrice: "قیمت خرید",
+    cartonSize: "سایز کارتن / واحد",
+    costPrice: "قیمت تمام شد",
+    manufacturer: "کمپنی سازنده",
+    expiryDate: "تاریخ انقضا",
     addMedicine: "اضافه",
     total: "جمله",
     discount: "تخفیف",
@@ -163,6 +184,12 @@ const text = {
     quickCustomer: "پېرودونکی اضافه کړئ",
     customerName: "د پېرودونکي نوم",
     customerPlaceholder: "د پېرودونکي نوم ولیکئ",
+    customerInfo: "د پېرودونکي معلومات",
+    customerInfoEmpty: "د معلوماتو لپاره پېرودونکی وټاکئ.",
+    phone: "د اړیکې شمېره",
+    company: "د شرکت / سوداګرۍ نوم",
+    address: "پته",
+    openingBalance: "افتتاحي بیلانس",
     add: "اضافه",
     cancel: "لغوه",
     currency: "اسعار",
@@ -182,6 +209,10 @@ const text = {
     actualQty: "په دانه مقدار",
     salePrice: "د پلور بیه",
     purchasePrice: "د پېرود بیه",
+    cartonSize: "د کارتن / واحد سایز",
+    costPrice: "تمام شوی قیمت",
+    manufacturer: "جوړوونکې کمپنی",
+    expiryDate: "د ختمېدو نېټه",
     addMedicine: "اضافه",
     total: "ټول",
     discount: "تخفیف",
@@ -223,6 +254,7 @@ function SaleNew() {
   const [stockMovements, setStockMovements] = useJsonCollection("stockMovements");
 
   const [customerId, setCustomerId] = useState("");
+  const [customerInfoOpen, setCustomerInfoOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [quickName, setQuickName] = useState("");
   const [currency, setCurrency] = useState("AFN");
@@ -242,6 +274,10 @@ function SaleNew() {
 
   const t = text[language] || text.en;
   const direction = language === "en" ? "ltr" : "rtl";
+  const selectedCustomer = useMemo(
+    () => customers.find((row) => String(row.id) === String(customerId)) || null,
+    [customers, customerId]
+  );
 
   useEffect(() => {
     const sync = () => setLanguage(localStorage.getItem(languageKey) || "en");
@@ -252,6 +288,10 @@ function SaleNew() {
       window.removeEventListener("storage", sync);
     };
   }, []);
+
+  useEffect(() => {
+    if (!customerId) setCustomerInfoOpen(false);
+  }, [customerId]);
 
   const normalizeSearchText = (value) => String(value || "")
     .toLowerCase()
@@ -333,6 +373,9 @@ function SaleNew() {
         packageQuantity: num(item.packageQuantity ?? item.purchaseQuantity) || (pieceQuantity / unitsPerUnit),
         quantity: pieceQuantity,
         purchasePrice: num(item.purchasePrice ?? product?.purchasePrice),
+        cartonSize: item.cartonSize ?? product?.cartonSize ?? unitsPerUnit,
+        manufacturerName: item.manufacturerName || item.manufacturerCompany || product?.manufacturerName || product?.companyName || "",
+        expiryDate: item.expiryDate || product?.expiryDate || "",
         salePrice: num(item.salePrice ?? product?.salePrice),
         discountAmount: num(item.discountAmount ?? item.discount),
         currentStock: product ? getStock(product) : num(item.quantity),
@@ -407,6 +450,9 @@ function SaleNew() {
         packageQuantity: Number((pieceQuantity / unitsPerUnit).toFixed(4)),
         quantity: pieceQuantity,
         purchasePrice: num(product.purchasePrice),
+        cartonSize: product.cartonSize ?? unitsPerUnit,
+        manufacturerName: product.manufacturerName || product.companyName || "",
+        expiryDate: product.expiryDate || "",
         salePrice: num(product.salePrice),
         discountAmount: 0,
         currentStock: stock,
@@ -776,7 +822,7 @@ function SaleNew() {
   );
 
   return (
-    <div className="purchase-entry-page" dir={direction}>
+    <div className="purchase-entry-page sale-entry-page" dir={direction}>
       <header className="purchase-entry-header">
         <div>
           <button className="purchase-back" type="button" onClick={() => navigate("/sales-register")}><ArrowLeft size={16} />{t.back}</button>
@@ -799,7 +845,7 @@ function SaleNew() {
                 <div className="purchase-top-meta-supplier sale-top-meta-customer">
                   <label className="purchase-field purchase-top-field">
                     <span><UserRound size={13} />{t.customer}</span>
-                    <div className={`purchase-select-with-add ${quickOpen ? "is-quick-entry" : ""}`}>
+                    <div className={`purchase-select-with-add sale-customer-select-wrap ${quickOpen ? "is-quick-entry" : ""} ${customerId && !quickOpen ? "has-info" : ""}`}>
                       {quickOpen ? (
                         <>
                           <input
@@ -816,15 +862,54 @@ function SaleNew() {
                         </>
                       ) : (
                         <>
-                          <select ref={customerSelectRef} value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
+                          <select
+                            ref={customerSelectRef}
+                            value={customerId}
+                            onChange={(e) => {
+                              setCustomerId(e.target.value);
+                              setCustomerInfoOpen(false);
+                            }}
+                          >
                             <option value="">{t.selectCustomer}</option>
                             {customers.filter((row) => row.status !== "inactive").map((row) => <option value={row.id} key={row.id}>{row.fullName || row.companyName || "—"}</option>)}
                           </select>
+                          {customerId && (
+                            <button
+                              className={`sale-customer-info-toggle ${customerInfoOpen ? "active" : ""}`}
+                              type="button"
+                              onClick={(event) => {
+                                event.preventDefault();
+                                setCustomerInfoOpen((open) => !open);
+                              }}
+                              aria-label={t.customerInfo}
+                              title={t.customerInfo}
+                            >
+                              <Info size={15} />
+                            </button>
+                          )}
                           <button className="purchase-inline-supplier-add" type="button" onClick={() => setQuickOpen(true)} aria-label={t.quickCustomer}><Plus size={17} /></button>
                         </>
                       )}
                     </div>
                   </label>
+
+                  {customerInfoOpen && selectedCustomer && (
+                    <div className="sale-customer-info-panel">
+                      <div className="sale-customer-info-head">
+                        <div>
+                          <strong>{selectedCustomer.fullName || selectedCustomer.companyName || "—"}</strong>
+                          <small>{t.customerInfo}</small>
+                        </div>
+                        <button type="button" onClick={() => setCustomerInfoOpen(false)} aria-label={t.cancel}>×</button>
+                      </div>
+                      <div className="sale-customer-info-grid">
+                        <div><span>{t.phone}</span><strong dir="ltr">{selectedCustomer.phone || selectedCustomer.contact || "—"}</strong></div>
+                        <div><span>{t.company}</span><strong>{selectedCustomer.companyName || "—"}</strong></div>
+                        <div className="sale-customer-info-wide"><span>{t.address}</span><strong>{selectedCustomer.address || "—"}</strong></div>
+                        <div><span>{t.openingBalance}</span><strong dir="ltr">{num(selectedCustomer.openingBalance || 0).toFixed(2)} {String(selectedCustomer.currency || currency || "AFN").toUpperCase()}</strong></div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <label className="purchase-field purchase-top-field purchase-top-bill">
@@ -855,7 +940,27 @@ function SaleNew() {
               {items.map((row, index) => (
                 <article className="purchase-item-row sale-entry-item-row" key={row.productId}>
                   <img src={row.image} alt="" />
-                  <div className="purchase-item-name"><strong>{row.productName}</strong><small>{row.group || "—"} · {t.unit}: {row.unit || "—"}</small></div>
+                  <div className="purchase-item-name sale-product-info">
+                    <div className="sale-product-title"><strong>{row.productName}</strong><small>{row.group || "—"} · {t.unit}: {unitLabel(row.purchaseUnit || row.unit)}</small></div>
+                    <div className="sale-product-meta">
+                      <div className="sale-meta-badge sale-meta-size">
+                        <span>{t.cartonSize}</span>
+                        <b>{row.cartonSize || row.unitsPerUnit || "—"}</b>
+                      </div>
+                      <div className="sale-meta-badge sale-meta-cost">
+                        <span>{t.costPrice}</span>
+                        <b>{num(row.purchasePrice).toFixed(2)} {currency}</b>
+                      </div>
+                      <div className="sale-meta-badge sale-meta-maker">
+                        <span>{t.manufacturer}</span>
+                        <b title={row.manufacturerName || "—"}>{row.manufacturerName || "—"}</b>
+                      </div>
+                      <div className="sale-meta-badge sale-meta-expiry">
+                        <span>{t.expiryDate}</span>
+                        <b dir="ltr">{row.expiryDate || "—"}</b>
+                      </div>
+                    </div>
+                  </div>
                   <label><span>{t.qty} ({unitLabel(row.purchaseUnit)})</span><input ref={(node) => {
                     const key = String(row.productId);
                     if (node) packageQuantityInputRefs.current.set(key, node);
@@ -873,7 +978,7 @@ function SaleNew() {
           </section>
         </main>
 
-        <aside className="purchase-entry-sidebar">
+        <aside className="purchase-entry-sidebar sale-bottom-panels">
           <section className="purchase-side-card purchase-summary-card">
             <div className="purchase-side-title"><ShoppingBag size={17} /><strong>{t.grandTotal}</strong></div>
             <div className="purchase-summary-row"><span>{t.totalBeforeDiscount}</span><strong>{subtotal.toFixed(2)} {currency}</strong></div>
@@ -883,7 +988,7 @@ function SaleNew() {
             <div className={`purchase-summary-row ${remaining > 0 ? "has-debt" : ""}`}><span>{t.remaining}</span><strong>{remaining.toFixed(2)} {currency}</strong></div>
           </section>
 
-          <section className="purchase-side-card">
+          <section className="purchase-side-card sale-payment-card">
             <div className="purchase-side-title"><WalletCards size={17} /><strong>{t.paymentStatus}</strong></div>
             <div className="purchase-payment-options">
               <button type="button" className={paymentStatus === "paid" ? "active" : ""} onClick={() => setPaymentStatus("paid")}>{t.paidFull}</button>

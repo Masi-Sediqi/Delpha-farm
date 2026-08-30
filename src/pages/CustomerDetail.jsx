@@ -54,7 +54,8 @@ const translations = {
     reference: "Reference",
     description: "Description",
     debit: "Sale / Debit",
-    credit: "Payment / Credit",
+    credit: "Paid",
+    remaining: "Remaining",
     balance: "Running Balance",
     actions: "Actions",
     edit: "Edit",
@@ -108,7 +109,8 @@ const translations = {
     reference: "مرجع",
     description: "توضیحات",
     debit: "فروش / بدهکار",
-    credit: "پرداخت / بستانکار",
+    credit: "پرداخت",
+    remaining: "باقی‌مانده",
     balance: "بیلانس جاری",
     actions: "عملیات",
     edit: "ویرایش",
@@ -162,7 +164,8 @@ const translations = {
     reference: "مرجع",
     description: "تشریح",
     debit: "خرڅلاو / بدهکار",
-    credit: "تادیه / بستانکار",
+    credit: "تادیه",
+    remaining: "پاتې",
     balance: "روان بیلانس",
     actions: "عملیات",
     edit: "سمون",
@@ -275,6 +278,14 @@ export default function CustomerDetail() {
     customerSales.forEach((sale) => {
       const saleDate = sale.saleDate || sale.date || sale.createdAt || "";
       const order = new Date(saleDate || 0).getTime() || 0;
+      const saleTotal = numeric(sale.totalAmount);
+      const salePaid = Math.min(numeric(sale.paidAmount), saleTotal);
+      const saleRemaining = Math.max(
+        sale.remainingAmount !== undefined && sale.remainingAmount !== null
+          ? numeric(sale.remainingAmount)
+          : saleTotal - salePaid,
+        0
+      );
       entries.push({
         id: `sale-${sale.id}`,
         date: saleDate,
@@ -282,23 +293,11 @@ export default function CustomerDetail() {
         description: sale.notes || t.sale,
         kind: "sale",
         sourceId: sale.id,
-        debit: numeric(sale.totalAmount),
-        credit: 0,
+        debit: saleTotal,
+        credit: salePaid,
+        remaining: saleRemaining,
         order,
       });
-      if (numeric(sale.paidAmount) > 0) {
-        entries.push({
-          id: `sale-payment-${sale.id}`,
-          date: saleDate,
-          reference: sale.invoiceNumber || sale.id,
-          description: t.salePayment,
-          kind: "sale-payment",
-          sourceId: sale.id,
-          debit: 0,
-          credit: numeric(sale.paidAmount),
-          order: order + 1,
-        });
-      }
     });
 
 
@@ -515,7 +514,7 @@ export default function CustomerDetail() {
           <div className="customer-detail-section-head ledger"><ReceiptText size={18} /><div><h2>{t.transactions}</h2><p>{ledger.length} {t.transactions}</p></div></div>
           <div className="customer-detail-ledger-wrap">
             <table>
-              <thead><tr><th>{t.date}</th><th>{t.reference}</th><th>{t.description}</th><th>{t.debit}</th><th>{t.credit}</th><th>{t.balance}</th><th>{t.actions}</th></tr></thead>
+              <thead><tr><th>{t.date}</th><th>{t.reference}</th><th>{t.description}</th><th>{t.debit}</th><th>{t.credit}</th><th>{t.remaining}</th><th>{t.balance}</th><th>{t.actions}</th></tr></thead>
               <tbody>
                 {ledger.length ? ledger.map((entry) => (
                   <tr key={entry.id}>
@@ -523,7 +522,16 @@ export default function CustomerDetail() {
                     <td><span className="customer-ledger-reference">{entry.reference || "—"}</span></td>
                     <td><span className={`customer-ledger-description ${entry.kind || ""}`}>{entry.description}</span></td>
                     <td className="customer-ledger-debit">{entry.debit ? entry.debit.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—"}</td>
-                    <td className="customer-ledger-credit">{entry.credit ? entry.credit.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—"}</td>
+                    <td className="customer-ledger-credit">
+                      {entry.credit ? <span className="customer-ledger-badge paid">{entry.credit.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span> : "—"}
+                    </td>
+                    <td className="customer-ledger-remaining">
+                      {entry.kind === "sale" ? (
+                        <span className={`customer-ledger-badge remaining ${numeric(entry.remaining) <= 0 ? "settled" : ""}`}>
+                          {numeric(entry.remaining).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                        </span>
+                      ) : "—"}
+                    </td>
                     <td className={entry.balance > 0 ? "customer-ledger-balance receivable" : entry.balance < 0 ? "customer-ledger-balance owe" : "customer-ledger-balance"}>{Math.abs(entry.balance).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
                     <td>
                       <div className="customer-ledger-actions">
@@ -532,7 +540,7 @@ export default function CustomerDetail() {
                       </div>
                     </td>
                   </tr>
-                )) : <tr><td colSpan="7" className="customer-ledger-empty">{t.noTransactions}</td></tr>}
+                )) : <tr><td colSpan="8" className="customer-ledger-empty">{t.noTransactions}</td></tr>}
               </tbody>
             </table>
           </div>

@@ -53,6 +53,8 @@ const text = {
     invoiceItems: "Purchase items",
     emptyTitle: "No medicine added yet",
     emptyText: "Search above and select a medicine to add it to this purchase.",
+    company: "Company",
+    selectCompany: "Select company",
     qty: "Quantity by unit",
     purchaseUnit: "Main unit",
     unitsPerUnit: "Pieces in unit",
@@ -61,10 +63,12 @@ const text = {
     unitPrice: "Purchase price",
     salePrice: "Sale price",
     addMedicine: "Add",
+    expiryDate: "Expiry date (Gregorian)",
     total: "Total",
     stock: "Current stock",
     unit: "Unit",
     remove: "Remove",
+    itemCount: "Item count",
     subtotal: "Subtotal",
     grandTotal: "Grand total",
     paid: "Paid",
@@ -104,6 +108,8 @@ const text = {
     invoiceItems: "اقلام خریداری",
     emptyTitle: "هنوز دوایی اضافه نشده",
     emptyText: "از جستجوی بالا دوا را پیدا کرده و به این خریداری اضافه کنید.",
+    company: "کمپنی",
+    selectCompany: "کمپنی را انتخاب کنید",
     qty: "مقدار به واحد اصلی",
     purchaseUnit: "واحد اصلی",
     unitsPerUnit: "تعداد دانه در واحد",
@@ -112,10 +118,12 @@ const text = {
     unitPrice: "قیمت خرید",
     salePrice: "قیمت فروش",
     addMedicine: "اضافه",
+    expiryDate: "تاریخ انقضا (میلادی)",
     total: "جمله",
     stock: "موجودی فعلی",
     unit: "واحد",
     remove: "حذف",
+    itemCount: "تعداد اقلام",
     subtotal: "جمع اقلام",
     grandTotal: "مجموع نهایی",
     paid: "پرداخت",
@@ -155,6 +163,8 @@ const text = {
     invoiceItems: "د پېرود توکي",
     emptyTitle: "تر اوسه درمل نه دي اضافه شوي",
     emptyText: "له پورته لټون څخه درمل پیدا او دې پېرود ته یې اضافه کړئ.",
+    company: "کمپنۍ",
+    selectCompany: "کمپنۍ وټاکئ",
     qty: "په اصلي واحد مقدار",
     purchaseUnit: "اصلي واحد",
     unitsPerUnit: "په واحد کې دانې",
@@ -163,10 +173,12 @@ const text = {
     unitPrice: "د پېرود بیه",
     salePrice: "د پلور بیه",
     addMedicine: "اضافه",
+    expiryDate: "د ختمېدو نېټه (میلادي)",
     total: "ټول",
     stock: "اوسنی موجودي",
     unit: "واحد",
     remove: "حذف",
+    itemCount: "د توکو شمېر",
     subtotal: "د توکو مجموعه",
     grandTotal: "وروستی مجموع",
     paid: "ورکړه",
@@ -184,7 +196,19 @@ const text = {
   },
 };
 
-const num = (value) => Math.max(Number(value || 0), 0);
+const englishDigitMap = {
+  "۰": "0", "۱": "1", "۲": "2", "۳": "3", "۴": "4", "۵": "5", "۶": "6", "۷": "7", "۸": "8", "۹": "9",
+  "٠": "0", "١": "1", "٢": "2", "٣": "3", "٤": "4", "٥": "5", "٦": "6", "٧": "7", "٨": "8", "٩": "9",
+};
+const toEnglishDigits = (value) => String(value ?? "").replace(/[۰-۹٠-٩]/g, (digit) => englishDigitMap[digit] || digit);
+const cleanNumberInput = (value) => {
+  const normalized = toEnglishDigits(value).replace(/[٬,]/g, "").replace(/٫/g, ".");
+  const [head, ...tail] = normalized.replace(/[^\d.]/g, "").split(".");
+  return tail.length ? `${head}.${tail.join("")}` : head;
+};
+const num = (value) => Math.max(Number(cleanNumberInput(value) || 0), 0);
+const money = (value) => num(value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const plainAmount = (value) => num(value).toFixed(2);
 const positiveUnitCount = (value) => Math.max(Number(value || 1) || 1, 1);
 const today = () => {
   const date = new Date();
@@ -200,6 +224,7 @@ function PurchaseNew() {
   const [purchaseItems, setPurchaseItems, , purchaseItemsLoaded] = useJsonCollection("purchaseItems");
   const [suppliers, setSuppliers, , suppliersLoaded] = useJsonCollection("suppliers");
   const [products, setProducts, , productsLoaded] = useJsonCollection("products");
+  const [manufacturers] = useJsonCollection("manufacturers");
   const [productGroups] = useJsonCollection("productGroups");
   const [stockMovements, setStockMovements, , stockMovementsLoaded] = useJsonCollection("stockMovements");
   const [hydratedEditId, setHydratedEditId] = useState(null);
@@ -236,6 +261,14 @@ function PurchaseNew() {
   );
   const productDisplayName = (product) =>
     product?.productName || product?.name || product?.title || product?.medicineName || "—";
+  const manufacturerName = (item) => item?.manufacturerName || item?.companyName || item?.name || "";
+  const manufacturerIdForProduct = (product) => {
+    const directId = product?.manufacturerId || product?.companyId || "";
+    if (directId) return directId;
+    const wantedName = String(product?.manufacturerName || product?.companyName || product?.company || "").trim().toLowerCase();
+    if (!wantedName) return "";
+    return manufacturers.find((item) => manufacturerName(item).trim().toLowerCase() === wantedName)?.id || "";
+  };
   const getStock = useCallback(
     (product) => Math.max(getProductStock(stockMovements, product?.id, legacyProductStock(product)), 0),
     [stockMovements]
@@ -314,9 +347,9 @@ function PurchaseNew() {
     setCurrency(purchase.currency || "AFN");
     setBillNumber(purchase.billNumber || purchase.billNo || purchase.invoiceNumber || `PUR-${Date.now().toString().slice(-8)}`);
     setPurchaseDate(purchase.purchaseDate || purchase.date || String(purchase.createdAt || "").slice(0, 10) || today());
-    const hasDebt = Number(purchase.remainingAmount || purchase.remaining || 0) > 0 || purchase.paymentStatus === "debt" || purchase.paymentMode === "installment";
+    const hasDebt = num(purchase.remainingAmount || purchase.remaining || 0) > 0 || purchase.paymentStatus === "debt" || purchase.paymentMode === "installment";
     setPaymentStatus(hasDebt ? "debt" : "paid");
-    setPaidAmount(String(purchase.paidAmount ?? purchase.paid ?? ""));
+    setPaidAmount(cleanNumberInput(purchase.paidAmount ?? purchase.paid ?? ""));
 
     const restoredItems = sourceRows.map((row, index) => {
       const productId = row.productId || row.product_id || row.idProduct;
@@ -340,6 +373,8 @@ function PurchaseNew() {
         purchasePrice: num(row.purchasePrice ?? row.unitCost ?? row.buyPrice ?? product?.purchasePrice),
         salePrice: num(row.salePrice ?? row.sellPrice ?? product?.salePrice),
         currentStock: row.currentStock ?? (product ? getStock(product) : 0),
+        manufacturerId: row.manufacturerId || row.companyId || manufacturerIdForProduct(product),
+        manufacturerName: row.manufacturerName || row.companyName || product?.manufacturerName || product?.companyName || "",
         batchNo: row.batchNo || row.batch || "",
         expiryDate: row.expiryDate || row.expiry || "",
       };
@@ -418,6 +453,8 @@ function PurchaseNew() {
         purchasePrice: num(product.purchasePrice),
         salePrice: num(product.salePrice),
         currentStock: getStock(product),
+        manufacturerId: manufacturerIdForProduct(product),
+        manufacturerName: product.manufacturerName || product.companyName || "",
         batchNo: "",
         expiryDate: "",
       }];
@@ -516,14 +553,18 @@ function PurchaseNew() {
   };
 
   const updateItem = (productId, key, value) => {
-    setItems((current) => current.map((row) => String(row.productId) === String(productId) ? { ...row, [key]: value } : row));
+    setItems((current) => current.map((row) => String(row.productId) === String(productId) ? { ...row, [key]: cleanNumberInput(value) } : row));
+  };
+
+  const updateItemField = (productId, fields) => {
+    setItems((current) => current.map((row) => String(row.productId) === String(productId) ? { ...row, ...fields } : row));
   };
 
   const updatePackageQuantity = (productId, value) => {
     setItems((current) => current.map((row) => {
       if (String(row.productId) !== String(productId)) return row;
-      const quantity = value;
-      const receivedQuantityValue = num(value) * positiveUnitCount(row.unitsPerUnit);
+      const quantity = cleanNumberInput(value);
+      const receivedQuantityValue = num(quantity) * positiveUnitCount(row.unitsPerUnit);
       return { ...row, quantity, receivedQuantity: receivedQuantityValue };
     }));
   };
@@ -531,9 +572,9 @@ function PurchaseNew() {
   const updatePieceQuantity = (productId, value) => {
     setItems((current) => current.map((row) => {
       if (String(row.productId) !== String(productId)) return row;
-      const pieces = value;
+      const pieces = cleanNumberInput(value);
       const unitsPerUnit = positiveUnitCount(row.unitsPerUnit);
-      const packageQuantity = value === "" ? "" : Number((num(value) / unitsPerUnit).toFixed(4));
+      const packageQuantity = pieces === "" ? "" : Number((num(pieces) / unitsPerUnit).toFixed(4));
       return { ...row, receivedQuantity: pieces, quantity: packageQuantity };
     }));
   };
@@ -546,7 +587,7 @@ function PurchaseNew() {
   const remaining = Math.max(grandTotal - paid, 0);
 
   useEffect(() => {
-    if (paymentStatus === "paid") setPaidAmount(String(grandTotal || ""));
+    if (paymentStatus === "paid") setPaidAmount(plainAmount(grandTotal));
   }, [paymentStatus, grandTotal]);
 
   const addQuickSupplier = async () => {
@@ -636,6 +677,8 @@ function PurchaseNew() {
       baseUnit: row.baseUnit || row.unit || "piece",
       unitsPerUnit: positiveUnitCount(row.unitsPerUnit),
       unitCost: num(row.purchasePrice),
+      manufacturerId: row.manufacturerId || "",
+      manufacturerName: row.manufacturerName || "",
       batchNo: row.batchNo || "",
       expiryDate: row.expiryDate || "",
       movementDate: purchaseDate,
@@ -742,6 +785,26 @@ function PurchaseNew() {
                     <strong>{row.productName}</strong>
                     <small>{row.group || "—"} · {t.purchaseUnit}: {unitLabel(row.purchaseUnit)}</small>
                   </div>
+                  <label className="purchase-company-field">
+                    <span>{t.company}</span>
+                    <select
+                      value={row.manufacturerId || ""}
+                      onChange={(e) => {
+                        const selected = manufacturers.find((item) => String(item.id) === String(e.target.value));
+                        updateItemField(row.productId, {
+                          manufacturerId: e.target.value,
+                          manufacturerName: manufacturerName(selected),
+                        });
+                      }}
+                    >
+                      <option value="">{t.selectCompany}</option>
+                      {manufacturers
+                        .filter((item) => item && item.status !== "inactive")
+                        .map((item) => (
+                          <option key={item.id} value={item.id}>{manufacturerName(item)}</option>
+                        ))}
+                    </select>
+                  </label>
                   <label>
                     <span>{t.qty} ({unitLabel(row.purchaseUnit)})</span>
                     <input
@@ -750,7 +813,9 @@ function PurchaseNew() {
                         if (node) quantityInputRefs.current.set(key, node);
                         else quantityInputRefs.current.delete(key);
                       }}
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
+                      dir="ltr"
                       min="0"
                       step="any"
                       value={row.quantity}
@@ -762,7 +827,9 @@ function PurchaseNew() {
                     <span>{t.actualQty}</span>
                     <input
                       className="purchase-piece-quantity"
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
+                      dir="ltr"
                       min="0"
                       step="any"
                       value={row.receivedQuantity ?? receivedQuantity(row)}
@@ -773,7 +840,9 @@ function PurchaseNew() {
                   <label>
                     <span>{t.unitPrice}</span>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
+                      dir="ltr"
                       min="0"
                       step="0.01"
                       value={row.purchasePrice}
@@ -781,9 +850,18 @@ function PurchaseNew() {
                       onChange={(e) => updateItem(row.productId, "purchasePrice", e.target.value)}
                     />
                   </label>
+                  <label className="purchase-expiry-field">
+                    <span>{t.expiryDate}</span>
+                    <input
+                      type="date"
+                      dir="ltr"
+                      value={row.expiryDate || ""}
+                      onChange={(e) => updateItemField(row.productId, { expiryDate: e.target.value })}
+                    />
+                  </label>
                   <div className="purchase-line-total">
                     <span>{t.total}</span>
-                    <strong>{lineTotal(row).toFixed(2)} {currency}</strong>
+                    <strong>{money(lineTotal(row))} {currency}</strong>
                   </div>
                   <button className="purchase-remove" type="button" title={t.remove} onClick={() => removeItem(row.productId)}><Trash2 size={16} /></button>
                 </article>
@@ -832,7 +910,7 @@ function PurchaseNew() {
                               <strong>{productDisplayName(product)}</strong>
                               <small>{groupNameById(productGroups, product.groupId, product.group || "—")} · {unitLabel(product.productUnit || "piece")} · 1 = {productPiecesPerUnit(product)} {unitLabel("piece")}</small>
                             </span>
-                            <em>{num(product.purchasePrice).toFixed(2)} {currency}</em>
+                            <em>{money(product.purchasePrice)} {currency}</em>
                             <b className="purchase-result-check" aria-hidden="true"><Check size={13} /></b>
                           </button>
                         ))}
@@ -844,31 +922,46 @@ function PurchaseNew() {
                 )}
               </div>
             </div>
+
+            <div className="purchase-final-panel">
+              <section className="purchase-side-card purchase-summary-card purchase-summary-inline">
+                <div className="purchase-side-title"><ShoppingCart size={17} /><strong>{t.grandTotal}</strong></div>
+                <div className="purchase-summary-grid">
+                  <div className="purchase-summary-row"><span>{t.itemCount}</span><strong>{items.length.toLocaleString("en-US")}</strong></div>
+                  <div className="purchase-summary-row"><span>{t.subtotal}</span><strong>{money(subtotal)} {currency}</strong></div>
+                  <div className="purchase-summary-row purchase-summary-grand"><span>{t.grandTotal}</span><strong>{money(grandTotal)} {currency}</strong></div>
+                  <div className="purchase-summary-row"><span>{t.paid}</span><strong>{money(paid)} {currency}</strong></div>
+                  <div className={`purchase-summary-row ${remaining > 0 ? "has-debt" : ""}`}><span>{t.remaining}</span><strong>{money(remaining)} {currency}</strong></div>
+                </div>
+              </section>
+
+              <section className="purchase-side-card purchase-final-payment-card">
+                <div className="purchase-side-title"><WalletCards size={17} /><strong>{t.paymentStatus}</strong></div>
+                <div className="purchase-payment-options">
+                  <button type="button" className={paymentStatus === "paid" ? "active" : ""} onClick={() => setPaymentStatus("paid")}>{t.paidFull}</button>
+                  <button type="button" className={paymentStatus === "debt" ? "active" : ""} onClick={() => setPaymentStatus("debt")}>{t.debt}</button>
+                </div>
+                <label className="purchase-field">
+                  <span>{t.paidAmount}</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    dir="ltr"
+                    min="0"
+                    max={grandTotal}
+                    step="0.01"
+                    value={paymentStatus === "debt" ? paidAmount : plainAmount(grandTotal)}
+                    disabled={paymentStatus !== "debt"}
+                    onChange={(e) => setPaidAmount(cleanNumberInput(e.target.value))}
+                  />
+                </label>
+                <div className="purchase-payment-record"><span>{t.paid}</span><strong>{paymentStatus === "paid" ? t.paidFull : `${money(paid)} ${currency}`}</strong></div>
+                <button className="purchase-final-save" type="button" onClick={savePurchase}><Check size={17} />{t.save}</button>
+              </section>
+            </div>
           </section>
 
         </main>
-
-        <aside className="purchase-entry-sidebar">
-          <section className="purchase-side-card purchase-summary-card">
-            <div className="purchase-side-title"><ShoppingCart size={17} /><strong>{t.grandTotal}</strong></div>
-            <div className="purchase-summary-row"><span>{t.subtotal}</span><strong>{subtotal.toFixed(2)} {currency}</strong></div>
-            <div className="purchase-summary-row purchase-summary-grand"><span>{t.grandTotal}</span><strong>{grandTotal.toFixed(2)} {currency}</strong></div>
-            <div className="purchase-summary-row"><span>{t.paid}</span><strong>{paid.toFixed(2)} {currency}</strong></div>
-            <div className={`purchase-summary-row ${remaining > 0 ? "has-debt" : ""}`}><span>{t.remaining}</span><strong>{remaining.toFixed(2)} {currency}</strong></div>
-          </section>
-
-          <section className="purchase-side-card">
-            <div className="purchase-side-title"><WalletCards size={17} /><strong>{t.paymentStatus}</strong></div>
-            <div className="purchase-payment-options">
-              <button type="button" className={paymentStatus === "paid" ? "active" : ""} onClick={() => setPaymentStatus("paid")}>{t.paidFull}</button>
-              <button type="button" className={paymentStatus === "debt" ? "active" : ""} onClick={() => setPaymentStatus("debt")}>{t.debt}</button>
-            </div>
-            {paymentStatus === "debt" && <label className="purchase-field"><span>{t.paidAmount}</span><input type="number" min="0" max={grandTotal} step="0.01" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} /></label>}
-            <div className="purchase-payment-record"><span>{t.paid}</span><strong>{paymentStatus === "paid" ? t.paidFull : `${paid.toFixed(2)} ${currency}`}</strong></div>
-          </section>
-
-          <button className="purchase-save-mobile" type="button" onClick={savePurchase}><Check size={17} />{t.save}</button>
-        </aside>
       </div>
     </div>
   );

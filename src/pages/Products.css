@@ -181,7 +181,7 @@
 .sales-products-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 1040px;
+  min-width: 1160px;
 }
 
 .sales-products-table th,
@@ -748,3 +748,57 @@ body[data-theme="neon"].dark-mode .sales-product-inline-cancel {
 .sales-product-clickable-row:focus-visible{outline:2px solid currentColor;outline-offset:-2px}
 body[data-theme="black-white"].dark-mode .sales-product-clickable-row:hover{background:rgba(255,255,255,.06)}
 body[data-theme="neon"].dark-mode .sales-product-clickable-row:hover{background:rgba(34,211,238,.08)}
+
+
+/* Manufacturer company inline manager */
+.sales-product-manufacturer-manager:not(.is-editing){
+  grid-template-columns:minmax(0,1fr) 30px 30px 30px;
+}
+.sales-product-inline-edit,
+.sales-product-inline-delete{
+  width:30px;
+  height:30px;
+  padding:0;
+  display:grid;
+  place-items:center;
+  border:1px solid #d8dee9;
+  border-radius:7px;
+  background:#f8fafc;
+  color:#475569;
+  cursor:pointer;
+  transition:border-color .18s ease,background .18s ease,color .18s ease,transform .18s ease,opacity .18s ease;
+}
+.sales-product-inline-edit:hover:not(:disabled){
+  border-color:#818cf8;
+  background:#eef2ff;
+  color:#4f46e5;
+  transform:translateY(-1px);
+}
+.sales-product-inline-delete{
+  color:#dc2626;
+  border-color:rgba(220,38,38,.2);
+  background:rgba(220,38,38,.04);
+}
+.sales-product-inline-delete:hover:not(:disabled){
+  border-color:rgba(220,38,38,.36);
+  background:rgba(220,38,38,.08);
+  transform:translateY(-1px);
+}
+.sales-product-inline-edit:disabled,
+.sales-product-inline-delete:disabled{
+  opacity:.38;
+  cursor:not-allowed;
+  transform:none;
+}
+body[data-theme="black-white"].dark-mode .sales-product-inline-edit,
+body[data-theme="black-white"].dark-mode .sales-product-inline-delete,
+body[data-theme="neon"].dark-mode .sales-product-inline-edit,
+body[data-theme="neon"].dark-mode .sales-product-inline-delete{
+  background:#111827;
+  border-color:#334155;
+}
+@media(max-width:640px){
+  .sales-product-manufacturer-manager:not(.is-editing){
+    grid-template-columns:minmax(0,1fr) 30px 30px 30px;
+  }
+}

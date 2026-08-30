@@ -9,8 +9,18 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   CalendarClock,
+  BarChart3,
+  Table2,
 } from "lucide-react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
+import { BarPlot } from "@mui/x-charts/BarChart";
+import { LineHighlightPlot, LinePlot } from "@mui/x-charts/LineChart";
+import { ChartsContainer } from "@mui/x-charts/ChartsContainer";
+import { ChartsXAxis } from "@mui/x-charts/ChartsXAxis";
+import { ChartsYAxis } from "@mui/x-charts/ChartsYAxis";
+import { ChartsTooltip } from "@mui/x-charts/ChartsTooltip";
+import { ChartsAxisHighlight } from "@mui/x-charts/ChartsAxisHighlight";
+import { ChartsGrid } from "@mui/x-charts/ChartsGrid";
 import {
   getProductBatchBalances,
   getProductStock,
@@ -30,7 +40,16 @@ const translations = {
     totalProducts: "Total Medicines",
     availableProducts: "In Stock",
     outOfStock: "Out of Stock",
-    totalUnits: "Total Units",
+    totalUnits: "Total Pieces",
+    recordView: "Records",
+    graphView: "Graph",
+    mainUnit: "Main Unit",
+    pieces: "Pieces",
+    stockOverview: "Stock Overview",
+    stockOverviewHint: "Current stock, total received and total issued for all medicines.",
+    currentPieces: "Current pieces",
+    receivedPieces: "Received pieces",
+    issuedPieces: "Issued pieces",
     search: "Search medicine, group or manufacturer...",
     all: "All",
     available: "Available",
@@ -79,7 +98,16 @@ const translations = {
     totalProducts: "مجموع دواها",
     availableProducts: "دارای موجودی",
     outOfStock: "بدون موجودی",
-    totalUnits: "مجموع واحد موجود",
+    totalUnits: "مجموع دانه موجود",
+    recordView: "ریکارد",
+    graphView: "گراف",
+    mainUnit: "واحد اصلی",
+    pieces: "دانه",
+    stockOverview: "نمای گرافیکی موجودی",
+    stockOverviewHint: "موجودی فعلی، مجموع داخل و مجموع خارج همه محصولات.",
+    currentPieces: "دانه فعلی",
+    receivedPieces: "دانه داخل",
+    issuedPieces: "دانه خارج",
     search: "جستجوی دوا، گروپ یا شرکت سازنده...",
     all: "همه",
     available: "موجود",
@@ -128,7 +156,16 @@ const translations = {
     totalProducts: "ټول درمل",
     availableProducts: "موجود درمل",
     outOfStock: "خلاص شوي",
-    totalUnits: "ټول موجود واحدونه",
+    totalUnits: "ټولې موجودې دانې",
+    recordView: "ریکارډ",
+    graphView: "ګراف",
+    mainUnit: "اصلي واحد",
+    pieces: "دانې",
+    stockOverview: "د موجودۍ ګراف",
+    stockOverviewHint: "د ټولو محصولاتو اوسنۍ موجودي، ټول داخل او ټول خارج.",
+    currentPieces: "اوسنۍ دانې",
+    receivedPieces: "داخل دانې",
+    issuedPieces: "خارج دانې",
     search: "د درمل، ګروپ یا تولیدوونکي لټون...",
     all: "ټول",
     available: "موجود",
@@ -182,6 +219,26 @@ const movementLabelKey = (type = "") => {
   return "adjustment";
 };
 
+const unitLabels = {
+  en: { carton: "Carton", box: "Box", pack: "Pack", bottle: "Bottle", strip: "Strip", piece: "Piece", dozen: "Dozen", tube: "Tube", sachet: "Sachet" },
+  fa: { carton: "کارتن", box: "بکس", pack: "بسته", bottle: "بوتل", strip: "استریپ", piece: "دانه", dozen: "درجن", tube: "تیوب", sachet: "ساشه" },
+  ps: { carton: "کارتن", box: "بکس", pack: "بسته", bottle: "بوتل", strip: "سټریپ", piece: "دانه", dozen: "درجن", tube: "ټیوب", sachet: "ساشه" },
+};
+
+const productUnitInfo = (product, language = "en") => {
+  const unit = product?.productUnit || "piece";
+  const multiplier = Math.max(1, stockNumber(product?.piecesPerUnit || product?.cartonSize || (unit === "dozen" ? 12 : 1)));
+  return { unit, multiplier, label: unitLabels[language]?.[unit] || unitLabels.en[unit] || unit };
+};
+
+const formatQuantityPair = (pieces, product, language) => {
+  const value = stockNumber(pieces);
+  const { multiplier, label } = productUnitInfo(product, language);
+  const mainUnits = value / multiplier;
+  const mainText = Number.isInteger(mainUnits) ? mainUnits.toLocaleString("en-US") : mainUnits.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  return { mainText, piecesText: value.toLocaleString("en-US"), label };
+};
+
 export default function Inventory() {
   const navigate = useNavigate();
   const [products] = useJsonCollection("products");
@@ -193,6 +250,7 @@ export default function Inventory() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("products");
+  const [viewMode, setViewMode] = useState("record");
 
   const t = translations[language] || translations.en;
   const direction = rtlLanguages.has(language) ? "rtl" : "ltr";
@@ -252,6 +310,64 @@ export default function Inventory() {
     totalUnits: inventoryRows.reduce((sum, row) => sum + stockNumber(row.stock), 0),
   }), [inventoryRows]);
 
+
+  const chartData = useMemo(() => filteredRows.map((row) => {
+    const stockPair = formatQuantityPair(row.stock, row.product, language);
+    const inPair = formatQuantityPair(row.totals.quantityIn, row.product, language);
+    const outPair = formatQuantityPair(row.totals.quantityOut, row.product, language);
+    return {
+      id: row.product.id,
+      name: row.product.productName || "—",
+      current: stockNumber(row.stock),
+      received: stockNumber(row.totals.quantityIn),
+      issued: stockNumber(row.totals.quantityOut),
+      stockPair,
+      inPair,
+      outPair,
+    };
+  }), [filteredRows, language]);
+
+  const chartSeries = useMemo(() => [
+    {
+      type: "bar",
+      yAxisId: "stock",
+      label: t.currentPieces,
+      color: "#d9dee8",
+      data: chartData.map((row) => row.current),
+      highlightScope: { highlight: "item" },
+      valueFormatter: (value, { dataIndex }) => {
+        const pair = chartData[dataIndex]?.stockPair;
+        return pair ? `${pair.mainText} ${pair.label} / ${pair.piecesText} ${t.pieces}` : Number(value || 0).toLocaleString("en-US");
+      },
+    },
+    {
+      type: "line",
+      yAxisId: "movement",
+      label: t.issuedPieces,
+      color: "#ef4444",
+      data: chartData.map((row) => row.issued),
+      highlightScope: { highlight: "item" },
+      showMark: true,
+      valueFormatter: (value, { dataIndex }) => {
+        const pair = chartData[dataIndex]?.outPair;
+        return pair ? `${pair.mainText} ${pair.label} / ${pair.piecesText} ${t.pieces}` : Number(value || 0).toLocaleString("en-US");
+      },
+    },
+    {
+      type: "line",
+      yAxisId: "movement",
+      label: t.receivedPieces,
+      color: "#16a34a",
+      data: chartData.map((row) => row.received),
+      highlightScope: { highlight: "item" },
+      showMark: true,
+      valueFormatter: (value, { dataIndex }) => {
+        const pair = chartData[dataIndex]?.inPair;
+        return pair ? `${pair.mainText} ${pair.label} / ${pair.piecesText} ${t.pieces}` : Number(value || 0).toLocaleString("en-US");
+      },
+    },
+  ], [chartData, t.currentPieces, t.issuedPieces, t.receivedPieces, t.pieces]);
+
   const batchRows = useMemo(() => filteredRows.flatMap((row) => row.batches.map((batch) => ({
     ...batch,
     productId: row.product.id,
@@ -305,6 +421,12 @@ export default function Inventory() {
             <button className={activeTab === "movements" ? "active" : ""} onClick={() => setActiveTab("movements")}><ArrowDownToLine size={16} />{t.movements}</button>
           </div>
           <div className="inventory-toolbar-actions">
+            {activeTab === "products" && (
+              <div className="inventory-view-toggle" aria-label="Inventory view mode">
+                <button className={viewMode === "record" ? "active" : ""} onClick={() => setViewMode("record")}><Table2 size={15} />{t.recordView}</button>
+                <button className={viewMode === "graph" ? "active" : ""} onClick={() => setViewMode("graph")}><BarChart3 size={15} />{t.graphView}</button>
+              </div>
+            )}
             <div className="inventory-status-filter">
               {[["all", t.all], ["available", t.available], ["empty", t.empty]].map(([key, label]) => (
                 <button key={key} className={statusFilter === key ? "active" : ""} onClick={() => setStatusFilter(key)}>{label}</button>
@@ -314,26 +436,124 @@ export default function Inventory() {
           </div>
         </div>
 
-        {activeTab === "products" && (
+        {activeTab === "products" && viewMode === "record" && (
           <div className="inventory-table-wrap">
             <table>
               <thead><tr><th>{t.product}</th><th>{t.group}</th><th>{t.manufacturer}</th><th>{t.currentStock}</th><th>{t.totalIn}</th><th>{t.totalOut}</th><th>{t.batchCount}</th><th>{t.nearestExpiry}</th><th>{t.status}</th></tr></thead>
               <tbody>
-                {filteredRows.length ? filteredRows.map((row) => (
-                  <tr key={row.product.id} className="inventory-clickable-row" onClick={() => navigate(`/product-detail/${row.product.id}`)}>
-                    <td><div className="inventory-product-cell"><span className="inventory-product-mark"><Boxes size={16} /></span><div><strong>{row.product.productName || "—"}</strong><small>{row.product.description || ""}</small></div></div></td>
-                    <td>{row.group}</td>
-                    <td>{row.manufacturer}</td>
-                    <td><strong className={row.stock > 0 ? "inventory-stock-positive" : "inventory-stock-zero"}>{row.stock.toLocaleString("en-US")}</strong></td>
-                    <td>{row.totals.quantityIn.toLocaleString("en-US")}</td>
-                    <td>{row.totals.quantityOut.toLocaleString("en-US")}</td>
-                    <td>{row.activeBatches.length.toLocaleString("en-US")}</td>
-                    <td>{row.nearestExpiry || "—"}</td>
-                    <td><span className={`inventory-status ${row.stock > 0 ? "is-in" : "is-out"}`}>{row.stock > 0 ? t.inStock : t.noStock}</span></td>
-                  </tr>
-                )) : <tr><td colSpan="9" className="inventory-empty">{t.noData}</td></tr>}
+                {filteredRows.length ? filteredRows.map((row) => {
+                  const current = formatQuantityPair(row.stock, row.product, language);
+                  const totalIn = formatQuantityPair(row.totals.quantityIn, row.product, language);
+                  const totalOut = formatQuantityPair(row.totals.quantityOut, row.product, language);
+                  return (
+                    <tr key={row.product.id} className="inventory-clickable-row" onClick={() => navigate(`/product-detail/${row.product.id}`)}>
+                      <td><div className="inventory-product-cell"><span className="inventory-product-mark"><Boxes size={16} /></span><div><strong>{row.product.productName || "—"}</strong><small>{row.product.description || ""}</small></div></div></td>
+                      <td>{row.group}</td>
+                      <td>{row.manufacturer}</td>
+                      <td><div className="inventory-qty-pair"><strong className={row.stock > 0 ? "inventory-stock-positive" : "inventory-stock-zero"}>{current.mainText} {current.label}</strong><small>{current.piecesText} {t.pieces}</small></div></td>
+                      <td><div className="inventory-qty-pair"><strong>{totalIn.mainText} {totalIn.label}</strong><small>{totalIn.piecesText} {t.pieces}</small></div></td>
+                      <td><div className="inventory-qty-pair"><strong>{totalOut.mainText} {totalOut.label}</strong><small>{totalOut.piecesText} {t.pieces}</small></div></td>
+                      <td>{row.activeBatches.length.toLocaleString("en-US")}</td>
+                      <td>{row.nearestExpiry || "—"}</td>
+                      <td><span className={`inventory-status ${row.stock > 0 ? "is-in" : "is-out"}`}>{row.stock > 0 ? t.inStock : t.noStock}</span></td>
+                    </tr>
+                  );
+                }) : <tr><td colSpan="9" className="inventory-empty">{t.noData}</td></tr>}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {activeTab === "products" && viewMode === "graph" && (
+          <div className="inventory-graph-view">
+            <div className="inventory-graph-heading">
+              <div><span><BarChart3 size={17} /></span><div><strong>{t.stockOverview}</strong><small>{t.stockOverviewHint}</small></div></div>
+              <span className="inventory-graph-count">{filteredRows.length.toLocaleString("en-US")}</span>
+            </div>
+            {chartData.length ? (
+              <>
+                <div className="inventory-chart-card">
+                  <div className="inventory-chart-scroll" style={{ minWidth: `${Math.max(780, chartData.length * 118)}px` }}>
+                    <ChartsContainer
+                      className="inventory-mui-chart"
+                      series={chartSeries}
+                      height={390}
+                      margin={{ top: 34, right: 62, bottom: chartData.length > 7 ? 78 : 54, left: 66 }}
+                      xAxis={[{
+                        id: "product",
+                        scaleType: "band",
+                        data: chartData.map((row) => row.name),
+                        height: chartData.length > 7 ? 78 : 54,
+                        valueFormatter: (value, context) => context.location === "tick"
+                          ? String(value || "—")
+                          : `${t.product}: ${value || "—"}`,
+                      }]}
+                      yAxis={[
+                        {
+                          id: "stock",
+                          scaleType: "linear",
+                          position: "left",
+                          width: 56,
+                          valueFormatter: (value) => Number(value || 0).toLocaleString("en-US"),
+                        },
+                        {
+                          id: "movement",
+                          scaleType: "linear",
+                          position: "right",
+                          width: 56,
+                          valueFormatter: (value) => Number(value || 0).toLocaleString("en-US"),
+                        },
+                      ]}
+                    >
+                      <ChartsAxisHighlight x="line" />
+                      <ChartsGrid horizontal />
+                      <BarPlot borderRadius={6} />
+                      <LinePlot />
+                      <LineHighlightPlot />
+                      <ChartsXAxis
+                        label={t.product}
+                        axisId="product"
+                        tickInterval={(_, index) => chartData.length <= 8 || index % Math.ceil(chartData.length / 8) === 0}
+                        tickLabelStyle={{
+                          fontSize: 10,
+                          angle: chartData.length > 7 ? -24 : 0,
+                          textAnchor: chartData.length > 7 ? "end" : "middle",
+                        }}
+                      />
+                      <ChartsYAxis
+                        label={t.currentPieces}
+                        axisId="stock"
+                        tickLabelStyle={{ fontSize: 10 }}
+                      />
+                      <ChartsYAxis
+                        label={`${t.receivedPieces} / ${t.issuedPieces}`}
+                        axisId="movement"
+                        tickLabelStyle={{ fontSize: 10 }}
+                      />
+                      <ChartsTooltip trigger="axis" />
+                    </ChartsContainer>
+                  </div>
+                </div>
+                <div className="inventory-graph-products">
+                  {filteredRows.map((row) => {
+                    const current = formatQuantityPair(row.stock, row.product, language);
+                    const totalIn = formatQuantityPair(row.totals.quantityIn, row.product, language);
+                    const totalOut = formatQuantityPair(row.totals.quantityOut, row.product, language);
+                    const maxValue = Math.max(stockNumber(row.totals.quantityIn), stockNumber(row.totals.quantityOut), stockNumber(row.stock), 1);
+                    return (
+                      <button key={row.product.id} className="inventory-graph-product-card" onClick={() => navigate(`/product-detail/${row.product.id}`)}>
+                        <div className="inventory-graph-product-top"><span className="inventory-product-mark"><Boxes size={16} /></span><div><strong>{row.product.productName || "—"}</strong><small>{row.group} · {row.manufacturer}</small></div><span className={`inventory-status ${row.stock > 0 ? "is-in" : "is-out"}`}>{row.stock > 0 ? t.inStock : t.noStock}</span></div>
+                        <div className="inventory-graph-main-stock"><small>{t.currentStock}</small><strong>{current.mainText} {current.label}</strong><span>{current.piecesText} {t.pieces}</span></div>
+                        <div className="inventory-mini-bars">
+                          <div><span><b>{t.totalIn}</b><em>{totalIn.mainText} {totalIn.label} · {totalIn.piecesText} {t.pieces}</em></span><i><u className="is-in" style={{ width: `${Math.max(3, stockNumber(row.totals.quantityIn) / maxValue * 100)}%` }} /></i></div>
+                          <div><span><b>{t.totalOut}</b><em>{totalOut.mainText} {totalOut.label} · {totalOut.piecesText} {t.pieces}</em></span><i><u className="is-out" style={{ width: `${Math.max(3, stockNumber(row.totals.quantityOut) / maxValue * 100)}%` }} /></i></div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            ) : <div className="inventory-empty">{t.noData}</div>}
           </div>
         )}
 

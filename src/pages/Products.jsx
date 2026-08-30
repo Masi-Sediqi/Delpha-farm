@@ -21,13 +21,25 @@ const translations = {
     groups: "Groups",
     countries: "Manufacturing Countries",
     avgDiscount: "Average Discount",
-    search: "Search product, supplier, group or country...",
+    search: "Search product, supplier, manufacturer, group or country...",
     noProducts: "No products have been registered yet.",
     productName: "Product Name",
     group: "Group",
     cartonSize: "Carton Size",
     discount: "Discount (%)",
     company: "Supplier",
+    manufacturerCompany: "Manufacturer Company",
+    manufacturerCompanyPlaceholder: "Enter manufacturer company",
+    selectManufacturerCompany: "Select manufacturer company",
+    addManufacturerCompany: "Add manufacturer company",
+    editManufacturerCompany: "Edit manufacturer company",
+    deleteManufacturerCompany: "Delete manufacturer company",
+    manufacturerCompanyRequired: "Enter manufacturer company name.",
+    manufacturerCompanyExists: "This manufacturer company already exists.",
+    manufacturerCompanySaved: "Manufacturer company saved.",
+    manufacturerCompanyUpdated: "Manufacturer company updated.",
+    manufacturerCompanyDeleted: "Manufacturer company deleted.",
+    confirmDeleteManufacturer: "Delete this manufacturer company?",
     madeIn: "Made In",
     currency: "Currency",
     productUnit: "Unit",
@@ -114,6 +126,7 @@ const translations = {
     update: "Update Product",
     required: "Please enter the product name and select a group.",
     requiredProductName: "Product name is required.",
+    duplicateProductName: "A product with this name has already been added.",
     requiredGroup: "Please select a group.",
     groupRequired: "Please enter a name for the new group.",
     companyRequired: "Please select a supplier.",
@@ -137,13 +150,25 @@ const translations = {
     groups: "گروپ‌ها",
     countries: "کشورهای ساخت",
     avgDiscount: "اوسط تخفیف",
-    search: "جستجوی نام جنس، تأمین‌کننده، گروپ یا کشور...",
+    search: "جستجوی نام جنس، تأمین‌کننده، کمپنی سازنده، گروپ یا کشور...",
     noProducts: "هنوز هیچ جنسی ثبت نشده است.",
     productName: "نام جنس",
     group: "گروپ",
     cartonSize: "سایز کارتن",
     discount: "تخفیف (%)",
     company: "تأمین‌کننده",
+    manufacturerCompany: "کمپنی سازنده",
+    manufacturerCompanyPlaceholder: "نام کمپنی سازنده را وارد کنید",
+    selectManufacturerCompany: "کمپنی سازنده را انتخاب کنید",
+    addManufacturerCompany: "افزودن کمپنی سازنده",
+    editManufacturerCompany: "ویرایش کمپنی سازنده",
+    deleteManufacturerCompany: "حذف کمپنی سازنده",
+    manufacturerCompanyRequired: "نام کمپنی سازنده را وارد کنید.",
+    manufacturerCompanyExists: "این کمپنی سازنده قبلاً ثبت شده است.",
+    manufacturerCompanySaved: "کمپنی سازنده با موفقیت ثبت شد.",
+    manufacturerCompanyUpdated: "کمپنی سازنده با موفقیت ویرایش شد.",
+    manufacturerCompanyDeleted: "کمپنی سازنده با موفقیت حذف شد.",
+    confirmDeleteManufacturer: "این کمپنی سازنده حذف شود؟",
     madeIn: "ساخت",
     currency: "واحد پول",
     productUnit: "واحد",
@@ -230,6 +255,7 @@ const translations = {
     update: "ثبت تغییرات",
     required: "لطفاً نام جنس را وارد و گروپ را انتخاب کنید.",
     requiredProductName: "لطفاً نام جنس را وارد کنید.",
+    duplicateProductName: "این جنس با این نام قبلاً اضافه شده است.",
     requiredGroup: "لطفاً یک گروپ را انتخاب کنید.",
     groupRequired: "لطفاً نام گروپ جدید را وارد کنید.",
     companyRequired: "لطفاً تأمین‌کننده را انتخاب کنید.",
@@ -253,13 +279,25 @@ const translations = {
     groups: "ګروپونه",
     countries: "د جوړېدو هېوادونه",
     avgDiscount: "اوسط تخفیف",
-    search: "د توکي، عرضه کوونکي، ګروپ یا هېواد لټون...",
+    search: "د توکي، عرضه کوونکي، جوړوونکې کمپنی، ګروپ یا هېواد لټون...",
     noProducts: "تر اوسه کوم توکی نه دی ثبت شوی.",
     productName: "د توکي نوم",
     group: "ګروپ",
     cartonSize: "د کارتن سایز",
     discount: "تخفیف (%)",
     company: "عرضه کوونکی",
+    manufacturerCompany: "جوړوونکې کمپنی",
+    manufacturerCompanyPlaceholder: "د جوړوونکې کمپنی نوم ولیکئ",
+    selectManufacturerCompany: "جوړوونکې کمپنی وټاکئ",
+    addManufacturerCompany: "جوړوونکې کمپنی اضافه کړئ",
+    editManufacturerCompany: "جوړوونکې کمپنی سمول",
+    deleteManufacturerCompany: "جوړوونکې کمپنی حذف کړئ",
+    manufacturerCompanyRequired: "د جوړوونکې کمپنی نوم ولیکئ.",
+    manufacturerCompanyExists: "دا جوړوونکې کمپنی مخکې ثبت شوې ده.",
+    manufacturerCompanySaved: "جوړوونکې کمپنی ثبت شوه.",
+    manufacturerCompanyUpdated: "جوړوونکې کمپنی تازه شوه.",
+    manufacturerCompanyDeleted: "جوړوونکې کمپنی حذف شوه.",
+    confirmDeleteManufacturer: "دا جوړوونکې کمپنی حذف شي؟",
     madeIn: "جوړ شوی په",
     currency: "د پیسو واحد",
     productUnit: "واحد",
@@ -346,6 +384,7 @@ const translations = {
     update: "بدلونونه ثبتول",
     required: "مهرباني وکړئ د توکي نوم ولیکئ او ګروپ وټاکئ.",
     requiredProductName: "مهرباني وکړئ د توکي نوم ولیکئ.",
+    duplicateProductName: "دا توکی په همدې نوم مخکې ثبت شوی دی.",
     requiredGroup: "مهرباني وکړئ یو ګروپ وټاکئ.",
     groupRequired: "مهرباني وکړئ د نوي ګروپ نوم ولیکئ.",
     companyRequired: "مهرباني وکړئ عرضه کوونکی وټاکئ.",
@@ -417,6 +456,7 @@ const emptyForm = {
   groupId: "",
   cartonSize: "",
   productForm: "",
+  manufacturerName: "",
   discount: "",
   supplierId: "",
   countryId: "",
@@ -441,6 +481,7 @@ function Products() {
   const [legacyCompanies] = useJsonCollection("companies");
   const [productCountries, setProductCountries] = useJsonCollection("countries");
   const [customProductForms, setCustomProductForms] = useJsonCollection("productForms");
+  const [manufacturerCompanies, setManufacturerCompanies] = useJsonCollection("manufacturerCompanies");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -452,6 +493,9 @@ function Products() {
   const [newCountry, setNewCountry] = useState("");
   const [addingProductForm, setAddingProductForm] = useState(false);
   const [newProductForm, setNewProductForm] = useState("");
+  const [managingManufacturer, setManagingManufacturer] = useState(false);
+  const [editingManufacturerId, setEditingManufacturerId] = useState("");
+  const [manufacturerDraft, setManufacturerDraft] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
 
   const t = translations[language] || translations.en;
@@ -464,6 +508,22 @@ function Products() {
   const formatTemplate = (template, values) => Object.entries(values).reduce((text, [key, value]) => text.replaceAll(`{${key}}`, String(value)), template || "");
 
   const availableSuppliers = useMemo(() => suppliers.filter((item) => item?.supplierName || item?.companyName || item?.name), [suppliers]);
+  const manufacturerOptions = useMemo(() => {
+    const byName = new Map();
+    manufacturerCompanies
+      .filter((item) => item?.name)
+      .forEach((item) => byName.set(normalizeMasterName(item.name), { ...item, source: "master" }));
+
+    products
+      .map((item) => String(item?.manufacturerName || item?.companyName || "").trim())
+      .filter(Boolean)
+      .forEach((name) => {
+        const key = normalizeMasterName(name);
+        if (!byName.has(key)) byName.set(key, { id: `legacy:${key}`, name, source: "legacy" });
+      });
+
+    return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [manufacturerCompanies, products]);
 
   useEffect(() => {
     const syncLanguage = () => setLanguage(localStorage.getItem(languageKey) || "en");
@@ -500,6 +560,8 @@ function Products() {
     return products.filter((product) =>
       [
         product.productName,
+        product.manufacturerName,
+        product.companyName,
         groupLabel(product),
         supplierNameById(product.supplierId || product.manufacturerId || product.companyId, product.supplierName || product.company),
         countryLabel(product),
@@ -518,6 +580,9 @@ function Products() {
     setNewCountry("");
     setAddingProductForm(false);
     setNewProductForm("");
+    setManagingManufacturer(false);
+    setEditingManufacturerId("");
+    setManufacturerDraft("");
     setShowModal(true);
   };
 
@@ -532,6 +597,7 @@ function Products() {
       groupId: product.groupId || legacyGroup?.id || defaultGroupId,
       countryId: product.countryId || legacyCountry?.id || defaultCountryId,
       supplierId: product.supplierId || product.manufacturerId || product.companyId || "",
+      manufacturerName: product.manufacturerName || product.companyName || "",
       alertBeforeExpiryDays: String(product.alertBeforeExpiryDays || "180"),
     });
     setAddingGroup(false);
@@ -540,6 +606,9 @@ function Products() {
     setNewCountry("");
     setAddingProductForm(false);
     setNewProductForm("");
+    setManagingManufacturer(false);
+    setEditingManufacturerId("");
+    setManufacturerDraft("");
     setShowModal(true);
   };
 
@@ -553,14 +622,34 @@ function Products() {
     setNewCountry("");
     setAddingProductForm(false);
     setNewProductForm("");
+    setManagingManufacturer(false);
+    setEditingManufacturerId("");
+    setManufacturerDraft("");
+  };
+
+  const normalizedProductName = (value) => String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase();
+
+  const isDuplicateProductName = (value, currentId = editingId) => {
+    const normalized = normalizedProductName(value);
+    if (!normalized) return false;
+    return products.some((product) =>
+      String(product?.id) !== String(currentId || "") &&
+      normalizedProductName(product?.productName) === normalized
+    );
   };
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     const errorKey = name === "groupId" ? "group" : name === "countryId" ? "country" : name === "productForm" ? "productForm" : name;
     setFieldErrors((current) => {
-      if (!current[errorKey]) return current;
       const next = { ...current };
+      if (name === "productName") {
+        if (!value.trim()) next.productName = t.requiredProductName;
+        else if (isDuplicateProductName(value)) next.productName = t.duplicateProductName;
+        else delete next.productName;
+        return next;
+      }
+      if (!current[errorKey]) return current;
       delete next[errorKey];
       return next;
     });
@@ -657,6 +746,121 @@ function Products() {
     });
   };
 
+  const beginAddManufacturer = () => {
+    setEditingManufacturerId("");
+    setManufacturerDraft("");
+    setManagingManufacturer(true);
+    setFieldErrors((current) => {
+      const next = { ...current };
+      delete next.manufacturerName;
+      return next;
+    });
+  };
+
+  const beginEditManufacturer = () => {
+    const selected = manufacturerCompanies.find(
+      (item) => normalizeMasterName(item?.name) === normalizeMasterName(formData.manufacturerName)
+    );
+    if (!selected) return;
+    setEditingManufacturerId(selected.id);
+    setManufacturerDraft(selected.name || "");
+    setManagingManufacturer(true);
+  };
+
+  const cancelManufacturerManager = () => {
+    setManagingManufacturer(false);
+    setEditingManufacturerId("");
+    setManufacturerDraft("");
+    setFieldErrors((current) => {
+      const next = { ...current };
+      delete next.manufacturerName;
+      return next;
+    });
+  };
+
+  const saveManufacturerCompany = async () => {
+    const name = manufacturerDraft.trim().replace(/\s+/g, " ");
+    if (!name) {
+      setFieldErrors((current) => ({ ...current, manufacturerName: t.manufacturerCompanyRequired }));
+      return;
+    }
+
+    const duplicate = manufacturerCompanies.find(
+      (item) =>
+        String(item?.id) !== String(editingManufacturerId || "") &&
+        normalizeMasterName(item?.name) === normalizeMasterName(name)
+    );
+    if (duplicate) {
+      setFieldErrors((current) => ({ ...current, manufacturerName: t.manufacturerCompanyExists }));
+      return;
+    }
+
+    const now = new Date().toISOString();
+    if (editingManufacturerId) {
+      const previous = manufacturerCompanies.find((item) => String(item.id) === String(editingManufacturerId));
+      if (!previous) return;
+      const saved = await setManufacturerCompanies(
+        manufacturerCompanies.map((item) =>
+          String(item.id) === String(editingManufacturerId)
+            ? { ...item, name, updatedAt: now }
+            : item
+        )
+      );
+      if (!saved) return;
+
+      const oldName = previous.name;
+      if (normalizeMasterName(formData.manufacturerName) === normalizeMasterName(oldName)) {
+        setFormData((current) => ({ ...current, manufacturerName: name }));
+      }
+      const linkedProducts = products.map((item) =>
+        normalizeMasterName(item?.manufacturerName || item?.companyName) === normalizeMasterName(oldName)
+          ? { ...item, manufacturerName: name, companyName: name, updatedAt: now }
+          : item
+      );
+      await setProducts(linkedProducts);
+      notify(t.manufacturerCompanyUpdated);
+    } else {
+      const existingLegacy = manufacturerOptions.find(
+        (item) => normalizeMasterName(item?.name) === normalizeMasterName(name)
+      );
+      if (existingLegacy?.source === "master") {
+        setFormData((current) => ({ ...current, manufacturerName: existingLegacy.name }));
+      } else {
+        const row = { id: makeMasterId("manufacturer", name), name, createdAt: now, updatedAt: now };
+        const saved = await setManufacturerCompanies([...manufacturerCompanies, row]);
+        if (!saved) return;
+        setFormData((current) => ({ ...current, manufacturerName: name }));
+        notify(t.manufacturerCompanySaved);
+      }
+    }
+
+    cancelManufacturerManager();
+  };
+
+  const deleteManufacturerCompany = async () => {
+    const selected = manufacturerCompanies.find(
+      (item) => normalizeMasterName(item?.name) === normalizeMasterName(formData.manufacturerName)
+    );
+    if (!selected) return;
+
+    const confirmed = await confirmAction({
+      title: t.confirmDeleteManufacturer,
+      message: selected.name,
+      confirmText: t.delete,
+      cancelText: t.cancel,
+    });
+    if (!confirmed) return;
+
+    const saved = await setManufacturerCompanies(
+      manufacturerCompanies.filter((item) => String(item.id) !== String(selected.id))
+    );
+    if (!saved) return;
+
+    setFormData((current) => ({ ...current, manufacturerName: "" }));
+    cancelManufacturerManager();
+    notify(t.manufacturerCompanyDeleted);
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setFieldErrors({});
@@ -698,6 +902,7 @@ function Products() {
 
     const nextErrors = {};
     if (!formData.productName.trim()) nextErrors.productName = t.requiredProductName;
+    else if (isDuplicateProductName(formData.productName)) nextErrors.productName = t.duplicateProductName;
     if (!selectedGroupId) nextErrors.group = t.requiredGroup;
     if (Object.keys(nextErrors).length) {
       setFieldErrors(nextErrors);
@@ -713,6 +918,7 @@ function Products() {
       ...cleanFormData,
       id: productId,
       productName: formData.productName.trim(),
+      manufacturerName: String(formData.manufacturerName || "").trim(),
       groupId: selectedGroupId,
       supplierId: formData.supplierId,
       supplierName: supplierNameById(formData.supplierId, ""),
@@ -828,6 +1034,7 @@ function Products() {
                 <th>{t.cartonSize}</th>
                 <th>{t.productUnit}</th>
                 <th>{t.madeIn}</th>
+                <th>{t.manufacturerCompany}</th>
                 <th>{t.salePrice}</th>
                 <th>{t.purchasePrice}</th>
                 <th>{t.actions}</th>
@@ -844,6 +1051,7 @@ function Products() {
                   <td>{product.cartonSize || "—"}</td>
                   <td>{t[productUnitOptions.find((option) => option.value === (product.productUnit || "piece"))?.labelKey] || product.productUnit || t.unitPiece}</td>
                   <td>{countryLabel(product)}</td>
+                  <td>{product.manufacturerName || product.companyName || "—"}</td>
                   <td>{Number(product.salePrice || 0).toLocaleString("en-US")}</td>
                   <td>{Number(product.purchasePrice || 0).toLocaleString("en-US")}</td>
                   <td>
@@ -1007,6 +1215,85 @@ function Products() {
                     )}
                   </div>
                   {fieldErrors.country && <span className="sales-product-field-error" role="alert">{fieldErrors.country}</span>}
+                </div>
+
+                <div className={`sales-product-field ${fieldErrors.manufacturerName ? "has-error" : ""}`}>
+                  <span>{t.manufacturerCompany}</span>
+                  <div className={`sales-product-inline-manager sales-product-manufacturer-manager ${managingManufacturer ? "is-editing" : ""}`}>
+                    {managingManufacturer ? (
+                      <>
+                        <input
+                          value={manufacturerDraft}
+                          onChange={(event) => {
+                            setManufacturerDraft(event.target.value);
+                            setFieldErrors((current) => {
+                              const next = { ...current };
+                              delete next.manufacturerName;
+                              return next;
+                            });
+                          }}
+                          placeholder={t.manufacturerCompanyPlaceholder}
+                          autoFocus
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              saveManufacturerCompany();
+                            }
+                            if (event.key === "Escape") cancelManufacturerManager();
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="sales-product-inline-save"
+                          onClick={saveManufacturerCompany}
+                          title={editingManufacturerId ? t.editManufacturerCompany : t.addManufacturerCompany}
+                          aria-label={editingManufacturerId ? t.editManufacturerCompany : t.addManufacturerCompany}
+                        >
+                          {editingManufacturerId ? <Edit3 size={13} /> : <Plus size={14} />}
+                        </button>
+                        <button type="button" className="sales-product-inline-cancel" onClick={cancelManufacturerManager} title={t.cancel} aria-label={t.cancel}>
+                          <X size={14} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <select
+                          name="manufacturerName"
+                          value={formData.manufacturerName || ""}
+                          onChange={handleChange}
+                        >
+                          <option value="">{t.selectManufacturerCompany}</option>
+                          {manufacturerOptions.map((item) => (
+                            <option key={item.id} value={item.name}>{item.name}</option>
+                          ))}
+                        </select>
+                        <button type="button" className="sales-product-inline-add" onClick={beginAddManufacturer} title={t.addManufacturerCompany} aria-label={t.addManufacturerCompany}>
+                          <Plus size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          className="sales-product-inline-edit"
+                          onClick={beginEditManufacturer}
+                          disabled={!manufacturerCompanies.some((item) => normalizeMasterName(item?.name) === normalizeMasterName(formData.manufacturerName))}
+                          title={t.editManufacturerCompany}
+                          aria-label={t.editManufacturerCompany}
+                        >
+                          <Edit3 size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          className="sales-product-inline-delete"
+                          onClick={deleteManufacturerCompany}
+                          disabled={!manufacturerCompanies.some((item) => normalizeMasterName(item?.name) === normalizeMasterName(formData.manufacturerName))}
+                          title={t.deleteManufacturerCompany}
+                          aria-label={t.deleteManufacturerCompany}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                  {fieldErrors.manufacturerName && <span className="sales-product-field-error" role="alert">{fieldErrors.manufacturerName}</span>}
                 </div>
 
                 <label className="sales-product-field">

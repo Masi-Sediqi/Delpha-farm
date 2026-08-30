@@ -1,47 +1,105 @@
-.payables-batch-page{padding:22px 24px 34px;color:var(--text-primary,#111827);min-height:100%;}.payables-batch-topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}.payables-batch-back,.payables-batch-save{border:1px solid var(--border-color,#dbe3ec);border-radius:9px;min-height:36px;padding:0 13px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-weight:750;background:var(--surface,#fff);color:var(--text-primary,#111827);cursor:pointer}.payables-batch-save{background:#111827;color:#fff;border-color:#111827}.payables-batch-save.top{display:none}.payables-batch-save:disabled{opacity:.55;cursor:not-allowed}.payables-batch-header{display:flex;align-items:center;gap:12px;margin-bottom:18px}.payables-batch-heading-icon{width:44px;height:44px;border-radius:12px;background:#111827;color:#fff;display:grid;place-items:center}.payables-batch-header h1{margin:0;font-size:26px}.payables-batch-header p{margin:5px 0 0;color:#718096;font-size:13px}.payables-batch-layout{display:grid;grid-template-columns:minmax(0,1fr) 285px;gap:16px;align-items:start}.payables-batch-page[dir="rtl"] .payables-batch-layout{grid-template-columns:285px minmax(0,1fr)}.payables-batch-page[dir="rtl"] .payables-batch-sidebar{grid-column:1}.payables-batch-page[dir="rtl"] .payables-batch-main{grid-column:2;grid-row:1}.payables-batch-sidebar{display:flex;flex-direction:column;gap:12px;position:sticky;top:16px}.payables-batch-side-card{background:var(--surface,#fff);border:1px solid var(--border-color,#dfe6ee);border-radius:12px;padding:14px}.payables-batch-side-title{display:flex;align-items:center;gap:7px;padding-bottom:11px;margin-bottom:11px;border-bottom:1px solid var(--border-color,#e8edf2);font-size:13px}.payables-batch-side-card input,.payables-batch-field input,.payables-batch-select-wrap select{height:38px;width:100%;box-sizing:border-box;border:1px solid #d8e1ea;background:var(--input-bg,#fff);color:inherit;border-radius:8px;padding:0 10px;outline:none}.payables-batch-side-card input:focus,.payables-batch-field input:focus,.payables-batch-select-wrap:focus-within{border-color:#667085;box-shadow:0 0 0 2px rgba(17,24,39,.06)}.payables-batch-summary-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed #e5eaf0;font-size:12px}.payables-batch-summary-row:last-child{border-bottom:0}.payables-batch-zero{text-align:center;padding:10px;color:#98a2b3}.payables-batch-helper{font-size:11px;line-height:1.7;color:#7b8794;margin:0;padding:0 4px}.payables-batch-main{background:var(--surface,#fff);border:1px solid var(--border-color,#dfe6ee);border-radius:13px;padding:12px;min-width:0}.payables-batch-search{height:42px;border:1px solid #dce4ec;border-radius:9px;display:flex;align-items:center;gap:8px;padding:0 12px;margin-bottom:12px;color:#8090a2;background:var(--input-bg,#fff)}.payables-batch-search input{border:0;outline:0;background:transparent;color:inherit;width:100%;font:inherit}.payables-batch-list{display:flex;flex-direction:column;gap:8px}.payables-batch-supplier{display:grid;grid-template-columns:minmax(170px,1.2fr) minmax(145px,.8fr) 105px 130px minmax(160px,1fr);align-items:end;gap:10px;border:1px solid #e0e7ee;border-radius:11px;padding:11px;background:var(--surface,#fff);transition:.16s ease}.payables-batch-supplier:hover{border-color:#c7d1dc;box-shadow:0 5px 18px rgba(15,23,42,.04)}.payables-batch-supplier.has-payment{border-color:#b8d7c6;background:rgba(34,197,94,.035)}.payables-batch-supplier-info{display:flex;align-items:center;gap:9px;min-width:0;align-self:center}.payables-batch-avatar{width:34px;height:34px;border-radius:9px;background:#f2f5f8;display:grid;place-items:center;flex:0 0 auto}.payables-batch-supplier-info div{min-width:0}.payables-batch-supplier-info strong,.payables-batch-supplier-info small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.payables-batch-supplier-info strong{font-size:13px}.payables-batch-supplier-info small{font-size:10px;color:#8491a1;margin-top:3px}.payables-batch-balance{align-self:center;border-radius:8px;padding:6px 8px;background:#f7f9fb;min-width:0}.payables-batch-balance span,.payables-batch-balance small{display:block;font-size:9px;color:#7b8794}.payables-batch-balance strong{display:block;font-size:12px;margin:2px 0}.payables-batch-balance.owe{background:#fff7ed}.payables-batch-balance.receivable{background:#effcf5}.payables-batch-balance.settled{background:#f5f7fa}.payables-batch-field{display:flex;flex-direction:column;gap:5px;min-width:0}.payables-batch-field>span{font-size:10px;font-weight:700}.payables-batch-select-wrap{height:38px;border:1px solid #d8e1ea;border-radius:8px;display:flex;align-items:center;padding-inline-start:8px;background:var(--input-bg,#fff)}.payables-batch-select-wrap select{border:0;height:36px;padding-inline:5px;background:transparent}.payables-batch-empty,.payables-batch-loading{padding:48px;text-align:center;color:#8a96a5;border:1px dashed #d8e0e8;border-radius:12px}.payables-batch-page[dir="rtl"] input,.payables-batch-page[dir="rtl"] select{text-align:right}.dark-mode .payables-batch-main,.dark-mode .payables-batch-side-card,.dark-mode .payables-batch-supplier{background:#171a20;border-color:#303640}.dark-mode .payables-batch-search,.dark-mode .payables-batch-side-card input,.dark-mode .payables-batch-field input,.dark-mode .payables-batch-select-wrap{background:#11151a;border-color:#343b46;color:#eef2f7}.dark-mode .payables-batch-avatar,.dark-mode .payables-batch-balance.settled{background:#222832}.dark-mode .payables-batch-balance.owe{background:#322619}.dark-mode .payables-batch-balance.receivable{background:#173126}.dark-mode .payables-batch-header p,.dark-mode .payables-batch-helper{color:#9aa6b5}@media(max-width:1100px){.payables-batch-layout,.payables-batch-page[dir="rtl"] .payables-batch-layout{grid-template-columns:1fr}.payables-batch-page[dir="rtl"] .payables-batch-sidebar,.payables-batch-page[dir="rtl"] .payables-batch-main{grid-column:auto;grid-row:auto}.payables-batch-sidebar{position:static;display:grid;grid-template-columns:1fr 1fr;order:2}.payables-batch-sidebar>.payables-batch-save,.payables-batch-helper{grid-column:1/-1}.payables-batch-supplier{grid-template-columns:minmax(170px,1fr) 150px 105px 125px;}.payables-batch-field.note{grid-column:1/-1}.payables-batch-save.top{display:inline-flex}.payables-batch-sidebar>.payables-batch-save{display:none}}@media(max-width:720px){.payables-batch-page{padding:14px 12px 26px}.payables-batch-header h1{font-size:21px}.payables-batch-header{align-items:flex-start}.payables-batch-sidebar{grid-template-columns:1fr}.payables-batch-supplier{grid-template-columns:1fr 1fr;align-items:end}.payables-batch-supplier-info{grid-column:1/-1}.payables-batch-field.note{grid-column:1/-1}.payables-batch-balance{align-self:end}.payables-batch-topbar{align-items:stretch}.payables-batch-back,.payables-batch-save.top{font-size:11px;padding:0 10px}}@media(max-width:480px){.payables-batch-supplier{grid-template-columns:1fr}.payables-batch-supplier-info,.payables-batch-field.note{grid-column:auto}.payables-batch-header p{font-size:11px}.payables-batch-heading-icon{width:38px;height:38px}.payables-batch-topbar{gap:7px}}
+.payables-batch-page{padding:20px 22px 34px;min-height:100%;color:var(--text-primary,#101828)}
+.payables-batch-topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px}
+.payables-batch-back,.payables-batch-save{height:38px;border-radius:9px;border:1px solid #dce4ec;background:var(--surface,#fff);color:var(--text-primary,#101828);display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:0 14px;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+.payables-batch-save{background:#111827;color:#fff;border-color:#111827}
+.payables-batch-save:disabled{opacity:.5;cursor:not-allowed}
+.payables-batch-header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
+.payables-batch-heading-icon{width:40px;height:40px;border-radius:11px;background:#111827;color:#fff;display:grid;place-items:center;flex:0 0 auto}
+.payables-batch-header h1{font-size:23px;line-height:1.2;margin:0 0 5px;font-weight:900}
+.payables-batch-header p{margin:0;color:#7b8794;font-size:11px;line-height:1.7}
+.payables-batch-loading{padding:60px;text-align:center;color:#8a96a5}
 
-/* Payment history lives on this page; the main Payables page stays focused on balances. */
-.payables-batch-history-card{background:var(--surface,#fff);border:1px solid var(--border-color,#dfe6ee);border-radius:13px;overflow:hidden}.payables-batch-history-wrap{overflow-x:auto}.payables-batch-history-wrap table{width:100%;border-collapse:collapse;min-width:720px}.payables-batch-history-wrap th,.payables-batch-history-wrap td{padding:12px 14px;border-bottom:1px solid var(--border-color,#e8edf2);text-align:start;font-size:12px}.payables-batch-history-wrap th{background:#f7f9fb;font-size:10px;font-weight:800}.payables-batch-row-actions{display:flex;align-items:center;gap:5px}.payables-batch-row-actions button{width:29px;height:29px;border:1px solid #dce4ec;border-radius:7px;background:var(--surface,#fff);color:var(--text-primary,#111827);display:grid;place-items:center;cursor:pointer}.payables-batch-row-actions button:hover{background:#f5f7fa}.payables-batch-row-actions button.danger{color:#ef4444;border-color:#fecaca}.payables-batch-history-empty{text-align:center!important;color:#8a96a5;padding:34px!important}.payables-batch-search-hint{margin:-4px 2px 10px;color:#8a96a5;font-size:10px;line-height:1.6}.payables-batch-side-card .shamsi-date-input{width:100%}.dark-mode .payables-batch-history-card{background:#171a20;border-color:#303640}.dark-mode .payables-batch-history-wrap th{background:#11151a}.dark-mode .payables-batch-row-actions button{background:#171a20;border-color:#343b46;color:#eef2f7}.dark-mode .payables-batch-row-actions button.danger{color:#f87171;border-color:#5b2a2a}
+.payables-payment-card{background:var(--surface,#fff);border:1px solid var(--border-color,#dfe6ee);border-radius:13px;overflow:visible}
+.payables-payment-card-head{min-height:66px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:14px;border-bottom:1px solid var(--border-color,#e8edf2)}
+.payables-payment-title{display:flex;align-items:center;gap:8px;font-size:13px}
+.payables-payment-date{display:flex;align-items:center;gap:9px;min-width:260px}
+.payables-payment-date>span{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:800;white-space:nowrap}
+.payables-payment-date .shamsi-date-input{width:165px}
+.payables-payment-date input{height:38px!important;border-radius:8px!important}
+.payables-payment-rows{padding:10px 12px 0}
+.payables-payment-row{display:grid;grid-template-columns:minmax(220px,1.35fr) minmax(180px,.9fr) minmax(190px,.8fr) 38px;gap:12px;align-items:center;padding:11px 10px;border:1px solid #e0e7ee;background:var(--surface,#fff)}
+.payables-payment-row+.payables-payment-row{border-top:0}
+.payables-payment-row:first-child{border-radius:10px 10px 0 0}
+.payables-payment-row:last-child{border-radius:0 0 10px 10px}
+.payables-payment-row:only-child{border-radius:10px}
+.payables-payment-supplier{display:flex;align-items:center;gap:9px;min-width:0}
+.payables-payment-avatar{width:36px;height:36px;border-radius:9px;background:#f2f5f8;display:grid;place-items:center;flex:0 0 auto}
+.payables-payment-supplier>div{min-width:0}
+.payables-payment-supplier strong,.payables-payment-supplier small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.payables-payment-supplier strong{font-size:13px}
+.payables-payment-supplier small{font-size:10px;color:#8592a2;margin-top:3px}
+.payables-payment-balance{padding:7px 9px;border-radius:8px;background:#f7f9fb;min-width:0}
+.payables-payment-balance span,.payables-payment-balance small{display:block;font-size:9px;color:#7b8794}
+.payables-payment-balance strong{display:block;font-size:12px;margin:2px 0}
+.payables-payment-balance.owe{background:#fff7ed}
+.payables-payment-balance.receivable{background:#effcf5}
+.payables-payment-balance.settled{background:#f5f7fa}
+.payables-payment-amount{display:flex;flex-direction:column;gap:5px;min-width:0}
+.payables-payment-amount>span{font-size:10px;font-weight:800}
+.payables-payment-amount-input{height:40px;border:1px solid #d8e1ea;border-radius:8px;background:var(--input-bg,#fff);display:flex;align-items:center;overflow:hidden}
+.payables-payment-amount-input:focus-within{border-color:#4f7cff;box-shadow:0 0 0 3px rgba(79,124,255,.10)}
+.payables-payment-amount-input input{height:100%;min-width:0;flex:1;border:0;outline:0;background:transparent;color:inherit;padding:0 10px;font:inherit;font-size:12px;font-weight:800}
+.payables-payment-amount-input b{height:100%;display:flex;align-items:center;padding:0 10px;background:#f6f8fa;border-inline-start:1px solid #e5eaf0;color:#596579;font-size:10px}
+.payables-payment-remove{width:34px;height:34px;border:1px solid #fecaca;background:#fff;color:#ef4444;border-radius:9px;display:grid;place-items:center;cursor:pointer}
+.payables-payment-remove:hover{background:#fff1f2}
+.payables-payment-empty{margin:0 0 10px;padding:28px 16px;text-align:center;color:#98a2b3;border:1px dashed #d7e0e8;border-radius:10px;font-size:11px}
 
-/* Supplier row selection */
-.payables-batch-supplier{cursor:pointer;}
-.payables-batch-supplier.is-selected{border-color:#86c7a4;background:rgba(34,197,94,.055);box-shadow:0 0 0 1px rgba(34,197,94,.08) inset;}
-.payables-batch-selection-check{width:22px;height:22px;border-radius:50%;border:1px solid #d7e0e9;background:var(--surface,#fff);color:transparent;display:grid;place-items:center;flex:0 0 22px;font-size:13px;font-weight:900;line-height:1;transition:.16s ease;}
-.payables-batch-selection-check.active{background:#16a34a;border-color:#16a34a;color:#fff;box-shadow:0 2px 7px rgba(22,163,74,.22);}
-.payables-batch-supplier:focus-visible{outline:2px solid rgba(22,163,74,.35);outline-offset:2px;}
-.dark-mode .payables-batch-supplier.is-selected{border-color:#3d8c61;background:rgba(34,197,94,.10);}
-.dark-mode .payables-batch-selection-check{background:#151a20;border-color:#3a4350;}
-.dark-mode .payables-batch-selection-check.active{background:#22c55e;border-color:#22c55e;color:#08130c;}
-@media(max-width:480px){.payables-batch-selection-check{width:20px;height:20px;flex-basis:20px;font-size:12px;}}
+.payables-payment-search-area{padding:10px 12px 13px;position:relative;z-index:2}
+.payables-payment-search{height:42px;border:1px solid #cfd9e4;border-radius:9px;display:flex;align-items:center;gap:8px;padding:0 12px;color:#8090a2;background:var(--input-bg,#fff)}
+.payables-payment-search:focus-within{border-color:#4f7cff;box-shadow:0 0 0 3px rgba(79,124,255,.10)}
+.payables-payment-search input{border:0;outline:0;background:transparent;color:inherit;width:100%;font:inherit;font-size:12px}
+.payables-payment-search-hint{display:block;margin:6px 2px 0;color:#98a2b3;font-size:9px}
+.payables-payment-search-results{position:relative;z-index:2;left:auto;right:auto;top:auto;width:100%;margin-top:8px;background:var(--surface,#fff);border:1px solid #dbe3eb;border-radius:10px;box-shadow:0 10px 26px rgba(15,23,42,.10);overflow:hidden;max-height:310px;overflow-y:auto}
+.payables-payment-search-results button{width:100%;border:0;border-bottom:1px solid #edf1f5;background:transparent;color:inherit;display:grid;grid-template-columns:34px minmax(150px,1fr) 150px auto;align-items:center;gap:10px;padding:9px 11px;text-align:start;cursor:pointer;font:inherit}
+.payables-payment-search-results button:last-child{border-bottom:0}
+.payables-payment-search-results button:hover{background:#f7f9fb}
+.payables-payment-search-results .result-icon{width:32px;height:32px;border-radius:8px;background:#f2f5f8;display:grid;place-items:center}
+.payables-payment-search-results .result-main{min-width:0}
+.payables-payment-search-results .result-main strong,.payables-payment-search-results .result-main small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.payables-payment-search-results .result-main strong{font-size:11px}
+.payables-payment-search-results .result-main small{font-size:9px;color:#8a96a5;margin-top:2px}
+.payables-payment-search-results .result-balance{font-size:10px;font-weight:800;color:#596579}
+.payables-payment-search-results .result-add{display:flex;align-items:center;gap:4px;font-size:9px;font-weight:800;color:#2563eb}
+.payables-payment-no-result{padding:22px;text-align:center;color:#98a2b3;font-size:11px}
 
-/* Keyboard-first grouped payment rows. */
-.payables-batch-main{overflow:visible}
-.payables-batch-search{margin-bottom:10px;position:relative}
-.payables-batch-list{gap:0}
-.payables-batch-supplier{
-  position:relative;
-  border-radius:0;
-  padding:12px 14px;
-  gap:12px;
+.payables-payment-footer-card{position:relative;z-index:1;margin-top:12px;background:var(--surface,#fff);border:1px solid var(--border-color,#dfe6ee);border-radius:13px;padding:12px;display:grid;grid-template-columns:minmax(220px,1fr) minmax(200px,300px);gap:12px;align-items:center}
+.payables-payment-total{min-height:56px;border:1px solid #dfe6ee;border-radius:10px;padding:9px 13px;display:flex;align-items:center;justify-content:space-between;gap:15px;background:#f8fafc}
+.payables-payment-total span{font-size:11px;font-weight:800;color:#667085}
+.payables-payment-total strong{font-size:18px;font-weight:900;direction:ltr;text-align:end}
+.payables-batch-save.final{height:56px;width:100%;font-size:12px;border-radius:10px}
+.payables-batch-page[dir="rtl"] input{text-align:right}
+
+.dark-mode .payables-payment-card,.dark-mode .payables-payment-row,.dark-mode .payables-payment-footer-card{background:#171a20;border-color:#303640}
+.dark-mode .payables-payment-avatar,.dark-mode .payables-payment-balance.settled,.dark-mode .payables-payment-search-results .result-icon{background:#222832}
+.dark-mode .payables-payment-balance.owe{background:#322619}
+.dark-mode .payables-payment-balance.receivable{background:#173126}
+.dark-mode .payables-payment-amount-input,.dark-mode .payables-payment-search,.dark-mode .payables-payment-search-results{background:#11151a;border-color:#343b46;color:#eef2f7}
+.dark-mode .payables-payment-amount-input b,.dark-mode .payables-payment-total{background:#20252d;border-color:#343b46;color:#dce3eb}
+.dark-mode .payables-payment-remove{background:#241719;border-color:#5b2a2a;color:#f87171}
+.dark-mode .payables-payment-search-results button:hover{background:#20252d}
+
+@media(max-width:1000px){
+  .payables-payment-row{grid-template-columns:minmax(200px,1.1fr) minmax(160px,.8fr) minmax(170px,.8fr) 36px}
 }
-.payables-batch-supplier + .payables-batch-supplier{border-top:0}
-.payables-batch-supplier:first-child{border-radius:11px 11px 0 0}
-.payables-batch-supplier:last-child{border-radius:0 0 11px 11px}
-.payables-batch-supplier:only-child{border-radius:11px}
-.payables-batch-supplier:focus-visible{
-  z-index:2;
-  outline:2px solid rgba(79,124,255,.62);
-  outline-offset:-2px;
+@media(max-width:760px){
+  .payables-batch-page{padding:14px 12px 26px}
+  .payables-batch-header h1{font-size:20px}
+  .payables-payment-card-head{align-items:flex-start;flex-direction:column}
+  .payables-payment-date{width:100%;justify-content:space-between;min-width:0}
+  .payables-payment-row{grid-template-columns:1fr 40px;gap:9px}
+  .payables-payment-supplier{grid-column:1}
+  .payables-payment-remove{grid-column:2;grid-row:1;align-self:start}
+  .payables-payment-balance,.payables-payment-amount{grid-column:1/-1}
+  .payables-payment-footer-card{grid-template-columns:1fr}
+  .payables-payment-search-results button{grid-template-columns:32px minmax(120px,1fr) auto}
+  .payables-payment-search-results .result-balance{display:none}
+  .payables-payment-search-results .result-add{font-size:0}
 }
-.payables-batch-supplier.is-selected{box-shadow:inset 3px 0 0 #16a34a}
-[dir="rtl"] .payables-batch-supplier.is-selected{box-shadow:inset -3px 0 0 #16a34a}
-.payables-batch-field input:focus,
-.payables-batch-select-wrap:focus-within{
-  border-color:#4f7cff;
-  box-shadow:0 0 0 3px rgba(79,124,255,.11);
-}
-@media(max-width:720px){
-  .payables-batch-supplier:first-child{border-radius:11px 11px 0 0}
-  .payables-batch-supplier:last-child{border-radius:0 0 11px 11px}
-  .payables-batch-supplier:only-child{border-radius:11px}
+@media(max-width:480px){
+  .payables-payment-card-head,.payables-payment-rows,.payables-payment-search-area{padding-left:9px;padding-right:9px}
+  .payables-payment-date{display:block}
+  .payables-payment-date>span{margin-bottom:6px}
+  .payables-payment-date .shamsi-date-input{width:100%}
+  .payables-payment-total{align-items:flex-start;flex-direction:column;gap:4px}
+  .payables-payment-total strong{font-size:16px}
 }
