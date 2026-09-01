@@ -884,7 +884,9 @@ function SaleNew() {
                               aria-label={t.customerInfo}
                               title={t.customerInfo}
                             >
-                              <Info size={15} />
+                              <span className="sale-customer-info-icon" aria-hidden="true">
+                                <Info size={15} strokeWidth={2.4} absoluteStrokeWidth />
+                              </span>
                             </button>
                           )}
                           <button className="purchase-inline-supplier-add" type="button" onClick={() => setQuickOpen(true)} aria-label={t.quickCustomer}><Plus size={17} /></button>

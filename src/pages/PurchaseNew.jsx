@@ -49,6 +49,7 @@ const text = {
     cancel: "Cancel",
     currency: "Currency",
     billNumber: "Bill number",
+    systemBillNumber: "System bill number",
     date: "Purchase date (Solar Hijri)",
     paymentStatus: "Payment status",
     paidFull: "Fully paid",
@@ -62,6 +63,10 @@ const text = {
     emptyText: "Search above and select a medicine to add it to this purchase.",
     company: "Company",
     selectCompany: "Select company",
+    registerCompany: "Register company",
+    companyPlaceholder: "Enter company name",
+    companySaved: "Company registered and linked to this medicine.",
+    companyRequired: "Enter company name.",
     qty: "Quantity by unit",
     purchaseUnit: "Main unit",
     unitsPerUnit: "Pieces in unit",
@@ -110,6 +115,7 @@ const text = {
     cancel: "لغو",
     currency: "واحد پول",
     billNumber: "بل نمبر",
+    systemBillNumber: "بل نمبر سیستم",
     date: "تاریخ خریداری (شمسی)",
     paymentStatus: "وضعیت پرداخت",
     paidFull: "مکمل پرداخت",
@@ -123,6 +129,10 @@ const text = {
     emptyText: "از جستجوی بالا دوا را پیدا کرده و به این خریداری اضافه کنید.",
     company: "کمپنی",
     selectCompany: "کمپنی را انتخاب کنید",
+    registerCompany: "ثبت کمپنی",
+    companyPlaceholder: "نام کمپنی را وارد کنید",
+    companySaved: "کمپنی ثبت و به همین دوا لینک شد.",
+    companyRequired: "نام کمپنی را وارد کنید.",
     qty: "مقدار به واحد اصلی",
     purchaseUnit: "واحد اصلی",
     unitsPerUnit: "تعداد دانه در واحد",
@@ -171,6 +181,7 @@ const text = {
     cancel: "لغوه",
     currency: "اسعار",
     billNumber: "بل نمبر",
+    systemBillNumber: "د سیستم بل نمبر",
     date: "د پېرود نېټه (لمریز)",
     paymentStatus: "د ورکړې حالت",
     paidFull: "بشپړ ورکړل شوی",
@@ -184,6 +195,10 @@ const text = {
     emptyText: "له پورته لټون څخه درمل پیدا او دې پېرود ته یې اضافه کړئ.",
     company: "کمپنۍ",
     selectCompany: "کمپنۍ وټاکئ",
+    registerCompany: "کمپنۍ ثبت کړئ",
+    companyPlaceholder: "د کمپنۍ نوم ولیکئ",
+    companySaved: "کمپنۍ ثبت او له همدې درمل سره ونښلول شوه.",
+    companyRequired: "د کمپنۍ نوم ولیکئ.",
     qty: "په اصلي واحد مقدار",
     purchaseUnit: "اصلي واحد",
     unitsPerUnit: "په واحد کې دانې",
@@ -235,6 +250,8 @@ const today = () => {
   return new Date(date.getTime() - offset).toISOString().slice(0, 10);
 };
 
+const createSystemBillNumber = () => `BILL-${String(Date.now()).slice(-6).padStart(6, "0")}`;
+
 function PurchaseNew() {
   const navigate = useNavigate();
   const { purchaseId } = useParams();
@@ -244,6 +261,7 @@ function PurchaseNew() {
   const [suppliers, setSuppliers, , suppliersLoaded] = useJsonCollection("suppliers");
   const [products, setProducts, , productsLoaded] = useJsonCollection("products");
   const [manufacturers] = useJsonCollection("manufacturers");
+  const [manufacturerCompanies, setManufacturerCompanies] = useJsonCollection("manufacturerCompanies");
   const [productGroups] = useJsonCollection("productGroups");
   const [stockMovements, setStockMovements, , stockMovementsLoaded] = useJsonCollection("stockMovements");
   const [hydratedEditId, setHydratedEditId] = useState(null);
@@ -254,6 +272,7 @@ function PurchaseNew() {
   const [quickName, setQuickName] = useState("");
   const [currency, setCurrency] = useState("AFN");
   const [billNumber, setBillNumber] = useState(() => `PUR-${Date.now().toString().slice(-8)}`);
+  const [systemBillNumber, setSystemBillNumber] = useState(createSystemBillNumber);
   const [purchaseDate, setPurchaseDate] = useState(today());
   const [paymentStatus, setPaymentStatus] = useState("paid");
   const [paidAmount, setPaidAmount] = useState("");
@@ -261,6 +280,8 @@ function PurchaseNew() {
   const [searchFocused, setSearchFocused] = useState(false);
   const [activeResultIndex, setActiveResultIndex] = useState(0);
   const [items, setItems] = useState([]);
+  const [companyEditorProductId, setCompanyEditorProductId] = useState("");
+  const [companyDraft, setCompanyDraft] = useState("");
   const searchInputRef = useRef(null);
   const searchAreaRef = useRef(null);
   const resultButtonRefs = useRef(new Map());
@@ -292,6 +313,8 @@ function PurchaseNew() {
     if (directId) return directId;
     const wantedName = String(product?.manufacturerName || product?.companyName || product?.company || "").trim().toLowerCase();
     if (!wantedName) return "";
+    const currentMaster = manufacturerCompanies.find((item) => String(item?.name || "").trim().toLowerCase() === wantedName);
+    if (currentMaster?.id) return currentMaster.id;
     return manufacturers.find((item) => manufacturerName(item).trim().toLowerCase() === wantedName)?.id || "";
   };
   const getStock = useCallback(
@@ -375,6 +398,7 @@ function PurchaseNew() {
     setSupplierId(String(purchase.supplierId || purchase.supplier_id || ""));
     setCurrency(purchase.currency || "AFN");
     setBillNumber(purchase.billNumber || purchase.billNo || purchase.invoiceNumber || `PUR-${Date.now().toString().slice(-8)}`);
+    setSystemBillNumber(purchase.systemBillNumber || purchase.systemBillNo || createSystemBillNumber());
     setPurchaseDate(purchase.purchaseDate || purchase.date || String(purchase.createdAt || "").slice(0, 10) || today());
     const hasDebt = num(purchase.remainingAmount || purchase.remaining || 0) > 0 || purchase.paymentStatus === "debt" || purchase.paymentMode === "installment";
     setPaymentStatus(hasDebt ? "debt" : "paid");
@@ -609,6 +633,50 @@ function PurchaseNew() {
   };
 
   const removeItem = (productId) => setItems((current) => current.filter((row) => String(row.productId) !== String(productId)));
+
+  const openCompanyEditor = (row) => {
+    setCompanyEditorProductId(String(row.productId));
+    setCompanyDraft(row.manufacturerName || "");
+  };
+
+  const closeCompanyEditor = () => {
+    setCompanyEditorProductId("");
+    setCompanyDraft("");
+  };
+
+  const saveAndLinkCompany = async (row) => {
+    const name = companyDraft.trim().replace(/\s+/g, " ");
+    if (!name) return notify(t.companyRequired, "warning");
+
+    const normalizedName = name.toLowerCase();
+    let master = manufacturerCompanies.find((item) => String(item?.name || "").trim().toLowerCase() === normalizedName);
+    if (!master) {
+      master = {
+        id: `manufacturer-${Date.now()}`,
+        name,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      const saved = await setManufacturerCompanies([...manufacturerCompanies, master]);
+      if (!saved) return;
+    }
+
+    updateItemField(row.productId, {
+      manufacturerId: master.id,
+      manufacturerName: master.name || name,
+    });
+
+    const now = new Date().toISOString();
+    const nextProducts = products.map((product) =>
+      String(product.id) === String(row.productId)
+        ? { ...product, manufacturerName: master.name || name, companyName: master.name || name, updatedAt: now }
+        : product
+    );
+    await setProducts(nextProducts);
+    closeCompanyEditor();
+    notify(t.companySaved, "success", { silent: true });
+  };
+
   const lineTotal = (row) => Math.max(num(row.quantity) * num(row.purchasePrice), 0);
   const subtotal = items.reduce((sum, row) => sum + lineTotal(row), 0);
   const grandTotal = subtotal;
@@ -656,11 +724,13 @@ function PurchaseNew() {
     const targetPurchaseId = existingPurchase?.id || `purchase-${Date.now()}`;
     const supplier = suppliers.find((row) => String(row.id) === String(supplierId));
     const finalBillNumber = String(billNumber || "").trim() || existingPurchase?.billNumber || `PUR-${Date.now().toString().slice(-8)}`;
+    const finalSystemBillNumber = existingPurchase?.systemBillNumber || existingPurchase?.systemBillNo || systemBillNumber || createSystemBillNumber();
     const purchase = {
       id: targetPurchaseId,
       supplierId,
       supplierName: supplier?.supplierName || "",
       billNumber: finalBillNumber,
+      systemBillNumber: finalSystemBillNumber,
       purchaseDate,
       currency,
       paymentMode: paymentStatus === "paid" ? "cash" : "installment",
@@ -832,6 +902,11 @@ function PurchaseNew() {
                   <input value={billNumber} onChange={(e) => setBillNumber(e.target.value)} />
                 </label>
 
+                <label className="purchase-field purchase-top-field purchase-top-system-bill">
+                  <span>{t.systemBillNumber}</span>
+                  <input value={systemBillNumber} readOnly dir="ltr" aria-readonly="true" />
+                </label>
+
                 <label className="purchase-field purchase-top-field purchase-top-currency">
                   <span>{t.currency}</span>
                   <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
@@ -855,25 +930,42 @@ function PurchaseNew() {
                     <strong>{row.productName}</strong>
                     <small>{row.group || "—"} · {t.purchaseUnit}: {unitLabel(row.purchaseUnit)}</small>
                   </div>
-                  <label className="purchase-company-field">
+                  <label className={`purchase-company-field ${String(companyEditorProductId) === String(row.productId) ? "is-editing" : ""}`}>
                     <span>{t.company}</span>
-                    <select
-                      value={row.manufacturerId || ""}
-                      onChange={(e) => {
-                        const selected = manufacturers.find((item) => String(item.id) === String(e.target.value));
-                        updateItemField(row.productId, {
-                          manufacturerId: e.target.value,
-                          manufacturerName: manufacturerName(selected),
-                        });
-                      }}
-                    >
-                      <option value="">{t.selectCompany}</option>
-                      {manufacturers
-                        .filter((item) => item && item.status !== "inactive")
-                        .map((item) => (
-                          <option key={item.id} value={item.id}>{manufacturerName(item)}</option>
-                        ))}
-                    </select>
+                    {String(companyEditorProductId) === String(row.productId) ? (
+                      <div className="purchase-company-inline-editor">
+                        <input
+                          autoFocus
+                          value={companyDraft}
+                          onChange={(e) => setCompanyDraft(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") { e.preventDefault(); saveAndLinkCompany(row); }
+                            if (e.key === "Escape") { e.preventDefault(); closeCompanyEditor(); }
+                          }}
+                          placeholder={t.companyPlaceholder}
+                          aria-label={t.companyPlaceholder}
+                        />
+                        <button type="button" className="purchase-company-save" onClick={() => saveAndLinkCompany(row)} title={t.registerCompany} aria-label={t.registerCompany}><Check size={13} /></button>
+                        <button type="button" className="purchase-company-cancel" onClick={closeCompanyEditor} title={t.cancel} aria-label={t.cancel}><X size={13} /></button>
+                      </div>
+                    ) : (
+                      <div className={`purchase-company-linked-control ${row.manufacturerName ? "has-company" : "needs-company"}`}>
+                        <div className={`purchase-company-linked-value ${row.manufacturerName ? "has-value" : "is-empty"}`} title={row.manufacturerName || t.selectCompany}>
+                          {row.manufacturerName || t.selectCompany}
+                        </div>
+                        {!row.manufacturerName && (
+                          <button
+                            type="button"
+                            className="purchase-company-add"
+                            onClick={() => openCompanyEditor(row)}
+                            title={t.registerCompany}
+                            aria-label={t.registerCompany}
+                          >
+                            <Plus size={15} />
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </label>
                   <label>
                     <span>{t.qty} ({unitLabel(row.purchaseUnit)})</span>
@@ -920,6 +1012,10 @@ function PurchaseNew() {
                       onChange={(e) => updateItem(row.productId, "purchasePrice", e.target.value)}
                     />
                   </label>
+                  <div className="purchase-line-total">
+                    <span>{t.total}</span>
+                    <strong>{money(lineTotal(row))} {currency}</strong>
+                  </div>
                   <label className="purchase-expiry-field">
                     <span>{t.expiryDate}</span>
                     <input
@@ -929,10 +1025,6 @@ function PurchaseNew() {
                       onChange={(e) => updateItemField(row.productId, { expiryDate: e.target.value })}
                     />
                   </label>
-                  <div className="purchase-line-total">
-                    <span>{t.total}</span>
-                    <strong>{money(lineTotal(row))} {currency}</strong>
-                  </div>
                   <button className="purchase-remove" type="button" title={t.remove} onClick={() => removeItem(row.productId)}><Trash2 size={16} /></button>
                 </article>
               ))}
