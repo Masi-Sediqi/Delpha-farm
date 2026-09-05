@@ -25,6 +25,8 @@ import {
   stockMovementId,
 } from "../utils/stock";
 import "./PurchaseNew.css";
+import "./SaleNew.css";
+import "./PurchaseSaleLayout.css";
 
 const languageKey = "afghan-power-language";
 const currencies = ["AFN", "USD", "EUR", "INR"];
@@ -133,7 +135,7 @@ const text = {
     companyPlaceholder: "نام کمپنی را وارد کنید",
     companySaved: "کمپنی ثبت و به همین دوا لینک شد.",
     companyRequired: "نام کمپنی را وارد کنید.",
-    qty: "مقدار به واحد اصلی",
+    qty: "تعداد",
     purchaseUnit: "واحد اصلی",
     unitsPerUnit: "تعداد دانه در واحد",
     actualQty: "مقدار به دانه",
@@ -271,7 +273,7 @@ function PurchaseNew() {
   const [supplierInfoOpen, setSupplierInfoOpen] = useState(false);
   const [quickName, setQuickName] = useState("");
   const [currency, setCurrency] = useState("AFN");
-  const [billNumber, setBillNumber] = useState(() => `PUR-${Date.now().toString().slice(-8)}`);
+  const [billNumber, setBillNumber] = useState("");
   const [systemBillNumber, setSystemBillNumber] = useState(createSystemBillNumber);
   const [purchaseDate, setPurchaseDate] = useState(today());
   const [paymentStatus, setPaymentStatus] = useState("paid");
@@ -321,6 +323,36 @@ function PurchaseNew() {
     (product) => Math.max(getProductStock(stockMovements, product?.id, legacyProductStock(product)), 0),
     [stockMovements]
   );
+
+  const companyOptions = useMemo(() => {
+    const byName = new Map();
+    [...manufacturerCompanies, ...manufacturers].forEach((item) => {
+      const name = manufacturerName(item).trim();
+      if (!name) return;
+      const key = name.toLowerCase();
+      if (!byName.has(key)) byName.set(key, { ...item, name });
+    });
+    return Array.from(byName.values()).sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  }, [manufacturerCompanies, manufacturers]);
+
+  const linkCompanyToProduct = async (row, company) => {
+    if (!company) return;
+    const companyName = manufacturerName(company).trim();
+    if (!companyName) return;
+
+    updateItemField(row.productId, {
+      manufacturerId: company.id || "",
+      manufacturerName: companyName,
+    });
+
+    const now = new Date().toISOString();
+    const nextProducts = products.map((product) =>
+      String(product.id) === String(row.productId)
+        ? { ...product, manufacturerId: company.id || "", manufacturerName: companyName, companyName, updatedAt: now }
+        : product
+    );
+    await setProducts(nextProducts);
+  };
   const normalizeSearchText = (value) =>
     String(value || "")
       .toLowerCase()
@@ -397,7 +429,7 @@ function PurchaseNew() {
 
     setSupplierId(String(purchase.supplierId || purchase.supplier_id || ""));
     setCurrency(purchase.currency || "AFN");
-    setBillNumber(purchase.billNumber || purchase.billNo || purchase.invoiceNumber || `PUR-${Date.now().toString().slice(-8)}`);
+    setBillNumber(purchase.billNumber || purchase.billNo || purchase.invoiceNumber || "");
     setSystemBillNumber(purchase.systemBillNumber || purchase.systemBillNo || createSystemBillNumber());
     setPurchaseDate(purchase.purchaseDate || purchase.date || String(purchase.createdAt || "").slice(0, 10) || today());
     const hasDebt = num(purchase.remainingAmount || purchase.remaining || 0) > 0 || purchase.paymentStatus === "debt" || purchase.paymentMode === "installment";
@@ -723,7 +755,7 @@ function PurchaseNew() {
     const existingPurchase = isEditing ? purchases.find((row) => String(row.id) === String(purchaseId)) : null;
     const targetPurchaseId = existingPurchase?.id || `purchase-${Date.now()}`;
     const supplier = suppliers.find((row) => String(row.id) === String(supplierId));
-    const finalBillNumber = String(billNumber || "").trim() || existingPurchase?.billNumber || `PUR-${Date.now().toString().slice(-8)}`;
+    const finalBillNumber = String(billNumber || "").trim() || existingPurchase?.billNumber || "";
     const finalSystemBillNumber = existingPurchase?.systemBillNumber || existingPurchase?.systemBillNo || systemBillNumber || createSystemBillNumber();
     const purchase = {
       id: targetPurchaseId,
@@ -805,7 +837,7 @@ function PurchaseNew() {
   };
 
   return (
-    <div className="purchase-entry-page" dir={direction}>
+    <div className="purchase-entry-page sale-entry-page purchase-sale-layout" dir={direction}>
       <header className="purchase-entry-header">
         <div>
           <button className="purchase-back" type="button" onClick={() => navigate("/purchasing")}><ArrowLeft size={16} />{t.back}</button>
@@ -818,19 +850,19 @@ function PurchaseNew() {
       <div className="purchase-entry-layout">
         <main className="purchase-entry-main">
           <section className="purchase-items-card">
-            <div className="purchase-section-title purchase-section-title-with-meta">
+            <div className="purchase-section-title purchase-section-title-with-meta sale-section-title-with-meta">
               <div className="purchase-section-heading">
                 <ShoppingCart size={18} />
                 <h2>{t.invoiceItems}</h2>
               </div>
 
-              <div className="purchase-top-meta">
-                <div className="purchase-top-meta-supplier">
+              <div className="purchase-top-meta sale-top-meta">
+                <div className="purchase-top-meta-supplier sale-top-meta-customer purchase-top-meta-supplier-as-sale">
                   <label className="purchase-field purchase-top-field">
                     <span className="purchase-supplier-label">
                       <span className="purchase-supplier-label-text"><Truck size={13} />{t.supplier}</span>
                     </span>
-                    <div className={`purchase-select-with-add purchase-supplier-control ${quickOpen ? "is-quick-entry" : ""}`}>
+                    <div className={`purchase-select-with-add purchase-supplier-control sale-customer-select-wrap ${quickOpen ? "is-quick-entry" : ""} ${supplierId && !quickOpen ? "has-info" : ""}`}>
                       {quickOpen ? (
                         <>
                           <input
@@ -847,18 +879,6 @@ function PurchaseNew() {
                         </>
                       ) : (
                         <>
-                          <button
-                            className={`purchase-supplier-info-toggle ${supplierInfoOpen ? "active" : ""}`}
-                            type="button"
-                            onClick={(event) => {
-                              event.preventDefault();
-                              setSupplierInfoOpen((open) => !open);
-                            }}
-                            aria-label={t.supplierInfo}
-                            title={t.supplierInfo}
-                          >
-                            <Info size={14} />
-                          </button>
                           <select
                             value={supplierId}
                             onChange={(e) => {
@@ -869,6 +889,20 @@ function PurchaseNew() {
                             <option value="">{t.selectSupplier}</option>
                             {suppliers.filter((row) => row.status !== "inactive").map((row) => <option value={row.id} key={row.id}>{row.supplierName}</option>)}
                           </select>
+                          {supplierId && (
+                            <button
+                              className={`purchase-supplier-info-toggle ${supplierInfoOpen ? "active" : ""}`}
+                              type="button"
+                              onClick={(event) => {
+                                event.preventDefault();
+                                setSupplierInfoOpen((open) => !open);
+                              }}
+                              aria-label={t.supplierInfo}
+                              title={t.supplierInfo}
+                            >
+                              <Info size={14} />
+                            </button>
+                          )}
                           <button className="purchase-inline-supplier-add" type="button" onClick={() => { setSupplierInfoOpen(false); setQuickOpen(true); }} aria-label={t.quickSupplier}><Plus size={17} /></button>
                         </>
                       )}
@@ -924,11 +958,23 @@ function PurchaseNew() {
             </div>
             <div className="purchase-items-list">
               {items.map((row) => (
-                <article className="purchase-item-row purchase-keyboard-row" key={row.productId}>
-                  <img src={row.image} alt="" />
-                  <div className="purchase-item-name">
-                    <strong>{row.productName}</strong>
-                    <small>{row.group || "—"} · {t.purchaseUnit}: {unitLabel(row.purchaseUnit)}</small>
+                <article className="purchase-item-row purchase-keyboard-row sale-entry-item-row purchase-sale-item-row" key={row.productId}>
+                  <div className="purchase-product-card sale-product-info">
+                    <img
+                      className="purchase-item-image"
+                      src={row.image || productImageSrc(products.find((item) => String(item.id) === String(row.productId)))}
+                      alt={row.productName || "Product"}
+                    />
+                    <span className="purchase-item-name purchase-item-product purchase-product-card-copy">
+                      <span className="sale-product-title">
+                        <strong title={row.productName}>{row.productName}</strong>
+                        <small>{row.group || "—"} · {t.purchaseUnit}: {unitLabel(row.purchaseUnit)}</small>
+                      </span>
+                      <span className="sale-product-meta purchase-product-meta">
+                        <span className="sale-meta-badge sale-meta-size"><span>{t.unitsPerUnit}</span><b>{row.unitsPerUnit || 1}</b></span>
+                        <span className="sale-meta-badge sale-meta-maker"><span>{t.company}</span><b title={row.manufacturerName || "—"}>{row.manufacturerName || "—"}</b></span>
+                      </span>
+                    </span>
                   </div>
                   <label className={`purchase-company-field ${String(companyEditorProductId) === String(row.productId) ? "is-editing" : ""}`}>
                     <span>{t.company}</span>
@@ -945,25 +991,36 @@ function PurchaseNew() {
                           placeholder={t.companyPlaceholder}
                           aria-label={t.companyPlaceholder}
                         />
-                        <button type="button" className="purchase-company-save" onClick={() => saveAndLinkCompany(row)} title={t.registerCompany} aria-label={t.registerCompany}><Check size={13} /></button>
-                        <button type="button" className="purchase-company-cancel" onClick={closeCompanyEditor} title={t.cancel} aria-label={t.cancel}><X size={13} /></button>
+                        <button type="button" className="purchase-company-save" onClick={() => saveAndLinkCompany(row)} title={t.registerCompany} aria-label={t.registerCompany}><Check size={12} /></button>
+                        <button type="button" className="purchase-company-cancel" onClick={closeCompanyEditor} title={t.cancel} aria-label={t.cancel}><X size={12} /></button>
                       </div>
                     ) : (
                       <div className={`purchase-company-linked-control ${row.manufacturerName ? "has-company" : "needs-company"}`}>
-                        <div className={`purchase-company-linked-value ${row.manufacturerName ? "has-value" : "is-empty"}`} title={row.manufacturerName || t.selectCompany}>
-                          {row.manufacturerName || t.selectCompany}
-                        </div>
-                        {!row.manufacturerName && (
-                          <button
-                            type="button"
-                            className="purchase-company-add"
-                            onClick={() => openCompanyEditor(row)}
-                            title={t.registerCompany}
-                            aria-label={t.registerCompany}
-                          >
-                            <Plus size={15} />
-                          </button>
-                        )}
+                        <select
+                          className={`purchase-company-linked-value ${row.manufacturerName ? "has-value" : "is-empty"}`}
+                          value={row.manufacturerId || manufacturerIdForProduct(row) || ""}
+                          onChange={(e) => {
+                            const selected = companyOptions.find((item) => String(item.id) === String(e.target.value));
+                            if (selected) linkCompanyToProduct(row, selected);
+                          }}
+                          aria-label={t.selectCompany}
+                        >
+                          <option value="">{t.selectCompany}</option>
+                          {companyOptions.map((company) => (
+                            <option key={company.id || company.name} value={company.id || ""}>
+                              {company.name}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          className="purchase-company-add"
+                          onClick={() => openCompanyEditor(row)}
+                          title={t.registerCompany}
+                          aria-label={t.registerCompany}
+                        >
+                          <Plus size={15} />
+                        </button>
                       </div>
                     )}
                   </label>
@@ -1073,7 +1130,7 @@ function PurchaseNew() {
                               <small>{groupNameById(productGroups, product.groupId, product.group || "—")} · {unitLabel(product.productUnit || "piece")} · 1 = {productPiecesPerUnit(product)} {unitLabel("piece")}</small>
                             </span>
                             <em>{money(product.purchasePrice)} {currency}</em>
-                            <b className="purchase-result-check" aria-hidden="true"><Check size={13} /></b>
+                            <b className="purchase-result-check" aria-hidden="true"><Check size={12} /></b>
                           </button>
                         ))}
                       </div>
@@ -1083,47 +1140,54 @@ function PurchaseNew() {
                   </div>
                 )}
               </div>
+              {!items.length && (
+                <div className="purchase-items-empty sale-inline-empty">
+                  <PackageSearch size={34} />
+                  <strong>{t.emptyTitle}</strong>
+                  <p>{t.emptyText}</p>
+                </div>
+              )}
             </div>
 
-            <div className="purchase-final-panel">
-              <section className="purchase-side-card purchase-summary-card purchase-summary-inline">
-                <div className="purchase-side-title"><ShoppingCart size={17} /><strong>{t.grandTotal}</strong></div>
-                <div className="purchase-summary-grid">
-                  <div className="purchase-summary-row"><span>{t.itemCount}</span><strong>{items.length.toLocaleString("en-US")}</strong></div>
-                  <div className="purchase-summary-row"><span>{t.subtotal}</span><strong>{money(subtotal)} {currency}</strong></div>
-                  <div className="purchase-summary-row purchase-summary-grand"><span>{t.grandTotal}</span><strong>{money(grandTotal)} {currency}</strong></div>
-                  <div className="purchase-summary-row"><span>{t.paid}</span><strong>{money(paid)} {currency}</strong></div>
-                  <div className={`purchase-summary-row ${remaining > 0 ? "has-debt" : ""}`}><span>{t.remaining}</span><strong>{money(remaining)} {currency}</strong></div>
-                </div>
-              </section>
-
-              <section className="purchase-side-card purchase-final-payment-card">
-                <div className="purchase-side-title"><WalletCards size={17} /><strong>{t.paymentStatus}</strong></div>
-                <div className="purchase-payment-options">
-                  <button type="button" className={paymentStatus === "paid" ? "active" : ""} onClick={() => setPaymentStatus("paid")}>{t.paidFull}</button>
-                  <button type="button" className={paymentStatus === "debt" ? "active" : ""} onClick={() => setPaymentStatus("debt")}>{t.debt}</button>
-                </div>
-                <label className="purchase-field">
-                  <span>{t.paidAmount}</span>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    dir="ltr"
-                    min="0"
-                    max={grandTotal}
-                    step="0.01"
-                    value={paymentStatus === "debt" ? paidAmount : plainAmount(grandTotal)}
-                    disabled={paymentStatus !== "debt"}
-                    onChange={(e) => setPaidAmount(cleanNumberInput(e.target.value))}
-                  />
-                </label>
-                <div className="purchase-payment-record"><span>{t.paid}</span><strong>{paymentStatus === "paid" ? t.paidFull : `${money(paid)} ${currency}`}</strong></div>
-                <button className="purchase-final-save" type="button" onClick={savePurchase}><Check size={17} />{t.save}</button>
-              </section>
-            </div>
           </section>
 
         </main>
+
+        <aside className="purchase-entry-sidebar sale-bottom-panels">
+          <section className="purchase-side-card purchase-summary-card">
+            <div className="purchase-side-title"><ShoppingCart size={17} /><strong>{t.grandTotal}</strong></div>
+            <div className="purchase-summary-row"><span>{t.itemCount}</span><strong>{items.length.toLocaleString("en-US")}</strong></div>
+            <div className="purchase-summary-row"><span>{t.subtotal}</span><strong>{money(subtotal)} {currency}</strong></div>
+            <div className="purchase-summary-row purchase-summary-grand"><span>{t.grandTotal}</span><strong>{money(grandTotal)} {currency}</strong></div>
+            <div className="purchase-summary-row"><span>{t.paid}</span><strong>{money(paid)} {currency}</strong></div>
+            <div className={`purchase-summary-row ${remaining > 0 ? "has-debt" : ""}`}><span>{t.remaining}</span><strong>{money(remaining)} {currency}</strong></div>
+          </section>
+
+          <section className="purchase-side-card sale-payment-card purchase-sale-payment-card">
+            <div className="purchase-side-title"><WalletCards size={17} /><strong>{t.paymentStatus}</strong></div>
+            <div className="purchase-payment-options">
+              <button type="button" className={paymentStatus === "paid" ? "active" : ""} onClick={() => setPaymentStatus("paid")}>{t.paidFull}</button>
+              <button type="button" className={paymentStatus === "debt" ? "active" : ""} onClick={() => setPaymentStatus("debt")}>{t.debt}</button>
+            </div>
+            <label className="purchase-field">
+              <span>{t.paidAmount}</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                dir="ltr"
+                min="0"
+                max={grandTotal}
+                step="0.01"
+                value={paymentStatus === "debt" ? paidAmount : plainAmount(grandTotal)}
+                disabled={paymentStatus !== "debt"}
+                onChange={(e) => setPaidAmount(cleanNumberInput(e.target.value))}
+              />
+            </label>
+            <div className="purchase-payment-record"><span>{t.paid}</span><strong>{paymentStatus === "paid" ? t.paidFull : `${money(paid)} ${currency}`}</strong></div>
+          </section>
+
+          <button className="purchase-save-mobile" type="button" onClick={savePurchase}><Check size={17} />{t.save}</button>
+        </aside>
       </div>
     </div>
   );

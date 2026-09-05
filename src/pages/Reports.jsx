@@ -1,455 +1,101 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  ArrowRight,
-  BarChart3,
-  Boxes,
-  FileText,
-  Landmark,
-  FileSpreadsheet,
-  Printer,
-  ReceiptText,
-  Search,
-  ShoppingCart,
-  TrendingUp,
-  Wallet,
-} from "lucide-react";
-import { useJsonCollection } from "../hooks/useJsonCollection";
-import { getProductStock } from "../utils/stock";
-import { groupNameById } from "../utils/productMasterData";
-import ShamsiDateInput from "../components/ShamsiDateInput";
+import { useEffect, useRef, useState } from "react";
+import { ArrowDownRight, ArrowUpRight, Banknote, Boxes, CalendarDays, ChevronDown, Download, FileSpreadsheet, FileText, PackageCheck, Printer, ReceiptText, ShoppingBag, ShoppingCart, TrendingUp, UsersRound, WalletCards } from "lucide-react";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import "./Reports.css";
 
 const languageKey = "afghan-power-language";
 const rtlLanguages = new Set(["fa", "ps"]);
-const numeric = (value) => Number(value || 0) || 0;
-const dateOnly = (value) => String(value || "").slice(0, 10);
-const money = (value) => numeric(value).toLocaleString("en-US", { maximumFractionDigits: 2 });
-
-const translations = {
-  en: {
-    title: "Reports",
-    subtitle: "Simple, useful reports for daily pharmacy management.",
-    sales: "Sales Report",
-    salesHint: "Invoices, customers, totals, payments and remaining balances.",
-    purchases: "Purchase Report",
-    purchasesHint: "Supplier purchases, paid amounts and outstanding balances.",
-    inventory: "Inventory Report",
-    inventoryHint: "Current medicine stock calculated from stock movements.",
-    accounts: "Receivables & Payables",
-    accountsHint: "See what customers owe you and what you owe suppliers.",
-    cash: "Cash Flow",
-    cashHint: "Review cash receipts, payments and balances by currency.",
-    journal: "General Journal",
-    journalHint: "Open the accounting journal and ledger summaries.",
-    open: "Open",
-    reportWorkspace: "Report Workspace",
-    allDates: "All dates",
-    from: "From",
-    to: "To",
-    search: "Search this report...",
-    reset: "Reset",
-    export: "Export Excel",
-    print: "Print",
-    reportTitle: "Report",
-    dateRange: "Date range",
-    generatedOn: "Generated on",
-    records: "records",
-    total: "Total",
-    paid: "Paid",
-    remaining: "Remaining",
-    invoice: "Invoice",
-    bill: "Bill No.",
-    customer: "Customer",
-    supplier: "Supplier",
-    items: "Items",
-    date: "Date",
-    paymentType: "Payment Type",
-    cashPayment: "Cash",
-    installment: "Installment",
-    product: "Product",
-    group: "Group",
-    manufacturer: "Manufacturer",
-    currentStock: "Current Stock",
-    status: "Status",
-    inStock: "In stock",
-    outOfStock: "Out of stock",
-    noRows: "No records match the current filters.",
-    summarySales: "Sales in range",
-    summaryPurchases: "Purchases in range",
-    summaryStock: "Units currently in stock",
-    summaryProducts: "Products",
-  },
-  fa: {
-    title: "گزارشات",
-    subtitle: "گزارش‌های ساده و کاربردی برای مدیریت روزانه دواخانه.",
-    sales: "گزارش فروشات",
-    salesHint: "بل‌ها، مشتریان، جمله، پرداخت و باقی‌مانده فروشات.",
-    purchases: "گزارش خریداری",
-    purchasesHint: "خریدهای تأمین‌کننده‌گان، پرداخت و باقی‌مانده.",
-    inventory: "گزارش موجودی",
-    inventoryHint: "موجودی فعلی دواها بر اساس حرکات واقعی گدام.",
-    accounts: "طلبات و پرداختنی‌ها",
-    accountsHint: "ببینید مشتریان چقدر بدهکارند و ما به تأمین‌کننده‌گان چقدر بدهکاریم.",
-    cash: "جریان نقدی",
-    cashHint: "دریافت، پرداخت و بیلانس نقدی را به تفکیک اسعار ببینید.",
-    journal: "ژورنال عمومی",
-    journalHint: "ژورنال حسابداری و خلاصه لیجرها را باز کنید.",
-    open: "باز کردن",
-    reportWorkspace: "محیط گزارش",
-    allDates: "تمام تاریخ‌ها",
-    from: "از تاریخ",
-    to: "تا تاریخ",
-    search: "جستجو در گزارش...",
-    reset: "پاک کردن فلتر",
-    export: "خروجی Excel",
-    print: "پرنت",
-    reportTitle: "گزارش",
-    dateRange: "بازه تاریخ",
-    generatedOn: "تاریخ تهیه",
-    records: "ریکارد",
-    total: "جمله",
-    paid: "پرداخت",
-    remaining: "باقی‌مانده",
-    invoice: "بل فروش",
-    bill: "بل نمبر",
-    customer: "مشتری",
-    supplier: "تأمین‌کننده",
-    items: "اقلام",
-    date: "تاریخ",
-    paymentType: "نوع پرداخت",
-    cashPayment: "نقدی",
-    installment: "قسطی",
-    product: "دوا / محصول",
-    group: "گروپ",
-    manufacturer: "شرکت سازنده",
-    currentStock: "موجودی فعلی",
-    status: "وضعیت",
-    inStock: "موجود",
-    outOfStock: "خلاص شده",
-    noRows: "برای فلتر فعلی هیچ ریکاردی وجود ندارد.",
-    summarySales: "فروش در بازه",
-    summaryPurchases: "خرید در بازه",
-    summaryStock: "مجموع واحد موجود",
-    summaryProducts: "تعداد محصولات",
-  },
-  ps: {
-    title: "راپورونه",
-    subtitle: "د درملتون د ورځني مدیریت لپاره ساده او ګټور راپورونه.",
-    sales: "د خرڅلاو راپور",
-    salesHint: "بلونه، پېرودونکي، ټول مبلغ، تادیه او پاتې پیسې.",
-    purchases: "د پېرود راپور",
-    purchasesHint: "د عرضه کوونکو پېرودونه، تادیه او پاتې پورونه.",
-    inventory: "د موجودۍ راپور",
-    inventoryHint: "د ګدام د حقیقي حرکتونو له مخې د درملو اوسنی موجودي.",
-    accounts: "ترلاسه کېدونکي او ورکول کېدونکي",
-    accountsHint: "وګورئ پېرودونکي څومره پوروړي دي او موږ عرضه کوونکو ته څومره پوروړي یو.",
-    cash: "نغدي جریان",
-    cashHint: "نغدي ترلاسه کول، تادیات او بیلانس د اسعارو له مخې وګورئ.",
-    journal: "عمومي ژورنال",
-    journalHint: "د حسابدارۍ ژورنال او د لیجرونو لنډیز پرانیزئ.",
-    open: "پرانستل",
-    reportWorkspace: "د راپور ساحه",
-    allDates: "ټولې نېټې",
-    from: "له نېټې",
-    to: "تر نېټې",
-    search: "په راپور کې لټون...",
-    reset: "فلټر پاکول",
-    export: "Excel صادرول",
-    print: "پرنټ",
-    reportTitle: "راپور",
-    dateRange: "د نېټې موده",
-    generatedOn: "د جوړېدو نېټه",
-    records: "ریکارډونه",
-    total: "ټول",
-    paid: "تادیه",
-    remaining: "پاتې",
-    invoice: "د خرڅلاو بل",
-    bill: "بل نمبر",
-    customer: "پېرودونکی",
-    supplier: "عرضه کوونکی",
-    items: "توکي",
-    date: "نېټه",
-    paymentType: "د تادیې ډول",
-    cashPayment: "نغدي",
-    installment: "قسطی",
-    product: "درمل / محصول",
-    group: "ګروپ",
-    manufacturer: "جوړوونکی شرکت",
-    currentStock: "اوسنۍ موجودي",
-    status: "حالت",
-    inStock: "موجود",
-    outOfStock: "خلاص",
-    noRows: "د اوسني فلټر لپاره ریکارډ نشته.",
-    summarySales: "په موده کې خرڅلاو",
-    summaryPurchases: "په موده کې پېرود",
-    summaryStock: "ټول موجود واحدونه",
-    summaryProducts: "محصولات",
-  },
+const copy = {
+  en: { title:"Reports overview",subtitle:"A clear view of sales, purchases, inventory and account performance.",ui:"UI preview",period:"This month",export:"Export report",sales:"Total sales",purchases:"Total purchases",profit:"Estimated profit",receivables:"Receivables",payables:"Payables",products:"Active products",customers:"Active customers",transactions:"Transactions",vs:"from last month",performance:"Sales and purchase performance",performanceHint:"Monthly comparison of financial activity",cashFlow:"Cash-flow trend",cashFlowHint:"Income and expense movement",inventory:"Inventory distribution",inventoryHint:"Stock grouped by medicine category",activity:"Recent monthly activity",activityHint:"Number of sales and purchase documents",sale:"Sales",purchase:"Purchases",income:"Income",expense:"Expense",antibiotics:"Antibiotics",vitamins:"Vitamins",painkillers:"Painkillers",other:"Other",today:"Today",yesterday:"Yesterday",lastWeek:"Last week",lastMonth:"Last month",lastYear:"Last year",custom:"Custom",excel:"Excel",pdf:"PDF",print:"Print",csv:"CSV" },
+  fa: { title:"نمای کلی راپورها",subtitle:"نمای واضح از عملکرد فروشات، خریداری، موجودی و حساب‌ها.",ui:"نمونهٔ UI",period:"ماه جاری",export:"خروجی راپور",sales:"مجموع فروشات",purchases:"مجموع خریداری",profit:"مفاد تخمینی",receivables:"طلبات",payables:"تادیات",products:"محصولات فعال",customers:"مشتریان فعال",transactions:"معاملات",vs:"نسبت به ماه گذشته",performance:"عملکرد فروشات و خریداری",performanceHint:"مقایسهٔ ماهانهٔ فعالیت‌های مالی",cashFlow:"روند جریان نقدی",cashFlowHint:"تغییرات عواید و مصارف",inventory:"تقسیم‌بندی موجودی",inventoryHint:"موجودی دواها بر اساس کتگوری",activity:"فعالیت ماه‌های اخیر",activityHint:"تعداد اسناد فروش و خرید",sale:"فروشات",purchase:"خریداری",income:"عواید",expense:"مصارف",antibiotics:"انتی‌بیوتیک",vitamins:"ویتامین‌ها",painkillers:"مسکن‌ها",other:"سایر",today:"امروز",yesterday:"دیروز",lastWeek:"هفته قبل",lastMonth:"ماه قبل",lastYear:"سال قبل",custom:"دلخواه",excel:"Excel",pdf:"PDF",print:"Print",csv:"CSV" },
+  ps: { title:"د راپورونو عمومي کتنه",subtitle:"د خرڅلاو، پېرود، موجودۍ او حسابونو روښانه کتنه.",ui:"د UI بېلګه",period:"روانه میاشت",export:"راپور صادرول",sales:"ټول خرڅلاو",purchases:"ټول پېرود",profit:"اټکلي ګټه",receivables:"ترلاسه کېدونکي",payables:"ورکول کېدونکي",products:"فعال محصولات",customers:"فعال پېرودونکي",transactions:"معاملې",vs:"د تېرې میاشتې په پرتله",performance:"د خرڅلاو او پېرود فعالیت",performanceHint:"د مالي فعالیتونو میاشتنۍ پرتله",cashFlow:"د نغدي جریان بهیر",cashFlowHint:"د عوایدو او لګښتونو بدلون",inventory:"د موجودۍ وېش",inventoryHint:"د درملو موجودي د کتګورۍ له مخې",activity:"د وروستیو میاشتو فعالیت",activityHint:"د خرڅلاو او پېرود اسناد",sale:"خرڅلاو",purchase:"پېرود",income:"عواید",expense:"لګښت",antibiotics:"انټي‌بیوټیک",vitamins:"ویټامینونه",painkillers:"درد کموونکي",other:"نور",today:"نن",yesterday:"پرون",lastWeek:"تېره اوونۍ",lastMonth:"تېره میاشت",lastYear:"تېر کال",custom:"دلخواه",excel:"Excel",pdf:"PDF",print:"Print",csv:"CSV" },
 };
 
-function inRange(value, from, to) {
-  const date = dateOnly(value);
-  if (from && (!date || date < from)) return false;
-  if (to && (!date || date > to)) return false;
-  return true;
+const monthlyData = [
+  {month:"حمل",sales:580,purchases:390,income:480,expense:310},{month:"ثور",sales:720,purchases:460,income:610,expense:360},{month:"جوزا",sales:660,purchases:420,income:570,expense:345},
+  {month:"سرطان",sales:890,purchases:570,income:760,expense:430},{month:"اسد",sales:820,purchases:510,income:710,expense:405},{month:"سنبله",sales:1040,purchases:640,income:910,expense:490},
+];
+const inventoryData = [{key:"antibiotics",value:34,color:"#4f46e5"},{key:"vitamins",value:27,color:"#10b981"},{key:"painkillers",value:22,color:"#f59e0b"},{key:"other",value:17,color:"#38bdf8"}];
+const activityData = [{month:"حمل",sales:42,purchases:28},{month:"ثور",sales:54,purchases:34},{month:"جوزا",sales:49,purchases:31},{month:"سرطان",sales:68,purchases:43},{month:"اسد",sales:63,purchases:39},{month:"سنبله",sales:76,purchases:46}];
+
+function ChartTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  return <div className="report-chart-tooltip"><strong>{label}</strong>{payload.map(item=><span key={item.dataKey} style={{color:item.color}}>{item.name}: {item.value}</span>)}</div>;
 }
 
-function escapeHtml(value) {
-  return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
+function ChartHead({ title, hint, icon: Icon, tone="" }) {
+  return <div className="report-chart-head"><div><h2>{title}</h2><p>{hint}</p></div><span className={`report-chart-head-icon ${tone}`}><Icon size={17}/></span></div>;
 }
 
-function exportExcel(filename, title, columns, rows, summary, direction = "ltr") {
-  const tableHead = columns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join("");
-  const tableBody = rows.map((row) => `<tr>${columns.map((column) => `<td>${escapeHtml(row[column.key])}</td>`).join("")}</tr>`).join("");
-  const html = `<!doctype html><html><head><meta charset="utf-8"><style>
-    body{font-family:Arial,sans-serif;direction:${direction};}
-    h2{margin:0 0 12px;} .summary{margin:0 0 14px;font-weight:700;}
-    table{border-collapse:collapse;width:100%;} th,td{border:1px solid #bfc7d1;padding:7px 9px;text-align:${direction === "rtl" ? "right" : "left"};}
-    th{background:#eef2f6;font-weight:700;}
-  </style></head><body><h2>${escapeHtml(title)}</h2><div class="summary">${escapeHtml(summary.primaryLabel)}: ${escapeHtml(summary.primary)} &nbsp;&nbsp; ${escapeHtml(summary.secondaryLabel)}: ${escapeHtml(summary.secondary)}</div><table><thead><tr>${tableHead}</tr></thead><tbody>${tableBody}</tbody></table></body></html>`;
-  const blob = new Blob(["\ufeff", html], { type: "application/vnd.ms-excel;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-}
-
-function printReport({ companyName, subtitle, title, columns, rows, summary, fromDate, toDate, direction, labels }) {
-  const popup = window.open("", "_blank", "width=1100,height=820");
-  if (!popup) return;
-  const tableHead = columns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join("");
-  const tableBody = rows.length
-    ? rows.map((row) => `<tr>${columns.map((column) => `<td>${escapeHtml(row[column.key])}</td>`).join("")}</tr>`).join("")
-    : `<tr><td colspan="${columns.length}" class="empty">—</td></tr>`;
-  const rangeText = fromDate || toDate ? `${fromDate || "—"}  —  ${toDate || "—"}` : "—";
-  popup.document.write(`<!doctype html><html dir="${direction}"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>
-    @page{size:A4 landscape;margin:12mm;} *{box-sizing:border-box;} body{margin:0;color:#111827;font-family:Arial,Tahoma,sans-serif;direction:${direction};font-size:11px;}
-    .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #111827;padding-bottom:10px;margin-bottom:12px;gap:20px;}
-    .brand h1{font-size:19px;margin:0 0 3px}.brand p{margin:0;color:#6b7280;font-size:10px}.report{text-align:${direction === "rtl" ? "left" : "right"};}.report h2{margin:0 0 4px;font-size:16px}.report p{margin:2px 0;color:#4b5563;}
-    .summary{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 12px}.summary div{border:1px solid #d1d5db;padding:8px 10px;border-radius:6px;background:#f9fafb}.summary small{display:block;color:#6b7280;margin-bottom:3px}.summary strong{font-size:14px}
-    table{width:100%;border-collapse:collapse;} th,td{border:1px solid #cbd5e1;padding:6px 7px;text-align:${direction === "rtl" ? "right" : "left"};white-space:nowrap;} th{background:#e5e7eb;font-weight:700;font-size:10px}.empty{text-align:center;color:#6b7280;padding:24px}.foot{margin-top:10px;padding-top:8px;border-top:1px solid #d1d5db;color:#6b7280;font-size:9px;display:flex;justify-content:space-between;}
-  </style></head><body>
-    <div class="head"><div class="brand"><h1>${escapeHtml(companyName)}</h1><p>${escapeHtml(subtitle)}</p></div><div class="report"><h2>${escapeHtml(title)}</h2><p>${escapeHtml(labels.dateRange)}: ${escapeHtml(rangeText)}</p><p>${escapeHtml(labels.generatedOn)}: ${escapeHtml(new Date().toLocaleString())}</p></div></div>
-    <div class="summary"><div><small>${escapeHtml(summary.primaryLabel)}</small><strong>${escapeHtml(summary.primary)}</strong></div><div><small>${escapeHtml(summary.secondaryLabel)}</small><strong>${escapeHtml(summary.secondary)}</strong></div></div>
-    <table><thead><tr>${tableHead}</tr></thead><tbody>${tableBody}</tbody></table>
-    <div class="foot"><span>${escapeHtml(companyName)}</span><span>${escapeHtml(title)}</span></div>
-    <script>window.onload=()=>{window.print();};<\/script>
-  </body></html>`);
-  popup.document.close();
-}
-
-export default function Reports() {
-  const navigate = useNavigate();
-  const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
-  const [active, setActive] = useState("sales");
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
-  const [search, setSearch] = useState("");
-
-  const [sales] = useJsonCollection("salesRegister");
-  const [purchases] = useJsonCollection("purchases");
-  const [products] = useJsonCollection("products");
-  const [stockMovements] = useJsonCollection("stockMovements");
-  const [manufacturers] = useJsonCollection("manufacturers");
-  const [productGroups] = useJsonCollection("productGroups");
-  const [settings] = useJsonCollection("settings");
-
-  const t = translations[language] || translations.en;
-  const direction = rtlLanguages.has(language) ? "rtl" : "ltr";
-  const currentSettings = settings[0] || {};
-  const companyName = currentSettings.companyName || "APG";
-  const companySubtitle = currentSettings.subTitle || currentSettings.subtitle || "Pharmacy & Medicine Management System";
-
-  useEffect(() => {
-    const sync = () => setLanguage(localStorage.getItem(languageKey) || "en");
-    window.addEventListener("app-language-updated", sync);
-    window.addEventListener("storage", sync);
-    return () => {
-      window.removeEventListener("app-language-updated", sync);
-      window.removeEventListener("storage", sync);
+export default function Reports(){
+  const [language,setLanguage]=useState(()=>localStorage.getItem(languageKey)||"en");
+  const [periodOpen,setPeriodOpen]=useState(false);
+  const [exportOpen,setExportOpen]=useState(false);
+  const [periodKey,setPeriodKey]=useState("period");
+  const periodRef=useRef(null);
+  const exportRef=useRef(null);
+  const t=copy[language]||copy.en;
+  const direction=rtlLanguages.has(language)?"rtl":"ltr";
+  useEffect(()=>{const sync=()=>setLanguage(localStorage.getItem(languageKey)||"en");window.addEventListener("app-language-updated",sync);window.addEventListener("storage",sync);return()=>{window.removeEventListener("app-language-updated",sync);window.removeEventListener("storage",sync)}},[]);
+  useEffect(()=>{
+    const closeMenus=(event)=>{
+      if(periodRef.current&&!periodRef.current.contains(event.target)) setPeriodOpen(false);
+      if(exportRef.current&&!exportRef.current.contains(event.target)) setExportOpen(false);
     };
-  }, []);
-
-  const manufacturerName = (product) => {
-    const id = product?.manufacturerId || product?.companyId;
-    const manufacturer = manufacturers.find((item) => String(item.id) === String(id));
-    return manufacturer?.manufacturerName || manufacturer?.name || manufacturer?.companyName || product?.manufacturerName || product?.companyName || "—";
-  };
-
-  const salesRows = useMemo(() => sales
-    .filter((row) => inRange(row.saleDate || row.createdAt, fromDate, toDate))
-    .map((row) => ({
-      invoice: row.invoiceNumber || "—",
-      customer: row.customerName || "—",
-      items: row.items?.length || 0,
-      total: money(row.totalAmount),
-      paid: money(row.paidAmount),
-      remaining: money(row.remainingAmount),
-      paymentType: row.paymentMode === "installment" ? t.installment : t.cashPayment,
-      date: dateOnly(row.saleDate || row.createdAt),
-      _raw: row,
-    })), [sales, fromDate, toDate, t]);
-
-  const purchaseRows = useMemo(() => purchases
-    .filter((row) => inRange(row.purchaseDate || row.createdAt, fromDate, toDate))
-    .map((row) => ({
-      bill: row.billNumber || "—",
-      supplier: row.supplierName || "—",
-      items: row.itemCount || row.items?.length || 0,
-      total: money(row.totalAmount),
-      paid: money(row.paidAmount),
-      remaining: money(row.remainingAmount),
-      paymentType: row.paymentMode === "installment" ? t.installment : t.cashPayment,
-      date: dateOnly(row.purchaseDate || row.createdAt),
-      _raw: row,
-    })), [purchases, fromDate, toDate, t]);
-
-  const inventoryRows = useMemo(() => products.map((product) => {
-    const stock = getProductStock(stockMovements, product.id, 0);
-    return {
-      product: product.productName || product.name || "—",
-      group: groupNameById(productGroups, product.groupId, product.groupName || product.group || "—") || "—",
-      manufacturer: manufacturerName(product),
-      currentStock: money(stock),
-      status: stock > 0 ? t.inStock : t.outOfStock,
-      _stock: stock,
-      _raw: product,
-    };
-  }), [products, stockMovements, manufacturers, productGroups, t]);
-
-  const activeRows = active === "sales" ? salesRows : active === "purchases" ? purchaseRows : inventoryRows;
-  const q = search.trim().toLowerCase();
-  const filteredRows = activeRows.filter((row) => !q || Object.entries(row)
-    .filter(([key]) => !key.startsWith("_"))
-    .some(([, value]) => String(value ?? "").toLowerCase().includes(q)));
-
-  const columns = active === "sales" ? [
-    { key: "invoice", label: t.invoice }, { key: "customer", label: t.customer }, { key: "items", label: t.items },
-    { key: "total", label: t.total }, { key: "paid", label: t.paid }, { key: "remaining", label: t.remaining },
-    { key: "paymentType", label: t.paymentType }, { key: "date", label: t.date },
-  ] : active === "purchases" ? [
-    { key: "bill", label: t.bill }, { key: "supplier", label: t.supplier }, { key: "items", label: t.items },
-    { key: "total", label: t.total }, { key: "paid", label: t.paid }, { key: "remaining", label: t.remaining },
-    { key: "paymentType", label: t.paymentType }, { key: "date", label: t.date },
-  ] : [
-    { key: "product", label: t.product }, { key: "group", label: t.group }, { key: "manufacturer", label: t.manufacturer },
-    { key: "currentStock", label: t.currentStock }, { key: "status", label: t.status },
+    document.addEventListener("pointerdown",closeMenus);
+    return()=>document.removeEventListener("pointerdown",closeMenus);
+  },[]);
+  const periodOptions=[
+    {key:"today",label:t.today},
+    {key:"yesterday",label:t.yesterday},
+    {key:"lastWeek",label:t.lastWeek},
+    {key:"lastMonth",label:t.lastMonth},
+    {key:"lastYear",label:t.lastYear},
+    {key:"custom",label:t.custom},
   ];
-
-  const summary = useMemo(() => {
-    if (active === "sales") {
-      const raw = sales.filter((row) => inRange(row.saleDate || row.createdAt, fromDate, toDate));
-      return { primary: money(raw.reduce((sum, row) => sum + numeric(row.totalAmount), 0)), secondary: raw.length, primaryLabel: t.summarySales, secondaryLabel: t.records };
-    }
-    if (active === "purchases") {
-      const raw = purchases.filter((row) => inRange(row.purchaseDate || row.createdAt, fromDate, toDate));
-      return { primary: money(raw.reduce((sum, row) => sum + numeric(row.totalAmount), 0)), secondary: raw.length, primaryLabel: t.summaryPurchases, secondaryLabel: t.records };
-    }
-    return {
-      primary: money(inventoryRows.reduce((sum, row) => sum + numeric(row._stock), 0)),
-      secondary: products.length,
-      primaryLabel: t.summaryStock,
-      secondaryLabel: t.summaryProducts,
-    };
-  }, [active, sales, purchases, inventoryRows, products.length, fromDate, toDate, t]);
-
-  const reportCards = [
-    { key: "sales", icon: TrendingUp, title: t.sales, hint: t.salesHint, onClick: () => setActive("sales") },
-    { key: "purchases", icon: ShoppingCart, title: t.purchases, hint: t.purchasesHint, onClick: () => setActive("purchases") },
-    { key: "inventory", icon: Boxes, title: t.inventory, hint: t.inventoryHint, onClick: () => setActive("inventory") },
-    { key: "accounts", icon: ReceiptText, title: t.accounts, hint: t.accountsHint, onClick: () => navigate("/receivables-payables") },
-    { key: "cash", icon: Wallet, title: t.cash, hint: t.cashHint, onClick: () => navigate("/cash-flow") },
-    { key: "journal", icon: Landmark, title: t.journal, hint: t.journalHint, onClick: () => navigate("/general-journal") },
+  const exportOptions=[
+    {key:"excel",label:t.excel,icon:FileSpreadsheet},
+    {key:"pdf",label:t.pdf,icon:FileText},
+    {key:"print",label:t.print,icon:Printer},
+    {key:"csv",label:t.csv,icon:FileSpreadsheet},
   ];
-
-  const activeTitle = active === "sales" ? t.sales : active === "purchases" ? t.purchases : t.inventory;
-  const resetFilters = () => { setFromDate(""); setToDate(""); setSearch(""); };
-  const handlePrint = () => printReport({
-    companyName,
-    subtitle: companySubtitle,
-    title: activeTitle,
-    columns,
-    rows: filteredRows,
-    summary,
-    fromDate,
-    toDate,
-    direction,
-    labels: t,
-  });
-  const handleExcel = () => exportExcel(`${active}-report.xls`, activeTitle, columns, filteredRows, summary, direction);
-
-  return (
-    <div className="ph-reports" dir={direction}>
-      <div className="ph-reports-head">
-        <div><h1>{t.title}</h1><p>{t.subtitle}</p></div>
+  const stats=[
+    {label:t.sales,value:"350,620 AFN",change:"+12.5%",trend:"up",icon:ShoppingBag,tone:"indigo"},{label:t.purchases,value:"215,940 AFN",change:"+8.2%",trend:"up",icon:ShoppingCart,tone:"blue"},
+    {label:t.profit,value:"134,680 AFN",change:"+18.4%",trend:"up",icon:TrendingUp,tone:"green"},{label:t.receivables,value:"64,250 AFN",change:"-3.1%",trend:"down",icon:WalletCards,tone:"amber"},
+    {label:t.payables,value:"41,500 AFN",change:"+2.6%",trend:"up",icon:Banknote,tone:"rose"},{label:t.products,value:"1,248",change:"+36",trend:"up",icon:Boxes,tone:"violet"},
+    {label:t.customers,value:"896",change:"+6.8%",trend:"up",icon:UsersRound,tone:"cyan"},{label:t.transactions,value:"2,430",change:"+14.1%",trend:"up",icon:ReceiptText,tone:"slate"},
+  ];
+  const axis={fontSize:10,fill:"var(--text-secondary,#64748b)"};
+  return <div className="report-dashboard" dir={direction}>
+    <header className="report-dashboard-head"><div><div className="report-title-line"><h1>{t.title}</h1><span>{t.ui}</span></div><p>{t.subtitle}</p></div><div className="report-head-actions">
+      <div className="report-action-dropdown" ref={periodRef}>
+        <button type="button" className={`report-dropdown-trigger ${periodOpen?"is-open":""}`} aria-haspopup="menu" aria-expanded={periodOpen} onClick={()=>{setPeriodOpen(v=>!v);setExportOpen(false)}}>
+          <CalendarDays size={16}/><span>{periodKey==="period"?t.period:t[periodKey]}</span><ChevronDown size={14} className="report-dropdown-chevron"/>
+        </button>
+        {periodOpen&&<div className="report-dropdown-menu period-menu" role="menu">
+          {periodOptions.map(option=><button key={option.key} type="button" role="menuitem" className={periodKey===option.key?"active":""} onClick={()=>{setPeriodKey(option.key);setPeriodOpen(false)}}><span>{option.label}</span></button>)}
+        </div>}
       </div>
+      <div className="report-action-dropdown" ref={exportRef}>
+        <button type="button" className={`primary report-dropdown-trigger ${exportOpen?"is-open":""}`} aria-haspopup="menu" aria-expanded={exportOpen} onClick={()=>{setExportOpen(v=>!v);setPeriodOpen(false)}}>
+          <Download size={16}/><span>{t.export}</span><ChevronDown size={14} className="report-dropdown-chevron"/>
+        </button>
+        {exportOpen&&<div className="report-dropdown-menu export-menu" role="menu">
+          {exportOptions.map(({key,label,icon:Icon})=><button key={key} type="button" role="menuitem" onClick={()=>setExportOpen(false)}><span className={`report-export-icon ${key}`}><Icon size={15}/></span><span>{label}</span></button>)}
+        </div>}
+      </div>
+    </div></header>
 
-      <section className="ph-report-launcher">
-        {reportCards.map(({ key, icon: Icon, title, hint, onClick }) => (
-          <button key={key} type="button" className={`ph-report-card ${active === key ? "active" : ""}`} onClick={onClick}>
-            <span className="ph-report-card-icon"><Icon size={20} /></span>
-            <div><strong>{title}</strong><p>{hint}</p></div>
-            <ArrowRight className="ph-report-card-arrow" size={17} />
-          </button>
-        ))}
-      </section>
+    <section className="report-kpi-grid">{stats.map(({label,value,change,trend,icon:Icon,tone})=><article className={`report-kpi-card tone-${tone}`} key={label}><div className="report-kpi-top"><span className="report-kpi-icon"><Icon size={18}/></span><span className={`report-kpi-change ${trend}`}>{trend==="up"?<ArrowUpRight size={13}/>:<ArrowDownRight size={13}/>} {change}</span></div><span className="report-kpi-label">{label}</span><strong>{value}</strong><small>{t.vs}</small></article>)}</section>
 
-      <section className="ph-report-workspace">
-        <div className="ph-report-workspace-head">
-          <div>
-            <span><BarChart3 size={15} />{t.reportWorkspace}</span>
-            <h2>{activeTitle}</h2>
-          </div>
-          <div className="ph-report-actions">
-            <button type="button" className="ph-report-action ph-report-print" onClick={handlePrint}>
-              <Printer size={16} />{t.print}
-            </button>
-            <button type="button" className="ph-report-action ph-report-excel" onClick={handleExcel}>
-              <FileSpreadsheet size={16} />{t.export}
-            </button>
-          </div>
-        </div>
+    <section className="report-chart-grid">
+      <article className="report-chart-card report-chart-wide"><ChartHead title={t.performance} hint={t.performanceHint} icon={TrendingUp}/><div className="report-chart-body"><ResponsiveContainer width="100%" height="100%"><BarChart data={monthlyData} barGap={8} margin={{top:18,right:4,left:-16,bottom:0}}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--report-grid,#e8edf3)"/><XAxis dataKey="month" axisLine={false} tickLine={false} tick={axis}/><YAxis axisLine={false} tickLine={false} tick={axis}/><Tooltip content={<ChartTooltip/>} cursor={{fill:"rgba(79,70,229,.04)"}}/><Legend iconType="circle" iconSize={8} wrapperStyle={{fontSize:11,paddingTop:12}}/><Bar dataKey="sales" name={t.sale} fill="#4f46e5" radius={[5,5,0,0]} maxBarSize={30}/><Bar dataKey="purchases" name={t.purchase} fill="#22c55e" radius={[5,5,0,0]} maxBarSize={30}/></BarChart></ResponsiveContainer></div></article>
 
-        <div className="ph-report-summary">
-          <div><small>{summary.primaryLabel}</small><strong>{summary.primary}</strong></div>
-          <div><small>{summary.secondaryLabel}</small><strong>{summary.secondary}</strong></div>
-        </div>
+      <article className="report-chart-card"><ChartHead title={t.cashFlow} hint={t.cashFlowHint} icon={Banknote} tone="green"/><div className="report-chart-body"><ResponsiveContainer width="100%" height="100%"><AreaChart data={monthlyData} margin={{top:18,right:6,left:-20,bottom:0}}><defs><linearGradient id="reportIncome" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={.3}/><stop offset="95%" stopColor="#10b981" stopOpacity={0}/></linearGradient><linearGradient id="reportExpense" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#f59e0b" stopOpacity={.22}/><stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--report-grid,#e8edf3)"/><XAxis dataKey="month" axisLine={false} tickLine={false} tick={axis}/><YAxis axisLine={false} tickLine={false} tick={axis}/><Tooltip content={<ChartTooltip/>}/><Legend iconType="circle" iconSize={8} wrapperStyle={{fontSize:11,paddingTop:12}}/><Area type="monotone" dataKey="income" name={t.income} stroke="#10b981" strokeWidth={2.4} fill="url(#reportIncome)"/><Area type="monotone" dataKey="expense" name={t.expense} stroke="#f59e0b" strokeWidth={2.2} fill="url(#reportExpense)"/></AreaChart></ResponsiveContainer></div></article>
 
-        <div className="ph-report-filters">
-          {active !== "inventory" && <>
-            <label><span>{t.from}</span><ShamsiDateInput value={fromDate} onChange={(event) => setFromDate(event.target.value)} /></label>
-            <label><span>{t.to}</span><ShamsiDateInput value={toDate} onChange={(event) => setToDate(event.target.value)} /></label>
-          </>}
-          <label className="ph-report-search"><span>{t.search}</span><div><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t.search} /></div></label>
-          <button type="button" className="ph-report-reset" onClick={resetFilters}>{t.reset}</button>
-        </div>
+      <article className="report-chart-card report-chart-compact"><ChartHead title={t.inventory} hint={t.inventoryHint} icon={PackageCheck} tone="amber"/><div className="report-donut-layout"><div className="report-donut"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={inventoryData} dataKey="value" innerRadius="62%" outerRadius="88%" paddingAngle={4} stroke="none">{inventoryData.map(item=><Cell key={item.key} fill={item.color}/>)}</Pie></PieChart></ResponsiveContainer><div><strong>1,248</strong><span>{t.products}</span></div></div><div className="report-donut-legend">{inventoryData.map(item=><span key={item.key}><i style={{background:item.color}}/><b>{t[item.key]}</b><em>{item.value}%</em></span>)}</div></div></article>
 
-        <div className="ph-report-table-wrap">
-          <table>
-            <thead><tr>{columns.map((column) => <th key={column.key}>{column.label}</th>)}</tr></thead>
-            <tbody>
-              {filteredRows.map((row, index) => (
-                <tr key={row._raw?.id || index} onClick={() => {
-                  if (active === "sales" && row._raw?.id) navigate(`/sale-detail/${row._raw.id}`);
-                  if (active === "inventory" && row._raw?.id) navigate(`/product-detail/${row._raw.id}`);
-                }} className={active !== "purchases" ? "clickable" : ""}>
-                  {columns.map((column) => <td key={column.key}>{row[column.key]}</td>)}
-                </tr>
-              ))}
-              {!filteredRows.length && <tr><td colSpan={columns.length} className="ph-report-empty"><FileText size={22} /><span>{t.noRows}</span></td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </div>
-  );
+      <article className="report-chart-card report-chart-compact"><ChartHead title={t.activity} hint={t.activityHint} icon={ReceiptText} tone="cyan"/><div className="report-chart-body compact"><ResponsiveContainer width="100%" height="100%"><BarChart data={activityData} layout="vertical" margin={{top:2,right:18,left:8,bottom:0}}><CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--report-grid,#e8edf3)"/><XAxis type="number" axisLine={false} tickLine={false} tick={axis}/><YAxis type="category" dataKey="month" width={42} axisLine={false} tickLine={false} tick={axis}/><Tooltip content={<ChartTooltip/>} cursor={{fill:"rgba(79,70,229,.04)"}}/><Legend iconType="circle" iconSize={8} wrapperStyle={{fontSize:11}}/><Bar dataKey="sales" name={t.sale} fill="#6366f1" radius={[0,5,5,0]} maxBarSize={9}/><Bar dataKey="purchases" name={t.purchase} fill="#38bdf8" radius={[0,5,5,0]} maxBarSize={9}/></BarChart></ResponsiveContainer></div></article>
+    </section>
+  </div>
 }

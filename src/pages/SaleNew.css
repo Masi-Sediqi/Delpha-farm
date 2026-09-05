@@ -1304,3 +1304,55 @@ body.dark-mode .sale-top-meta-customer .sale-customer-info-toggle.active{
   border-radius:0 !important;
   transform:none !important;
 }
+
+/* Task 5: keep all sale header fields on one row on desktop */
+.sale-top-meta{
+  grid-template-columns:minmax(220px,1.35fr) minmax(120px,.78fr) minmax(145px,.92fr) minmax(105px,.68fr) minmax(150px,.95fr) !important;
+  align-items:end !important;
+  gap:10px !important;
+}
+
+/* Task 5: show selected-product information vertically under the product name */
+.sale-product-meta{
+  display:flex !important;
+  flex-direction:column !important;
+  flex-wrap:nowrap !important;
+  align-items:stretch !important;
+  gap:4px !important;
+}
+.sale-product-meta .sale-meta-badge{
+  width:100% !important;
+  max-width:none !important;
+  box-sizing:border-box !important;
+  justify-content:space-between !important;
+  border-radius:7px !important;
+}
+.sale-product-meta .sale-meta-badge b{
+  max-width:62% !important;
+  text-align:end;
+}
+
+@media(max-width:1280px){
+  .sale-top-meta{
+    grid-template-columns:minmax(190px,1.25fr) minmax(105px,.72fr) minmax(130px,.82fr) minmax(92px,.62fr) minmax(135px,.88fr) !important;
+    gap:8px !important;
+  }
+}
+
+@media(max-width:900px){
+  .sale-top-meta{
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  }
+  .sale-top-meta-customer{
+    grid-column:1 / -1;
+  }
+}
+
+@media(max-width:640px){
+  .sale-top-meta{
+    grid-template-columns:1fr !important;
+  }
+  .sale-top-meta-customer{
+    grid-column:auto;
+  }
+}

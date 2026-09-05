@@ -26,7 +26,6 @@ import {
   Undo2,
   RotateCcw,
   Users,
-  Wallet,
   BadgeDollarSign,
   BookOpenCheck,
   Landmark,
@@ -68,7 +67,6 @@ const ReceivablesBatch = lazy(() => import("./pages/ReceivablesBatch"));
 const PrintReceivablesBatch = lazy(() => import("./pages/PrintReceivablesBatch"));
 const PurchaseReturns = lazy(() => import("./pages/PurchaseReturns"));
 const SaleReturns = lazy(() => import("./pages/SaleReturns"));
-const CashFlow = lazy(() => import("./pages/CashFlow"));
 const Expenses = lazy(() => import("./pages/Expenses"));
 const ReceivablesPayables = lazy(() => import("./pages/ReceivablesPayables"));
 const GeneralJournal = lazy(() => import("./pages/GeneralJournal"));
@@ -116,7 +114,6 @@ const shellLabels = {
     receivables: "Receivables",
     saleReturns: "Sale Returns",
     inventory: "Inventory",
-    cashFlow: "Cash Flow",
     banks: "Banks",
     cashCount: "Cash Count",
     expenses: "Expenses",
@@ -139,7 +136,6 @@ const shellLabels = {
     receivables: "طلبات",
     saleReturns: "برگشت فروش",
     inventory: "موجودی",
-    cashFlow: "جریان نقدی",
     banks: "بانک‌ها",
     cashCount: "شمارش نقدی",
     expenses: "مصارف",
@@ -162,7 +158,6 @@ const shellLabels = {
     receivables: "طلبات",
     saleReturns: "د خرڅلاو بېرته ستنول",
     inventory: "موجودي",
-    cashFlow: "نغدي جریان",
     banks: "بانکونه",
     cashCount: "د نغدو شمېرنه",
     expenses: "مصارف",
@@ -560,7 +555,6 @@ function App() {
     { to: "/inventory", label: labels.inventory, moduleKey: "reports", icon: Boxes },
     { to: "/expenses", label: labels.expenses, moduleKey: "reports", icon: FileMinus2 },
     { to: "/accounts", label: labels.accounts, moduleKey: "settings", icon: Users },
-    { to: "/cash-flow", label: labels.cashFlow, moduleKey: "reports", icon: Wallet },
     { to: "/reports", label: labels.reports, moduleKey: "reports", icon: FileBarChart },
     { to: "/trash", label: labels.trash, moduleKey: "settings", icon: Trash2 },
     { to: "/settings", label: labels.settings, moduleKey: "settings", icon: SettingsIcon },
@@ -714,7 +708,6 @@ function App() {
               <Route path="/receivables/payments/:batchId/print" element={protect("customers", <PrintReceivablesBatch />)} />
               <Route path="/sale-returns" element={protect("customers", <SaleReturns />)} />
               <Route path="/inventory" element={protect("reports", <Inventory />)} />
-              <Route path="/cash-flow" element={protect("reports", <CashFlow />)} />
               <Route path="/banks" element={protect("reports", <Banks />)} />
               <Route path="/cash-count" element={protect("reports", <CashCount />)} />
               <Route path="/expenses" element={protect("reports", <Expenses />)} />

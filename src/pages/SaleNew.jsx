@@ -38,6 +38,8 @@ const today = () => {
   return new Date(date.getTime() - offset).toISOString().slice(0, 10);
 };
 
+const createSystemBillNumber = () => `SAL-BILL-${String(Date.now()).slice(-6).padStart(6, "0")}`;
+
 const text = {
   en: {
     title: "New Sale",
@@ -60,6 +62,7 @@ const text = {
     cancel: "Cancel",
     currency: "Currency",
     billNumber: "Bill number",
+    systemBillNumber: "System bill number",
     date: "Sale date (Solar Hijri)",
     paymentStatus: "Payment status",
     paidFull: "Fully paid",
@@ -71,7 +74,7 @@ const text = {
     invoiceItems: "Sale items",
     emptyTitle: "No medicine added yet",
     emptyText: "Search above and select medicines to add them to this sale.",
-    qty: "Quantity by main unit",
+    qty: "Quantity",
     actualQty: "Quantity by piece",
     salePrice: "Sale price",
     purchasePrice: "Purchase price",
@@ -127,6 +130,7 @@ const text = {
     cancel: "لغو",
     currency: "واحد پول",
     billNumber: "بل نمبر",
+    systemBillNumber: "بل نمبر سیستم",
     date: "تاریخ فروش (شمسی)",
     paymentStatus: "وضعیت پرداخت",
     paidFull: "مکمل پرداخت",
@@ -138,7 +142,7 @@ const text = {
     invoiceItems: "اقلام فروش",
     emptyTitle: "هنوز دوایی اضافه نشده",
     emptyText: "از جستجوی بالا چندین دوا را پیدا کرده و به این فروش اضافه کنید.",
-    qty: "مقدار به واحد اصلی",
+    qty: "مقدار",
     actualQty: "مقدار به دانه",
     salePrice: "قیمت فروش",
     purchasePrice: "قیمت خرید",
@@ -194,6 +198,7 @@ const text = {
     cancel: "لغوه",
     currency: "اسعار",
     billNumber: "بل نمبر",
+    systemBillNumber: "د سیستم بل نمبر",
     date: "د خرڅلاو نېټه (لمریز)",
     paymentStatus: "د ورکړې حالت",
     paidFull: "بشپړ ورکړل شوی",
@@ -205,7 +210,7 @@ const text = {
     invoiceItems: "د خرڅلاو توکي",
     emptyTitle: "تر اوسه درمل نه دي اضافه شوي",
     emptyText: "له پورته لټون څخه څو درمل پیدا او دې خرڅلاو ته یې اضافه کړئ.",
-    qty: "په اصلي واحد مقدار",
+    qty: "مقدار",
     actualQty: "په دانه مقدار",
     salePrice: "د پلور بیه",
     purchasePrice: "د پېرود بیه",
@@ -258,7 +263,8 @@ function SaleNew() {
   const [quickOpen, setQuickOpen] = useState(false);
   const [quickName, setQuickName] = useState("");
   const [currency, setCurrency] = useState("AFN");
-  const [billNumber, setBillNumber] = useState(() => `SAL-${Date.now().toString().slice(-8)}`);
+  const [billNumber, setBillNumber] = useState("");
+  const [systemBillNumber, setSystemBillNumber] = useState(createSystemBillNumber);
   const [saleDate, setSaleDate] = useState(today());
   const [paymentStatus, setPaymentStatus] = useState("paid");
   const [paidAmount, setPaidAmount] = useState("");
@@ -353,7 +359,8 @@ function SaleNew() {
     if (!isEditMode || editInitialized || !editingSale) return;
     setCustomerId(editingSale.customerId || "");
     setCurrency(editingSale.currency || "AFN");
-    setBillNumber(editingSale.invoiceNumber || editingSale.billNumber || editingSale.billNo || `SAL-${Date.now().toString().slice(-8)}`);
+    setBillNumber(editingSale.billNumber || editingSale.manualBillNumber || editingSale.billNo || "");
+    setSystemBillNumber(editingSale.systemBillNumber || editingSale.systemBillNo || editingSale.invoiceNumber || createSystemBillNumber());
     setSaleDate(editingSale.saleDate || today());
     const debt = num(editingSale.remainingAmount) > 0 || editingSale.paymentStatus === "debt" || editingSale.paymentMode === "installment";
     setPaymentStatus(debt ? "debt" : "paid");
@@ -699,13 +706,17 @@ function SaleNew() {
 
     const now = new Date().toISOString();
     const recordId = isEditMode ? editingSale.id : `sale-${Date.now()}`;
-    const invoiceNumber = String(billNumber || "").trim() || (isEditMode ? (editingSale.invoiceNumber || editingSale.billNumber) : "") || `SAL-${Date.now().toString().slice(-8)}`;
+    const manualBillNumber = String(billNumber || "").trim();
+    const finalSystemBillNumber = (isEditMode ? (editingSale.systemBillNumber || editingSale.systemBillNo || editingSale.invoiceNumber) : "") || systemBillNumber || createSystemBillNumber();
+    const invoiceNumber = finalSystemBillNumber;
     const customer = customers.find((row) => String(row.id) === String(customerId));
     const sale = {
       id: recordId,
       customerId,
       customerName: customer?.fullName || customer?.companyName || "",
       invoiceNumber,
+      billNumber: manualBillNumber,
+      systemBillNumber: finalSystemBillNumber,
       saleDate,
       currency,
       paymentMode: paymentStatus === "paid" ? "cash" : "installment",
@@ -917,6 +928,11 @@ function SaleNew() {
                 <label className="purchase-field purchase-top-field purchase-top-bill">
                   <span>{t.billNumber}</span>
                   <input value={billNumber} onChange={(e) => setBillNumber(e.target.value)} />
+                </label>
+
+                <label className="purchase-field purchase-top-field purchase-top-system-bill">
+                  <span>{t.systemBillNumber}</span>
+                  <input value={systemBillNumber} readOnly dir="ltr" aria-readonly="true" />
                 </label>
 
                 <label className="purchase-field purchase-top-field purchase-top-currency">
