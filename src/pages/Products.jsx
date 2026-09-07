@@ -474,14 +474,14 @@ const emptyForm = {
 
 function Products() {
   const navigate = useNavigate();
-  const [products, setProducts, , productsLoaded] = useJsonCollection("products");
+  const [products, setProducts] = useJsonCollection("products");
   const [stockMovements, setStockMovements] = useJsonCollection("stockMovements");
   const [productGroups, setProductGroups] = useJsonCollection("productGroups");
   const [suppliers] = useJsonCollection("suppliers");
   const [legacyCompanies] = useJsonCollection("companies");
   const [productCountries, setProductCountries] = useJsonCollection("countries");
   const [customProductForms, setCustomProductForms] = useJsonCollection("productForms");
-  const [manufacturerCompanies, setManufacturerCompanies, , manufacturerCompaniesLoaded] = useJsonCollection("manufacturerCompanies");
+  const [manufacturerCompanies, setManufacturerCompanies] = useJsonCollection("manufacturerCompanies");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -524,45 +524,6 @@ function Products() {
 
     return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
   }, [manufacturerCompanies, products]);
-
-  // Manufacturer companies are master data, not temporary product-form values.
-  // Keep every company ever saved on a product in the persistent master list so it
-  // remains available in the dropdown for future products and after app restarts.
-  useEffect(() => {
-    if (!productsLoaded || !manufacturerCompaniesLoaded) return;
-
-    const existingNames = new Set(
-      manufacturerCompanies
-        .map((item) => normalizeMasterName(item?.name))
-        .filter(Boolean)
-    );
-
-    const recovered = [];
-    products.forEach((product) => {
-      const name = String(product?.manufacturerName || product?.companyName || "")
-        .trim()
-        .replace(/\s+/g, " ");
-      const key = normalizeMasterName(name);
-      if (!key || existingNames.has(key)) return;
-      existingNames.add(key);
-      const now = new Date().toISOString();
-      recovered.push({
-        id: makeMasterId("manufacturer", name),
-        name,
-        createdAt: product?.createdAt || now,
-        updatedAt: now,
-      });
-    });
-
-    if (!recovered.length) return;
-    setManufacturerCompanies((current) => [...current, ...recovered]);
-  }, [
-    products,
-    productsLoaded,
-    manufacturerCompanies,
-    manufacturerCompaniesLoaded,
-    setManufacturerCompanies,
-  ]);
 
   useEffect(() => {
     const syncLanguage = () => setLanguage(localStorage.getItem(languageKey) || "en");
@@ -698,16 +659,6 @@ function Products() {
       }
       return { ...previous, [name]: value };
     });
-  };
-
-  const handleImageChange = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setFormData((previous) => ({ ...previous, image: reader.result || defaultProductImage }));
-    };
-    reader.readAsDataURL(file);
   };
 
   const saveInlineGroup = async () => {
@@ -866,12 +817,7 @@ function Products() {
         setFormData((current) => ({ ...current, manufacturerName: existingLegacy.name }));
       } else {
         const row = { id: makeMasterId("manufacturer", name), name, createdAt: now, updatedAt: now };
-        const saved = await setManufacturerCompanies((current) => {
-          const alreadySaved = current.some(
-            (item) => normalizeMasterName(item?.name) === normalizeMasterName(name)
-          );
-          return alreadySaved ? current : [...current, row];
-        });
+        const saved = await setManufacturerCompanies([...manufacturerCompanies, row]);
         if (!saved) return;
         setFormData((current) => ({ ...current, manufacturerName: name }));
         notify(t.manufacturerCompanySaved);
@@ -957,34 +903,12 @@ function Products() {
     const productId = editingId || `sale-product-${Date.now()}`;
     const now = new Date().toISOString();
     const openingQuantity = Number(formData.quantity || 0);
-    const manufacturerName = String(formData.manufacturerName || "").trim().replace(/\s+/g, " ");
-
-    // Safety net: even if a manufacturer came from legacy product data or the form
-    // state, persist it in master data before saving the product.
-    if (manufacturerName) {
-      const manufacturerSaved = await setManufacturerCompanies((current) => {
-        const exists = current.some(
-          (item) => normalizeMasterName(item?.name) === normalizeMasterName(manufacturerName)
-        );
-        if (exists) return current;
-        return [
-          ...current,
-          {
-            id: makeMasterId("manufacturer", manufacturerName),
-            name: manufacturerName,
-            createdAt: now,
-            updatedAt: now,
-          },
-        ];
-      });
-      if (!manufacturerSaved) return;
-    }
     const { group: _legacyGroup, madeIn: _legacyMadeIn, companyId: _legacyCompanyId, company: _legacyCompany, manufacturerId: _legacyManufacturerId, ...cleanFormData } = formData;
     const record = {
       ...cleanFormData,
       id: productId,
       productName: formData.productName.trim(),
-      manufacturerName,
+      manufacturerName: String(formData.manufacturerName || "").trim(),
       groupId: selectedGroupId,
       supplierId: formData.supplierId,
       supplierName: supplierNameById(formData.supplierId, ""),
@@ -1403,22 +1327,6 @@ function Products() {
                     <small className="sales-product-quantity-total">{formatTemplate(t.totalPieces, { count: totalPieces.toLocaleString("en-US") })}</small>
                   )}
                 </label>
-
-                <div className="sales-product-field sales-product-image-field">
-                  <span>{t.image}</span>
-                  <div className="sales-product-image-control">
-                    <img src={productImageSrc(formData)} alt="" />
-                    <div>
-                      <label className="sales-product-image-picker">
-                        <input type="file" accept="image/*" onChange={handleImageChange} />
-                        <span>{t.chooseImage}</span>
-                      </label>
-                      <button type="button" onClick={() => setFormData((previous) => ({ ...previous, image: defaultProductImage }))}>
-                        {t.removeImage}
-                      </button>
-                    </div>
-                  </div>
-                </div>
 
                 <label className="sales-product-field sales-product-field-wide">
                   <span>{t.description}</span>
