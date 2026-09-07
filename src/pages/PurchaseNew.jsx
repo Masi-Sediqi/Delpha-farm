@@ -25,8 +25,6 @@ import {
   stockMovementId,
 } from "../utils/stock";
 import "./PurchaseNew.css";
-import "./SaleNew.css";
-import "./PurchaseSaleLayout.css";
 
 const languageKey = "afghan-power-language";
 const currencies = ["AFN", "USD", "EUR", "INR"];
@@ -51,7 +49,6 @@ const text = {
     cancel: "Cancel",
     currency: "Currency",
     billNumber: "Bill number",
-    systemBillNumber: "System bill number",
     date: "Purchase date (Solar Hijri)",
     paymentStatus: "Payment status",
     paidFull: "Fully paid",
@@ -65,10 +62,6 @@ const text = {
     emptyText: "Search above and select a medicine to add it to this purchase.",
     company: "Company",
     selectCompany: "Select company",
-    registerCompany: "Register company",
-    companyPlaceholder: "Enter company name",
-    companySaved: "Company registered and linked to this medicine.",
-    companyRequired: "Enter company name.",
     qty: "Quantity by unit",
     purchaseUnit: "Main unit",
     unitsPerUnit: "Pieces in unit",
@@ -117,7 +110,6 @@ const text = {
     cancel: "لغو",
     currency: "واحد پول",
     billNumber: "بل نمبر",
-    systemBillNumber: "بل نمبر سیستم",
     date: "تاریخ خریداری (شمسی)",
     paymentStatus: "وضعیت پرداخت",
     paidFull: "مکمل پرداخت",
@@ -131,11 +123,7 @@ const text = {
     emptyText: "از جستجوی بالا دوا را پیدا کرده و به این خریداری اضافه کنید.",
     company: "کمپنی",
     selectCompany: "کمپنی را انتخاب کنید",
-    registerCompany: "ثبت کمپنی",
-    companyPlaceholder: "نام کمپنی را وارد کنید",
-    companySaved: "کمپنی ثبت و به همین دوا لینک شد.",
-    companyRequired: "نام کمپنی را وارد کنید.",
-    qty: "تعداد",
+    qty: "مقدار به واحد اصلی",
     purchaseUnit: "واحد اصلی",
     unitsPerUnit: "تعداد دانه در واحد",
     actualQty: "مقدار به دانه",
@@ -183,7 +171,6 @@ const text = {
     cancel: "لغوه",
     currency: "اسعار",
     billNumber: "بل نمبر",
-    systemBillNumber: "د سیستم بل نمبر",
     date: "د پېرود نېټه (لمریز)",
     paymentStatus: "د ورکړې حالت",
     paidFull: "بشپړ ورکړل شوی",
@@ -197,10 +184,6 @@ const text = {
     emptyText: "له پورته لټون څخه درمل پیدا او دې پېرود ته یې اضافه کړئ.",
     company: "کمپنۍ",
     selectCompany: "کمپنۍ وټاکئ",
-    registerCompany: "کمپنۍ ثبت کړئ",
-    companyPlaceholder: "د کمپنۍ نوم ولیکئ",
-    companySaved: "کمپنۍ ثبت او له همدې درمل سره ونښلول شوه.",
-    companyRequired: "د کمپنۍ نوم ولیکئ.",
     qty: "په اصلي واحد مقدار",
     purchaseUnit: "اصلي واحد",
     unitsPerUnit: "په واحد کې دانې",
@@ -252,8 +235,6 @@ const today = () => {
   return new Date(date.getTime() - offset).toISOString().slice(0, 10);
 };
 
-const createSystemBillNumber = () => `BILL-${String(Date.now()).slice(-6).padStart(6, "0")}`;
-
 function PurchaseNew() {
   const navigate = useNavigate();
   const { purchaseId } = useParams();
@@ -263,7 +244,6 @@ function PurchaseNew() {
   const [suppliers, setSuppliers, , suppliersLoaded] = useJsonCollection("suppliers");
   const [products, setProducts, , productsLoaded] = useJsonCollection("products");
   const [manufacturers] = useJsonCollection("manufacturers");
-  const [manufacturerCompanies, setManufacturerCompanies] = useJsonCollection("manufacturerCompanies");
   const [productGroups] = useJsonCollection("productGroups");
   const [stockMovements, setStockMovements, , stockMovementsLoaded] = useJsonCollection("stockMovements");
   const [hydratedEditId, setHydratedEditId] = useState(null);
@@ -273,8 +253,7 @@ function PurchaseNew() {
   const [supplierInfoOpen, setSupplierInfoOpen] = useState(false);
   const [quickName, setQuickName] = useState("");
   const [currency, setCurrency] = useState("AFN");
-  const [billNumber, setBillNumber] = useState("");
-  const [systemBillNumber, setSystemBillNumber] = useState(createSystemBillNumber);
+  const [billNumber, setBillNumber] = useState(() => `PUR-${Date.now().toString().slice(-8)}`);
   const [purchaseDate, setPurchaseDate] = useState(today());
   const [paymentStatus, setPaymentStatus] = useState("paid");
   const [paidAmount, setPaidAmount] = useState("");
@@ -282,8 +261,6 @@ function PurchaseNew() {
   const [searchFocused, setSearchFocused] = useState(false);
   const [activeResultIndex, setActiveResultIndex] = useState(0);
   const [items, setItems] = useState([]);
-  const [companyEditorProductId, setCompanyEditorProductId] = useState("");
-  const [companyDraft, setCompanyDraft] = useState("");
   const searchInputRef = useRef(null);
   const searchAreaRef = useRef(null);
   const resultButtonRefs = useRef(new Map());
@@ -315,44 +292,12 @@ function PurchaseNew() {
     if (directId) return directId;
     const wantedName = String(product?.manufacturerName || product?.companyName || product?.company || "").trim().toLowerCase();
     if (!wantedName) return "";
-    const currentMaster = manufacturerCompanies.find((item) => String(item?.name || "").trim().toLowerCase() === wantedName);
-    if (currentMaster?.id) return currentMaster.id;
     return manufacturers.find((item) => manufacturerName(item).trim().toLowerCase() === wantedName)?.id || "";
   };
   const getStock = useCallback(
     (product) => Math.max(getProductStock(stockMovements, product?.id, legacyProductStock(product)), 0),
     [stockMovements]
   );
-
-  const companyOptions = useMemo(() => {
-    const byName = new Map();
-    [...manufacturerCompanies, ...manufacturers].forEach((item) => {
-      const name = manufacturerName(item).trim();
-      if (!name) return;
-      const key = name.toLowerCase();
-      if (!byName.has(key)) byName.set(key, { ...item, name });
-    });
-    return Array.from(byName.values()).sort((a, b) => String(a.name).localeCompare(String(b.name)));
-  }, [manufacturerCompanies, manufacturers]);
-
-  const linkCompanyToProduct = async (row, company) => {
-    if (!company) return;
-    const companyName = manufacturerName(company).trim();
-    if (!companyName) return;
-
-    updateItemField(row.productId, {
-      manufacturerId: company.id || "",
-      manufacturerName: companyName,
-    });
-
-    const now = new Date().toISOString();
-    const nextProducts = products.map((product) =>
-      String(product.id) === String(row.productId)
-        ? { ...product, manufacturerId: company.id || "", manufacturerName: companyName, companyName, updatedAt: now }
-        : product
-    );
-    await setProducts(nextProducts);
-  };
   const normalizeSearchText = (value) =>
     String(value || "")
       .toLowerCase()
@@ -429,8 +374,7 @@ function PurchaseNew() {
 
     setSupplierId(String(purchase.supplierId || purchase.supplier_id || ""));
     setCurrency(purchase.currency || "AFN");
-    setBillNumber(purchase.billNumber || purchase.billNo || purchase.invoiceNumber || "");
-    setSystemBillNumber(purchase.systemBillNumber || purchase.systemBillNo || createSystemBillNumber());
+    setBillNumber(purchase.billNumber || purchase.billNo || purchase.invoiceNumber || `PUR-${Date.now().toString().slice(-8)}`);
     setPurchaseDate(purchase.purchaseDate || purchase.date || String(purchase.createdAt || "").slice(0, 10) || today());
     const hasDebt = num(purchase.remainingAmount || purchase.remaining || 0) > 0 || purchase.paymentStatus === "debt" || purchase.paymentMode === "installment";
     setPaymentStatus(hasDebt ? "debt" : "paid");
@@ -445,6 +389,7 @@ function PurchaseNew() {
       return {
         ...row,
         id: row.id || `purchase-item-${purchaseId}-${index + 1}`,
+        lineId: row.lineId || row.id || `purchase-line-${purchaseId}-${index + 1}`,
         productId,
         productName: row.productName || row.name || productDisplayName(product),
         image: row.image || productImageSrc(product),
@@ -479,8 +424,7 @@ function PurchaseNew() {
     if (!searchFocused || !q) return [];
 
     const available = (Array.isArray(products) ? products : [])
-      .filter((product) => product && product.status !== "inactive" && product.active !== false)
-      .filter((product) => !items.some((row) => String(row.productId) === String(product.id)));
+      .filter((product) => product && product.status !== "inactive" && product.active !== false);
 
     const scored = available.map((product, originalIndex) => {
       const group = groupNameById(productGroups, product.groupId, product.group || "");
@@ -508,7 +452,7 @@ function PurchaseNew() {
     // Keep the best matches first, but keep the result panel useful by filling
     // it with other available products until at least five choices are visible.
     return [...matching, ...fallback].slice(0, 20).map((row) => row.product);
-  }, [products, productGroups, query, searchFocused, items]);
+  }, [products, productGroups, query, searchFocused]);
 
   useEffect(() => {
     setActiveResultIndex(0);
@@ -522,32 +466,31 @@ function PurchaseNew() {
   const addProduct = (product) => {
     if (!product) return;
     const piecesPerUnit = productPiecesPerUnit(product);
-    setItems((current) => {
-      if (current.some((row) => String(row.productId) === String(product.id))) return current;
-      return [...current, {
-        productId: product.id,
-        productName: productDisplayName(product),
-        image: productImageSrc(product),
-        group: groupNameById(productGroups, product.groupId, product.group || ""),
-        unit: product.productUnit || "piece",
-        baseUnit: "piece",
-        purchaseUnit: product.productUnit || product.purchaseUnit || product.packageUnit || "piece",
-        unitsPerUnit: piecesPerUnit,
-        receivedQuantity: piecesPerUnit,
-        quantity: 1,
-        purchasePrice: num(product.purchasePrice),
-        salePrice: num(product.salePrice),
-        currentStock: getStock(product),
-        manufacturerId: manufacturerIdForProduct(product),
-        manufacturerName: product.manufacturerName || product.companyName || "",
-        batchNo: "",
-        expiryDate: "",
-      }];
-    });
+    const lineId = `purchase-line-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setItems((current) => [...current, {
+      lineId,
+      productId: product.id,
+      productName: productDisplayName(product),
+      image: productImageSrc(product),
+      group: groupNameById(productGroups, product.groupId, product.group || ""),
+      unit: product.productUnit || "piece",
+      baseUnit: "piece",
+      purchaseUnit: product.productUnit || product.purchaseUnit || product.packageUnit || "piece",
+      unitsPerUnit: piecesPerUnit,
+      receivedQuantity: piecesPerUnit,
+      quantity: 1,
+      purchasePrice: num(product.purchasePrice),
+      salePrice: num(product.salePrice),
+      currentStock: getStock(product),
+      manufacturerId: manufacturerIdForProduct(product),
+      manufacturerName: product.manufacturerName || product.companyName || "",
+      batchNo: "",
+      expiryDate: "",
+    }]);
     setQuery("");
     setSearchFocused(false);
     setActiveResultIndex(0);
-    window.setTimeout(() => quantityInputRefs.current.get(String(product.id))?.focus(), 0);
+    window.setTimeout(() => quantityInputRefs.current.get(lineId)?.focus(), 0);
   };
 
   const focusSearchResult = (index) => {
@@ -637,26 +580,26 @@ function PurchaseNew() {
     window.setTimeout(() => setSearchFocused(false), 80);
   };
 
-  const updateItem = (productId, key, value) => {
-    setItems((current) => current.map((row) => String(row.productId) === String(productId) ? { ...row, [key]: cleanNumberInput(value) } : row));
+  const updateItem = (lineId, key, value) => {
+    setItems((current) => current.map((row) => String(row.lineId) === String(lineId) ? { ...row, [key]: cleanNumberInput(value) } : row));
   };
 
-  const updateItemField = (productId, fields) => {
-    setItems((current) => current.map((row) => String(row.productId) === String(productId) ? { ...row, ...fields } : row));
+  const updateItemField = (lineId, fields) => {
+    setItems((current) => current.map((row) => String(row.lineId) === String(lineId) ? { ...row, ...fields } : row));
   };
 
-  const updatePackageQuantity = (productId, value) => {
+  const updatePackageQuantity = (lineId, value) => {
     setItems((current) => current.map((row) => {
-      if (String(row.productId) !== String(productId)) return row;
+      if (String(row.lineId) !== String(lineId)) return row;
       const quantity = cleanNumberInput(value);
       const receivedQuantityValue = num(quantity) * positiveUnitCount(row.unitsPerUnit);
       return { ...row, quantity, receivedQuantity: receivedQuantityValue };
     }));
   };
 
-  const updatePieceQuantity = (productId, value) => {
+  const updatePieceQuantity = (lineId, value) => {
     setItems((current) => current.map((row) => {
-      if (String(row.productId) !== String(productId)) return row;
+      if (String(row.lineId) !== String(lineId)) return row;
       const pieces = cleanNumberInput(value);
       const unitsPerUnit = positiveUnitCount(row.unitsPerUnit);
       const packageQuantity = pieces === "" ? "" : Number((num(pieces) / unitsPerUnit).toFixed(4));
@@ -664,51 +607,7 @@ function PurchaseNew() {
     }));
   };
 
-  const removeItem = (productId) => setItems((current) => current.filter((row) => String(row.productId) !== String(productId)));
-
-  const openCompanyEditor = (row) => {
-    setCompanyEditorProductId(String(row.productId));
-    setCompanyDraft(row.manufacturerName || "");
-  };
-
-  const closeCompanyEditor = () => {
-    setCompanyEditorProductId("");
-    setCompanyDraft("");
-  };
-
-  const saveAndLinkCompany = async (row) => {
-    const name = companyDraft.trim().replace(/\s+/g, " ");
-    if (!name) return notify(t.companyRequired, "warning");
-
-    const normalizedName = name.toLowerCase();
-    let master = manufacturerCompanies.find((item) => String(item?.name || "").trim().toLowerCase() === normalizedName);
-    if (!master) {
-      master = {
-        id: `manufacturer-${Date.now()}`,
-        name,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      const saved = await setManufacturerCompanies([...manufacturerCompanies, master]);
-      if (!saved) return;
-    }
-
-    updateItemField(row.productId, {
-      manufacturerId: master.id,
-      manufacturerName: master.name || name,
-    });
-
-    const now = new Date().toISOString();
-    const nextProducts = products.map((product) =>
-      String(product.id) === String(row.productId)
-        ? { ...product, manufacturerName: master.name || name, companyName: master.name || name, updatedAt: now }
-        : product
-    );
-    await setProducts(nextProducts);
-    closeCompanyEditor();
-    notify(t.companySaved, "success", { silent: true });
-  };
-
+  const removeItem = (lineId) => setItems((current) => current.filter((row) => String(row.lineId) !== String(lineId)));
   const lineTotal = (row) => Math.max(num(row.quantity) * num(row.purchasePrice), 0);
   const subtotal = items.reduce((sum, row) => sum + lineTotal(row), 0);
   const grandTotal = subtotal;
@@ -755,14 +654,12 @@ function PurchaseNew() {
     const existingPurchase = isEditing ? purchases.find((row) => String(row.id) === String(purchaseId)) : null;
     const targetPurchaseId = existingPurchase?.id || `purchase-${Date.now()}`;
     const supplier = suppliers.find((row) => String(row.id) === String(supplierId));
-    const finalBillNumber = String(billNumber || "").trim() || existingPurchase?.billNumber || "";
-    const finalSystemBillNumber = existingPurchase?.systemBillNumber || existingPurchase?.systemBillNo || systemBillNumber || createSystemBillNumber();
+    const finalBillNumber = String(billNumber || "").trim() || existingPurchase?.billNumber || `PUR-${Date.now().toString().slice(-8)}`;
     const purchase = {
       id: targetPurchaseId,
       supplierId,
       supplierName: supplier?.supplierName || "",
       billNumber: finalBillNumber,
-      systemBillNumber: finalSystemBillNumber,
       purchaseDate,
       currency,
       paymentMode: paymentStatus === "paid" ? "cash" : "installment",
@@ -781,6 +678,7 @@ function PurchaseNew() {
     const detailRows = items.map((row, index) => ({
       ...row,
       id: row.id || `purchase-item-${targetPurchaseId}-${index + 1}`,
+      lineId: row.lineId || row.id || `purchase-line-${targetPurchaseId}-${index + 1}`,
       purchaseId: targetPurchaseId,
       lineTotal: lineTotal(row),
       receivedQuantity: receivedQuantity(row),
@@ -793,8 +691,8 @@ function PurchaseNew() {
     const retainedPurchaseItems = purchaseItems.filter((row) => String(row.purchaseId) !== String(targetPurchaseId));
     if (!(await setPurchaseItems([...detailRows, ...retainedPurchaseItems]))) return;
 
-    const movements = items.map((row) => ({
-      id: stockMovementId("purchase", targetPurchaseId, row.productId, `line-${row.productId}`),
+    const movements = items.map((row, index) => ({
+      id: stockMovementId("purchase", targetPurchaseId, row.productId, `line-${row.lineId || index + 1}`),
       productId: row.productId,
       movementType: "purchase",
       referenceType: "purchase",
@@ -819,7 +717,8 @@ function PurchaseNew() {
     if (!(await setStockMovements(replaceReferenceMovements(stockMovements, "purchase", targetPurchaseId, movements)))) return;
 
     const nextProducts = products.map((product) => {
-      const row = items.find((item) => String(item.productId) === String(product.id));
+      const matchingRows = items.filter((item) => String(item.productId) === String(product.id));
+      const row = matchingRows.length ? matchingRows[matchingRows.length - 1] : null;
       if (!row) return product;
       return {
         ...product,
@@ -837,7 +736,7 @@ function PurchaseNew() {
   };
 
   return (
-    <div className="purchase-entry-page sale-entry-page purchase-sale-layout" dir={direction}>
+    <div className="purchase-entry-page" dir={direction}>
       <header className="purchase-entry-header">
         <div>
           <button className="purchase-back" type="button" onClick={() => navigate("/purchasing")}><ArrowLeft size={16} />{t.back}</button>
@@ -850,19 +749,19 @@ function PurchaseNew() {
       <div className="purchase-entry-layout">
         <main className="purchase-entry-main">
           <section className="purchase-items-card">
-            <div className="purchase-section-title purchase-section-title-with-meta sale-section-title-with-meta">
+            <div className="purchase-section-title purchase-section-title-with-meta">
               <div className="purchase-section-heading">
                 <ShoppingCart size={18} />
                 <h2>{t.invoiceItems}</h2>
               </div>
 
-              <div className="purchase-top-meta sale-top-meta">
-                <div className="purchase-top-meta-supplier sale-top-meta-customer purchase-top-meta-supplier-as-sale">
+              <div className="purchase-top-meta">
+                <div className="purchase-top-meta-supplier">
                   <label className="purchase-field purchase-top-field">
                     <span className="purchase-supplier-label">
                       <span className="purchase-supplier-label-text"><Truck size={13} />{t.supplier}</span>
                     </span>
-                    <div className={`purchase-select-with-add purchase-supplier-control sale-customer-select-wrap ${quickOpen ? "is-quick-entry" : ""} ${supplierId && !quickOpen ? "has-info" : ""}`}>
+                    <div className={`purchase-select-with-add purchase-supplier-control ${quickOpen ? "is-quick-entry" : ""}`}>
                       {quickOpen ? (
                         <>
                           <input
@@ -879,6 +778,18 @@ function PurchaseNew() {
                         </>
                       ) : (
                         <>
+                          <button
+                            className={`purchase-supplier-info-toggle ${supplierInfoOpen ? "active" : ""}`}
+                            type="button"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              setSupplierInfoOpen((open) => !open);
+                            }}
+                            aria-label={t.supplierInfo}
+                            title={t.supplierInfo}
+                          >
+                            <Info size={14} />
+                          </button>
                           <select
                             value={supplierId}
                             onChange={(e) => {
@@ -889,20 +800,6 @@ function PurchaseNew() {
                             <option value="">{t.selectSupplier}</option>
                             {suppliers.filter((row) => row.status !== "inactive").map((row) => <option value={row.id} key={row.id}>{row.supplierName}</option>)}
                           </select>
-                          {supplierId && (
-                            <button
-                              className={`purchase-supplier-info-toggle ${supplierInfoOpen ? "active" : ""}`}
-                              type="button"
-                              onClick={(event) => {
-                                event.preventDefault();
-                                setSupplierInfoOpen((open) => !open);
-                              }}
-                              aria-label={t.supplierInfo}
-                              title={t.supplierInfo}
-                            >
-                              <Info size={14} />
-                            </button>
-                          )}
                           <button className="purchase-inline-supplier-add" type="button" onClick={() => { setSupplierInfoOpen(false); setQuickOpen(true); }} aria-label={t.quickSupplier}><Plus size={17} /></button>
                         </>
                       )}
@@ -936,11 +833,6 @@ function PurchaseNew() {
                   <input value={billNumber} onChange={(e) => setBillNumber(e.target.value)} />
                 </label>
 
-                <label className="purchase-field purchase-top-field purchase-top-system-bill">
-                  <span>{t.systemBillNumber}</span>
-                  <input value={systemBillNumber} readOnly dir="ltr" aria-readonly="true" />
-                </label>
-
                 <label className="purchase-field purchase-top-field purchase-top-currency">
                   <span>{t.currency}</span>
                   <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
@@ -958,77 +850,37 @@ function PurchaseNew() {
             </div>
             <div className="purchase-items-list">
               {items.map((row) => (
-                <article className="purchase-item-row purchase-keyboard-row sale-entry-item-row purchase-sale-item-row" key={row.productId}>
-                  <div className="purchase-product-card sale-product-info">
-                    <img
-                      className="purchase-item-image"
-                      src={row.image || productImageSrc(products.find((item) => String(item.id) === String(row.productId)))}
-                      alt={row.productName || "Product"}
-                    />
-                    <span className="purchase-item-name purchase-item-product purchase-product-card-copy">
-                      <span className="sale-product-title">
-                        <strong title={row.productName}>{row.productName}</strong>
-                        <small>{row.group || "—"} · {t.purchaseUnit}: {unitLabel(row.purchaseUnit)}</small>
-                      </span>
-                      <span className="sale-product-meta purchase-product-meta">
-                        <span className="sale-meta-badge sale-meta-size"><span>{t.unitsPerUnit}</span><b>{row.unitsPerUnit || 1}</b></span>
-                        <span className="sale-meta-badge sale-meta-maker"><span>{t.company}</span><b title={row.manufacturerName || "—"}>{row.manufacturerName || "—"}</b></span>
-                      </span>
-                    </span>
+                <article className="purchase-item-row purchase-keyboard-row" key={row.lineId || row.id}>
+                  <img src={row.image} alt="" />
+                  <div className="purchase-item-name">
+                    <strong>{row.productName}</strong>
+                    <small>{row.group || "—"} · {t.purchaseUnit}: {unitLabel(row.purchaseUnit)}</small>
                   </div>
-                  <label className={`purchase-company-field ${String(companyEditorProductId) === String(row.productId) ? "is-editing" : ""}`}>
+                  <label className="purchase-company-field">
                     <span>{t.company}</span>
-                    {String(companyEditorProductId) === String(row.productId) ? (
-                      <div className="purchase-company-inline-editor">
-                        <input
-                          autoFocus
-                          value={companyDraft}
-                          onChange={(e) => setCompanyDraft(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") { e.preventDefault(); saveAndLinkCompany(row); }
-                            if (e.key === "Escape") { e.preventDefault(); closeCompanyEditor(); }
-                          }}
-                          placeholder={t.companyPlaceholder}
-                          aria-label={t.companyPlaceholder}
-                        />
-                        <button type="button" className="purchase-company-save" onClick={() => saveAndLinkCompany(row)} title={t.registerCompany} aria-label={t.registerCompany}><Check size={12} /></button>
-                        <button type="button" className="purchase-company-cancel" onClick={closeCompanyEditor} title={t.cancel} aria-label={t.cancel}><X size={12} /></button>
-                      </div>
-                    ) : (
-                      <div className={`purchase-company-linked-control ${row.manufacturerName ? "has-company" : "needs-company"}`}>
-                        <select
-                          className={`purchase-company-linked-value ${row.manufacturerName ? "has-value" : "is-empty"}`}
-                          value={row.manufacturerId || manufacturerIdForProduct(row) || ""}
-                          onChange={(e) => {
-                            const selected = companyOptions.find((item) => String(item.id) === String(e.target.value));
-                            if (selected) linkCompanyToProduct(row, selected);
-                          }}
-                          aria-label={t.selectCompany}
-                        >
-                          <option value="">{t.selectCompany}</option>
-                          {companyOptions.map((company) => (
-                            <option key={company.id || company.name} value={company.id || ""}>
-                              {company.name}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          type="button"
-                          className="purchase-company-add"
-                          onClick={() => openCompanyEditor(row)}
-                          title={t.registerCompany}
-                          aria-label={t.registerCompany}
-                        >
-                          <Plus size={15} />
-                        </button>
-                      </div>
-                    )}
+                    <select
+                      value={row.manufacturerId || ""}
+                      onChange={(e) => {
+                        const selected = manufacturers.find((item) => String(item.id) === String(e.target.value));
+                        updateItemField(row.lineId, {
+                          manufacturerId: e.target.value,
+                          manufacturerName: manufacturerName(selected),
+                        });
+                      }}
+                    >
+                      <option value="">{t.selectCompany}</option>
+                      {manufacturers
+                        .filter((item) => item && item.status !== "inactive")
+                        .map((item) => (
+                          <option key={item.id} value={item.id}>{manufacturerName(item)}</option>
+                        ))}
+                    </select>
                   </label>
                   <label>
                     <span>{t.qty} ({unitLabel(row.purchaseUnit)})</span>
                     <input
                       ref={(node) => {
-                        const key = String(row.productId);
+                        const key = String(row.lineId);
                         if (node) quantityInputRefs.current.set(key, node);
                         else quantityInputRefs.current.delete(key);
                       }}
@@ -1039,7 +891,7 @@ function PurchaseNew() {
                       step="any"
                       value={row.quantity}
                       onFocus={(e) => e.target.select()}
-                      onChange={(e) => updatePackageQuantity(row.productId, e.target.value)}
+                      onChange={(e) => updatePackageQuantity(row.lineId, e.target.value)}
                     />
                   </label>
                   <label>
@@ -1053,7 +905,7 @@ function PurchaseNew() {
                       step="any"
                       value={row.receivedQuantity ?? receivedQuantity(row)}
                       onFocus={(e) => e.target.select()}
-                      onChange={(e) => updatePieceQuantity(row.productId, e.target.value)}
+                      onChange={(e) => updatePieceQuantity(row.lineId, e.target.value)}
                     />
                   </label>
                   <label>
@@ -1066,23 +918,23 @@ function PurchaseNew() {
                       step="0.01"
                       value={row.purchasePrice}
                       onFocus={(e) => e.target.select()}
-                      onChange={(e) => updateItem(row.productId, "purchasePrice", e.target.value)}
+                      onChange={(e) => updateItem(row.lineId, "purchasePrice", e.target.value)}
                     />
                   </label>
-                  <div className="purchase-line-total">
-                    <span>{t.total}</span>
-                    <strong>{money(lineTotal(row))} {currency}</strong>
-                  </div>
                   <label className="purchase-expiry-field">
                     <span>{t.expiryDate}</span>
                     <input
                       type="date"
                       dir="ltr"
                       value={row.expiryDate || ""}
-                      onChange={(e) => updateItemField(row.productId, { expiryDate: e.target.value })}
+                      onChange={(e) => updateItemField(row.lineId, { expiryDate: e.target.value })}
                     />
                   </label>
-                  <button className="purchase-remove" type="button" title={t.remove} onClick={() => removeItem(row.productId)}><Trash2 size={16} /></button>
+                  <div className="purchase-line-total">
+                    <span>{t.total}</span>
+                    <strong>{money(lineTotal(row))} {currency}</strong>
+                  </div>
+                  <button className="purchase-remove" type="button" title={t.remove} onClick={() => removeItem(row.lineId)}><Trash2 size={16} /></button>
                 </article>
               ))}
 
@@ -1130,7 +982,7 @@ function PurchaseNew() {
                               <small>{groupNameById(productGroups, product.groupId, product.group || "—")} · {unitLabel(product.productUnit || "piece")} · 1 = {productPiecesPerUnit(product)} {unitLabel("piece")}</small>
                             </span>
                             <em>{money(product.purchasePrice)} {currency}</em>
-                            <b className="purchase-result-check" aria-hidden="true"><Check size={12} /></b>
+                            <b className="purchase-result-check" aria-hidden="true"><Check size={13} /></b>
                           </button>
                         ))}
                       </div>
@@ -1140,54 +992,47 @@ function PurchaseNew() {
                   </div>
                 )}
               </div>
-              {!items.length && (
-                <div className="purchase-items-empty sale-inline-empty">
-                  <PackageSearch size={34} />
-                  <strong>{t.emptyTitle}</strong>
-                  <p>{t.emptyText}</p>
-                </div>
-              )}
             </div>
 
+            <div className="purchase-final-panel">
+              <section className="purchase-side-card purchase-summary-card purchase-summary-inline">
+                <div className="purchase-side-title"><ShoppingCart size={17} /><strong>{t.grandTotal}</strong></div>
+                <div className="purchase-summary-grid">
+                  <div className="purchase-summary-row"><span>{t.itemCount}</span><strong>{items.length.toLocaleString("en-US")}</strong></div>
+                  <div className="purchase-summary-row"><span>{t.subtotal}</span><strong>{money(subtotal)} {currency}</strong></div>
+                  <div className="purchase-summary-row purchase-summary-grand"><span>{t.grandTotal}</span><strong>{money(grandTotal)} {currency}</strong></div>
+                  <div className="purchase-summary-row"><span>{t.paid}</span><strong>{money(paid)} {currency}</strong></div>
+                  <div className={`purchase-summary-row ${remaining > 0 ? "has-debt" : ""}`}><span>{t.remaining}</span><strong>{money(remaining)} {currency}</strong></div>
+                </div>
+              </section>
+
+              <section className="purchase-side-card purchase-final-payment-card">
+                <div className="purchase-side-title"><WalletCards size={17} /><strong>{t.paymentStatus}</strong></div>
+                <div className="purchase-payment-options">
+                  <button type="button" className={paymentStatus === "paid" ? "active" : ""} onClick={() => setPaymentStatus("paid")}>{t.paidFull}</button>
+                  <button type="button" className={paymentStatus === "debt" ? "active" : ""} onClick={() => setPaymentStatus("debt")}>{t.debt}</button>
+                </div>
+                <label className="purchase-field">
+                  <span>{t.paidAmount}</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    dir="ltr"
+                    min="0"
+                    max={grandTotal}
+                    step="0.01"
+                    value={paymentStatus === "debt" ? paidAmount : plainAmount(grandTotal)}
+                    disabled={paymentStatus !== "debt"}
+                    onChange={(e) => setPaidAmount(cleanNumberInput(e.target.value))}
+                  />
+                </label>
+                <div className="purchase-payment-record"><span>{t.paid}</span><strong>{paymentStatus === "paid" ? t.paidFull : `${money(paid)} ${currency}`}</strong></div>
+                <button className="purchase-final-save" type="button" onClick={savePurchase}><Check size={17} />{t.save}</button>
+              </section>
+            </div>
           </section>
 
         </main>
-
-        <aside className="purchase-entry-sidebar sale-bottom-panels">
-          <section className="purchase-side-card purchase-summary-card">
-            <div className="purchase-side-title"><ShoppingCart size={17} /><strong>{t.grandTotal}</strong></div>
-            <div className="purchase-summary-row"><span>{t.itemCount}</span><strong>{items.length.toLocaleString("en-US")}</strong></div>
-            <div className="purchase-summary-row"><span>{t.subtotal}</span><strong>{money(subtotal)} {currency}</strong></div>
-            <div className="purchase-summary-row purchase-summary-grand"><span>{t.grandTotal}</span><strong>{money(grandTotal)} {currency}</strong></div>
-            <div className="purchase-summary-row"><span>{t.paid}</span><strong>{money(paid)} {currency}</strong></div>
-            <div className={`purchase-summary-row ${remaining > 0 ? "has-debt" : ""}`}><span>{t.remaining}</span><strong>{money(remaining)} {currency}</strong></div>
-          </section>
-
-          <section className="purchase-side-card sale-payment-card purchase-sale-payment-card">
-            <div className="purchase-side-title"><WalletCards size={17} /><strong>{t.paymentStatus}</strong></div>
-            <div className="purchase-payment-options">
-              <button type="button" className={paymentStatus === "paid" ? "active" : ""} onClick={() => setPaymentStatus("paid")}>{t.paidFull}</button>
-              <button type="button" className={paymentStatus === "debt" ? "active" : ""} onClick={() => setPaymentStatus("debt")}>{t.debt}</button>
-            </div>
-            <label className="purchase-field">
-              <span>{t.paidAmount}</span>
-              <input
-                type="text"
-                inputMode="decimal"
-                dir="ltr"
-                min="0"
-                max={grandTotal}
-                step="0.01"
-                value={paymentStatus === "debt" ? paidAmount : plainAmount(grandTotal)}
-                disabled={paymentStatus !== "debt"}
-                onChange={(e) => setPaidAmount(cleanNumberInput(e.target.value))}
-              />
-            </label>
-            <div className="purchase-payment-record"><span>{t.paid}</span><strong>{paymentStatus === "paid" ? t.paidFull : `${money(paid)} ${currency}`}</strong></div>
-          </section>
-
-          <button className="purchase-save-mobile" type="button" onClick={savePurchase}><Check size={17} />{t.save}</button>
-        </aside>
       </div>
     </div>
   );

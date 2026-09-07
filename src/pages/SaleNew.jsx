@@ -38,8 +38,6 @@ const today = () => {
   return new Date(date.getTime() - offset).toISOString().slice(0, 10);
 };
 
-const createSystemBillNumber = () => `SAL-BILL-${String(Date.now()).slice(-6).padStart(6, "0")}`;
-
 const text = {
   en: {
     title: "New Sale",
@@ -62,7 +60,6 @@ const text = {
     cancel: "Cancel",
     currency: "Currency",
     billNumber: "Bill number",
-    systemBillNumber: "System bill number",
     date: "Sale date (Solar Hijri)",
     paymentStatus: "Payment status",
     paidFull: "Fully paid",
@@ -74,7 +71,7 @@ const text = {
     invoiceItems: "Sale items",
     emptyTitle: "No medicine added yet",
     emptyText: "Search above and select medicines to add them to this sale.",
-    qty: "Quantity",
+    qty: "Quantity by main unit",
     actualQty: "Quantity by piece",
     salePrice: "Sale price",
     purchasePrice: "Purchase price",
@@ -130,7 +127,6 @@ const text = {
     cancel: "لغو",
     currency: "واحد پول",
     billNumber: "بل نمبر",
-    systemBillNumber: "بل نمبر سیستم",
     date: "تاریخ فروش (شمسی)",
     paymentStatus: "وضعیت پرداخت",
     paidFull: "مکمل پرداخت",
@@ -142,7 +138,7 @@ const text = {
     invoiceItems: "اقلام فروش",
     emptyTitle: "هنوز دوایی اضافه نشده",
     emptyText: "از جستجوی بالا چندین دوا را پیدا کرده و به این فروش اضافه کنید.",
-    qty: "مقدار",
+    qty: "مقدار به واحد اصلی",
     actualQty: "مقدار به دانه",
     salePrice: "قیمت فروش",
     purchasePrice: "قیمت خرید",
@@ -198,7 +194,6 @@ const text = {
     cancel: "لغوه",
     currency: "اسعار",
     billNumber: "بل نمبر",
-    systemBillNumber: "د سیستم بل نمبر",
     date: "د خرڅلاو نېټه (لمریز)",
     paymentStatus: "د ورکړې حالت",
     paidFull: "بشپړ ورکړل شوی",
@@ -210,7 +205,7 @@ const text = {
     invoiceItems: "د خرڅلاو توکي",
     emptyTitle: "تر اوسه درمل نه دي اضافه شوي",
     emptyText: "له پورته لټون څخه څو درمل پیدا او دې خرڅلاو ته یې اضافه کړئ.",
-    qty: "مقدار",
+    qty: "په اصلي واحد مقدار",
     actualQty: "په دانه مقدار",
     salePrice: "د پلور بیه",
     purchasePrice: "د پېرود بیه",
@@ -263,8 +258,7 @@ function SaleNew() {
   const [quickOpen, setQuickOpen] = useState(false);
   const [quickName, setQuickName] = useState("");
   const [currency, setCurrency] = useState("AFN");
-  const [billNumber, setBillNumber] = useState("");
-  const [systemBillNumber, setSystemBillNumber] = useState(createSystemBillNumber);
+  const [billNumber, setBillNumber] = useState(() => `SAL-${Date.now().toString().slice(-8)}`);
   const [saleDate, setSaleDate] = useState(today());
   const [paymentStatus, setPaymentStatus] = useState("paid");
   const [paidAmount, setPaidAmount] = useState("");
@@ -359,17 +353,17 @@ function SaleNew() {
     if (!isEditMode || editInitialized || !editingSale) return;
     setCustomerId(editingSale.customerId || "");
     setCurrency(editingSale.currency || "AFN");
-    setBillNumber(editingSale.billNumber || editingSale.manualBillNumber || editingSale.billNo || "");
-    setSystemBillNumber(editingSale.systemBillNumber || editingSale.systemBillNo || editingSale.invoiceNumber || createSystemBillNumber());
+    setBillNumber(editingSale.invoiceNumber || editingSale.billNumber || editingSale.billNo || `SAL-${Date.now().toString().slice(-8)}`);
     setSaleDate(editingSale.saleDate || today());
     const debt = num(editingSale.remainingAmount) > 0 || editingSale.paymentStatus === "debt" || editingSale.paymentMode === "installment";
     setPaymentStatus(debt ? "debt" : "paid");
     setPaidAmount(String(editingSale.paidAmount ?? ""));
-    setItems((editingSale.items || []).map((item) => {
+    setItems((editingSale.items || []).map((item, itemIndex) => {
       const product = products.find((row) => String(row.id) === String(item.productId));
       const unitsPerUnit = positiveUnitCount(item.unitsPerUnit ?? productPiecesPerUnit(product));
       const pieceQuantity = num(item.quantity);
       return {
+        lineId: item.lineId || `sale-line-${editingSale.id || "edit"}-${itemIndex}-${item.productId}`,
         productId: item.productId,
         productName: item.productName || productDisplayName(product),
         image: item.image || productImageSrc(product),
@@ -395,9 +389,10 @@ function SaleNew() {
     const q = normalizeSearchText(query);
     if (!searchFocused || !q) return [];
 
+    // Keep already-selected products searchable. Selecting the same product again
+    // increases its existing sale quantity instead of silently ignoring the click.
     const available = (Array.isArray(products) ? products : [])
-      .filter((product) => product && product.status !== "inactive" && product.active !== false)
-      .filter((product) => !items.some((row) => String(row.productId) === String(product.id)));
+      .filter((product) => product && product.status !== "inactive" && product.active !== false);
 
     const scored = available.map((product, originalIndex) => {
         const group = groupNameById(productGroups, product.groupId, product.group || "");
@@ -437,16 +432,25 @@ function SaleNew() {
   const addProduct = (product) => {
     const stock = getStock(product);
     if (stock <= 0) return;
-    const unitsPerUnit = productPiecesPerUnit(product);
-    const pieceQuantity = Math.min(unitsPerUnit, stock);
+
     const productKey = String(product.id);
-    let shouldFocusQuantity = true;
+    const unitsPerUnit = productPiecesPerUnit(product);
+    const lineId = `sale-line-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    let changed = false;
+
     setItems((current) => {
-      if (current.some((row) => String(row.productId) === productKey)) {
-        shouldFocusQuantity = true;
-        return current;
-      }
+      const selectedQuantity = current
+        .filter((row) => String(row.productId) === productKey)
+        .reduce((sum, row) => sum + num(row.quantity), 0);
+      const remainingStock = Math.max(stock - selectedQuantity, 0);
+
+      if (remainingStock <= 0) return current;
+
+      const pieceQuantityToAdd = Math.min(unitsPerUnit, remainingStock);
+      changed = true;
+
       return [...current, {
+        lineId,
         productId: product.id,
         productName: productDisplayName(product),
         image: productImageSrc(product),
@@ -454,8 +458,8 @@ function SaleNew() {
         unit: product.unit || "piece",
         purchaseUnit: product.productUnit || product.purchaseUnit || product.packageUnit || product.unit || "piece",
         unitsPerUnit,
-        packageQuantity: Number((pieceQuantity / unitsPerUnit).toFixed(4)),
-        quantity: pieceQuantity,
+        packageQuantity: Number((pieceQuantityToAdd / unitsPerUnit).toFixed(4)),
+        quantity: pieceQuantityToAdd,
         purchasePrice: num(product.purchasePrice),
         cartonSize: product.cartonSize ?? unitsPerUnit,
         manufacturerName: product.manufacturerName || product.companyName || "",
@@ -465,12 +469,13 @@ function SaleNew() {
         currentStock: stock,
       }];
     });
+
     setQuery("");
     setSearchFocused(false);
     setActiveResultIndex(0);
     window.setTimeout(() => {
-      if (!shouldFocusQuantity) return;
-      const input = packageQuantityInputRefs.current.get(productKey);
+      if (!changed) return;
+      const input = packageQuantityInputRefs.current.get(lineId);
       input?.focus();
       input?.select?.();
     }, 0);
@@ -585,13 +590,20 @@ function SaleNew() {
     }
   };
 
-  const updateItem = (productId, key, value) => {
+  const availableStockForLine = (current, targetRow) => {
+    const usedByOtherLines = current
+      .filter((row) => String(row.productId) === String(targetRow.productId) && String(row.lineId) !== String(targetRow.lineId))
+      .reduce((sum, row) => sum + num(row.quantity), 0);
+    return Math.max(num(targetRow.currentStock) - usedByOtherLines, 0);
+  };
+
+  const updateItem = (lineId, key, value) => {
     setItems((current) => current.map((row) => {
-      if (String(row.productId) !== String(productId)) return row;
+      if (String(row.lineId) !== String(lineId)) return row;
       if (key === "quantity") {
         const raw = Number(value);
         if (!Number.isFinite(raw)) return { ...row, quantity: "" };
-        const clamped = Math.min(Math.max(raw, 0), num(row.currentStock));
+        const clamped = Math.min(Math.max(raw, 0), availableStockForLine(current, row));
         const nextGross = clamped * num(row.salePrice);
         return { ...row, quantity: clamped, discountAmount: Math.min(num(row.discountAmount), nextGross) };
       }
@@ -609,11 +621,12 @@ function SaleNew() {
     }));
   };
 
-  const updatePackageQuantity = (productId, value) => {
+  const updatePackageQuantity = (lineId, value) => {
     setItems((current) => current.map((row) => {
-      if (String(row.productId) !== String(productId)) return row;
+      if (String(row.lineId) !== String(lineId)) return row;
       const unitsPerUnit = positiveUnitCount(row.unitsPerUnit);
-      const maxPackages = num(row.currentStock) / unitsPerUnit;
+      const maxPieces = availableStockForLine(current, row);
+      const maxPackages = maxPieces / unitsPerUnit;
       if (value === "") return { ...row, packageQuantity: "", quantity: "" };
       const raw = Number(value);
       if (!Number.isFinite(raw)) return { ...row, packageQuantity: "", quantity: "" };
@@ -624,12 +637,12 @@ function SaleNew() {
     }));
   };
 
-  const updatePieceQuantity = (productId, value) => {
+  const updatePieceQuantity = (lineId, value) => {
     setItems((current) => current.map((row) => {
-      if (String(row.productId) !== String(productId)) return row;
+      if (String(row.lineId) !== String(lineId)) return row;
       const raw = Number(value);
       if (!Number.isFinite(raw)) return { ...row, quantity: "", packageQuantity: "" };
-      const clamped = Math.min(Math.max(raw, 0), num(row.currentStock));
+      const clamped = Math.min(Math.max(raw, 0), availableStockForLine(current, row));
       const unitsPerUnit = positiveUnitCount(row.unitsPerUnit);
       const nextGross = clamped * num(row.salePrice);
       return {
@@ -640,8 +653,9 @@ function SaleNew() {
       };
     }));
   };
-  const removeItem = (productId) => setItems((current) => current.filter((row) => String(row.productId) !== String(productId)));
-  const maxPackageQuantity = (row) => num(row.currentStock) / positiveUnitCount(row.unitsPerUnit);
+  const removeItem = (lineId) => setItems((current) => current.filter((row) => String(row.lineId) !== String(lineId)));
+  const maxPiecesForLine = (row) => availableStockForLine(items, row);
+  const maxPackageQuantity = (row) => maxPiecesForLine(row) / positiveUnitCount(row.unitsPerUnit);
   const formatQuantity = (value) => {
     const number = num(value);
     return Number.isInteger(number) ? String(number) : number.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
@@ -691,32 +705,60 @@ function SaleNew() {
     if (!items.length) return notify(t.requiredItems, "warning");
     if (paymentStatus === "debt" && num(paidAmount) > grandTotal) return notify(t.invalidPaid, "warning");
 
-    const allocationByProduct = new Map();
+    const allocationByLine = new Map();
+    const itemsByProduct = new Map();
     for (const item of items) {
       if (num(item.discountAmount) > lineGross(item)) {
         return notify(`${t.invalidDiscount} ${item.productName}.`, "warning");
       }
-      if (num(item.quantity) <= 0 || num(item.quantity) > num(item.currentStock)) {
+      if (num(item.quantity) <= 0) {
         return notify(`${t.insufficientStock} ${item.productName}.`, "warning");
       }
-      const allocation = allocateProductBatchesFEFO(pieceStockMovements, item.productId, num(item.quantity));
-      if (allocation.unallocated > 0) return notify(`${t.insufficientStock} ${item.productName}.`, "warning");
-      allocationByProduct.set(String(item.productId), allocation.allocations);
+      const key = String(item.productId);
+      if (!itemsByProduct.has(key)) itemsByProduct.set(key, []);
+      itemsByProduct.get(key).push(item);
+    }
+
+    for (const [productKey, productLines] of itemsByProduct.entries()) {
+      const totalRequested = productLines.reduce((sum, row) => sum + num(row.quantity), 0);
+      const realStock = num(productLines[0]?.currentStock);
+      if (totalRequested > realStock) {
+        return notify(`${t.insufficientStock} ${productLines[0]?.productName || ""}.`, "warning");
+      }
+
+      const allocation = allocateProductBatchesFEFO(pieceStockMovements, productKey, totalRequested);
+      if (allocation.unallocated > 0) {
+        return notify(`${t.insufficientStock} ${productLines[0]?.productName || ""}.`, "warning");
+      }
+
+      const batchQueue = allocation.allocations.map((entry) => ({ ...entry, remaining: num(entry.quantity) }));
+      for (const line of productLines) {
+        let needed = num(line.quantity);
+        const lineAllocations = [];
+        for (const batch of batchQueue) {
+          if (needed <= 0) break;
+          if (batch.remaining <= 0) continue;
+          const take = Math.min(needed, batch.remaining);
+          lineAllocations.push({ ...batch, quantity: take });
+          batch.remaining -= take;
+          needed -= take;
+        }
+        if (needed > 0) {
+          return notify(`${t.insufficientStock} ${line.productName}.`, "warning");
+        }
+        allocationByLine.set(String(line.lineId), lineAllocations);
+      }
     }
 
     const now = new Date().toISOString();
     const recordId = isEditMode ? editingSale.id : `sale-${Date.now()}`;
-    const manualBillNumber = String(billNumber || "").trim();
-    const finalSystemBillNumber = (isEditMode ? (editingSale.systemBillNumber || editingSale.systemBillNo || editingSale.invoiceNumber) : "") || systemBillNumber || createSystemBillNumber();
-    const invoiceNumber = finalSystemBillNumber;
+    const invoiceNumber = String(billNumber || "").trim() || (isEditMode ? (editingSale.invoiceNumber || editingSale.billNumber) : "") || `SAL-${Date.now().toString().slice(-8)}`;
     const customer = customers.find((row) => String(row.id) === String(customerId));
     const sale = {
       id: recordId,
       customerId,
       customerName: customer?.fullName || customer?.companyName || "",
       invoiceNumber,
-      billNumber: manualBillNumber,
-      systemBillNumber: finalSystemBillNumber,
       saleDate,
       currency,
       paymentMode: paymentStatus === "paid" ? "cash" : "installment",
@@ -735,7 +777,7 @@ function SaleNew() {
         lineGross: lineGross(row),
         discountAmount: lineDiscount(row),
         lineTotal: lineTotal(row),
-        batchAllocations: allocationByProduct.get(String(row.productId)) || [],
+        batchAllocations: allocationByLine.get(String(row.lineId)) || [],
       })),
       createdAt: isEditMode ? (editingSale?.createdAt || now) : now,
       updatedAt: now,
@@ -747,9 +789,9 @@ function SaleNew() {
     if (!(await setSales(nextSales))) return;
 
     const saleMovements = items.flatMap((row) => {
-      const allocations = allocationByProduct.get(String(row.productId)) || [];
+      const allocations = allocationByLine.get(String(row.lineId)) || [];
       return allocations.map((allocation, index) => ({
-        id: stockMovementId("sale", recordId, row.productId, `${allocation.batchNo || "UNBATCHED"}-${index + 1}`),
+        id: stockMovementId("sale", recordId, row.productId, `${row.lineId || "line"}-${allocation.batchNo || "UNBATCHED"}-${index + 1}`),
         productId: row.productId,
         movementType: "sale",
         referenceType: "sale",
@@ -795,7 +837,11 @@ function SaleNew() {
             <div className="purchase-inline-result-list sale-inline-result-list">
               {results.map((product, index) => {
                 const stock = getStock(product);
-                const unavailable = stock <= 0;
+                const alreadySelected = items
+                  .filter((row) => String(row.productId) === String(product.id))
+                  .reduce((sum, row) => sum + num(row.quantity), 0);
+                const remainingStock = Math.max(stock - alreadySelected, 0);
+                const unavailable = remainingStock <= 0;
                 return (
                   <button
                     ref={(node) => {
@@ -816,7 +862,7 @@ function SaleNew() {
                     <img src={productImageSrc(product)} alt="" />
                     <span>
                       <strong>{productDisplayName(product)}</strong>
-                      <small>{groupNameById(productGroups, product.groupId, product.group || "—")} · {t.stock}: {stock}</small>
+                      <small>{groupNameById(productGroups, product.groupId, product.group || "—")} · {t.stock}: {formatQuantity(remainingStock)}</small>
                     </span>
                     <em>{unavailable ? t.outOfStock : `${num(product.salePrice).toFixed(2)} ${currency}`}</em>
                     <b className="sale-result-check" aria-hidden="true"><Check size={13} /></b>
@@ -930,11 +976,6 @@ function SaleNew() {
                   <input value={billNumber} onChange={(e) => setBillNumber(e.target.value)} />
                 </label>
 
-                <label className="purchase-field purchase-top-field purchase-top-system-bill">
-                  <span>{t.systemBillNumber}</span>
-                  <input value={systemBillNumber} readOnly dir="ltr" aria-readonly="true" />
-                </label>
-
                 <label className="purchase-field purchase-top-field purchase-top-currency">
                   <span>{t.currency}</span>
                   <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
@@ -956,7 +997,7 @@ function SaleNew() {
                 <div className="purchase-items-empty sale-inline-empty"><ImageIcon size={34} /><strong>{t.emptyTitle}</strong><p>{t.emptyText}</p></div>
               )}
               {items.map((row, index) => (
-                <article className="purchase-item-row sale-entry-item-row" key={row.productId}>
+                <article className="purchase-item-row sale-entry-item-row" key={row.lineId}>
                   <img src={row.image} alt="" />
                   <div className="purchase-item-name sale-product-info">
                     <div className="sale-product-title"><strong>{row.productName}</strong><small>{row.group || "—"} · {t.unit}: {unitLabel(row.purchaseUnit || row.unit)}</small></div>
@@ -980,15 +1021,15 @@ function SaleNew() {
                     </div>
                   </div>
                   <label><span>{t.qty} ({unitLabel(row.purchaseUnit)})</span><input ref={(node) => {
-                    const key = String(row.productId);
+                    const key = String(row.lineId);
                     if (node) packageQuantityInputRefs.current.set(key, node);
                     else packageQuantityInputRefs.current.delete(key);
-                  }} type="number" min="0" max={maxPackageQuantity(row)} step="any" value={row.packageQuantity} title={`${t.maxStock}: ${formatQuantity(maxPackageQuantity(row))} ${unitLabel(row.purchaseUnit)}`} onFocus={(e) => e.target.select()} onChange={(e) => updatePackageQuantity(row.productId, e.target.value)} /><small className="sale-stock-limit">{t.maxStock}: {formatQuantity(maxPackageQuantity(row))} {unitLabel(row.purchaseUnit)}</small></label>
-                  <label><span>{t.actualQty}</span><input type="number" min="0" max={row.currentStock} step="any" value={row.quantity} title={`${t.maxStock}: ${formatQuantity(row.currentStock)} ${unitLabel("piece")}`} onChange={(e) => updatePieceQuantity(row.productId, e.target.value)} /><small className="sale-stock-limit">{t.maxStock}: {formatQuantity(row.currentStock)} {unitLabel("piece")}</small></label>
-                  <label><span>{t.salePrice}</span><input type="number" min="0" step="0.01" value={row.salePrice} onChange={(e) => updateItem(row.productId, "salePrice", e.target.value)} /></label>
-                  <label><span>{t.discount}</span><input type="number" min="0" max={lineGross(row)} step="0.01" value={row.discountAmount ?? 0} onChange={(e) => updateItem(row.productId, "discountAmount", e.target.value)} /></label>
+                  }} type="number" min="0" max={maxPackageQuantity(row)} step="any" value={row.packageQuantity} title={`${t.maxStock}: ${formatQuantity(maxPackageQuantity(row))} ${unitLabel(row.purchaseUnit)}`} onFocus={(e) => e.target.select()} onChange={(e) => updatePackageQuantity(row.lineId, e.target.value)} /><small className="sale-stock-limit">{t.maxStock}: {formatQuantity(maxPackageQuantity(row))} {unitLabel(row.purchaseUnit)}</small></label>
+                  <label><span>{t.actualQty}</span><input type="number" min="0" max={maxPiecesForLine(row)} step="any" value={row.quantity} title={`${t.maxStock}: ${formatQuantity(maxPiecesForLine(row))} ${unitLabel("piece")}`} onChange={(e) => updatePieceQuantity(row.lineId, e.target.value)} /><small className="sale-stock-limit">{t.maxStock}: {formatQuantity(maxPiecesForLine(row))} {unitLabel("piece")}</small></label>
+                  <label><span>{t.salePrice}</span><input type="number" min="0" step="0.01" value={row.salePrice} onChange={(e) => updateItem(row.lineId, "salePrice", e.target.value)} /></label>
+                  <label><span>{t.discount}</span><input type="number" min="0" max={lineGross(row)} step="0.01" value={row.discountAmount ?? 0} onChange={(e) => updateItem(row.lineId, "discountAmount", e.target.value)} /></label>
                   <div className="purchase-line-total"><span>{t.total}</span><strong>{lineTotal(row).toFixed(2)} {currency}</strong></div>
-                  <button className="purchase-remove" type="button" title={t.remove} onKeyDown={(event) => handleSaleRemoveKeyDown(event, index)} onClick={() => removeItem(row.productId)}><Trash2 size={16} /></button>
+                  <button className="purchase-remove" type="button" title={t.remove} onKeyDown={(event) => handleSaleRemoveKeyDown(event, index)} onClick={() => removeItem(row.lineId)}><Trash2 size={16} /></button>
                 </article>
               ))}
               {!!items.length && saleSearchField}
