@@ -38,6 +38,19 @@ const today = () => {
   return new Date(date.getTime() - offset).toISOString().slice(0, 10);
 };
 
+// New sequential sale bills use exactly six digits. Legacy timestamp-based
+// numbers (for example SAL-65663702) are intentionally ignored.
+const nextSaleBillNumber = (rows = []) => {
+  const maxSequence = (Array.isArray(rows) ? rows : []).reduce((max, row) => {
+    const value = String(row?.invoiceNumber || row?.billNumber || row?.billNo || "").trim();
+    const match = /^SAL-(\d{6})$/.exec(value);
+    if (!match) return max;
+    return Math.max(max, Number(match[1]) || 0);
+  }, 0);
+
+  return `SAL-${String(maxSequence + 1).padStart(6, "0")}`;
+};
+
 const text = {
   en: {
     title: "New Sale",
@@ -258,7 +271,7 @@ function SaleNew() {
   const [quickOpen, setQuickOpen] = useState(false);
   const [quickName, setQuickName] = useState("");
   const [currency, setCurrency] = useState("AFN");
-  const [billNumber, setBillNumber] = useState(() => `SAL-${Date.now().toString().slice(-8)}`);
+  const [billNumber, setBillNumber] = useState("SAL-000001");
   const [saleDate, setSaleDate] = useState(today());
   const [paymentStatus, setPaymentStatus] = useState("paid");
   const [paidAmount, setPaidAmount] = useState("");
@@ -292,6 +305,13 @@ function SaleNew() {
   useEffect(() => {
     if (!customerId) setCustomerInfoOpen(false);
   }, [customerId]);
+
+  // Generate the next system bill number only for a NEW sale.
+  // Edit mode always keeps the bill number already saved on that sale.
+  useEffect(() => {
+    if (isEditMode) return;
+    setBillNumber(nextSaleBillNumber(sales));
+  }, [isEditMode, sales]);
 
   const normalizeSearchText = (value) => String(value || "")
     .toLowerCase()
@@ -353,7 +373,7 @@ function SaleNew() {
     if (!isEditMode || editInitialized || !editingSale) return;
     setCustomerId(editingSale.customerId || "");
     setCurrency(editingSale.currency || "AFN");
-    setBillNumber(editingSale.invoiceNumber || editingSale.billNumber || editingSale.billNo || `SAL-${Date.now().toString().slice(-8)}`);
+    setBillNumber(editingSale.invoiceNumber || editingSale.billNumber || editingSale.billNo || nextSaleBillNumber(sales));
     setSaleDate(editingSale.saleDate || today());
     const debt = num(editingSale.remainingAmount) > 0 || editingSale.paymentStatus === "debt" || editingSale.paymentMode === "installment";
     setPaymentStatus(debt ? "debt" : "paid");
@@ -752,7 +772,7 @@ function SaleNew() {
 
     const now = new Date().toISOString();
     const recordId = isEditMode ? editingSale.id : `sale-${Date.now()}`;
-    const invoiceNumber = String(billNumber || "").trim() || (isEditMode ? (editingSale.invoiceNumber || editingSale.billNumber) : "") || `SAL-${Date.now().toString().slice(-8)}`;
+    const invoiceNumber = String(billNumber || "").trim() || (isEditMode ? (editingSale.invoiceNumber || editingSale.billNumber || editingSale.billNo) : nextSaleBillNumber(sales));
     const customer = customers.find((row) => String(row.id) === String(customerId));
     const sale = {
       id: recordId,
@@ -973,7 +993,7 @@ function SaleNew() {
 
                 <label className="purchase-field purchase-top-field purchase-top-bill">
                   <span>{t.billNumber}</span>
-                  <input value={billNumber} onChange={(e) => setBillNumber(e.target.value)} />
+                  <input value={billNumber} readOnly aria-readonly="true" />
                 </label>
 
                 <label className="purchase-field purchase-top-field purchase-top-currency">

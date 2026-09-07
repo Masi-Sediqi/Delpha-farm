@@ -235,6 +235,17 @@ const today = () => {
   return new Date(date.getTime() - offset).toISOString().slice(0, 10);
 };
 
+const nextSequentialPurchaseBill = (rows) => {
+  const max = (Array.isArray(rows) ? rows : []).reduce((highest, row) => {
+    const value = String(row?.billNumber || row?.billNo || row?.invoiceNumber || "").trim();
+    const match = value.match(/^PUR-(\d{6})$/i);
+    if (!match) return highest;
+    const number = Number(match[1]);
+    return Number.isFinite(number) ? Math.max(highest, number) : highest;
+  }, 0);
+  return `PUR-${String(max + 1).padStart(6, "0")}`;
+};
+
 function PurchaseNew() {
   const navigate = useNavigate();
   const { purchaseId } = useParams();
@@ -253,7 +264,7 @@ function PurchaseNew() {
   const [supplierInfoOpen, setSupplierInfoOpen] = useState(false);
   const [quickName, setQuickName] = useState("");
   const [currency, setCurrency] = useState("AFN");
-  const [billNumber, setBillNumber] = useState(() => `PUR-${Date.now().toString().slice(-8)}`);
+  const [billNumber, setBillNumber] = useState("");
   const [purchaseDate, setPurchaseDate] = useState(today());
   const [paymentStatus, setPaymentStatus] = useState("paid");
   const [paidAmount, setPaidAmount] = useState("");
@@ -273,6 +284,11 @@ function PurchaseNew() {
     () => suppliers.find((row) => String(row.id) === String(supplierId)) || null,
     [suppliers, supplierId]
   );
+
+  useEffect(() => {
+    if (!purchasesLoaded || isEditing) return;
+    setBillNumber(nextSequentialPurchaseBill(purchases));
+  }, [purchasesLoaded, isEditing, purchases]);
   const supplierBalanceCurrency = (supplier) => String(supplier?.currency || currency || "AFN").toUpperCase();
   const receivedQuantity = (row) => num(row.receivedQuantity ?? (num(row.quantity) * positiveUnitCount(row.unitsPerUnit)));
   const unitLabels = {
@@ -374,7 +390,7 @@ function PurchaseNew() {
 
     setSupplierId(String(purchase.supplierId || purchase.supplier_id || ""));
     setCurrency(purchase.currency || "AFN");
-    setBillNumber(purchase.billNumber || purchase.billNo || purchase.invoiceNumber || `PUR-${Date.now().toString().slice(-8)}`);
+    setBillNumber(purchase.billNumber || purchase.billNo || purchase.invoiceNumber || nextSequentialPurchaseBill(purchases));
     setPurchaseDate(purchase.purchaseDate || purchase.date || String(purchase.createdAt || "").slice(0, 10) || today());
     const hasDebt = num(purchase.remainingAmount || purchase.remaining || 0) > 0 || purchase.paymentStatus === "debt" || purchase.paymentMode === "installment";
     setPaymentStatus(hasDebt ? "debt" : "paid");
@@ -654,7 +670,7 @@ function PurchaseNew() {
     const existingPurchase = isEditing ? purchases.find((row) => String(row.id) === String(purchaseId)) : null;
     const targetPurchaseId = existingPurchase?.id || `purchase-${Date.now()}`;
     const supplier = suppliers.find((row) => String(row.id) === String(supplierId));
-    const finalBillNumber = String(billNumber || "").trim() || existingPurchase?.billNumber || `PUR-${Date.now().toString().slice(-8)}`;
+    const finalBillNumber = String(existingPurchase?.billNumber || existingPurchase?.billNo || existingPurchase?.invoiceNumber || billNumber || nextSequentialPurchaseBill(purchases)).trim();
     const purchase = {
       id: targetPurchaseId,
       supplierId,
@@ -830,7 +846,7 @@ function PurchaseNew() {
 
                 <label className="purchase-field purchase-top-field purchase-top-bill">
                   <span>{t.billNumber}</span>
-                  <input value={billNumber} onChange={(e) => setBillNumber(e.target.value)} />
+                  <input value={billNumber} readOnly />
                 </label>
 
                 <label className="purchase-field purchase-top-field purchase-top-currency">
