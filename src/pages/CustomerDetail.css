@@ -15,3 +15,35 @@ body[data-theme="black-white"] .customer-detail-payment-btn,body[data-theme="bla
 @media(max-width:1000px){.customer-detail-layout{grid-template-columns:1fr}.customer-detail-info-list{grid-template-columns:1fr 1fr;column-gap:22px}.customer-detail-info-list>div{grid-template-columns:1fr}.customer-detail-info-list strong{text-align:start}.customer-detail-info-list .notes{grid-column:1/-1}}
 @media(max-width:760px){.customer-detail-page{padding:14px}.customer-detail-hero{align-items:stretch;flex-direction:column;padding:16px}.customer-detail-payment-btn{width:100%}.customer-detail-stat-grid{grid-template-columns:1fr}.customer-detail-profile{align-items:flex-start}.customer-detail-profile h1{font-size:25px}.customer-detail-layout{gap:11px}.customer-detail-info-list{grid-template-columns:1fr}.customer-detail-info-list .notes{grid-column:1}.customer-detail-result{align-items:flex-start;flex-direction:column}.customer-payment-modal-backdrop{padding:8px;align-items:stretch}.customer-payment-modal{width:100%;max-width:100%;height:calc(100dvh - 16px);max-height:calc(100dvh - 16px);border-radius:13px;margin:auto}.customer-payment-modal-header{padding:13px}.customer-payment-form{padding:9px}.customer-payment-grid{grid-template-columns:1fr}.customer-payment-full{grid-column:1}.customer-payment-actions{bottom:-9px}.customer-payment-actions button{flex:1 1 0!important;min-width:0!important;max-width:none!important}}
 @media(max-width:430px){.customer-detail-page{padding:10px}.customer-detail-hero{border-radius:15px}.customer-detail-avatar{width:48px;height:48px;border-radius:13px}.customer-detail-profile p{font-size:11px}.customer-detail-stat{padding:13px}.customer-payment-modal-header h2{font-size:18px}.customer-payment-modal-header p{display:none}.customer-payment-actions{gap:6px}.customer-payment-actions button{height:38px!important;min-height:38px!important;padding:0 9px!important;font-size:11px!important}}
+
+/* Customer detail tabs */
+.customer-detail-tabs{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 12px;border-bottom:1px solid var(--border-color,#e4e7ec);background:color-mix(in srgb,var(--card-bg,#fff) 96%,var(--company-accent,#5b67f1) 4%)}
+.customer-detail-tabs button{border:1px solid var(--border-color,#dfe3e8);background:var(--card-bg,#fff);color:var(--text-secondary,#667085);border-radius:9px;padding:8px 13px;font-size:12px;font-weight:800;cursor:pointer;transition:.18s ease}
+.customer-detail-tabs button:hover{color:var(--text-primary,#172033);border-color:color-mix(in srgb,var(--text-primary,#172033) 22%,var(--border-color,#dfe3e8))}
+.customer-detail-tabs button.active{background:#17191d;color:#fff;border-color:#17191d;box-shadow:0 5px 14px rgba(17,24,39,.12)}
+.customer-tab-panel{min-width:0}
+.customer-profit-panel{padding-bottom:14px}
+.customer-profit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:0 14px 14px}
+.customer-profit-grid article{display:flex;flex-direction:column;gap:7px;border:1px solid var(--border-color,#e4e7ec);border-radius:12px;padding:14px;background:var(--card-bg,#fff)}
+.customer-profit-grid article.wide{grid-column:1/-1}
+.customer-profit-grid span{font-size:11px;font-weight:750;color:var(--text-secondary,#667085)}
+.customer-profit-grid strong{font-size:18px;line-height:1.2}
+.customer-profit-grid strong.positive{color:#047857}.customer-profit-grid strong.negative{color:#b91c1c}
+.customer-activity-list{display:grid;gap:0;padding:0 14px 14px}
+.customer-activity-item{display:grid;grid-template-columns:12px minmax(0,1fr) auto;gap:10px;align-items:center;padding:12px 2px;border-bottom:1px solid var(--border-color,#edf0f3)}
+.customer-activity-item:last-child{border-bottom:0}
+.customer-activity-dot{width:9px;height:9px;border-radius:50%;background:#94a3b8}
+.customer-activity-dot.sale{background:#10b981}.customer-activity-dot.manual-payment{background:#2563eb}.customer-activity-dot.sale-return{background:#f59e0b}
+.customer-activity-item div{display:grid;gap:3px}.customer-activity-item strong{font-size:12px}.customer-activity-item small{font-size:10.5px;color:var(--text-secondary,#667085)}.customer-activity-item b{font-size:12px;white-space:nowrap}
+body[data-theme="black-white"] .customer-detail-tabs button.active{background:#fff;color:#080808;border-color:#fff}
+@media(max-width:760px){.customer-detail-tabs{overflow-x:auto;flex-wrap:nowrap}.customer-detail-tabs button{white-space:nowrap}.customer-profit-grid{grid-template-columns:1fr}.customer-profit-grid article.wide{grid-column:1}.customer-activity-item{grid-template-columns:10px minmax(0,1fr)}.customer-activity-item b{grid-column:2;justify-self:start}}
+
+/* Multi-currency customer totals */
+.customer-currency-stack{display:flex;flex-direction:column;align-items:flex-start;gap:3px;line-height:1.1}
+.customer-currency-stack>span{display:flex;align-items:baseline;gap:5px;white-space:nowrap}
+.customer-currency-stack b{font:inherit;font-weight:850}
+.customer-currency-stack em{font-size:10px;font-style:normal;font-weight:800;opacity:.75}
+.customer-detail-stat strong>.customer-currency-stack{align-items:flex-start}
+.customer-detail-result strong>.customer-currency-stack{align-items:flex-end}
+.customer-payment-grid select{width:100%;min-width:0;box-sizing:border-box;border:1px solid var(--border-color,#dfe3e8);border-radius:9px;background:var(--input-bg,var(--card-bg,#fff));color:inherit;padding:9px 10px;outline:0;font:inherit;font-size:13px;height:40px;min-height:40px}
+.customer-payment-grid select:focus{border-color:var(--company-accent,#667085);box-shadow:0 0 0 3px color-mix(in srgb,var(--company-accent,#667085) 12%,transparent)}

@@ -13,14 +13,16 @@ import {
   Table2,
 } from "lucide-react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
-import { BarPlot } from "@mui/x-charts/BarChart";
-import { LineHighlightPlot, LinePlot } from "@mui/x-charts/LineChart";
-import { ChartsContainer } from "@mui/x-charts/ChartsContainer";
-import { ChartsXAxis } from "@mui/x-charts/ChartsXAxis";
-import { ChartsYAxis } from "@mui/x-charts/ChartsYAxis";
-import { ChartsTooltip } from "@mui/x-charts/ChartsTooltip";
-import { ChartsAxisHighlight } from "@mui/x-charts/ChartsAxisHighlight";
-import { ChartsGrid } from "@mui/x-charts/ChartsGrid";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import {
   getProductBatchBalances,
   getProductStock,
@@ -239,6 +241,36 @@ const formatQuantityPair = (pieces, product, language) => {
   return { mainText, piecesText: value.toLocaleString("en-US"), label };
 };
 
+
+function InventoryAreaTooltip({ active, payload, label, t }) {
+  if (!active || !payload?.length) return null;
+  const row = payload[0]?.payload;
+  if (!row) return null;
+
+  const items = [
+    { key: "current", label: t.currentPieces, pair: row.stockPair, color: "#94a3b8" },
+    { key: "received", label: t.receivedPieces, pair: row.inPair, color: "#16a34a" },
+    { key: "issued", label: t.issuedPieces, pair: row.outPair, color: "#ef4444" },
+  ];
+
+  return (
+    <div className="inventory-recharts-tooltip">
+      <strong>{label || row.name || "—"}</strong>
+      <div className="inventory-recharts-tooltip-list">
+        {items.map((item) => (
+          <div key={item.key} className="inventory-recharts-tooltip-row">
+            <span>
+              <i style={{ background: item.color }} />
+              {item.label}
+            </span>
+            <b>{item.pair ? `${item.pair.mainText} ${item.pair.label} / ${item.pair.piecesText} ${t.pieces}` : "0"}</b>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Inventory() {
   const navigate = useNavigate();
   const [products] = useJsonCollection("products");
@@ -326,47 +358,6 @@ export default function Inventory() {
       outPair,
     };
   }), [filteredRows, language]);
-
-  const chartSeries = useMemo(() => [
-    {
-      type: "bar",
-      yAxisId: "stock",
-      label: t.currentPieces,
-      color: "#d9dee8",
-      data: chartData.map((row) => row.current),
-      highlightScope: { highlight: "item" },
-      valueFormatter: (value, { dataIndex }) => {
-        const pair = chartData[dataIndex]?.stockPair;
-        return pair ? `${pair.mainText} ${pair.label} / ${pair.piecesText} ${t.pieces}` : Number(value || 0).toLocaleString("en-US");
-      },
-    },
-    {
-      type: "line",
-      yAxisId: "movement",
-      label: t.issuedPieces,
-      color: "#ef4444",
-      data: chartData.map((row) => row.issued),
-      highlightScope: { highlight: "item" },
-      showMark: true,
-      valueFormatter: (value, { dataIndex }) => {
-        const pair = chartData[dataIndex]?.outPair;
-        return pair ? `${pair.mainText} ${pair.label} / ${pair.piecesText} ${t.pieces}` : Number(value || 0).toLocaleString("en-US");
-      },
-    },
-    {
-      type: "line",
-      yAxisId: "movement",
-      label: t.receivedPieces,
-      color: "#16a34a",
-      data: chartData.map((row) => row.received),
-      highlightScope: { highlight: "item" },
-      showMark: true,
-      valueFormatter: (value, { dataIndex }) => {
-        const pair = chartData[dataIndex]?.inPair;
-        return pair ? `${pair.mainText} ${pair.label} / ${pair.piecesText} ${t.pieces}` : Number(value || 0).toLocaleString("en-US");
-      },
-    },
-  ], [chartData, t.currentPieces, t.issuedPieces, t.receivedPieces, t.pieces]);
 
   const batchRows = useMemo(() => filteredRows.flatMap((row) => row.batches.map((batch) => ({
     ...batch,
@@ -474,64 +465,112 @@ export default function Inventory() {
               <>
                 <div className="inventory-chart-card">
                   <div className="inventory-chart-scroll" style={{ minWidth: `${Math.max(780, chartData.length * 118)}px` }}>
-                    <ChartsContainer
-                      className="inventory-mui-chart"
-                      series={chartSeries}
-                      height={390}
-                      margin={{ top: 34, right: 62, bottom: chartData.length > 7 ? 78 : 54, left: 66 }}
-                      xAxis={[{
-                        id: "product",
-                        scaleType: "band",
-                        data: chartData.map((row) => row.name),
-                        height: chartData.length > 7 ? 78 : 54,
-                        valueFormatter: (value, context) => context.location === "tick"
-                          ? String(value || "—")
-                          : `${t.product}: ${value || "—"}`,
-                      }]}
-                      yAxis={[
-                        {
-                          id: "stock",
-                          scaleType: "linear",
-                          position: "left",
-                          width: 56,
-                          valueFormatter: (value) => Number(value || 0).toLocaleString("en-US"),
-                        },
-                        {
-                          id: "movement",
-                          scaleType: "linear",
-                          position: "right",
-                          width: 56,
-                          valueFormatter: (value) => Number(value || 0).toLocaleString("en-US"),
-                        },
-                      ]}
-                    >
-                      <ChartsAxisHighlight x="line" />
-                      <ChartsGrid horizontal />
-                      <BarPlot borderRadius={6} />
-                      <LinePlot />
-                      <LineHighlightPlot />
-                      <ChartsXAxis
-                        label={t.product}
-                        axisId="product"
-                        tickInterval={(_, index) => chartData.length <= 8 || index % Math.ceil(chartData.length / 8) === 0}
-                        tickLabelStyle={{
-                          fontSize: 10,
-                          angle: chartData.length > 7 ? -24 : 0,
-                          textAnchor: chartData.length > 7 ? "end" : "middle",
-                        }}
-                      />
-                      <ChartsYAxis
-                        label={t.currentPieces}
-                        axisId="stock"
-                        tickLabelStyle={{ fontSize: 10 }}
-                      />
-                      <ChartsYAxis
-                        label={`${t.receivedPieces} / ${t.issuedPieces}`}
-                        axisId="movement"
-                        tickLabelStyle={{ fontSize: 10 }}
-                      />
-                      <ChartsTooltip trigger="axis" />
-                    </ChartsContainer>
+                    <ResponsiveContainer width="100%" height={390}>
+                      <AreaChart
+                        data={chartData}
+                        margin={{ top: 20, right: 24, bottom: chartData.length > 7 ? 64 : 38, left: 8 }}
+                        className="inventory-recharts"
+                      >
+                        <defs>
+                          <linearGradient id="inventoryAreaCurrent" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#cbd5e1" stopOpacity={0.8} />
+                            <stop offset="95%" stopColor="#cbd5e1" stopOpacity={0.12} />
+                          </linearGradient>
+                          <linearGradient id="inventoryAreaReceived" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#16a34a" stopOpacity={0.32} />
+                            <stop offset="95%" stopColor="#16a34a" stopOpacity={0.04} />
+                          </linearGradient>
+                          <linearGradient id="inventoryAreaIssued" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.24} />
+                            <stop offset="95%" stopColor="#ef4444" stopOpacity={0.03} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="4 4" vertical={false} />
+                        <XAxis
+                          dataKey="name"
+                          interval={chartData.length <= 8 ? 0 : Math.max(0, Math.ceil(chartData.length / 8) - 1)}
+                          tickLine={false}
+                          axisLine={false}
+                          height={chartData.length > 7 ? 70 : 42}
+                          angle={chartData.length > 7 ? -24 : 0}
+                          textAnchor={chartData.length > 7 ? "end" : "middle"}
+                          tick={{ fontSize: 10, fill: "var(--text-muted, #64748b)", fontWeight: 700 }}
+                          label={{
+                            value: t.product,
+                            position: "insideBottom",
+                            offset: chartData.length > 7 ? -18 : -6,
+                            style: { fill: "var(--text-color, #111827)", fontSize: 12, fontWeight: 800 },
+                          }}
+                        />
+                        <YAxis
+                          yAxisId="stock"
+                          tickLine={false}
+                          axisLine={false}
+                          width={58}
+                          tick={{ fontSize: 10, fill: "var(--text-muted, #64748b)", fontWeight: 700 }}
+                          tickFormatter={(value) => Number(value || 0).toLocaleString("en-US")}
+                          label={{
+                            value: t.currentPieces,
+                            angle: -90,
+                            position: "insideLeft",
+                            style: { fill: "var(--text-color, #111827)", fontSize: 12, fontWeight: 800 },
+                          }}
+                        />
+                        <YAxis
+                          yAxisId="movement"
+                          orientation="right"
+                          tickLine={false}
+                          axisLine={false}
+                          width={58}
+                          tick={{ fontSize: 10, fill: "var(--text-muted, #64748b)", fontWeight: 700 }}
+                          tickFormatter={(value) => Number(value || 0).toLocaleString("en-US")}
+                          label={{
+                            value: `${t.receivedPieces} / ${t.issuedPieces}`,
+                            angle: 90,
+                            position: "insideRight",
+                            style: { fill: "var(--text-color, #111827)", fontSize: 12, fontWeight: 800 },
+                          }}
+                        />
+                        <Tooltip content={<InventoryAreaTooltip t={t} />} />
+                        <Legend
+                          verticalAlign="top"
+                          align={direction === "rtl" ? "right" : "left"}
+                          iconType="circle"
+                          iconSize={9}
+                          wrapperStyle={{ fontSize: 11, fontWeight: 800, paddingBottom: 10 }}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="current"
+                          yAxisId="stock"
+                          name={t.currentPieces}
+                          stroke="#94a3b8"
+                          strokeWidth={2.5}
+                          fill="url(#inventoryAreaCurrent)"
+                          activeDot={{ r: 5 }}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="received"
+                          yAxisId="movement"
+                          name={t.receivedPieces}
+                          stroke="#16a34a"
+                          strokeWidth={2.5}
+                          fill="url(#inventoryAreaReceived)"
+                          activeDot={{ r: 5 }}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="issued"
+                          yAxisId="movement"
+                          name={t.issuedPieces}
+                          stroke="#ef4444"
+                          strokeWidth={2.5}
+                          fill="url(#inventoryAreaIssued)"
+                          activeDot={{ r: 5 }}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
                   </div>
                 </div>
                 <div className="inventory-graph-products">

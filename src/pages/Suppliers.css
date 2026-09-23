@@ -31,3 +31,12 @@ body.supplier-modal-open{overflow:hidden}body.supplier-modal-open .sidebar,body.
 .suppliers-actions button:not(.danger){color:var(--text-primary,#111827)!important}
 .suppliers-actions button.danger{color:#dc2626!important}
 @media(max-width:700px){.suppliers-actions{min-width:62px;gap:5px}.suppliers-actions button{width:29px;height:29px;min-width:29px;flex-basis:29px!important}.suppliers-actions button svg{width:13px!important;height:13px!important;min-width:13px!important;min-height:13px!important}}
+
+/* Supplier form: one continuous 12-column layout */
+.supplier-form{display:block;padding:16px;background:var(--page-bg,#f8fafc)}
+.supplier-form-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:12px;padding:14px;border:1px solid var(--border-color,#e4e7ec);border-radius:13px;background:var(--card-bg,#fff)}
+.supplier-form-grid>.supplier-field{grid-column:span 6}
+.supplier-form-grid>.supplier-field-full{grid-column:span 12}
+.supplier-form-grid .supplier-field textarea{min-height:90px}
+.supplier-form .supplier-form-actions{position:sticky;bottom:-16px;margin-top:12px;padding:13px 0 0;background:var(--page-bg,#f8fafc)}
+@media(max-width:700px){.supplier-form{padding:10px}.supplier-form-grid{grid-template-columns:1fr;padding:11px;gap:10px}.supplier-form-grid>.supplier-field,.supplier-form-grid>.supplier-field-full{grid-column:1}.supplier-form .supplier-form-actions{bottom:-10px}}

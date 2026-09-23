@@ -439,126 +439,94 @@ export default function Suppliers() {
         </div>
 
         <form className="supplier-form" onSubmit={handleSubmit}>
-          <div className="supplier-section supplier-section-main">
-            <div className="supplier-section-title"><Building2 size={17} /><span>{t.supplierName}</span></div>
-            <div className="supplier-fields-grid">
-              <div className={`supplier-field supplier-field-full ${fieldErrors.supplierName ? "has-error" : ""}`}>
-                <label>{t.supplierName} *</label>
-                <input
-                  autoFocus
-                  value={form.supplierName}
-                  onChange={(e) => updateField("supplierName", e.target.value)}
-                  aria-invalid={Boolean(fieldErrors.supplierName)}
-                  aria-describedby={fieldErrors.supplierName ? "supplier-name-error" : undefined}
-                />
-                {fieldErrors.supplierName && (
-                  <span id="supplier-name-error" className="supplier-field-error" role="alert">{fieldErrors.supplierName}</span>
+          <div className="supplier-form-grid">
+            <div className={`supplier-field ${fieldErrors.supplierName ? "has-error" : ""}`}>
+              <label>{t.supplierName} *</label>
+              <input
+                autoFocus
+                value={form.supplierName}
+                onChange={(e) => updateField("supplierName", e.target.value)}
+                aria-invalid={Boolean(fieldErrors.supplierName)}
+                aria-describedby={fieldErrors.supplierName ? "supplier-name-error" : undefined}
+              />
+              {fieldErrors.supplierName && (
+                <span id="supplier-name-error" className="supplier-field-error" role="alert">{fieldErrors.supplierName}</span>
+              )}
+            </div>
+
+            <div className="supplier-field">
+              <label>{t.supplierType}</label>
+              <div className={`supplier-type-row ${showTypeManager ? "is-editing" : ""}`}>
+                {showTypeManager ? (
+                  <>
+                    <input
+                      className="supplier-type-inline-input"
+                      value={typeDraft}
+                      onChange={(e) => setTypeDraft(e.target.value)}
+                      placeholder={t.typeName}
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") { e.preventDefault(); saveCustomType(); }
+                        if (e.key === "Escape") { resetTypeDraft(); setShowTypeManager(false); }
+                      }}
+                    />
+                    <button type="button" className="supplier-type-save" onClick={saveCustomType} title={editingTypeId ? t.updateType : t.saveType}>
+                      {editingTypeId ? <Edit3 size={14} /> : <Plus size={14} />}
+                    </button>
+                    <button type="button" className="supplier-type-cancel" onClick={() => { resetTypeDraft(); setShowTypeManager(false); }} aria-label={t.cancel} title={t.cancel}><X size={14} /></button>
+                  </>
+                ) : (
+                  <>
+                    <select value={form.supplierType} onChange={(e) => updateField("supplierType", e.target.value)}>
+                      <option value="">{t.selectType}</option>
+                      {customTypeOptions.map((type) => <option key={type.key} value={type.key}>{type.name}</option>)}
+                    </select>
+                    {selectedCustomType && (
+                      <button type="button" className="supplier-type-edit" onClick={() => editCustomType(selectedCustomType)} aria-label={t.editTitle} title={t.editTitle}><Edit3 size={13} /></button>
+                    )}
+                    <button type="button" className="supplier-type-delete" onClick={() => selectedCustomType && deleteCustomType(selectedCustomType)} disabled={!selectedCustomType} aria-label={t.confirmDelete} title={selectedCustomType ? t.confirmDelete : t.selectType}><Trash2 size={13} /></button>
+                    <button type="button" className="supplier-type-add" onClick={() => { resetTypeDraft(); setShowTypeManager(true); }} aria-label={t.addType} title={t.addType}><Plus size={14} /></button>
+                  </>
                 )}
               </div>
-              <div className="supplier-field">
-                <label>{t.supplierType}</label>
-                <div className={`supplier-type-row ${showTypeManager ? "is-editing" : ""}`}>
-                  {showTypeManager ? (
-                    <>
-                      <input
-                        className="supplier-type-inline-input"
-                        value={typeDraft}
-                        onChange={(e) => setTypeDraft(e.target.value)}
-                        placeholder={t.typeName}
-                        autoFocus
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            saveCustomType();
-                          }
-                          if (e.key === "Escape") {
-                            resetTypeDraft();
-                            setShowTypeManager(false);
-                          }
-                        }}
-                      />
-                      <button type="button" className="supplier-type-save" onClick={saveCustomType} title={editingTypeId ? t.updateType : t.saveType}>
-                        {editingTypeId ? <Edit3 size={14} /> : <Plus size={14} />}
-                      </button>
-                      <button type="button" className="supplier-type-cancel" onClick={() => { resetTypeDraft(); setShowTypeManager(false); }} aria-label={t.cancel} title={t.cancel}>
-                        <X size={14} />
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <select value={form.supplierType} onChange={(e) => updateField("supplierType", e.target.value)}>
-                        <option value="">{t.selectType}</option>
-                        {customTypeOptions.map((type) => <option key={type.key} value={type.key}>{type.name}</option>)}
-                      </select>
-                      {selectedCustomType && (
-                        <button type="button" className="supplier-type-edit" onClick={() => editCustomType(selectedCustomType)} aria-label={t.editTitle} title={t.editTitle}>
-                          <Edit3 size={13} />
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        className="supplier-type-delete"
-                        onClick={() => selectedCustomType && deleteCustomType(selectedCustomType)}
-                        disabled={!selectedCustomType}
-                        aria-label={t.confirmDelete}
-                        title={selectedCustomType ? t.confirmDelete : t.selectType}
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                      <button type="button" className="supplier-type-add" onClick={() => { resetTypeDraft(); setShowTypeManager(true); }} aria-label={t.addType} title={t.addType}>
-                        <Plus size={14} />
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-              <div className="supplier-field">
-                <label>{t.currency}</label>
-                <select value={form.currency} onChange={(e) => updateField("currency", e.target.value)}>
-                  {currencyOptions.map((currency) => <option key={currency} value={currency}>{t[currency]}</option>)}
-                </select>
+            </div>
+
+            <div className="supplier-field">
+              <label>{t.currency}</label>
+              <select value={form.currency} onChange={(e) => updateField("currency", e.target.value)}>
+                {currencyOptions.map((currency) => <option key={currency} value={currency}>{t[currency]}</option>)}
+              </select>
+            </div>
+
+            <div className="supplier-field">
+              <label>{t.contactPerson}</label>
+              <input value={form.contactPerson} onChange={(e) => updateField("contactPerson", e.target.value)} />
+            </div>
+
+            <div className="supplier-field">
+              <label>{t.phone}</label>
+              <input inputMode="tel" value={form.phone} onChange={(e) => updateField("phone", e.target.value)} />
+            </div>
+
+            <div className="supplier-field">
+              <label>{t.address}</label>
+              <input value={form.address} onChange={(e) => updateField("address", e.target.value)} />
+            </div>
+
+            <div className="supplier-field">
+              <label>{t.openingBalance}</label>
+              <input type="number" step="any" value={form.openingBalance} onChange={(e) => updateField("openingBalance", e.target.value)} />
+              <small>{t.openingBalanceHint}</small>
+            </div>
+
+            <div className="supplier-field">
+              <label>{t.status}</label>
+              <div className="supplier-status-switch">
+                <button type="button" className={form.status === "active" ? "active" : ""} onClick={() => updateField("status", "active")}>{t.active}</button>
+                <button type="button" className={form.status === "inactive" ? "active" : ""} onClick={() => updateField("status", "inactive")}>{t.inactive}</button>
               </div>
             </div>
-          </div>
 
-          <div className="supplier-section">
-            <div className="supplier-section-title"><UserRound size={17} /><span>{t.contactPerson}</span></div>
-            <div className="supplier-fields-grid">
-              <div className="supplier-field">
-                <label>{t.contactPerson}</label>
-                <input value={form.contactPerson} onChange={(e) => updateField("contactPerson", e.target.value)} />
-              </div>
-              <div className="supplier-field">
-                <label>{t.phone}</label>
-                <input inputMode="tel" value={form.phone} onChange={(e) => updateField("phone", e.target.value)} />
-              </div>
-              <div className="supplier-field supplier-field-full">
-                <label>{t.address}</label>
-                <textarea rows="2" value={form.address} onChange={(e) => updateField("address", e.target.value)} />
-              </div>
-            </div>
-          </div>
-
-          <div className="supplier-section">
-            <div className="supplier-section-title"><BadgeDollarSign size={17} /><span>{t.openingBalance}</span></div>
-            <div className="supplier-fields-grid supplier-account-grid">
-              <div className="supplier-field">
-                <label>{t.openingBalance}</label>
-                <input type="number" step="any" value={form.openingBalance} onChange={(e) => updateField("openingBalance", e.target.value)} />
-                <small>{t.openingBalanceHint}</small>
-              </div>
-              <div className="supplier-field">
-                <label>{t.status}</label>
-                <div className="supplier-status-switch">
-                  <button type="button" className={form.status === "active" ? "active" : ""} onClick={() => updateField("status", "active")}>{t.active}</button>
-                  <button type="button" className={form.status === "inactive" ? "active" : ""} onClick={() => updateField("status", "inactive")}>{t.inactive}</button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="supplier-section supplier-section-notes">
-            <div className="supplier-section-title"><MapPin size={17} /><span>{t.notes}</span></div>
             <div className="supplier-field supplier-field-full">
               <label>{t.notes}</label>
               <textarea rows="3" value={form.notes} onChange={(e) => updateField("notes", e.target.value)} />

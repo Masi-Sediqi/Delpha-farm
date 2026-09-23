@@ -73,6 +73,11 @@ const translations = {
     paymentHint: "Record a payment received from this customer. It will immediately appear in the customer ledger.",
     paymentDate: "Payment Date",
     amount: "Amount",
+    currency: "Currency",
+    afn: "Afghani (AFN)",
+    usd: "US Dollar (USD)",
+    inr: "Indian Rupee (INR)",
+    eur: "Euro (EUR)",
     paymentDescription: "Description",
     descriptionPlaceholder: "Example: Cash payment against previous invoices",
     cancel: "Cancel",
@@ -82,6 +87,25 @@ const translations = {
     updated: "Payment updated successfully.",
     deleted: "Payment deleted successfully.",
     confirmDelete: "Delete this payment record?",
+    tabLedger: "Ledger",
+    tabSales: "Sales",
+    tabPayments: "Payments",
+    tabProfit: "Profit",
+    tabActivity: "Activity",
+    items: "Items",
+    saleTotal: "Sale Total",
+    paidAtSale: "Paid at Sale",
+    remainingDebt: "Remaining",
+    amountPaid: "Amount Paid",
+    paymentSource: "Source",
+    returnTotal: "Sale Returns",
+    netSales: "Net Sales",
+    estimatedCost: "Estimated Cost",
+    estimatedProfit: "Estimated Profit",
+    noSales: "No sales have been recorded for this customer.",
+    noPayments: "No payments have been recorded for this customer.",
+    noActivity: "No activity has been recorded for this customer.",
+    profitInfo: "Estimated profit from this customer based on recorded sale prices, purchase prices and sale returns.",
     customerMissing: "Customer not found.",
   },
   fa: {
@@ -128,6 +152,11 @@ const translations = {
     paymentHint: "پرداخت دریافت‌شده از این مشتری را ثبت کنید؛ ریکارد فوراً در لیجر نمایش داده می‌شود.",
     paymentDate: "تاریخ پرداخت",
     amount: "مقدار",
+    currency: "واحد",
+    afn: "افغانی (AFN)",
+    usd: "دالر (USD)",
+    inr: "کلدار هندی (INR)",
+    eur: "یورو (EUR)",
     paymentDescription: "توضیحات",
     descriptionPlaceholder: "مثلاً پرداخت نقدی بابت بل‌های قبلی",
     cancel: "لغو",
@@ -137,6 +166,25 @@ const translations = {
     updated: "پرداخت با موفقیت ویرایش شد.",
     deleted: "پرداخت با موفقیت حذف شد.",
     confirmDelete: "این ریکارد پرداخت حذف شود؟",
+    tabLedger: "لیجر",
+    tabSales: "فروشات",
+    tabPayments: "پرداخت ها",
+    tabProfit: "سود",
+    tabActivity: "فعالیت",
+    items: "اقلام",
+    saleTotal: "مجموع فروش",
+    paidAtSale: "پرداخت هنگام فروش",
+    remainingDebt: "باقی مانده",
+    amountPaid: "مبلغ پرداخت",
+    paymentSource: "منبع",
+    returnTotal: "برگشت فروش",
+    netSales: "فروش خالص",
+    estimatedCost: "قیمت تمام شده تخمینی",
+    estimatedProfit: "سود تخمینی",
+    noSales: "برای این مشتری هنوز فروشی ثبت نشده است.",
+    noPayments: "برای این مشتری هنوز پرداختی ثبت نشده است.",
+    noActivity: "برای این مشتری هنوز فعالیتی ثبت نشده است.",
+    profitInfo: "سود تخمینی این مشتری بر اساس قیمت فروش، قیمت خرید و برگشت های ثبت شده محاسبه می شود.",
     customerMissing: "مشتری پیدا نشد.",
   },
   ps: {
@@ -183,6 +231,11 @@ const translations = {
     paymentHint: "له پېرودونکي ترلاسه شوې تادیه ثبت کړئ؛ ریکارډ به سمدستي په لیجر کې ښکاره شي.",
     paymentDate: "د تادیې نېټه",
     amount: "مبلغ",
+    currency: "اسعار",
+    afn: "افغانۍ (AFN)",
+    usd: "ډالر (USD)",
+    inr: "هندي کلدارې (INR)",
+    eur: "یورو (EUR)",
     paymentDescription: "تشریح",
     descriptionPlaceholder: "لکه د پخوانیو بلونو نغدي تادیه",
     cancel: "لغوه",
@@ -192,11 +245,58 @@ const translations = {
     updated: "تادیه په بریالیتوب بدله شوه.",
     deleted: "تادیه په بریالیتوب حذف شوه.",
     confirmDelete: "دا د تادیې ریکارډ حذف شي؟",
+    tabLedger: "لیجر",
+    tabSales: "خرڅلاو",
+    tabPayments: "تادیات",
+    tabProfit: "ګټه",
+    tabActivity: "فعالیت",
+    items: "توکي",
+    saleTotal: "د خرڅلاو ټول",
+    paidAtSale: "د خرڅلاو پر مهال تادیه",
+    remainingDebt: "پاتې",
+    amountPaid: "تادیه شوی مبلغ",
+    paymentSource: "سرچینه",
+    returnTotal: "د خرڅلاو بېرته ستنول",
+    netSales: "خالص خرڅلاو",
+    estimatedCost: "اټکلي تمام شوی قیمت",
+    estimatedProfit: "اټکلي ګټه",
+    noSales: "د دې پېرودونکي لپاره تر اوسه خرڅلاو نشته.",
+    noPayments: "د دې پېرودونکي لپاره تر اوسه تادیه نشته.",
+    noActivity: "د دې پېرودونکي لپاره تر اوسه فعالیت نشته.",
+    profitInfo: "د دې پېرودونکي اټکلي ګټه د ثبت شوو د خرڅلاو بیو، پېرود بیو او بېرته ستنولو پر بنسټ محاسبه کېږي.",
     customerMissing: "پېرودونکی ونه موندل شو.",
   },
 };
 
+const currencyLabels = { afn: "AFN", usd: "USD", inr: "INR", pkr: "PKR", eur: "EUR" };
+const paymentCurrencyOptions = ["afn", "usd", "inr", "eur"];
+const currencyOrder = ["AFN", "USD", "INR", "EUR"];
 const numeric = (value) => Number(value || 0) || 0;
+const normalizeCurrency = (value, fallback = "AFN") => {
+  const raw = String(value || fallback).trim().toUpperCase();
+  if (raw.includes("USD")) return "USD";
+  if (raw.includes("EUR")) return "EUR";
+  if (raw.includes("INR") || raw.includes("PKR")) return "INR";
+  return "AFN";
+};
+const addCurrencyAmount = (target, currency, amount) => {
+  const code = normalizeCurrency(currency);
+  target[code] = numeric(target[code]) + numeric(amount);
+  return target;
+};
+const currencyRows = (map, { absolute = false } = {}) => {
+  const rows = currencyOrder
+    .filter((code) => Math.abs(numeric(map?.[code])) > 0.000001)
+    .map((code) => ({ code, value: absolute ? Math.abs(numeric(map[code])) : numeric(map[code]) }));
+  return rows.length ? rows : [{ code: "AFN", value: 0 }];
+};
+const CurrencyStack = ({ values, absolute = false }) => (
+  <span className="customer-currency-stack">
+    {currencyRows(values, { absolute }).map(({ code, value }) => (
+      <span key={code}><b>{value.toLocaleString(undefined, { maximumFractionDigits: 2 })}</b><em>{code}</em></span>
+    ))}
+  </span>
+);
 const today = () => new Date().toISOString().slice(0, 10);
 const normalizeDate = (value) => {
   if (!value) return today();
@@ -212,16 +312,18 @@ export default function CustomerDetail() {
   const [customers] = useJsonCollection("customerRegistry");
   const [sales] = useJsonCollection("salesRegister");
   const [saleReturns] = useJsonCollection("saleReturns");
+  const [saleReturnItems] = useJsonCollection("saleReturnItems");
   const [payments, setPayments] = useJsonCollection("customerPayments");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [showPayment, setShowPayment] = useState(false);
+  const [activeTab, setActiveTab] = useState("ledger");
   const [editingPaymentId, setEditingPaymentId] = useState(null);
-  const [paymentForm, setPaymentForm] = useState({ date: today(), amount: "", description: "" });
+  const [paymentForm, setPaymentForm] = useState({ date: today(), amount: "", currency: "afn", description: "" });
 
   const t = translations[language] || translations.en;
   const direction = rtlLanguages.has(language) ? "rtl" : "ltr";
   const customer = customers.find((item) => String(item.id) === String(customerId));
-  const currencyCode = String(customer?.currency || "AFN").toUpperCase();
+  const currencyCode = normalizeCurrency(currencyLabels[String(customer?.currency || "afn").toLowerCase()] || customer?.currency || "AFN");
 
   useEffect(() => {
     const syncLanguage = () => setLanguage(localStorage.getItem(languageKey) || "en");
@@ -269,6 +371,7 @@ export default function CustomerDetail() {
         reference: "OPENING",
         description: t.opening,
         kind: "opening",
+        currency: currencyCode,
         debit: openingBalance > 0 ? openingBalance : 0,
         credit: openingBalance < 0 ? Math.abs(openingBalance) : 0,
         order: new Date(customer?.createdAt || 0).getTime() || 0,
@@ -293,6 +396,7 @@ export default function CustomerDetail() {
         description: sale.notes || t.sale,
         kind: "sale",
         sourceId: sale.id,
+        currency: normalizeCurrency(sale.currency || customer?.currency || currencyCode),
         debit: saleTotal,
         credit: salePaid,
         remaining: saleRemaining,
@@ -300,10 +404,10 @@ export default function CustomerDetail() {
       });
     });
 
-
     customerReturns.forEach((item) => {
       const returnDate = item.returnDate || item.date || item.createdAt || "";
       const order = new Date(returnDate || 0).getTime() || 0;
+      const linkedSale = customerSales.find((sale) => String(sale.id) === String(item.saleId));
       entries.push({
         id: `sale-return-${item.id}`,
         date: returnDate,
@@ -311,6 +415,7 @@ export default function CustomerDetail() {
         description: item.notes || t.saleReturn,
         kind: "sale-return",
         sourceId: item.id,
+        currency: normalizeCurrency(item.currency || linkedSale?.currency || customer?.currency || currencyCode),
         debit: 0,
         credit: numeric(item.totalAmount),
         order: order + 2,
@@ -326,6 +431,7 @@ export default function CustomerDetail() {
         description: payment.description || t.manualPayment,
         kind: "manual-payment",
         sourceId: payment.id,
+        currency: normalizeCurrency(payment.currency || customer?.currency || currencyCode),
         debit: 0,
         credit: numeric(payment.amount),
         order,
@@ -333,29 +439,160 @@ export default function CustomerDetail() {
     });
 
     entries.sort((a, b) => (a.order - b.order) || String(a.id).localeCompare(String(b.id)));
-    let running = 0;
+    const runningByCurrency = {};
     return entries.map((entry) => {
-      running += numeric(entry.debit) - numeric(entry.credit);
-      return { ...entry, balance: running };
+      const code = normalizeCurrency(entry.currency || currencyCode);
+      runningByCurrency[code] = numeric(runningByCurrency[code]) + numeric(entry.debit) - numeric(entry.credit);
+      return { ...entry, currency: code, balance: runningByCurrency[code] };
     });
-  }, [customer, customerId, customerSales, customerReturns, customerPayments, t.opening, t.sale, t.salePayment, t.saleReturn, t.manualPayment]);
+  }, [customer, customerId, customerSales, customerReturns, customerPayments, currencyCode, t.opening, t.sale, t.saleReturn, t.manualPayment]);
 
-  const totalSales = customerSales.reduce((sum, item) => sum + numeric(item.totalAmount), 0);
-  const salePayments = customerSales.reduce((sum, item) => sum + numeric(item.paidAmount), 0);
-  const manualPayments = customerPayments.reduce((sum, item) => sum + numeric(item.amount), 0);
-  const totalPayments = salePayments + manualPayments;
-  const currentBalance = ledger.length ? numeric(ledger[ledger.length - 1].balance) : numeric(customer?.openingBalance);
+  const totalSalesByCurrency = useMemo(() => {
+    const totals = {};
+    customerSales.forEach((item) => addCurrencyAmount(totals, item.currency || customer?.currency || currencyCode, item.totalAmount));
+    return totals;
+  }, [customerSales, customer, currencyCode]);
+
+  const salePaymentsByCurrency = useMemo(() => {
+    const totals = {};
+    customerSales.forEach((item) => addCurrencyAmount(totals, item.currency || customer?.currency || currencyCode, item.paidAmount));
+    return totals;
+  }, [customerSales, customer, currencyCode]);
+
+  const manualPaymentsByCurrency = useMemo(() => {
+    const totals = {};
+    customerPayments.forEach((item) => addCurrencyAmount(totals, item.currency || customer?.currency || currencyCode, item.amount));
+    return totals;
+  }, [customerPayments, customer, currencyCode]);
+
+  const totalPaymentsByCurrency = useMemo(() => {
+    const totals = { ...salePaymentsByCurrency };
+    Object.entries(manualPaymentsByCurrency).forEach(([code, amount]) => addCurrencyAmount(totals, code, amount));
+    return totals;
+  }, [salePaymentsByCurrency, manualPaymentsByCurrency]);
+
+  const currentBalances = useMemo(() => {
+    const balances = {};
+    ledger.forEach((entry) => { balances[entry.currency] = numeric(entry.balance); });
+    if (!ledger.length && numeric(customer?.openingBalance) !== 0) balances[currencyCode] = numeric(customer.openingBalance);
+    return balances;
+  }, [ledger, customer, currencyCode]);
+
+  const positiveBalanceExists = Object.values(currentBalances).some((value) => numeric(value) > 0.000001);
+  const negativeBalanceExists = Object.values(currentBalances).some((value) => numeric(value) < -0.000001);
+  const preferredPaymentCurrency = Object.entries(currentBalances).find(([, value]) => numeric(value) > 0.000001)?.[0] || currencyCode;
+  const saleRows = useMemo(
+    () => [...customerSales].sort((a, b) => new Date(b.saleDate || b.createdAt || 0) - new Date(a.saleDate || a.createdAt || 0)),
+    [customerSales]
+  );
+
+  const paymentRows = useMemo(() => {
+    const rows = [];
+    customerSales.forEach((sale) => {
+      const amount = numeric(sale.paidAmount);
+      if (amount <= 0) return;
+      rows.push({
+        id: `sale-payment-${sale.id}`,
+        date: sale.saleDate || sale.createdAt || "",
+        reference: sale.invoiceNumber || sale.id,
+        description: t.salePayment,
+        amount,
+        kind: "sale-payment",
+        currency: normalizeCurrency(sale.currency || customer?.currency || currencyCode),
+      });
+    });
+    customerPayments.forEach((payment) => rows.push({
+      id: `manual-payment-${payment.id}`,
+      date: payment.date || payment.createdAt || "",
+      reference: payment.reference || `PAY-${String(payment.id).slice(-6)}`,
+      description: payment.description || t.manualPayment,
+      amount: numeric(payment.amount),
+      kind: "manual-payment",
+      sourceId: payment.id,
+      currency: normalizeCurrency(payment.currency || customer?.currency || currencyCode),
+    }));
+    return rows.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  }, [customerSales, customerPayments, customer, currencyCode, t.salePayment, t.manualPayment]);
+
+  const customerReturnItems = useMemo(
+    () => saleReturnItems.filter((item) => customerReturns.some((ret) => String(ret.id) === String(item.saleReturnId))),
+    [saleReturnItems, customerReturns]
+  );
+
+  const profitSummary = useMemo(() => {
+    const summary = {};
+    const ensure = (code) => {
+      if (!summary[code]) summary[code] = { grossSales: 0, returnsTotal: 0, netSales: 0, netCost: 0, profit: 0 };
+      return summary[code];
+    };
+    customerSales.forEach((sale) => {
+      const code = normalizeCurrency(sale.currency || customer?.currency || currencyCode);
+      const row = ensure(code);
+      row.grossSales += numeric(sale.totalAmount);
+      row.netCost += (Array.isArray(sale.items) ? sale.items : []).reduce((sum, item) => sum + numeric(item.quantity) * numeric(item.purchasePrice), 0);
+    });
+    customerReturns.forEach((item) => {
+      const linkedSale = customerSales.find((sale) => String(sale.id) === String(item.saleId));
+      const code = normalizeCurrency(item.currency || linkedSale?.currency || customer?.currency || currencyCode);
+      ensure(code).returnsTotal += numeric(item.totalAmount);
+    });
+    customerReturnItems.forEach((item) => {
+      const sale = customerSales.find((row) => String(row.id) === String(item.saleId));
+      const code = normalizeCurrency(sale?.currency || customer?.currency || currencyCode);
+      const saleItem = (sale?.items || []).find((row) => String(row.productId) === String(item.productId));
+      ensure(code).netCost -= numeric(item.quantity) * numeric(saleItem?.purchasePrice);
+    });
+    Object.values(summary).forEach((row) => {
+      row.netCost = Math.max(row.netCost, 0);
+      row.netSales = row.grossSales - row.returnsTotal;
+      row.profit = row.netSales - row.netCost;
+    });
+    return summary;
+  }, [customerSales, customerReturns, customerReturnItems, customer, currencyCode]);
+
+  const profitMetricMap = (key) => Object.fromEntries(Object.entries(profitSummary).map(([code, row]) => [code, numeric(row[key])]));
+  const activityRows = useMemo(() => {
+    const rows = [];
+    customerSales.forEach((sale) => rows.push({
+      id: `activity-sale-${sale.id}`,
+      date: sale.saleDate || sale.createdAt || "",
+      reference: sale.invoiceNumber || sale.id,
+      description: sale.notes || t.sale,
+      amount: numeric(sale.totalAmount),
+      kind: "sale",
+      currency: normalizeCurrency(sale.currency || customer?.currency || currencyCode),
+    }));
+    customerReturns.forEach((item) => rows.push({
+      id: `activity-return-${item.id}`,
+      date: item.returnDate || item.date || item.createdAt || "",
+      reference: item.returnNo || item.id,
+      description: item.notes || t.saleReturn,
+      amount: numeric(item.totalAmount),
+      kind: "sale-return",
+      currency: normalizeCurrency(item.currency || customerSales.find((sale) => String(sale.id) === String(item.saleId))?.currency || customer?.currency || currencyCode),
+    }));
+    customerPayments.forEach((payment) => rows.push({
+      id: `activity-payment-${payment.id}`,
+      date: payment.date || payment.createdAt || "",
+      reference: payment.reference || `PAY-${String(payment.id).slice(-6)}`,
+      description: payment.description || t.manualPayment,
+      amount: numeric(payment.amount),
+      kind: "manual-payment",
+      currency: normalizeCurrency(payment.currency || customer?.currency || currencyCode),
+    }));
+    return rows.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  }, [customerSales, customerReturns, customerPayments, customer, currencyCode, t.sale, t.saleReturn, t.manualPayment]);
 
   const openPaymentModal = () => {
     setEditingPaymentId(null);
-    setPaymentForm({ date: today(), amount: "", description: "" });
+    setPaymentForm({ date: today(), amount: "", currency: String(preferredPaymentCurrency).toLowerCase(), description: "" });
     setShowPayment(true);
   };
 
   const closePaymentModal = () => {
     setShowPayment(false);
     setEditingPaymentId(null);
-    setPaymentForm({ date: today(), amount: "", description: "" });
+    setPaymentForm({ date: today(), amount: "", currency: String(currencyCode).toLowerCase(), description: "" });
   };
 
   const editLedgerEntry = (entry) => {
@@ -366,6 +603,7 @@ export default function CustomerDetail() {
       setPaymentForm({
         date: normalizeDate(payment.date || payment.createdAt),
         amount: String(payment.amount ?? ""),
+        currency: String(normalizeCurrency(payment.currency || customer?.currency || currencyCode)).toLowerCase(),
         description: payment.description || "",
       });
       setShowPayment(true);
@@ -403,6 +641,7 @@ export default function CustomerDetail() {
       customerName: customer?.fullName || customer?.companyName || "",
       date: paymentForm.date || today(),
       amount,
+      currency: normalizeCurrency(paymentForm.currency || customer?.currency || currencyCode),
       description: paymentForm.description.trim(),
       reference: previousPayment?.reference || `PAY-${String(Date.now()).slice(-7)}`,
       createdAt: previousPayment?.createdAt || new Date().toISOString(),
@@ -429,8 +668,8 @@ export default function CustomerDetail() {
     );
   }
 
-  const balanceState = currentBalance > 0 ? "receivable" : currentBalance < 0 ? "owe" : "settled";
-  const balanceLabel = currentBalance > 0 ? t.customerOwes : currentBalance < 0 ? t.youOweCustomer : t.settled;
+  const balanceState = positiveBalanceExists && !negativeBalanceExists ? "receivable" : negativeBalanceExists && !positiveBalanceExists ? "owe" : "settled";
+  const balanceLabel = positiveBalanceExists && !negativeBalanceExists ? t.customerOwes : negativeBalanceExists && !positiveBalanceExists ? t.youOweCustomer : t.currentBalance;
   const customerName = customer.fullName || customer.companyName || "—";
   const customerTypeLabel = customer.customerType === "business" ? t.business : t.individual;
   const fullAddress = [customer.address, customer.city, customer.province, customer.country].filter(Boolean).join(", ") || "—";
@@ -455,6 +694,12 @@ export default function CustomerDetail() {
               <label>
                 <span><BadgeDollarSign size={15} />{t.amount}</span>
                 <input autoFocus type="number" min="0" step="any" value={paymentForm.amount} onChange={(e) => setPaymentForm((prev) => ({ ...prev, amount: e.target.value }))} />
+              </label>
+              <label>
+                <span><BadgeDollarSign size={15} />{t.currency}</span>
+                <select value={paymentForm.currency} onChange={(e) => setPaymentForm((prev) => ({ ...prev, currency: e.target.value }))}>
+                  {paymentCurrencyOptions.map((code) => <option key={code} value={code}>{t[code]}</option>)}
+                </select>
               </label>
               <label className="customer-payment-full">
                 <span><FileText size={15} />{t.paymentDescription}</span>
@@ -489,9 +734,9 @@ export default function CustomerDetail() {
       </div>
 
       <div className="customer-detail-stat-grid">
-        <article className="customer-detail-stat"><span className="icon sale"><ShoppingCart size={19} /></span><div><small>{t.totalSales}</small><strong>{totalSales.toLocaleString(undefined, { maximumFractionDigits: 2 })} <em>{currencyCode}</em></strong></div></article>
-        <article className="customer-detail-stat"><span className="icon payment"><Wallet size={19} /></span><div><small>{t.totalPayments}</small><strong>{totalPayments.toLocaleString(undefined, { maximumFractionDigits: 2 })} <em>{currencyCode}</em></strong></div></article>
-        <article className={`customer-detail-stat balance ${balanceState}`}><span className="icon"><BadgeDollarSign size={19} /></span><div><small>{t.currentBalance}</small><strong>{Math.abs(currentBalance).toLocaleString(undefined, { maximumFractionDigits: 2 })} <em>{currencyCode}</em></strong></div></article>
+        <article className="customer-detail-stat"><span className="icon sale"><ShoppingCart size={19} /></span><div><small>{t.totalSales}</small><strong><CurrencyStack values={totalSalesByCurrency} /></strong></div></article>
+        <article className="customer-detail-stat"><span className="icon payment"><Wallet size={19} /></span><div><small>{t.totalPayments}</small><strong><CurrencyStack values={totalPaymentsByCurrency} /></strong></div></article>
+        <article className={`customer-detail-stat balance ${balanceState}`}><span className="icon"><BadgeDollarSign size={19} /></span><div><small>{t.currentBalance}</small><strong><CurrencyStack values={currentBalances} absolute /></strong></div></article>
       </div>
 
       <div className="customer-detail-layout">
@@ -511,43 +756,86 @@ export default function CustomerDetail() {
         </aside>
 
         <section className="customer-detail-ledger-card">
-          <div className="customer-detail-section-head ledger"><ReceiptText size={18} /><div><h2>{t.transactions}</h2><p>{ledger.length} {t.transactions}</p></div></div>
-          <div className="customer-detail-ledger-wrap">
-            <table>
-              <thead><tr><th>{t.date}</th><th>{t.reference}</th><th>{t.description}</th><th>{t.debit}</th><th>{t.credit}</th><th>{t.remaining}</th><th>{t.balance}</th><th>{t.actions}</th></tr></thead>
-              <tbody>
-                {ledger.length ? ledger.map((entry) => (
-                  <tr key={entry.id}>
-                    <td>{formatDateTime(entry.date)}</td>
-                    <td><span className="customer-ledger-reference">{entry.reference || "—"}</span></td>
-                    <td><span className={`customer-ledger-description ${entry.kind || ""}`}>{entry.description}</span></td>
-                    <td className="customer-ledger-debit">{entry.debit ? entry.debit.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—"}</td>
-                    <td className="customer-ledger-credit">
-                      {entry.credit ? <span className="customer-ledger-badge paid">{entry.credit.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span> : "—"}
-                    </td>
-                    <td className="customer-ledger-remaining">
-                      {entry.kind === "sale" ? (
-                        <span className={`customer-ledger-badge remaining ${numeric(entry.remaining) <= 0 ? "settled" : ""}`}>
-                          {numeric(entry.remaining).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                        </span>
-                      ) : "—"}
-                    </td>
-                    <td className={entry.balance > 0 ? "customer-ledger-balance receivable" : entry.balance < 0 ? "customer-ledger-balance owe" : "customer-ledger-balance"}>{Math.abs(entry.balance).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
-                    <td>
-                      <div className="customer-ledger-actions">
-                        {entry.kind === "manual-payment" && <button type="button" className="edit" onClick={() => editLedgerEntry(entry)} aria-label={t.edit} title={t.edit}><Edit3 size={14} /></button>}
-                        {entry.kind === "manual-payment" && <button type="button" className="delete" onClick={() => deleteLedgerEntry(entry)} aria-label={t.delete} title={t.delete}><Trash2 size={14} /></button>}
-                      </div>
-                    </td>
-                  </tr>
-                )) : <tr><td colSpan="8" className="customer-ledger-empty">{t.noTransactions}</td></tr>}
-              </tbody>
-            </table>
+          <div className="customer-detail-tabs" role="tablist" aria-label={t.transactions}>
+            {[
+              ["ledger", t.tabLedger],
+              ["sales", t.tabSales],
+              ["payments", t.tabPayments],
+              ["profit", t.tabProfit],
+              ["activity", t.tabActivity],
+            ].map(([key, label]) => (
+              <button key={key} type="button" role="tab" aria-selected={activeTab === key} className={activeTab === key ? "active" : ""} onClick={() => setActiveTab(key)}>{label}</button>
+            ))}
           </div>
-          <div className={`customer-detail-result ${balanceState}`}>
-            <div><span>{balanceLabel}</span><small>{t.currentBalance}</small></div>
-            <strong>{Math.abs(currentBalance).toLocaleString(undefined, { maximumFractionDigits: 2 })} <em>{currencyCode}</em></strong>
-          </div>
+
+          {activeTab === "ledger" && (
+            <>
+              <div className="customer-detail-section-head ledger"><ReceiptText size={18} /><div><h2>{t.transactions}</h2><p>{ledger.length} {t.transactions}</p></div></div>
+              <div className="customer-detail-ledger-wrap">
+                <table>
+                  <thead><tr><th>{t.date}</th><th>{t.reference}</th><th>{t.description}</th><th>{t.debit}</th><th>{t.credit}</th><th>{t.remaining}</th><th>{t.balance}</th><th>{t.actions}</th></tr></thead>
+                  <tbody>
+                    {ledger.length ? ledger.map((entry) => (
+                      <tr key={entry.id}>
+                        <td>{formatDateTime(entry.date)}</td>
+                        <td><span className="customer-ledger-reference">{entry.reference || "—"}</span></td>
+                        <td><span className={`customer-ledger-description ${entry.kind || ""}`}>{entry.description}</span></td>
+                        <td className="customer-ledger-debit">{entry.debit ? `${entry.debit.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${entry.currency}` : "—"}</td>
+                        <td className="customer-ledger-credit">{entry.credit ? <span className="customer-ledger-badge paid">{entry.credit.toLocaleString(undefined, { maximumFractionDigits: 2 })} {entry.currency}</span> : "—"}</td>
+                        <td className="customer-ledger-remaining">{entry.kind === "sale" ? <span className={`customer-ledger-badge remaining ${numeric(entry.remaining) <= 0 ? "settled" : ""}`}>{numeric(entry.remaining).toLocaleString(undefined, { maximumFractionDigits: 2 })} {entry.currency}</span> : "—"}</td>
+                        <td className={entry.balance > 0 ? "customer-ledger-balance receivable" : entry.balance < 0 ? "customer-ledger-balance owe" : "customer-ledger-balance"}>{Math.abs(entry.balance).toLocaleString(undefined, { maximumFractionDigits: 2 })} {entry.currency}</td>
+                        <td><div className="customer-ledger-actions">
+                          {entry.kind === "manual-payment" && <button type="button" className="edit" onClick={() => editLedgerEntry(entry)} aria-label={t.edit} title={t.edit}><Edit3 size={14} /></button>}
+                          {entry.kind === "manual-payment" && <button type="button" className="delete" onClick={() => deleteLedgerEntry(entry)} aria-label={t.delete} title={t.delete}><Trash2 size={14} /></button>}
+                        </div></td>
+                      </tr>
+                    )) : <tr><td colSpan="8" className="customer-ledger-empty">{t.noTransactions}</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+              <div className={`customer-detail-result ${balanceState}`}><div><span>{balanceLabel}</span><small>{t.currentBalance}</small></div><strong><CurrencyStack values={currentBalances} absolute /></strong></div>
+            </>
+          )}
+
+          {activeTab === "sales" && (
+            <div className="customer-tab-panel">
+              <div className="customer-detail-section-head ledger"><ShoppingCart size={18} /><div><h2>{t.tabSales}</h2><p>{saleRows.length}</p></div></div>
+              <div className="customer-detail-ledger-wrap"><table><thead><tr><th>{t.date}</th><th>{t.reference}</th><th>{t.items}</th><th>{t.saleTotal}</th><th>{t.paidAtSale}</th><th>{t.remainingDebt}</th></tr></thead><tbody>
+                {saleRows.length ? saleRows.map((sale) => <tr key={`sale-tab-${sale.id}`}><td>{formatDateTime(sale.saleDate || sale.createdAt)}</td><td><span className="customer-ledger-reference">{sale.invoiceNumber || sale.id || "—"}</span></td><td>{numeric(sale.itemCount || (sale.items || []).length)}</td><td className="customer-ledger-debit">{numeric(sale.totalAmount).toLocaleString(undefined,{maximumFractionDigits:2})} {normalizeCurrency(sale.currency || customer?.currency || currencyCode)}</td><td className="customer-ledger-credit">{numeric(sale.paidAmount).toLocaleString(undefined,{maximumFractionDigits:2})} {normalizeCurrency(sale.currency || customer?.currency || currencyCode)}</td><td className={numeric(sale.remainingAmount)>0?"customer-ledger-remaining owe":"customer-ledger-remaining"}>{numeric(sale.remainingAmount).toLocaleString(undefined,{maximumFractionDigits:2})} {normalizeCurrency(sale.currency || customer?.currency || currencyCode)}</td></tr>) : <tr><td colSpan="6" className="customer-ledger-empty">{t.noSales}</td></tr>}
+              </tbody></table></div>
+            </div>
+          )}
+
+          {activeTab === "payments" && (
+            <div className="customer-tab-panel">
+              <div className="customer-detail-section-head ledger"><Wallet size={18} /><div><h2>{t.tabPayments}</h2><p>{paymentRows.length}</p></div></div>
+              <div className="customer-detail-ledger-wrap"><table><thead><tr><th>{t.date}</th><th>{t.reference}</th><th>{t.paymentSource}</th><th>{t.description}</th><th>{t.amountPaid}</th><th>{t.actions}</th></tr></thead><tbody>
+                {paymentRows.length ? paymentRows.map((entry) => <tr key={`payment-tab-${entry.id}`}><td>{formatDateTime(entry.date)}</td><td><span className="customer-ledger-reference">{entry.reference || "—"}</span></td><td><span className={`customer-ledger-description ${entry.kind}`}>{entry.kind === "sale-payment" ? t.salePayment : t.manualPayment}</span></td><td>{entry.description}</td><td className="customer-ledger-credit">{numeric(entry.amount).toLocaleString(undefined,{maximumFractionDigits:2})} {entry.currency}</td><td><div className="customer-ledger-actions">{entry.kind === "manual-payment" && <button type="button" className="edit" onClick={() => editLedgerEntry({ ...entry, kind: "manual-payment" })} aria-label={t.edit}><Edit3 size={14}/></button>}{entry.kind === "manual-payment" && <button type="button" className="delete" onClick={() => deleteLedgerEntry({ ...entry, kind: "manual-payment" })} aria-label={t.delete}><Trash2 size={14}/></button>}</div></td></tr>) : <tr><td colSpan="6" className="customer-ledger-empty">{t.noPayments}</td></tr>}
+              </tbody></table></div>
+            </div>
+          )}
+
+          {activeTab === "profit" && (
+            <div className="customer-tab-panel customer-profit-panel">
+              <div className="customer-detail-section-head ledger"><BadgeDollarSign size={18} /><div><h2>{t.tabProfit}</h2><p>{t.profitInfo}</p></div></div>
+              <div className="customer-profit-grid">
+                <article><span>{t.totalSales}</span><strong><CurrencyStack values={profitMetricMap("grossSales")} /></strong></article>
+                <article><span>{t.returnTotal}</span><strong><CurrencyStack values={profitMetricMap("returnsTotal")} /></strong></article>
+                <article><span>{t.netSales}</span><strong><CurrencyStack values={profitMetricMap("netSales")} /></strong></article>
+                <article><span>{t.estimatedCost}</span><strong><CurrencyStack values={profitMetricMap("netCost")} /></strong></article>
+                <article className="wide"><span>{t.estimatedProfit}</span><strong><CurrencyStack values={profitMetricMap("profit")} /></strong></article>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "activity" && (
+            <div className="customer-tab-panel">
+              <div className="customer-detail-section-head ledger"><FileText size={18} /><div><h2>{t.tabActivity}</h2><p>{activityRows.length}</p></div></div>
+              <div className="customer-activity-list">
+                {activityRows.length ? activityRows.map((entry) => <div className="customer-activity-item" key={entry.id}><span className={`customer-activity-dot ${entry.kind}`}></span><div><strong>{entry.description}</strong><small>{formatDateTime(entry.date)} · {entry.reference || "—"}</small></div><b>{numeric(entry.amount).toLocaleString(undefined,{maximumFractionDigits:2})} {entry.currency}</b></div>) : <div className="customer-ledger-empty">{t.noActivity}</div>}
+              </div>
+            </div>
+          )}
         </section>
       </div>
 
