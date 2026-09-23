@@ -290,6 +290,45 @@
   font-size: 24px;
 }
 
+.ph-currency-stack {
+  display: grid;
+  gap: 2px;
+  width: max-content;
+  max-width: 100%;
+  font-size: 15px;
+  line-height: 1.05;
+  white-space: normal;
+}
+
+.ph-currency-stack > span {
+  display: grid;
+  grid-template-columns: minmax(0, auto) 31px;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.ph-currency-stack b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 17px;
+  font-weight: 850;
+  color: var(--text-color, #171d27);
+}
+
+.ph-currency-stack small {
+  color: var(--text-secondary, #64748b);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .02em;
+}
+
+.ph-stat-value:has(.ph-currency-stack) {
+  overflow: visible;
+  white-space: normal;
+  font-size: inherit;
+}
+
 .ph-stat-trend {
   display: inline-flex;
   align-items: center;
@@ -392,6 +431,60 @@
 
 .ph-trends-card {
   padding: 26px 24px 18px;
+}
+
+.ph-trends-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ph-currency-filter {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.ph-currency-filter > span {
+  color: var(--text-secondary, #64748b);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.ph-currency-filter > div {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--border-color, #dbe2ea);
+  border-radius: 8px;
+  background: var(--page-bg, #f8fafc);
+}
+
+.ph-currency-filter button {
+  min-width: 44px;
+  height: 29px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 9px;
+  background: transparent;
+  color: var(--text-secondary, #64748b);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.ph-currency-filter button:hover {
+  background: var(--card-bg, #ffffff);
+  color: var(--text-color, #111827);
+}
+
+.ph-currency-filter button.is-active {
+  background: var(--company-accent, #6366f1);
+  color: #ffffff;
+  box-shadow: 0 2px 7px color-mix(in srgb, var(--company-accent, #6366f1) 22%, transparent);
 }
 
 .ph-trends-card h2,
@@ -675,3 +768,5 @@ body.dark-mode .ph-activity-row:hover {
     grid-template-columns: 1fr;
   }
 }
+
+@media(max-width:720px){.ph-trends-head{align-items:stretch;flex-direction:column}.ph-currency-filter{justify-content:space-between}.ph-currency-filter>div{flex:1}.ph-currency-filter button{flex:1;min-width:0}.ph-currency-stack b{font-size:15px}}

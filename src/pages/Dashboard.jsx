@@ -45,6 +45,7 @@ const text = {
     totalExpenses: "Total Expenses",
     refunds: "Refunds",
     pendingPayments: "Pending Payments",
+    currency: "Currency",
     expiring: "Expiring soon",
     out: "Out of stock",
     quick: "Quick actions",
@@ -107,6 +108,7 @@ const text = {
     totalExpenses: "مجموع مصارف",
     refunds: "برگشتی‌ها",
     pendingPayments: "پرداخت‌های باقی‌مانده",
+    currency: "واحد",
     expiring: "نزدیک انقضا",
     out: "خلاص‌شده",
     quick: "عملیات سریع",
@@ -169,6 +171,7 @@ const text = {
     totalExpenses: "ټول مصارف",
     refunds: "واپسۍ",
     pendingPayments: "پاتې پیسې",
+    currency: "اسعار",
     expiring: "ژر ختمېدونکي",
     out: "خلاص شوي",
     quick: "چټک کارونه",
@@ -213,6 +216,36 @@ const text = {
 };
 
 const money = (value) => Number(value || 0).toLocaleString("en-US", { maximumFractionDigits: 2 });
+const currencyOrder = ["AFN", "USD", "INR", "EUR"];
+const normalizeCurrency = (value) => {
+  const code = String(value || "AFN").trim().toUpperCase();
+  if (code === "AFGHANI" || code === "AFS") return "AFN";
+  if (code === "DOLLAR" || code === "US DOLLAR") return "USD";
+  if (code === "PKR" || code === "KALDAR" || code === "KALDAAR") return "INR";
+  return currencyOrder.includes(code) ? code : "AFN";
+};
+const addCurrencyAmount = (target, currency, amount) => {
+  const code = normalizeCurrency(currency);
+  target[code] = Number(target[code] || 0) + Number(amount || 0);
+  return target;
+};
+const currencyRows = (values = {}) => {
+  const rows = currencyOrder
+    .map((code) => ({ code, value: Number(values?.[code] || 0) }))
+    .filter((row) => Math.abs(row.value) > 0.000001);
+  return rows.length ? rows : [{ code: "AFN", value: 0 }];
+};
+const recordCurrency = (record, fallback = "AFN") => normalizeCurrency(record?.currency || record?.unit || fallback);
+
+function CurrencyStack({ values }) {
+  return (
+    <span className="ph-currency-stack" dir="ltr">
+      {currencyRows(values).map(({ code, value }) => (
+        <span key={code}><b>{money(value)}</b><small>{code}</small></span>
+      ))}
+    </span>
+  );
+}
 const dateOnly = (value) => String(value || "").slice(0, 10);
 const today = () => new Date().toISOString().slice(0, 10);
 const currentMonthDays = () => {
@@ -278,6 +311,7 @@ export default function Dashboard({ currentUser }) {
   const [purchases] = useJsonCollection("purchases");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [chartPeriod, setChartPeriod] = useState("monthly");
+  const [chartCurrency, setChartCurrency] = useState("AFN");
   const [customFrom, setCustomFrom] = useState(() => shiftDay(today(), -29));
   const [customTo, setCustomTo] = useState(() => today());
   const t = text[language] || text.en;
@@ -322,27 +356,38 @@ export default function Dashboard({ currentUser }) {
       supplierCount: suppliers.length,
       customerCount: customers.length,
       stockUnits: stocks.reduce((sum, value) => sum + Number(value || 0), 0),
-      productValue: products.reduce((sum, product, index) => {
+      productValueByCurrency: products.reduce((totals, product, index) => {
         const stock = Number(stocks[index] || 0);
         const price = Number(product.purchasePrice || product.salePrice || 0);
-        return sum + stock * price;
-      }, 0),
+        addCurrencyAmount(totals, product.currency || product.unit || "AFN", stock * price);
+        return totals;
+      }, {}),
       outOfStock: stocks.filter((value) => Number(value || 0) <= 0).length,
       expiring,
       todaySales,
       yesterdaySales,
       todayPurchases,
       yesterdayPurchases,
-      totalPayable: purchases.reduce((sum, item) => sum + Number(item.remainingBalance || item.dueAmount || item.remaining || 0), 0),
+      totalPayableByCurrency: purchases.reduce((totals, item) => {
+        addCurrencyAmount(totals, recordCurrency(item), item.remainingAmount || item.remainingBalance || item.dueAmount || item.remaining || 0);
+        return totals;
+      }, {}),
       suppliersWithDebt: new Set(purchases
-        .filter((item) => Number(item.remainingBalance || item.dueAmount || item.remaining || 0) > 0)
+        .filter((item) => Number(item.remainingAmount || item.remainingBalance || item.dueAmount || item.remaining || 0) > 0)
         .map((item) => item.supplierId || item.supplierName || item.id)
         .filter(Boolean)).size,
+      totalReceivableByCurrency: sales.reduce((totals, item) => {
+        addCurrencyAmount(totals, recordCurrency(item), item.remainingAmount || item.remainingBalance || item.dueAmount || item.remaining || 0);
+        return totals;
+      }, {}),
       customersWithDebt: new Set(sales
-        .filter((item) => Number(item.remainingBalance || item.dueAmount || item.remaining || 0) > 0)
+        .filter((item) => Number(item.remainingAmount || item.remainingBalance || item.dueAmount || item.remaining || 0) > 0)
         .map((item) => item.customerId || item.customerName || item.id)
         .filter(Boolean)).size,
-      totalPaid: [...sales, ...purchases].reduce((sum, item) => sum + Number(item.paidAmount || item.cashAmount || 0), 0),
+      totalPaidByCurrency: [...sales, ...purchases].reduce((totals, item) => {
+        addCurrencyAmount(totals, recordCurrency(item), item.paidAmount || item.cashAmount || 0);
+        return totals;
+      }, {}),
       productsToday: countCreated(products, todayValue),
       suppliersToday: countCreated(suppliers, todayValue),
       customersToday: countCreated(customers, todayValue),
@@ -356,7 +401,7 @@ export default function Dashboard({ currentUser }) {
       cards: [
         { icon: PackageCheck, label: t.totalProducts, value: stats.productCount, path: "/products", accent: "navy", trend: statTrend(stats.productsToday, t.addedToday) },
         { icon: Boxes, label: t.totalMedicineQty, value: money(stats.stockUnits), path: "/inventory", accent: "sky", trend: statTrend(stats.stockNetToday, t.netToday, stats.stockNetToday >= 0) },
-        { icon: BadgeDollarSign, label: t.totalProductValue, value: `${money(stats.productValue)} ؋`, path: "/inventory", accent: "green", trend: statTrend(stats.stockUnits, t.healthy) },
+        { icon: BadgeDollarSign, label: t.totalProductValue, value: <CurrencyStack values={stats.productValueByCurrency} />, path: "/inventory", accent: "green", trend: statTrend(stats.stockUnits, t.healthy) },
         { icon: CalendarClock, label: t.expiringProducts, value: stats.expiring, path: "/inventory", accent: "amber", trend: statTrend(stats.expiring, t.days60, false) },
       ],
     },
@@ -364,14 +409,14 @@ export default function Dashboard({ currentUser }) {
       title: t.supplierOverview,
       cards: [
         { icon: Truck, label: t.totalSuppliers, value: stats.supplierCount, path: "/suppliers", accent: "violet", trend: statTrend(stats.suppliersToday, t.addedToday) },
-        { icon: ShoppingCart, label: t.suppliersWeOwe, value: stats.suppliersWithDebt, path: "/purchasing", accent: "red", trend: statTrend(stats.suppliersWithDebt, t.needsAttention, false) },
+        { icon: ShoppingCart, label: t.suppliersWeOwe, value: <CurrencyStack values={stats.totalPayableByCurrency} />, path: "/purchasing", accent: "red", trend: statTrend(stats.suppliersWithDebt, t.needsAttention, false) },
       ],
     },
     {
       title: t.customerOverview,
       cards: [
         { icon: UserPlus, label: t.totalCustomers, value: stats.customerCount, path: "/customer-registry", accent: "sky", trend: statTrend(stats.customersToday, t.addedToday) },
-        { icon: Wallet, label: t.customersOweUs, value: stats.customersWithDebt, path: "/sales-register", accent: "green", trend: statTrend(stats.customersWithDebt, t.needsAttention, false) },
+        { icon: Wallet, label: t.customersOweUs, value: <CurrencyStack values={stats.totalReceivableByCurrency} />, path: "/sales-register", accent: "green", trend: statTrend(stats.customersWithDebt, t.needsAttention, false) },
       ],
     },
   ];
@@ -399,13 +444,13 @@ export default function Dashboard({ currentUser }) {
 
     return buckets.map((bucket) => {
       const salesTotal = sales
-        .filter((row) => bucket.dates.includes(dateOnly(row.saleDate || row.createdAt)))
+        .filter((row) => recordCurrency(row) === chartCurrency && bucket.dates.includes(dateOnly(row.saleDate || row.createdAt)))
         .reduce((sum, row) => sum + Number(row.totalAmount || row.grandTotal || row.total || 0), 0);
       const purchaseTotal = purchases
-        .filter((row) => bucket.dates.includes(dateOnly(row.purchaseDate || row.createdAt)))
+        .filter((row) => recordCurrency(row) === chartCurrency && bucket.dates.includes(dateOnly(row.purchaseDate || row.createdAt)))
         .reduce((sum, row) => sum + Number(row.totalAmount || row.grandTotal || row.total || 0), 0);
       const paidTotal = [...sales, ...purchases]
-        .filter((row) => bucket.dates.includes(dateOnly(row.saleDate || row.purchaseDate || row.createdAt)))
+        .filter((row) => recordCurrency(row) === chartCurrency && bucket.dates.includes(dateOnly(row.saleDate || row.purchaseDate || row.createdAt)))
         .reduce((sum, row) => sum + Number(row.paidAmount || row.cashAmount || 0), 0);
       return {
         name: bucket.name,
@@ -416,7 +461,7 @@ export default function Dashboard({ currentUser }) {
         sales: salesTotal,
       };
     });
-  }, [sales, purchases, chartPeriod, customFrom, customTo]);
+  }, [sales, purchases, chartPeriod, customFrom, customTo, chartCurrency]);
 
   const recentActivity = useMemo(() => [
     ...stockMovements.map((record) => ({
@@ -431,7 +476,7 @@ export default function Dashboard({ currentUser }) {
       id: `sale-${record.id}`,
       icon: ShoppingBag,
       title: t.saleCreated,
-      description: `${record.invoiceNumber || record.billNumber || "—"} - ؋ ${money(record.totalAmount || record.grandTotal || record.total)}`,
+      description: `${record.invoiceNumber || record.billNumber || "—"} - ${money(record.totalAmount || record.grandTotal || record.total)} ${recordCurrency(record)}`,
       date: record.createdAt || record.saleDate,
       tone: "sky",
       path: record.id ? `/sale-detail/${record.id}` : "",
@@ -440,7 +485,7 @@ export default function Dashboard({ currentUser }) {
       id: `purchase-${record.id}`,
       icon: Truck,
       title: t.purchaseCreated,
-      description: `${record.billNumber || record.invoiceNumber || "—"} - ؋ ${money(record.totalAmount || record.grandTotal || record.total)}`,
+      description: `${record.billNumber || record.invoiceNumber || "—"} - ${money(record.totalAmount || record.grandTotal || record.total)} ${recordCurrency(record)}`,
       date: record.createdAt || record.purchaseDate,
       tone: "amber",
     })),
@@ -513,14 +558,32 @@ export default function Dashboard({ currentUser }) {
       </section>
 
       <section className="ph-trends-card">
-        <h2>{t.trends}</h2>
+        <div className="ph-trends-head">
+          <h2>{t.trends}</h2>
+          <div className="ph-currency-filter" role="group" aria-label={t.currency}>
+            <span>{t.currency}</span>
+            <div>
+              {currencyOrder.map((code) => (
+                <button
+                  type="button"
+                  key={code}
+                  className={chartCurrency === code ? "is-active" : ""}
+                  aria-pressed={chartCurrency === code}
+                  onClick={() => setChartCurrency(code)}
+                >
+                  {code}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
         <div className="ph-chart-wrap">
           <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={220}>
             <LineChart data={chartData} margin={{ top: 10, right: 22, left: 8, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e7edf5" />
               <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#506480" }} interval={1} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: "#506480" }} axisLine={false} tickLine={false} width={42} />
-              <Tooltip formatter={(value) => money(value)} contentStyle={{ borderRadius: 10, border: "1px solid #dfe5ec" }} />
+              <Tooltip formatter={(value, name) => [`${money(value)} ${chartCurrency}`, name]} contentStyle={{ borderRadius: 10, border: "1px solid #dfe5ec" }} />
               <Legend iconType="circle" wrapperStyle={{ fontSize: 12, paddingTop: 12 }} />
               <Line type="monotone" dataKey="revenue" name={t.totalRevenue} stroke="#18284f" strokeWidth={2.2} dot={false} />
               <Line type="monotone" dataKey="expenses" name={t.totalExpenses} stroke="#ff3b3b" strokeWidth={2} dot={false} />

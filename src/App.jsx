@@ -31,6 +31,8 @@ import {
   Landmark,
   Banknote,
   Boxes,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import appLogo from "./assets/logo.png";
 import Header from "./components/Header";
@@ -635,8 +637,7 @@ function App() {
             aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            <span aria-hidden="true" />
-            <span aria-hidden="true" />
+            {sidebarCollapsed ? <PanelLeftOpen size={19} strokeWidth={2} /> : <PanelLeftClose size={19} strokeWidth={2} />}
           </button>
 
           <Header.Actions currentUser={currentUser} onLogout={logout} compact />
