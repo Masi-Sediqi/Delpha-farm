@@ -69,13 +69,16 @@ const text = {
     overview: "Dashboard Overview",
     welcomeUser: (name) => `Welcome back, ${name}`,
     periodFilter: "Chart period",
-    daily: "Daily",
-    weekly: "Weekly",
-    monthly: "Monthly",
+    today: "Today",
+    yesterday: "Yesterday",
+    lastWeek: "Last week",
+    lastMonth: "Last month",
     custom: "Custom",
     from: "From",
     to: "To",
     productOverview: "Products overview",
+    financialOverview: "Financial overview",
+    inventoryOverview: "Inventory overview",
     supplierOverview: "Suppliers overview",
     customerOverview: "Customers overview",
     totalProducts: "Total products",
@@ -84,8 +87,22 @@ const text = {
     expiringProducts: "Products near expiry",
     totalSuppliers: "Total suppliers",
     suppliersWeOwe: "Suppliers we owe",
+    suppliersOweUs: "Suppliers who owe us",
     totalCustomers: "Total customers",
     customersOweUs: "Customers who owe us",
+    customersWeOwe: "Customers we owe",
+    receivablesTrend: "Receivables",
+    payablesTrend: "Payables",
+    returnsTrend: "Returns",
+    netRevenue: "Net revenue",
+    totalLoss: "Estimated loss",
+    totalPurchasesValue: "Total purchases",
+    totalSalesValue: "Total sales",
+    estimatedProfit: "Estimated profit",
+    operatingExpenses: "Operating expenses",
+    productsInStock: "Products in stock",
+    lowStockProducts: "Low-stock products",
+    expiredProducts: "Expired products",
   },
   fa: {
     title: "داشبورد",
@@ -132,13 +149,16 @@ const text = {
     overview: "نمای کلی داشبورد",
     welcomeUser: (name) => `خوش آمدید ${name}`,
     periodFilter: "بازه نمودار",
-    daily: "روزانه",
-    weekly: "هفته‌وار",
-    monthly: "ماهانه",
+    today: "امروز",
+    yesterday: "دیروز",
+    lastWeek: "هفته قبل",
+    lastMonth: "ماه قبل",
     custom: "سفارشی",
     from: "از تاریخ",
     to: "تا تاریخ",
     productOverview: "خلاصه محصولات",
+    financialOverview: "مرور مالی",
+    inventoryOverview: "مرور موجودی",
     supplierOverview: "خلاصه تأمین‌کننده‌گان",
     customerOverview: "خلاصه مشتریان",
     totalProducts: "تعداد تمام محصولات",
@@ -147,8 +167,22 @@ const text = {
     expiringProducts: "محصولات نزدیک به انقضا",
     totalSuppliers: "تعداد تمام تأمین‌کننده‌گان",
     suppliersWeOwe: "تأمین‌کننده‌گانی که ما قرضدار آنها هستیم",
+    suppliersOweUs: "تأمین‌کننده‌گانی که آنها قرضدار ما هستند",
     totalCustomers: "تعداد تمام مشتریان",
     customersOweUs: "مشتریانی که قرضدار ما هستند",
+    customersWeOwe: "مشتریانی که ما قرضدار آنها هستیم",
+    receivablesTrend: "طلبات",
+    payablesTrend: "تادیات",
+    returnsTrend: "برگشتی‌ها",
+    netRevenue: "مجموع عاید خالص",
+    totalLoss: "تاوان تخمینی",
+    totalPurchasesValue: "مجموع خریداری‌ها",
+    totalSalesValue: "مجموع فروشات",
+    estimatedProfit: "سود تخمینی",
+    operatingExpenses: "مجموع مصارف",
+    productsInStock: "محصولات موجود در گدام",
+    lowStockProducts: "محصولات با موجودی کم",
+    expiredProducts: "محصولات تاریخ‌گذشته",
   },
   ps: {
     title: "ډشبورد",
@@ -195,13 +229,16 @@ const text = {
     overview: "د ډشبورد عمومي کتنه",
     welcomeUser: (name) => `${name}، ښه راغلاست`,
     periodFilter: "د چارت موده",
-    daily: "ورځنی",
-    weekly: "اوونیز",
-    monthly: "میاشتنی",
+    today: "نن",
+    yesterday: "پرون",
+    lastWeek: "تېره اوونۍ",
+    lastMonth: "تېره میاشت",
     custom: "دودیز",
     from: "له نېټې",
     to: "تر نېټې",
     productOverview: "د محصولاتو لنډیز",
+    financialOverview: "مالي کتنه",
+    inventoryOverview: "د موجودۍ کتنه",
     supplierOverview: "د عرضه کوونکو لنډیز",
     customerOverview: "د پېرودونکو لنډیز",
     totalProducts: "د ټولو محصولاتو شمېر",
@@ -210,8 +247,22 @@ const text = {
     expiringProducts: "ژر ختمېدونکي محصولات",
     totalSuppliers: "د ټولو عرضه کوونکو شمېر",
     suppliersWeOwe: "هغه عرضه کوونکي چې موږ پوروړي یو",
+    suppliersOweUs: "هغه عرضه کوونکي چې موږ ته پوروړي دي",
     totalCustomers: "د ټولو پېرودونکو شمېر",
     customersOweUs: "هغه پېرودونکي چې موږ ته پوروړي دي",
+    customersWeOwe: "هغه پېرودونکي چې موږ یې پوروړي یو",
+    receivablesTrend: "طلبات",
+    payablesTrend: "تادیات",
+    returnsTrend: "واپسۍ",
+    netRevenue: "ټول خالص عاید",
+    totalLoss: "اټکلی تاوان",
+    totalPurchasesValue: "ټول پېرودونه",
+    totalSalesValue: "ټول خرڅلاو",
+    estimatedProfit: "اټکلی ګټه",
+    operatingExpenses: "ټول مصارف",
+    productsInStock: "په ګدام کې موجود محصولات",
+    lowStockProducts: "کم موجود محصولات",
+    expiredProducts: "تاریخ تېر محصولات",
   },
 };
 
@@ -247,19 +298,8 @@ function CurrencyStack({ values }) {
   );
 }
 const dateOnly = (value) => String(value || "").slice(0, 10);
-const today = () => new Date().toISOString().slice(0, 10);
-const currentMonthDays = () => {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
-  const days = new Date(year, month + 1, 0).getDate();
-  return Array.from({ length: days }, (_, index) => {
-    const day = index + 1;
-    const date = new Date(year, month, day).toISOString().slice(0, 10);
-    return { date, label: now.toLocaleString("en-US", { month: "short" }).replace(".", "") + ` ${day}` };
-  });
-};
 const localIsoDate = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+const today = () => localIsoDate(new Date());
 const chartDateLabel = (date) => date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 const datesBetween = (startValue, endValue) => {
   const start = new Date(`${dateOnly(startValue)}T00:00:00`);
@@ -274,7 +314,7 @@ const datesBetween = (startValue, endValue) => {
 const shiftDay = (dateValue, amount) => {
   const date = new Date(`${dateValue}T00:00:00`);
   date.setDate(date.getDate() + amount);
-  return date.toISOString().slice(0, 10);
+  return localIsoDate(date);
 };
 const daysUntil = (date) => {
   if (!date) return Infinity;
@@ -282,9 +322,15 @@ const daysUntil = (date) => {
   const b = new Date(`${dateOnly(date)}T00:00:00`);
   return Math.ceil((b - a) / 86400000);
 };
-const recordDate = (record) => dateOnly(
-  record?.createdAt || record?.registrationDate || record?.date || record?.updatedAt
+const transactionDate = (record) => dateOnly(
+  record?.saleDate || record?.purchaseDate || record?.returnDate || record?.movementDate || record?.paymentDate || record?.expenseDate || record?.date || record?.createdAt
 );
+const recordDate = (record) => {
+  const sourceDate = record?.registrationDate || record?.date;
+  if (sourceDate) return dateOnly(sourceDate);
+  if (record?.importSource === "access") return "";
+  return dateOnly(record?.createdAt || record?.updatedAt);
+};
 const relativeAge = (value) => {
   const date = new Date(value || Date.now());
   const diff = Math.max(0, Date.now() - date.getTime());
@@ -309,13 +355,29 @@ export default function Dashboard({ currentUser }) {
   const [customers] = useJsonCollection("customerRegistry");
   const [sales] = useJsonCollection("salesRegister");
   const [purchases] = useJsonCollection("purchases");
+  const [saleReturns] = useJsonCollection("saleReturns");
+  const [saleReturnItems] = useJsonCollection("saleReturnItems");
+  const [purchaseReturns] = useJsonCollection("purchaseReturns");
+  const [customerPayments] = useJsonCollection("customerPayments");
+  const [supplierPayments] = useJsonCollection("supplierPayments");
+  const [partyCashTransactions] = useJsonCollection("partyCashTransactions");
+  const [expenses] = useJsonCollection("expenses");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
-  const [chartPeriod, setChartPeriod] = useState("monthly");
+  const [chartPeriod, setChartPeriod] = useState("today");
   const [chartCurrency, setChartCurrency] = useState("AFN");
   const [customFrom, setCustomFrom] = useState(() => shiftDay(today(), -29));
   const [customTo, setCustomTo] = useState(() => today());
   const t = text[language] || text.en;
   const userName = currentUser?.fullName || currentUser?.username || currentUser?.email || "User";
+
+  const selectedDates = useMemo(() => {
+    const endDate = today();
+    if (chartPeriod === "today") return [endDate];
+    if (chartPeriod === "yesterday") return [shiftDay(endDate, -1)];
+    if (chartPeriod === "lastWeek") return datesBetween(shiftDay(endDate, -7), shiftDay(endDate, -1));
+    if (chartPeriod === "lastMonth") return datesBetween(shiftDay(endDate, -30), shiftDay(endDate, -1));
+    return datesBetween(customFrom, customTo);
+  }, [chartPeriod, customFrom, customTo]);
 
   useEffect(() => {
     const sync = () => setLanguage(localStorage.getItem(languageKey) || "en");
@@ -331,11 +393,145 @@ export default function Dashboard({ currentUser }) {
     const todayValue = today();
     const yesterdayValue = shiftDay(todayValue, -1);
     const stocks = products.map((product) => getProductStock(stockMovements, product.id, 0));
+    const selectedDateSet = new Set(selectedDates);
+    const inSelectedPeriod = (record) => selectedDateSet.has(transactionDate(record));
+    const periodSales = sales.filter(inSelectedPeriod);
+    const periodPurchases = purchases.filter(inSelectedPeriod);
+    const periodExpenses = expenses.filter(inSelectedPeriod);
+    const periodSaleReturns = saleReturns.filter(inSelectedPeriod);
     const expiring = products.reduce((count, product) => {
       const hasSoon = getProductBatchBalances(stockMovements, product.id)
         .some((batch) => Number(batch.available || 0) > 0 && daysUntil(batch.expiryDate) >= 0 && daysUntil(batch.expiryDate) <= 60);
       return count + (hasSoon ? 1 : 0);
     }, 0);
+    const expired = products.reduce((count, product) => {
+      const hasExpired = getProductBatchBalances(stockMovements, product.id)
+        .some((batch) => Number(batch.available || 0) > 0 && daysUntil(batch.expiryDate) < 0);
+      return count + (hasExpired ? 1 : 0);
+    }, 0);
+
+    const salesByCurrency = periodSales.reduce((totals, item) => {
+      addCurrencyAmount(totals, recordCurrency(item), item.totalAmount || item.grandTotal || item.total || 0);
+      return totals;
+    }, {});
+    const purchasesByCurrency = periodPurchases.reduce((totals, item) => {
+      addCurrencyAmount(totals, recordCurrency(item), item.totalAmount || item.grandTotal || item.total || 0);
+      return totals;
+    }, {});
+    const expensesByCurrency = periodExpenses.reduce((totals, item) => {
+      addCurrencyAmount(totals, recordCurrency(item), item.amount || item.totalAmount || 0);
+      return totals;
+    }, {});
+    const saleReturnsByCurrency = periodSaleReturns.reduce((totals, item) => {
+      const linkedSale = sales.find((sale) => String(sale.id) === String(item.saleId));
+      addCurrencyAmount(totals, item.currency || linkedSale?.currency || "AFN", item.totalAmount || 0);
+      return totals;
+    }, {});
+    const costOfGoodsByCurrency = periodSales.reduce((totals, sale) => {
+      const cost = (sale.items || []).reduce((sum, item) => {
+        const unitsPerUnit = Math.max(Number(item.unitsPerUnit || 1), 1);
+        const packageQuantity = item.packageQuantity ?? item.purchaseQuantity ?? (Number(item.quantity || 0) / unitsPerUnit);
+        return sum + Number(item.purchasePrice || item.costPrice || 0) * Number(packageQuantity || 0);
+      }, 0);
+      addCurrencyAmount(totals, recordCurrency(sale), cost);
+      return totals;
+    }, {});
+    const returnedCostByCurrency = saleReturnItems.reduce((totals, returnedItem) => {
+      const linkedSale = sales.find((sale) => String(sale.id) === String(returnedItem.saleId));
+      const soldItem = linkedSale?.items?.find((item) => String(item.productId) === String(returnedItem.productId));
+      const unitsPerUnit = Math.max(Number(soldItem?.unitsPerUnit || 1), 1);
+      const costPerPiece = Number(soldItem?.purchasePrice || soldItem?.costPrice || 0) / unitsPerUnit;
+      addCurrencyAmount(totals, recordCurrency(linkedSale), costPerPiece * Number(returnedItem.quantity || 0));
+      return totals;
+    }, {});
+    const financialCodes = new Set([
+      ...Object.keys(salesByCurrency),
+      ...Object.keys(purchasesByCurrency),
+      ...Object.keys(expensesByCurrency),
+      ...Object.keys(saleReturnsByCurrency),
+      ...Object.keys(costOfGoodsByCurrency),
+      ...Object.keys(returnedCostByCurrency),
+    ]);
+    const netRevenueByCurrency = {};
+    const estimatedProfitByCurrency = {};
+    const estimatedLossByCurrency = {};
+    financialCodes.forEach((code) => {
+      const netRevenue = Number(salesByCurrency[code] || 0) - Number(saleReturnsByCurrency[code] || 0);
+      const netCost = Number(costOfGoodsByCurrency[code] || 0) - Number(returnedCostByCurrency[code] || 0);
+      const result = netRevenue - netCost - Number(expensesByCurrency[code] || 0);
+      netRevenueByCurrency[code] = netRevenue;
+      estimatedProfitByCurrency[code] = Math.max(result, 0);
+      estimatedLossByCurrency[code] = Math.max(-result, 0);
+    });
+
+    const supplierBalances = new Map();
+    const adjustSupplierBalance = (supplierId, currency, amount) => {
+      if (!supplierId) return;
+      const code = normalizeCurrency(currency);
+      const key = `${supplierId}::${code}`;
+      supplierBalances.set(key, Number(supplierBalances.get(key) || 0) + Number(amount || 0));
+    };
+    suppliers.forEach((supplier) => adjustSupplierBalance(supplier.id, supplier.currency || "AFN", supplier.openingBalance));
+    purchases.forEach((purchase) => adjustSupplierBalance(
+      purchase.supplierId,
+      purchase.currency || "AFN",
+      Number(purchase.totalAmount || 0) - Number(purchase.paidAmount || purchase.paid || 0)
+    ));
+    supplierPayments.forEach((payment) => adjustSupplierBalance(payment.supplierId, payment.currency || "AFN", -Number(payment.amount || 0)));
+    purchaseReturns.forEach((item) => {
+      const linkedPurchase = purchases.find((purchase) => String(purchase.id) === String(item.purchaseId));
+      adjustSupplierBalance(item.supplierId || linkedPurchase?.supplierId, item.currency || linkedPurchase?.currency || "AFN", -Number(item.totalAmount || 0));
+    });
+    const totalPayableByCurrency = {};
+    const supplierReceivableByCurrency = {};
+    const suppliersWithDebt = new Set();
+    const suppliersOwingUs = new Set();
+    supplierBalances.forEach((balance, key) => {
+      const [supplierId, code] = key.split("::");
+      if (balance > 0.000001) {
+        addCurrencyAmount(totalPayableByCurrency, code, balance);
+        suppliersWithDebt.add(supplierId);
+      } else if (balance < -0.000001) {
+        addCurrencyAmount(supplierReceivableByCurrency, code, Math.abs(balance));
+        suppliersOwingUs.add(supplierId);
+      }
+    });
+
+    const customerBalances = new Map();
+    const adjustCustomerBalance = (customerId, currency, amount) => {
+      if (!customerId) return;
+      const code = normalizeCurrency(currency);
+      const key = `${customerId}::${code}`;
+      customerBalances.set(key, Number(customerBalances.get(key) || 0) + Number(amount || 0));
+    };
+    customers.forEach((customer) => adjustCustomerBalance(customer.id, customer.currency || "AFN", customer.openingBalance));
+    sales.forEach((sale) => adjustCustomerBalance(
+      sale.customerId,
+      sale.currency || "AFN",
+      Number(sale.totalAmount || 0) - Number(sale.paidAmount || 0)
+    ));
+    customerPayments.forEach((payment) => adjustCustomerBalance(payment.customerId, payment.currency || "AFN", -Number(payment.amount || 0)));
+    saleReturns.forEach((item) => {
+      const linkedSale = sales.find((sale) => String(sale.id) === String(item.saleId));
+      adjustCustomerBalance(item.customerId || linkedSale?.customerId, item.currency || linkedSale?.currency || "AFN", -Number(item.totalAmount || 0));
+    });
+    partyCashTransactions.filter((item) => item.partyType === "customer").forEach((item) => {
+      adjustCustomerBalance(item.partyId, item.currency || "AFN", item.direction === "out" ? Number(item.amount || 0) : -Number(item.amount || 0));
+    });
+    const totalReceivableByCurrency = {};
+    const customerPayableByCurrency = {};
+    const customersWithDebt = new Set();
+    const customersWeOwe = new Set();
+    customerBalances.forEach((balance, key) => {
+      const [customerId, code] = key.split("::");
+      if (balance > 0.000001) {
+        addCurrencyAmount(totalReceivableByCurrency, code, balance);
+        customersWithDebt.add(customerId);
+      } else if (balance < -0.000001) {
+        addCurrencyAmount(customerPayableByCurrency, code, Math.abs(balance));
+        customersWeOwe.add(customerId);
+      }
+    });
 
     const totalForDate = (rows, date, fields) => rows
       .filter((row) => dateOnly(row.saleDate || row.purchaseDate || row.createdAt) === date)
@@ -348,11 +544,17 @@ export default function Dashboard({ currentUser }) {
 
     const countCreated = (rows, date) => rows.filter((row) => recordDate(row) === date).length;
     const netMovement = (date) => stockMovements
-      .filter((move) => dateOnly(move.date || move.createdAt) === date)
+      .filter((move) => transactionDate(move) === date)
       .reduce((sum, move) => sum + Number(move.quantityIn || 0) - Number(move.quantityOut || 0), 0);
 
     return {
       productCount: products.length,
+      productsInStock: stocks.filter((value) => Number(value || 0) > 0).length,
+      lowStock: products.filter((product, index) => {
+        const stock = Number(stocks[index] || 0);
+        const threshold = Number(product.lowStockThreshold || 0);
+        return threshold > 0 && stock > 0 && stock <= threshold;
+      }).length,
       supplierCount: suppliers.length,
       customerCount: customers.length,
       stockUnits: stocks.reduce((sum, value) => sum + Number(value || 0), 0),
@@ -364,26 +566,25 @@ export default function Dashboard({ currentUser }) {
       }, {}),
       outOfStock: stocks.filter((value) => Number(value || 0) <= 0).length,
       expiring,
+      expired,
+      salesByCurrency,
+      purchasesByCurrency,
+      expensesByCurrency,
+      netRevenueByCurrency,
+      estimatedProfitByCurrency,
+      estimatedLossByCurrency,
       todaySales,
       yesterdaySales,
       todayPurchases,
       yesterdayPurchases,
-      totalPayableByCurrency: purchases.reduce((totals, item) => {
-        addCurrencyAmount(totals, recordCurrency(item), item.remainingAmount || item.remainingBalance || item.dueAmount || item.remaining || 0);
-        return totals;
-      }, {}),
-      suppliersWithDebt: new Set(purchases
-        .filter((item) => Number(item.remainingAmount || item.remainingBalance || item.dueAmount || item.remaining || 0) > 0)
-        .map((item) => item.supplierId || item.supplierName || item.id)
-        .filter(Boolean)).size,
-      totalReceivableByCurrency: sales.reduce((totals, item) => {
-        addCurrencyAmount(totals, recordCurrency(item), item.remainingAmount || item.remainingBalance || item.dueAmount || item.remaining || 0);
-        return totals;
-      }, {}),
-      customersWithDebt: new Set(sales
-        .filter((item) => Number(item.remainingAmount || item.remainingBalance || item.dueAmount || item.remaining || 0) > 0)
-        .map((item) => item.customerId || item.customerName || item.id)
-        .filter(Boolean)).size,
+      totalPayableByCurrency,
+      supplierReceivableByCurrency,
+      suppliersWithDebt: suppliersWithDebt.size,
+      suppliersOwingUs: suppliersOwingUs.size,
+      totalReceivableByCurrency,
+      customerPayableByCurrency,
+      customersWithDebt: customersWithDebt.size,
+      customersWeOwe: customersWeOwe.size,
       totalPaidByCurrency: [...sales, ...purchases].reduce((totals, item) => {
         addCurrencyAmount(totals, recordCurrency(item), item.paidAmount || item.cashAmount || 0);
         return totals;
@@ -393,16 +594,28 @@ export default function Dashboard({ currentUser }) {
       customersToday: countCreated(customers, todayValue),
       stockNetToday: netMovement(todayValue),
     };
-  }, [products, stockMovements, suppliers, customers, sales, purchases]);
+  }, [products, stockMovements, suppliers, customers, sales, purchases, saleReturns, saleReturnItems, purchaseReturns, customerPayments, supplierPayments, partyCashTransactions, expenses, selectedDates]);
 
   const overviewSections = [
     {
-      title: t.productOverview,
+      title: t.financialOverview,
+      cards: [
+        { icon: ShoppingCart, label: t.totalPurchasesValue, value: <CurrencyStack values={stats.purchasesByCurrency} />, path: "/purchasing", accent: "amber", trend: statTrend(stats.todayPurchases, t.vsYesterday, stats.todayPurchases <= stats.yesterdayPurchases) },
+        { icon: ShoppingBag, label: t.totalSalesValue, value: <CurrencyStack values={stats.salesByCurrency} />, path: "/sales-register", accent: "sky", trend: statTrend(stats.todaySales, t.vsYesterday, stats.todaySales >= stats.yesterdaySales) },
+        { icon: TrendingUp, label: t.estimatedProfit, value: <CurrencyStack values={stats.estimatedProfitByCurrency} />, path: "/reports", accent: "violet", trend: statTrend(Object.values(stats.estimatedProfitByCurrency).filter((value) => value > 0).length, t.healthy) },
+      ],
+    },
+    {
+      title: t.inventoryOverview,
       cards: [
         { icon: PackageCheck, label: t.totalProducts, value: stats.productCount, path: "/products", accent: "navy", trend: statTrend(stats.productsToday, t.addedToday) },
+        { icon: Boxes, label: t.productsInStock, value: stats.productsInStock, path: "/inventory", accent: "green", trend: statTrend(stats.productsInStock, t.healthy) },
         { icon: Boxes, label: t.totalMedicineQty, value: money(stats.stockUnits), path: "/inventory", accent: "sky", trend: statTrend(stats.stockNetToday, t.netToday, stats.stockNetToday >= 0) },
         { icon: BadgeDollarSign, label: t.totalProductValue, value: <CurrencyStack values={stats.productValueByCurrency} />, path: "/inventory", accent: "green", trend: statTrend(stats.stockUnits, t.healthy) },
+        { icon: CalendarClock, label: t.lowStockProducts, value: stats.lowStock, path: "/inventory", accent: "amber", trend: statTrend(stats.lowStock, t.needsAttention, false) },
+        { icon: Boxes, label: t.out, value: stats.outOfStock, path: "/inventory", accent: "red", trend: statTrend(stats.outOfStock, t.needsAttention, false) },
         { icon: CalendarClock, label: t.expiringProducts, value: stats.expiring, path: "/inventory", accent: "amber", trend: statTrend(stats.expiring, t.days60, false) },
+        { icon: CalendarClock, label: t.expiredProducts, value: stats.expired, path: "/inventory", accent: "red", trend: statTrend(stats.expired, t.needsAttention, false) },
       ],
     },
     {
@@ -410,6 +623,7 @@ export default function Dashboard({ currentUser }) {
       cards: [
         { icon: Truck, label: t.totalSuppliers, value: stats.supplierCount, path: "/suppliers", accent: "violet", trend: statTrend(stats.suppliersToday, t.addedToday) },
         { icon: ShoppingCart, label: t.suppliersWeOwe, value: <CurrencyStack values={stats.totalPayableByCurrency} />, path: "/purchasing", accent: "red", trend: statTrend(stats.suppliersWithDebt, t.needsAttention, false) },
+        { icon: Wallet, label: t.suppliersOweUs, value: <CurrencyStack values={stats.supplierReceivableByCurrency} />, path: "/suppliers", accent: "green", trend: statTrend(stats.suppliersOwingUs, t.needsAttention) },
       ],
     },
     {
@@ -417,6 +631,7 @@ export default function Dashboard({ currentUser }) {
       cards: [
         { icon: UserPlus, label: t.totalCustomers, value: stats.customerCount, path: "/customer-registry", accent: "sky", trend: statTrend(stats.customersToday, t.addedToday) },
         { icon: Wallet, label: t.customersOweUs, value: <CurrencyStack values={stats.totalReceivableByCurrency} />, path: "/sales-register", accent: "green", trend: statTrend(stats.customersWithDebt, t.needsAttention, false) },
+        { icon: Wallet, label: t.customersWeOwe, value: <CurrencyStack values={stats.customerPayableByCurrency} />, path: "/customer-registry", accent: "red", trend: statTrend(stats.customersWeOwe, t.needsAttention, false) },
       ],
     },
   ];
@@ -425,20 +640,7 @@ export default function Dashboard({ currentUser }) {
     const endDate = today();
     let buckets;
 
-    if (chartPeriod === "daily") {
-      buckets = datesBetween(shiftDay(endDate, -6), endDate).map((date) => ({ name: chartDateLabel(new Date(`${date}T00:00:00`)), dates: [date] }));
-    } else if (chartPeriod === "weekly") {
-      const startDate = shiftDay(endDate, -55);
-      buckets = Array.from({ length: 8 }, (_, index) => {
-        const bucketStart = shiftDay(startDate, index * 7);
-        const bucketEnd = index === 7 ? endDate : shiftDay(bucketStart, 6);
-        return { name: chartDateLabel(new Date(`${bucketStart}T00:00:00`)), dates: datesBetween(bucketStart, bucketEnd) };
-      });
-    } else if (chartPeriod === "custom") {
-      buckets = datesBetween(customFrom, customTo).map((date) => ({ name: chartDateLabel(new Date(`${date}T00:00:00`)), dates: [date] }));
-    } else {
-      buckets = currentMonthDays().map((day) => ({ name: day.label, dates: [day.date] }));
-    }
+    buckets = selectedDates.map((date) => ({ name: chartDateLabel(new Date(`${date}T00:00:00`)), dates: [date] }));
 
     if (!buckets.length) buckets = [{ name: chartDateLabel(new Date(`${endDate}T00:00:00`)), dates: [endDate] }];
 
@@ -449,19 +651,29 @@ export default function Dashboard({ currentUser }) {
       const purchaseTotal = purchases
         .filter((row) => recordCurrency(row) === chartCurrency && bucket.dates.includes(dateOnly(row.purchaseDate || row.createdAt)))
         .reduce((sum, row) => sum + Number(row.totalAmount || row.grandTotal || row.total || 0), 0);
-      const paidTotal = [...sales, ...purchases]
-        .filter((row) => recordCurrency(row) === chartCurrency && bucket.dates.includes(dateOnly(row.saleDate || row.purchaseDate || row.createdAt)))
-        .reduce((sum, row) => sum + Number(row.paidAmount || row.cashAmount || 0), 0);
+      const receivablesTotal = sales
+        .filter((row) => recordCurrency(row) === chartCurrency && bucket.dates.includes(transactionDate(row)))
+        .reduce((sum, row) => sum + Number(row.remainingAmount ?? Math.max(0, Number(row.totalAmount || 0) - Number(row.paidAmount || 0))), 0);
+      const payablesTotal = purchases
+        .filter((row) => recordCurrency(row) === chartCurrency && bucket.dates.includes(transactionDate(row)))
+        .reduce((sum, row) => sum + Number(row.remainingAmount ?? Math.max(0, Number(row.totalAmount || 0) - Number(row.paidAmount || 0))), 0);
+      const returnsTotal = [...saleReturns, ...purchaseReturns]
+        .filter((row) => {
+          const linkedSale = sales.find((sale) => String(sale.id) === String(row.saleId));
+          const linkedPurchase = purchases.find((purchase) => String(purchase.id) === String(row.purchaseId));
+          return recordCurrency({ currency: row.currency || linkedSale?.currency || linkedPurchase?.currency }) === chartCurrency && bucket.dates.includes(transactionDate(row));
+        })
+        .reduce((sum, row) => sum + Number(row.totalAmount || row.amount || 0), 0);
       return {
         name: bucket.name,
-        revenue: salesTotal,
-        expenses: purchaseTotal,
-        refunds: 0,
-        pending: Math.max(0, purchaseTotal - paidTotal),
+        purchases: purchaseTotal,
         sales: salesTotal,
+        receivables: receivablesTotal,
+        payables: payablesTotal,
+        returns: returnsTotal,
       };
     });
-  }, [sales, purchases, chartPeriod, customFrom, customTo, chartCurrency]);
+  }, [sales, purchases, saleReturns, purchaseReturns, selectedDates, chartCurrency]);
 
   const recentActivity = useMemo(() => [
     ...stockMovements.map((record) => ({
@@ -469,7 +681,7 @@ export default function Dashboard({ currentUser }) {
       icon: Boxes,
       title: t.stockUpdated,
       description: `${t.stockUpdatedHint}${record.productName ? `: ${record.productName}` : ""}`,
-      date: record.createdAt || record.date,
+      date: record.movementDate || record.date || (record.importSource === "access" ? "" : record.createdAt),
       tone: "muted",
     })),
     ...sales.map((record) => ({
@@ -477,7 +689,7 @@ export default function Dashboard({ currentUser }) {
       icon: ShoppingBag,
       title: t.saleCreated,
       description: `${record.invoiceNumber || record.billNumber || "—"} - ${money(record.totalAmount || record.grandTotal || record.total)} ${recordCurrency(record)}`,
-      date: record.createdAt || record.saleDate,
+      date: record.saleDate || record.createdAt,
       tone: "sky",
       path: record.id ? `/sale-detail/${record.id}` : "",
     })),
@@ -486,7 +698,7 @@ export default function Dashboard({ currentUser }) {
       icon: Truck,
       title: t.purchaseCreated,
       description: `${record.billNumber || record.invoiceNumber || "—"} - ${money(record.totalAmount || record.grandTotal || record.total)} ${recordCurrency(record)}`,
-      date: record.createdAt || record.purchaseDate,
+      date: record.purchaseDate || record.createdAt,
       tone: "amber",
     })),
   ].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)).slice(0, 6), [stockMovements, sales, purchases, t]);
@@ -499,21 +711,11 @@ export default function Dashboard({ currentUser }) {
             <h2>{t.overview}</h2>
             <p>{t.welcomeUser(userName)}</p>
           </div>
-          <div className="ph-dashboard-period-filter">
+          <div className={`ph-dashboard-period-filter ${chartPeriod === "custom" ? "is-custom" : ""}`}>
             <div className="ph-period-filter-label"><CalendarDays size={15} aria-hidden="true" /><span>{t.periodFilter}</span></div>
-            <div className="ph-period-filter-options" role="group" aria-label={t.periodFilter}>
-              {["daily", "weekly", "monthly", "custom"].map((period) => (
-                <button
-                  type="button"
-                  className={chartPeriod === period ? "is-active" : ""}
-                  key={period}
-                  aria-pressed={chartPeriod === period}
-                  onClick={() => setChartPeriod(period)}
-                >
-                  {t[period]}
-                </button>
-              ))}
-            </div>
+            <select className="ph-period-filter-select" value={chartPeriod} onChange={(event) => setChartPeriod(event.target.value)} aria-label={t.periodFilter}>
+              {["today", "yesterday", "lastWeek", "lastMonth", "custom"].map((period) => <option value={period} key={period}>{t[period]}</option>)}
+            </select>
             {chartPeriod === "custom" && (
               <div className="ph-custom-period-fields">
                 <label><span>{t.from}</span><input type="date" value={customFrom} max={customTo} onChange={(event) => setCustomFrom(event.target.value)} /></label>
@@ -585,11 +787,11 @@ export default function Dashboard({ currentUser }) {
               <YAxis tick={{ fontSize: 11, fill: "#506480" }} axisLine={false} tickLine={false} width={42} />
               <Tooltip formatter={(value, name) => [`${money(value)} ${chartCurrency}`, name]} contentStyle={{ borderRadius: 10, border: "1px solid #dfe5ec" }} />
               <Legend iconType="circle" wrapperStyle={{ fontSize: 12, paddingTop: 12 }} />
-              <Line type="monotone" dataKey="revenue" name={t.totalRevenue} stroke="#18284f" strokeWidth={2.2} dot={false} />
-              <Line type="monotone" dataKey="expenses" name={t.totalExpenses} stroke="#ff3b3b" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="refunds" name={t.refunds} stroke="#f59e0b" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="pending" name={t.pendingPayments} stroke="#8b5cf6" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="sales" name={t.sales} stroke="#10b981" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="purchases" name={t.totalPurchasesValue} stroke="#f59e0b" strokeWidth={2.2} dot={false} />
+              <Line type="monotone" dataKey="sales" name={t.totalSalesValue} stroke="#10b981" strokeWidth={2.2} dot={false} />
+              <Line type="monotone" dataKey="receivables" name={t.receivablesTrend} stroke="#0ea5e9" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="payables" name={t.payablesTrend} stroke="#ef4444" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="returns" name={t.returnsTrend} stroke="#8b5cf6" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>

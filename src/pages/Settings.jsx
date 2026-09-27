@@ -8,7 +8,9 @@ import {
   Edit3,
   LockKeyhole,
   Image,
-  Palette,
+  Copy,
+  MessageCircle,
+  Network,
   Printer,
   Save,
   Trash2,
@@ -25,11 +27,12 @@ import { writeBrowserCollection } from "../utils/browserStorage";
 import { IS_DEMO, APP_MODE } from "../config/appConfig";
 import { notify } from "../utils/notify";
 import { confirmAction } from "../utils/confirmDialog";
+import { apiUrl } from "../utils/api";
+import { PERMISSION_ACTIONS, PERMISSION_MODULES, canViewModule, createEmptyPermissions, createFullPermissions, hasPermission } from "../utils/permissions";
 import "./Settings.css";
 
 const defaultSystemName = "APG";
 const defaultSystemSubtitle = "Pharmacy & Medicine Management System";
-const themeStorageKey = "afghan-power-theme";
 const languageStorageKey = "afghan-power-language";
 const notificationSoundStorageKey = "afghan-power-notification-sound";
 const notificationSoundEnabledKey = "afghan-power-notification-sound-enabled";
@@ -77,13 +80,6 @@ const settingsLabels = {
     currencies: { AFN: "افغانۍ", USD: "امریکایي ډالر", INR: "هندي روپۍ" },
   },
 };
-const themeOptions = [
-  { key: "minimalism" },
-  { key: "clay-minimalism" },
-  { key: "black-white" },
-  { key: "aurora" },
-];
-
 function applyCompanyThemeIdentity(companyName = "") {
   const source = String(companyName || defaultSystemName).trim() || defaultSystemName;
   let hash = 0;
@@ -98,14 +94,6 @@ function applyCompanyThemeIdentity(companyName = "") {
   root.style.setProperty("--company-accent-3", `hsl(${(hash + 152) % 360} 92% 60%)`);
   root.style.setProperty("--company-accent-soft", `hsl(${hash} 88% 58% / 0.16)`);
   document.body.dataset.companyName = source;
-}
-
-function applyTheme(theme) {
-  localStorage.setItem(themeStorageKey, theme);
-  document.body.dataset.theme = theme;
-  document.documentElement.dataset.theme = theme;
-  document.body.classList.toggle("dark-mode", ["black-white", "aurora"].includes(theme));
-  window.dispatchEvent(new Event("app-theme-updated"));
 }
 
 function Settings({ accounts = [], setAccounts, currentUser }) {
@@ -129,17 +117,11 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
   const [logo, setLogo] = useState("");
   const [autoBackupMode, setAutoBackupMode] = useState("off");
   const [autoBackupCustomDays, setAutoBackupCustomDays] = useState("7");
-  const [activeTheme, setActiveTheme] = useState(
-    () => {
-      const storedTheme = localStorage.getItem(themeStorageKey) || "minimalism";
-      return ["neon", "glassmorphism"].includes(storedTheme) ? "aurora" : storedTheme;
-    }
-  );
   const [appDataBusy, setAppDataBusy] = useState(false);
   const [clearConfirm, setClearConfirm] = useState("");
   const [showUserModal, setShowUserModal] = useState(false);
   const [editingUserId, setEditingUserId] = useState(null);
-  const [userForm, setUserForm] = useState({ fullName: "", email: "", password: "", confirmPassword: "" });
+  const [userForm, setUserForm] = useState({ fullName: "", email: "", password: "", confirmPassword: "", permissions: createEmptyPermissions() });
   const [language, setLanguage] = useState(
     () => localStorage.getItem(languageStorageKey) || "en"
   );
@@ -173,6 +155,8 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
       exchangeRateTitle: "Exchange Rates Against Afghani", exchangeRateDescription: "Enter how many Afghanis equal one unit of each foreign currency.",
       usdRate: "US Dollar", eurRate: "Euro", inrRate: "Indian Rupee", oneUnit: "1 {code} =", afnUnit: "AFN", saveExchangeRates: "Save Exchange Rates",
       usersTab: "Users", usersTitle: "Users", usersDescription: "Create and manage the accounts that can sign in to this system.", addUser: "Add User", editUser: "Edit User", userName: "Name", email: "Email", password: "Password", confirmPassword: "Confirm Password", actions: "Actions", edit: "Edit", delete: "Delete", noUsers: "No user accounts found.", saveUser: "Save User", updateUser: "Update User", cancel: "Cancel", createUserHint: "Enter the user's account information.", editUserHint: "Update the account information. Leave password empty to keep the current password.", passwordOptional: "Leave empty to keep current password", activeAccount: "Current account", close: "Close",
+      networkTab: "Network", networkTitle: "Network Access", networkDescription: "Open this address on devices connected to the same Wi-Fi network.", networkIp: "Network IP", networkAddress: "Shared address", copyAddress: "Copy address", shareWhatsApp: "Share on WhatsApp", addressCopied: "Network address copied.", networkNotice: "The host computer must stay on and the app server must be running.",
+      permissionsTitle: "Module permissions", module: "Module", createPermission: "Create", editPermission: "Edit", deletePermission: "Delete", printPermission: "Print", allPermission: "All",
       themeTab: "Theme Settings", printingTab: "Printing", securityTab: "Security", backupTab: "Backup", notificationSoundTab: "Notification Sound", notificationSoundTitle: "Notification Sound", notificationSoundDescription: "Choose the sound played whenever the system shows a notification.", soundEnabled: "Notification sound", soundOn: "On", soundOff: "Off", testSound: "Test", selectedSound: "Selected", saveSound: "Save Sound Settings", soundSaved: "Notification sound settings saved.",
       companyDescription: "Company information used across receipts, reports, login and print layouts.", subTitle: "Sub Title", companyAddressPlaceholder: "Kabul, Afghanistan", removeLogo: "Remove Logo", saveSettings: "Save Settings", logoPreviewAlt: "System logo preview", companyAddressFallback: "Company address",
       masterPrintMode: "Master Print Mode (Gold + Black HD)", masterPrintDescription: "Premium polished configuration for reports and receipts.", proPrintMode: "Pro Print Mode (Unified HD)", proPrintDescription: "Optimised black quality printing with Dari and Pashto RTL support.", footerNotesBox: "Footer Notes Box", footerNotesDescription: "Add address, phone, warranty or custom footer details.", footerNotesEn: "Footer Notes Box (EN)", footerNotesDari: "Footer Notes (Dari)", footerNotesPashto: "Footer Notes (Pashto)", footerPlaceholderEn: "Address, phone number, warranty note, return policy...", footerPlaceholderDari: "آدرس، شماره تماس، شرایط ضمانت...", footerPlaceholderPashto: "آدرس، د تماس شمېره، د ضمانت شرایط...", printConfiguration: "Print Configuration", defaultPaperSize: "Default Paper Size", billingPaperSize: "Billing Paper Size", defaultOrientation: "Default Orientation", pageDensity: "Page Density", thermal80: "Thermal 80mm", portrait: "Portrait", landscape: "Landscape", normal: "Normal", compact: "Compact", savePrinting: "Save Printing",
@@ -184,7 +168,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
         aurora: ["Aurora Flow", "Premium dark glass with company-colored aurora light"],
       },
       appDataTitle: "App Data", appDataDescription: "Export a backup, import a backup, or clear all saved app data.", demoEnvironment: "Demo Environment", productionEnvironment: "Production Environment", demoEnvironmentDescription: "Demo data is isolated from the customer production environment.", productionEnvironmentDescription: "Production data is isolated from the demo environment.", exportData: "Export Data", importData: "Import Data", automaticallyBackup: "Automatically Backup", automaticallyBackupDescription: "The system checks this schedule while the app is open and reports when a backup is created.", backupSchedule: "Backup Schedule", off: "Off", daily: "Daily", weekly: "Weekly", monthly: "Monthly", custom: "Custom", customIntervalDays: "Custom Interval (Days)", saveBackupSetting: "Save Backup Setting", clearDemoData: "Clear Demo Data", clearDemoInstruction: "Type CLEAR, then press Clear Demo Data.",
-      themeUpdated: "Theme updated successfully.", invalidLogo: "Please select an image file for the logo.", settingsSaved: "System settings saved successfully.", exportSuccess: "App data exported successfully.", exportError: "Unable to export app data.", invalidBackup: "This file does not contain valid app data.", importTitle: "Import App Data", importConfirm: "Import will replace {count} data table(s). Continue?", importSuccess: "App data imported successfully. Refresh the app to see all changes.", importError: "Unable to import app data. Please select a valid JSON file.", clearDisabled: "Clear Data is disabled in Production mode.", clearTypeConfirm: "Type CLEAR to confirm data clearing.", clearAllTitle: "Clear All App Data", clearAllMessage: "This will clear all saved app data, including settings. This cannot be undone. Continue?", clearData: "Clear Data", clearSuccess: "App data cleared successfully. Refresh the app to start clean.", clearError: "Unable to clear app data.",
+      themeUpdated: "Theme updated successfully.", invalidLogo: "Please select an image file for the logo.", settingsSaved: "System settings saved successfully.", exportSuccess: "App data exported successfully.", exportError: "Unable to export app data.", invalidBackup: "This file does not contain valid app data.", importTitle: "Import App Data", importConfirm: "Import will replace {count} data table(s). Continue?", accessImportConfirm: "Import and merge the Access database into PostgreSQL? A server-side restore point will be created first.", importSuccess: "App data imported successfully. Refresh the app to see all changes.", accessImportSuccess: "Access data imported successfully: {count} records were processed.", importError: "Unable to import app data. Please select a valid JSON, ACCDB, or ACCDE file.", clearDisabled: "Clear Data is disabled in Production mode.", clearTypeConfirm: "Type CLEAR to confirm data clearing.", clearAllTitle: "Clear All App Data", clearAllMessage: "This will clear all saved app data, including settings. This cannot be undone. Continue?", clearData: "Clear Data", clearSuccess: "App data cleared successfully. Refresh the app to start clean.", clearError: "Unable to clear app data.",
     },
     fa: {
       pageTitle: "تنظیمات",
@@ -197,6 +181,8 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
       exchangeRateTitle: "نرخ اسعار در مقابل افغانی", exchangeRateDescription: "مشخص کنید یک واحد از هر اسعار خارجی چند افغانی می‌شود.",
       usdRate: "دالر امریکایی", eurRate: "یورو", inrRate: "کلدار هندی", oneUnit: "1 {code} =", afnUnit: "افغانی", saveExchangeRates: "ذخیره نرخ اسعار",
       usersTab: "کاربران", usersTitle: "کاربران", usersDescription: "اکانت‌هایی را که اجازه ورود به سیستم دارند ایجاد و مدیریت کنید.", addUser: "افزودن کاربر", editUser: "ویرایش کاربر", userName: "نام", email: "ایمیل", password: "پسورد", confirmPassword: "تکرار پسورد", actions: "عملیات", edit: "ویرایش", delete: "حذف", noUsers: "هیچ اکانت کاربری موجود نیست.", saveUser: "ذخیره کاربر", updateUser: "ذخیره تغییرات", cancel: "لغو", createUserHint: "معلومات اکانت کاربر را وارد کنید.", editUserHint: "معلومات اکانت را ویرایش کنید. برای حفظ پسورد فعلی، فیلد پسورد را خالی بگذارید.", passwordOptional: "برای حفظ پسورد فعلی خالی بگذارید", activeAccount: "اکانت فعلی", close: "بستن",
+      networkTab: "شبکه", networkTitle: "دسترسی از طریق شبکه", networkDescription: "این آدرس را در دستگاه‌های متصل به همین شبکه وای‌فای باز کنید.", networkIp: "IP شبکه", networkAddress: "آدرس اشتراک", copyAddress: "کپی آدرس", shareWhatsApp: "اشتراک در واتساپ", addressCopied: "آدرس شبکه کپی شد.", networkNotice: "کمپیوتر اصلی باید روشن باشد و سرور برنامه در حال اجرا بماند.",
+      permissionsTitle: "صلاحیت‌های بخش‌ها", module: "بخش", createPermission: "ثبت", editPermission: "ایدیت", deletePermission: "حذف", printPermission: "چاپ", allPermission: "همه",
       themeTab: "تنظیمات پوسته", printingTab: "چاپ", securityTab: "امنیت", backupTab: "بکاپ", notificationSoundTab: "صدای هشدار", notificationSoundTitle: "صدای هشدار", notificationSoundDescription: "صدایی را انتخاب کنید که هنگام نمایش هر هشدار سیستم پخش شود.", soundEnabled: "صدای هشدار", soundOn: "روشن", soundOff: "خاموش", testSound: "تست", selectedSound: "انتخاب شده", saveSound: "ذخیره تنظیمات صدا", soundSaved: "تنظیمات صدای هشدار ذخیره شد.",
       companyDescription: "معلومات کمپنی که در رسیدها، گزارش‌ها، صفحه ورود و قالب‌های چاپ استفاده می‌شود.", subTitle: "عنوان فرعی", companyAddressPlaceholder: "کابل، افغانستان", removeLogo: "حذف لوگو", saveSettings: "ذخیره تنظیمات", logoPreviewAlt: "پیش‌نمایش لوگوی سیستم", companyAddressFallback: "آدرس کمپنی",
       masterPrintMode: "حالت چاپ اصلی (طلایی + سیاه HD)", masterPrintDescription: "تنظیم حرفه‌ای و باکیفیت برای گزارش‌ها و رسیدها.", proPrintMode: "حالت چاپ حرفه‌ای (Unified HD)", proPrintDescription: "چاپ سیاه با کیفیت بهینه همراه با پشتیبانی راست‌به‌چپ دری و پشتو.", footerNotesBox: "بخش یادداشت پایانی", footerNotesDescription: "آدرس، شماره تماس، ضمانت یا توضیحات دلخواه فوتر را اضافه کنید.", footerNotesEn: "یادداشت فوتر (انگلیسی)", footerNotesDari: "یادداشت فوتر (دری)", footerNotesPashto: "یادداشت فوتر (پشتو)", footerPlaceholderEn: "آدرس، شماره تماس، یادداشت ضمانت، شرایط بازگشت...", footerPlaceholderDari: "آدرس، شماره تماس، شرایط ضمانت...", footerPlaceholderPashto: "آدرس، د تماس شمېره، د ضمانت شرایط...", printConfiguration: "تنظیمات چاپ", defaultPaperSize: "اندازه پیش‌فرض کاغذ", billingPaperSize: "اندازه کاغذ بل", defaultOrientation: "جهت پیش‌فرض", pageDensity: "تراکم صفحه", thermal80: "حرارتی 80 میلی‌متر", portrait: "عمودی", landscape: "افقی", normal: "عادی", compact: "فشرده", savePrinting: "ذخیره تنظیمات چاپ",
@@ -208,7 +194,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
         aurora: ["جریان شفق", "شیشه تیره حرفه‌ای با نور شفق هماهنگ با رنگ کمپنی"],
       },
       appDataTitle: "دیتای برنامه", appDataDescription: "از اطلاعات بکاپ بگیرید، بکاپ را وارد کنید یا تمام دیتای ذخیره‌شده برنامه را پاک کنید.", demoEnvironment: "محیط دمو", productionEnvironment: "محیط اصلی", demoEnvironmentDescription: "دیتای دمو از محیط اصلی مشتری جدا نگهداری می‌شود.", productionEnvironmentDescription: "دیتای اصلی از محیط دمو جدا نگهداری می‌شود.", exportData: "خروجی گرفتن از دیتا", importData: "وارد کردن دیتا", automaticallyBackup: "بکاپ خودکار", automaticallyBackupDescription: "سیستم هنگام باز بودن برنامه این زمان‌بندی را بررسی می‌کند و پس از ایجاد بکاپ اطلاع می‌دهد.", backupSchedule: "زمان‌بندی بکاپ", off: "خاموش", daily: "روزانه", weekly: "هفتگی", monthly: "ماهانه", custom: "دلخواه", customIntervalDays: "فاصله دلخواه (روز)", saveBackupSetting: "ذخیره تنظیمات بکاپ", clearDemoData: "پاک کردن دیتای دمو", clearDemoInstruction: "عبارت CLEAR را بنویسید، سپس روی پاک کردن دیتای دمو کلیک کنید.",
-      themeUpdated: "پوسته با موفقیت تغییر کرد.", invalidLogo: "لطفاً یک فایل تصویری برای لوگو انتخاب کنید.", settingsSaved: "تنظیمات سیستم با موفقیت ذخیره شد.", exportSuccess: "دیتای برنامه با موفقیت خروجی گرفته شد.", exportError: "خروجی گرفتن از دیتای برنامه انجام نشد.", invalidBackup: "این فایل دیتای معتبر برنامه را ندارد.", importTitle: "وارد کردن دیتای برنامه", importConfirm: "با وارد کردن بکاپ، {count} جدول داده جایگزین می‌شود. ادامه می‌دهید؟", importSuccess: "دیتای برنامه با موفقیت وارد شد. برای مشاهده همه تغییرات برنامه را تازه‌سازی کنید.", importError: "وارد کردن دیتا انجام نشد. لطفاً یک فایل JSON معتبر انتخاب کنید.", clearDisabled: "پاک کردن دیتا در حالت اصلی غیرفعال است.", clearTypeConfirm: "برای تأیید پاک کردن دیتا، CLEAR را وارد کنید.", clearAllTitle: "پاک کردن تمام دیتای برنامه", clearAllMessage: "تمام دیتای ذخیره‌شده برنامه، شامل تنظیمات، پاک می‌شود و قابل بازگشت نیست. ادامه می‌دهید؟", clearData: "پاک کردن دیتا", clearSuccess: "دیتای برنامه با موفقیت پاک شد. برای شروع دوباره برنامه را تازه‌سازی کنید.", clearError: "پاک کردن دیتای برنامه انجام نشد.",
+      themeUpdated: "پوسته با موفقیت تغییر کرد.", invalidLogo: "لطفاً یک فایل تصویری برای لوگو انتخاب کنید.", settingsSaved: "تنظیمات سیستم با موفقیت ذخیره شد.", exportSuccess: "دیتای برنامه با موفقیت خروجی گرفته شد.", exportError: "خروجی گرفتن از دیتای برنامه انجام نشد.", invalidBackup: "این فایل دیتای معتبر برنامه را ندارد.", importTitle: "وارد کردن دیتای برنامه", importConfirm: "با وارد کردن بکاپ، {count} جدول داده جایگزین می‌شود. ادامه می‌دهید؟", accessImportConfirm: "دیتابیس Access با دیتای PostgreSQL یکجا و مرتب شود؟ پیش از انتقال یک نقطه بازیابی در سرور ساخته می‌شود.", importSuccess: "دیتای برنامه با موفقیت وارد شد. برای مشاهده همه تغییرات برنامه را تازه‌سازی کنید.", accessImportSuccess: "دیتای Access موفقانه انتقال شد؛ {count} رکورد پردازش گردید.", importError: "انتقال دیتا انجام نشد. لطفاً فایل معتبر JSON، ACCDB یا ACCDE انتخاب کنید.", clearDisabled: "پاک کردن دیتا در حالت اصلی غیرفعال است.", clearTypeConfirm: "برای تأیید پاک کردن دیتا، CLEAR را وارد کنید.", clearAllTitle: "پاک کردن تمام دیتای برنامه", clearAllMessage: "تمام دیتای ذخیره‌شده برنامه، شامل تنظیمات، پاک می‌شود و قابل بازگشت نیست. ادامه می‌دهید؟", clearData: "پاک کردن دیتا", clearSuccess: "دیتای برنامه با موفقیت پاک شد. برای شروع دوباره برنامه را تازه‌سازی کنید.", clearError: "پاک کردن دیتای برنامه انجام نشد.",
     },
     ps: {
       pageTitle: "تنظیمات",
@@ -221,6 +207,8 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
       exchangeRateTitle: "د افغانیو په مقابل کې د اسعارو نرخ", exchangeRateDescription: "وټاکئ چې د هرې بهرنۍ پیسې یو واحد څو افغانۍ کېږي.",
       usdRate: "امریکایي ډالر", eurRate: "یورو", inrRate: "هندي روپۍ", oneUnit: "1 {code} =", afnUnit: "افغانۍ", saveExchangeRates: "د اسعارو نرخونه خوندي کړئ",
       usersTab: "کاروونکي", usersTitle: "کاروونکي", usersDescription: "هغه حسابونه جوړ او اداره کړئ چې دې سیسټم ته ننوتلی شي.", addUser: "کاروونکی اضافه کړئ", editUser: "کاروونکی سمول", userName: "نوم", email: "برېښنالیک", password: "پټنوم", confirmPassword: "پټنوم بیا ولیکئ", actions: "کړنې", edit: "سمول", delete: "حذف", noUsers: "هیڅ کارن حساب نشته.", saveUser: "کاروونکی خوندي کړئ", updateUser: "بدلونونه خوندي کړئ", cancel: "لغوه", createUserHint: "د کاروونکي د حساب معلومات ولیکئ.", editUserHint: "د حساب معلومات بدل کړئ. د اوسني پټنوم ساتلو لپاره د پټنوم برخه تشه پرېږدئ.", passwordOptional: "د اوسني پټنوم ساتلو لپاره تش پرېږدئ", activeAccount: "اوسنی حساب", close: "بندول",
+      networkTab: "شبکه", networkTitle: "د شبکې لاسرسی", networkDescription: "دا پته په هغو وسیلو کې خلاصه کړئ چې له همدې وای فای شبکې سره وصل وي.", networkIp: "د شبکې IP", networkAddress: "شریکه پته", copyAddress: "پته کاپي کړئ", shareWhatsApp: "په واټساپ کې شریکول", addressCopied: "د شبکې پته کاپي شوه.", networkNotice: "اصلي کمپیوټر باید روښانه وي او د پروګرام سرور روان پاتې شي.",
+      permissionsTitle: "د برخو صلاحیتونه", module: "برخه", createPermission: "ثبت", editPermission: "سمون", deletePermission: "حذف", printPermission: "چاپ", allPermission: "ټول",
       themeTab: "د بڼې تنظیمات", printingTab: "چاپ", securityTab: "امنیت", backupTab: "بیک اپ", notificationSoundTab: "د خبرتیا غږ", notificationSoundTitle: "د خبرتیا غږ", notificationSoundDescription: "هغه غږ وټاکئ چې د سیسټم د هرې خبرتیا پر مهال غږول کېږي.", soundEnabled: "د خبرتیا غږ", soundOn: "چالان", soundOff: "بند", testSound: "ازموینه", selectedSound: "ټاکل شوی", saveSound: "د غږ تنظیمات ذخیره کړئ", soundSaved: "د خبرتیا د غږ تنظیمات ذخیره شول.",
       companyDescription: "د شرکت هغه معلومات چې په رسیدونو، راپورونو، ننوتلو او چاپي بڼو کې کارېږي.", subTitle: "فرعي سرلیک", companyAddressPlaceholder: "کابل، افغانستان", removeLogo: "لوګو لرې کړئ", saveSettings: "تنظیمات خوندي کړئ", logoPreviewAlt: "د سیسټم لوګو مخکتنه", companyAddressFallback: "د شرکت پته",
       masterPrintMode: "اصلي چاپ حالت (طلایي + تور HD)", masterPrintDescription: "د راپورونو او رسیدونو لپاره مسلکي او لوړ کیفیت تنظیم.", proPrintMode: "مسلکي چاپ حالت (Unified HD)", proPrintDescription: "له دري او پښتو RTL ملاتړ سره د لوړ کیفیت تور چاپ لپاره غوره شوی.", footerNotesBox: "د پای یادښتونو برخه", footerNotesDescription: "پته، د اړیکې شمېره، تضمین یا د فوتر ځانګړي معلومات اضافه کړئ.", footerNotesEn: "د فوتر یادښت (انګلیسي)", footerNotesDari: "د فوتر یادښت (دري)", footerNotesPashto: "د فوتر یادښت (پښتو)", footerPlaceholderEn: "پته، د اړیکې شمېره، د تضمین یادښت، د بېرته ستنولو تګلاره...", footerPlaceholderDari: "آدرس، شماره تماس، شرایط ضمانت...", footerPlaceholderPashto: "پته، د اړیکې شمېره، د تضمین شرایط...", printConfiguration: "د چاپ تنظیمات", defaultPaperSize: "د کاغذ اصلي اندازه", billingPaperSize: "د بل کاغذ اندازه", defaultOrientation: "اصلي جهت", pageDensity: "د پاڼې تراکم", thermal80: "حرارتي 80 ملي متر", portrait: "عمودي", landscape: "افقي", normal: "عادي", compact: "متراکم", savePrinting: "د چاپ تنظیمات خوندي کړئ",
@@ -232,10 +220,17 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
         aurora: ["د شفق جریان", "مسلکي تیاره ښیښه له د شرکت رنګ سره همغږې شفق رڼا"],
       },
       appDataTitle: "د اپ معلومات", appDataDescription: "بیک اپ صادر کړئ، بیک اپ وارد کړئ یا د اپ ټول خوندي معلومات پاک کړئ.", demoEnvironment: "ډیمو چاپېریال", productionEnvironment: "اصلي چاپېریال", demoEnvironmentDescription: "د ډیمو معلومات د پیرودونکي له اصلي چاپېریال څخه جلا ساتل کېږي.", productionEnvironmentDescription: "اصلي معلومات د ډیمو له چاپېریال څخه جلا ساتل کېږي.", exportData: "معلومات صادر کړئ", importData: "معلومات وارد کړئ", automaticallyBackup: "اتومات بیک اپ", automaticallyBackupDescription: "سیسټم د اپ د خلاصېدو پر مهال دا مهالویش ګوري او د بیک اپ له جوړېدو وروسته خبر ورکوي.", backupSchedule: "د بیک اپ مهالویش", off: "بند", daily: "ورځنی", weekly: "اوونیز", monthly: "میاشتنی", custom: "ځانګړی", customIntervalDays: "ځانګړی واټن (ورځې)", saveBackupSetting: "د بیک اپ تنظیم خوندي کړئ", clearDemoData: "د ډیمو معلومات پاک کړئ", clearDemoInstruction: "CLEAR ولیکئ، بیا د ډیمو معلومات پاک کړئ تڼۍ کېکاږئ.",
-      themeUpdated: "بڼه په بریالیتوب بدله شوه.", invalidLogo: "مهرباني وکړئ د لوګو لپاره انځوریز فایل وټاکئ.", settingsSaved: "د سیسټم تنظیمات په بریالیتوب خوندي شول.", exportSuccess: "د اپ معلومات په بریالیتوب صادر شول.", exportError: "د اپ معلومات صادر نه شول.", invalidBackup: "دا فایل د اپ معتبر معلومات نه لري.", importTitle: "د اپ معلومات واردول", importConfirm: "واردول به {count} ډیټا جدولونه بدل کړي. دوام ورکړئ؟", importSuccess: "د اپ معلومات په بریالیتوب وارد شول. د ټولو بدلونونو د لیدلو لپاره اپ تازه کړئ.", importError: "معلومات وارد نه شول. مهرباني وکړئ معتبر JSON فایل وټاکئ.", clearDisabled: "په اصلي حالت کې د معلوماتو پاکول غیرفعال دي.", clearTypeConfirm: "د معلوماتو پاکول د تایید لپاره CLEAR ولیکئ.", clearAllTitle: "د اپ ټول معلومات پاکول", clearAllMessage: "د اپ ټول خوندي معلومات، د تنظیماتو په ګډون، پاکېږي او بېرته نه راګرځي. دوام ورکړئ؟", clearData: "معلومات پاک کړئ", clearSuccess: "د اپ معلومات په بریالیتوب پاک شول. د نوي پیل لپاره اپ تازه کړئ.", clearError: "د اپ معلومات پاک نه شول.",
+      themeUpdated: "بڼه په بریالیتوب بدله شوه.", invalidLogo: "مهرباني وکړئ د لوګو لپاره انځوریز فایل وټاکئ.", settingsSaved: "د سیسټم تنظیمات په بریالیتوب خوندي شول.", exportSuccess: "د اپ معلومات په بریالیتوب صادر شول.", exportError: "د اپ معلومات صادر نه شول.", invalidBackup: "دا فایل د اپ معتبر معلومات نه لري.", importTitle: "د اپ معلومات واردول", importConfirm: "واردول به {count} ډیټا جدولونه بدل کړي. دوام ورکړئ؟", accessImportConfirm: "د Access ډیټابیس معلومات PostgreSQL ته یوځای شي؟ لومړی به د بېرته راګرځولو کاپي جوړه شي.", importSuccess: "د اپ معلومات په بریالیتوب وارد شول. د ټولو بدلونونو د لیدلو لپاره اپ تازه کړئ.", accessImportSuccess: "د Access معلومات بریالي انتقال شول؛ {count} ریکارډونه وڅېړل شول.", importError: "معلومات وارد نه شول. معتبر JSON، ACCDB یا ACCDE فایل وټاکئ.", clearDisabled: "په اصلي حالت کې د معلوماتو پاکول غیرفعال دي.", clearTypeConfirm: "د معلوماتو پاکول د تایید لپاره CLEAR ولیکئ.", clearAllTitle: "د اپ ټول معلومات پاکول", clearAllMessage: "د اپ ټول خوندي معلومات، د تنظیماتو په ګډون، پاکېږي او بېرته نه راګرځي. دوام ورکړئ؟", clearData: "معلومات پاک کړئ", clearSuccess: "د اپ معلومات په بریالیتوب پاک شول. د نوي پیل لپاره اپ تازه کړئ.", clearError: "د اپ معلومات پاک نه شول.",
     },
   };
   const st = settingsText[language] || settingsText.en;
+  const currentHost = window.location.hostname;
+  const networkIp = (!["localhost", "127.0.0.1", "::1"].includes(currentHost) && currentHost)
+    || globalThis.__APP_NETWORK_IP__
+    || currentHost;
+  const networkPort = window.location.port || "5173";
+  const networkProtocol = window.location.protocol === "https:" ? "https:" : "http:";
+  const networkAddress = `${networkProtocol}//${networkIp}${networkPort ? `:${networkPort}` : ""}/`;
 
   useEffect(() => {
     setCompanyName(current.companyName || defaultSystemName);
@@ -287,7 +282,14 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
 
   const openAddUser = () => {
     setEditingUserId(null);
-    setUserForm({ fullName: "", email: "", password: "", confirmPassword: "" });
+    const firstAdministrator = accounts.length === 0 && currentUser?.isDefaultAdmin;
+    setUserForm({
+      fullName: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      permissions: firstAdministrator ? createFullPermissions() : createEmptyPermissions(),
+    });
     setShowUserModal(true);
   };
 
@@ -298,6 +300,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
       email: account.email || account.username || "",
       password: "",
       confirmPassword: "",
+      permissions: account.permissions || createEmptyPermissions(),
     });
     setShowUserModal(true);
   };
@@ -305,7 +308,19 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
   const closeUserModal = () => {
     setShowUserModal(false);
     setEditingUserId(null);
-    setUserForm({ fullName: "", email: "", password: "", confirmPassword: "" });
+    setUserForm({ fullName: "", email: "", password: "", confirmPassword: "", permissions: createEmptyPermissions() });
+  };
+
+  const updateUserPermission = (moduleKey, action, checked) => {
+    setUserForm((value) => ({
+      ...value,
+      permissions: {
+        ...value.permissions,
+        [moduleKey]: action === "all"
+          ? PERMISSION_ACTIONS.reduce((actions, key) => ({ ...actions, [key]: checked }), {})
+          : { ...(value.permissions?.[moduleKey] || {}), [action]: checked },
+      },
+    }));
   };
 
   const saveUserAccount = async (event) => {
@@ -335,14 +350,15 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
       return;
     }
     const existing = accounts.find((account) => String(account.id) === String(editingUserId));
+    const isFirstAdministrator = !existing && accounts.length === 0 && currentUser?.isDefaultAdmin;
     const payload = {
       ...(existing || {}),
       fullName,
       email,
       username: email,
-      role: existing?.role || "Admin",
+      role: isFirstAdministrator ? "Admin" : (existing?.role || "User"),
       status: existing?.status || "Active",
-      permissions: existing?.permissions || {},
+      permissions: isFirstAdministrator ? createFullPermissions() : userForm.permissions,
       updatedAt: new Date().toISOString(),
       ...(userForm.password ? { password: userForm.password } : {}),
     };
@@ -370,13 +386,6 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
     const saved = await setAccounts(accounts.filter((item) => String(item.id) !== String(account.id)));
     if (!saved) return;
     notify(language === "fa" ? "کاربر حذف شد." : language === "ps" ? "کاروونکی حذف شو." : "User deleted.");
-  };
-
-  const selectTheme = (theme) => {
-    setActiveTheme(theme);
-    applyTheme(theme);
-    applyCompanyThemeIdentity(companyName);
-    notify(st.themeUpdated);
   };
 
   const handleLogoChange = (event) => {
@@ -455,6 +464,29 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
 
     try {
       setAppDataBusy(true);
+      const extension = file.name.split(".").pop()?.toLowerCase();
+      if (extension === "accdb" || extension === "accde") {
+        const ok = await confirmAction({
+          title: st.importTitle,
+          message: st.accessImportConfirm,
+          confirmText: st.importData,
+        });
+        if (!ok) return;
+        const response = await fetch(apiUrl("import/access"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/octet-stream",
+            "X-File-Name": encodeURIComponent(file.name),
+          },
+          body: file,
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || `Backend returned ${response.status}.`);
+        const importedCount = Object.values(result.report || {}).reduce((sum, item) => sum + Number(item.imported || 0), 0);
+        notify(st.accessImportSuccess.replace("{count}", String(importedCount)));
+        window.setTimeout(() => window.location.reload(), 1200);
+        return;
+      }
       const text = await file.text();
       const parsed = JSON.parse(text);
       const data = parsed.collections && typeof parsed.collections === "object"
@@ -529,6 +561,27 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
     }
   };
 
+  const copyNetworkAddress = async () => {
+    try {
+      await navigator.clipboard.writeText(networkAddress);
+    } catch {
+      const input = document.createElement("textarea");
+      input.value = networkAddress;
+      input.style.position = "fixed";
+      input.style.opacity = "0";
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand("copy");
+      input.remove();
+    }
+    notify(st.addressCopied, "success", { silent: true });
+  };
+
+  const shareNetworkAddress = () => {
+    const message = `${st.networkTitle}\n${networkAddress}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+  };
+
   return (
     <div className="settings-page">
       <div className="settings-header">
@@ -563,14 +616,6 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
         </button>
         <button
           type="button"
-          className={activeTab === "theme" ? "active" : ""}
-          onClick={() => setActiveTab("theme")}
-        >
-          <Palette size={16} />
-          {st.themeTab}
-        </button>
-        <button
-          type="button"
           className={activeTab === "printing" ? "active" : ""}
           onClick={() => setActiveTab("printing")}
         >
@@ -601,13 +646,21 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
           <Database size={16} />
           {st.backupTab}
         </button>
-        <button
+        {canViewModule(currentUser, "accounts") && <button
           type="button"
           className={activeTab === "users" ? "active" : ""}
           onClick={() => setActiveTab("users")}
         >
           <Users size={16} />
           {st.usersTab}
+        </button>}
+        <button
+          type="button"
+          className={activeTab === "network" ? "active" : ""}
+          onClick={() => setActiveTab("network")}
+        >
+          <Network size={16} />
+          {st.networkTab}
         </button>
       </div>
 
@@ -954,10 +1007,10 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
                 <h3>{st.usersTitle}</h3>
                 <p>{st.usersDescription}</p>
               </div>
-              <button type="button" className="settings-add-user" onClick={openAddUser}>
+              {hasPermission(currentUser, "accounts", "create") && <button type="button" className="settings-add-user" onClick={openAddUser}>
                 <UserPlus size={17} />
                 {st.addUser}
-              </button>
+              </button>}
             </div>
 
             <div className="settings-users-table-wrap">
@@ -981,8 +1034,8 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
                       <td>{account.email || account.username || "—"}</td>
                       <td>
                         <div className="settings-user-actions">
-                          <button type="button" onClick={() => openEditUser(account)}><Edit3 size={14} />{st.edit}</button>
-                          <button type="button" className="danger" onClick={() => deleteUserAccount(account)} disabled={String(account.id) === String(currentUser?.id)}><Trash2 size={14} />{st.delete}</button>
+                          {hasPermission(currentUser, "accounts", "edit") && <button type="button" onClick={() => openEditUser(account)}><Edit3 size={14} />{st.edit}</button>}
+                          {hasPermission(currentUser, "accounts", "delete") && <button type="button" className="danger" onClick={() => deleteUserAccount(account)} disabled={String(account.id) === String(currentUser?.id)}><Trash2 size={14} />{st.delete}</button>}
                         </div>
                       </td>
                     </tr>
@@ -990,31 +1043,6 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
                   {accounts.length === 0 && <tr><td colSpan="3" className="settings-users-empty">{st.noUsers}</td></tr>}
                 </tbody>
               </table>
-            </div>
-          </section>
-        </div>
-      )}
-
-      {activeTab === "theme" && (
-        <div className="settings-theme-card">
-          <section className="settings-panel">
-            <div className="settings-section-title">
-              <h3>{st.themeTitle}</h3>
-              <p>{st.themeDescription}</p>
-            </div>
-
-            <div className="settings-theme-grid">
-              {themeOptions.map((theme) => (
-                <button
-                  type="button"
-                  key={theme.key}
-                  className={activeTheme === theme.key ? "active" : ""}
-                  onClick={() => selectTheme(theme.key)}
-                >
-                  <strong>{st.themes[theme.key]?.[0] || theme.key}</strong>
-                  <span>{st.themes[theme.key]?.[1] || ""}</span>
-                </button>
-              ))}
             </div>
           </section>
         </div>
@@ -1045,7 +1073,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
                 {st.importData}
                 <input
                   type="file"
-                  accept="application/json,.json"
+                  accept="application/json,.json,.accdb,.accde,application/msaccess,application/x-msaccess"
                   onChange={importData}
                   disabled={appDataBusy}
                 />
@@ -1117,6 +1145,35 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
           </section>
         </div>
       )}
+
+      {activeTab === "network" && (
+        <div className="settings-network-card">
+          <section className="settings-panel settings-network-panel">
+            <div className="settings-section-title">
+              <h3>{st.networkTitle}</h3>
+              <p>{st.networkDescription}</p>
+            </div>
+
+            <div className="settings-network-details">
+              <div>
+                <span>{st.networkIp}</span>
+                <strong dir="ltr">{networkIp}</strong>
+              </div>
+              <div>
+                <span>{st.networkAddress}</span>
+                <a href={networkAddress} target="_blank" rel="noreferrer" dir="ltr">{networkAddress}</a>
+              </div>
+            </div>
+
+            <div className="settings-network-actions">
+              <button type="button" onClick={copyNetworkAddress}><Copy size={17} />{st.copyAddress}</button>
+              <button type="button" className="whatsapp" onClick={shareNetworkAddress}><MessageCircle size={17} />{st.shareWhatsApp}</button>
+            </div>
+
+            <p className="settings-network-notice"><Network size={16} />{st.networkNotice}</p>
+          </section>
+        </div>
+      )}
       </div>
 
       {showUserModal && createPortal(
@@ -1135,6 +1192,25 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
                 <label><span>{st.email} *</span><input type="email" value={userForm.email} onChange={(e) => setUserForm((v) => ({...v, email:e.target.value}))} /></label>
                 <label><span>{st.password}{!editingUserId ? " *" : ""}</span><input type="password" value={userForm.password} placeholder={editingUserId ? st.passwordOptional : ""} onChange={(e) => setUserForm((v) => ({...v, password:e.target.value}))} autoComplete="new-password" /></label>
                 <label><span>{st.confirmPassword}{!editingUserId ? " *" : ""}</span><input type="password" value={userForm.confirmPassword} onChange={(e) => setUserForm((v) => ({...v, confirmPassword:e.target.value}))} autoComplete="new-password" /></label>
+              </div>
+              <div className="settings-permission-panel">
+                <h4>{st.permissionsTitle}</h4>
+                <div className="settings-permission-table-wrap">
+                  <table>
+                    <thead><tr><th>{st.module}</th><th>{st.createPermission}</th><th>{st.editPermission}</th><th>{st.deletePermission}</th><th>{st.printPermission}</th><th>{st.allPermission}</th></tr></thead>
+                    <tbody>
+                      {PERMISSION_MODULES.map((module) => {
+                        const row = userForm.permissions?.[module.key] || {};
+                        const allChecked = PERMISSION_ACTIONS.every((action) => Boolean(row[action]));
+                        return <tr key={module.key}>
+                          <td>{module.labels[language] || module.labels.en}</td>
+                          {PERMISSION_ACTIONS.map((action) => <td key={action}><input type="checkbox" checked={Boolean(row[action])} onChange={(event) => updateUserPermission(module.key, action, event.target.checked)} /></td>)}
+                          <td><input type="checkbox" checked={allChecked} onChange={(event) => updateUserPermission(module.key, "all", event.target.checked)} /></td>
+                        </tr>;
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
               <div className="settings-user-modal-footer">
                 <button type="button" className="secondary" onClick={closeUserModal}>{st.cancel}</button>

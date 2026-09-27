@@ -1,0 +1,5 @@
+.customer-category-control{display:grid;grid-template-columns:minmax(0,1fr) 40px;gap:7px}
+.customer-category-control>button{width:40px;border:1px solid #dbe3ec;border-radius:9px;background:#fff;color:#1e293b;display:grid;place-items:center;cursor:pointer}
+.customer-category-control.is-adding>button{background:#172033;color:#fff;border-color:#172033}
+body.dark-mode .customer-category-control>button{background:var(--card-bg,#111827);color:var(--text-color,#fff);border-color:var(--border-color,#334155)}
+body.dark-mode .customer-category-control.is-adding>button{background:#fff;color:#111827;border-color:#fff}

@@ -16,7 +16,6 @@ import {
 import ShamsiDateInput from "../components/ShamsiDateInput";
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import { notify } from "../utils/notify";
-import { productImageSrc } from "../utils/productImages";
 import { groupNameById } from "../utils/productMasterData";
 import {
   getProductStock,
@@ -49,11 +48,13 @@ const text = {
     cancel: "Cancel",
     currency: "Currency",
     billNumber: "Bill number",
+    systemBillNumber: "System bill number",
     date: "Purchase date (Solar Hijri)",
     paymentStatus: "Payment status",
     paidFull: "Fully paid",
     debt: "Credit / Debt",
     paidAmount: "Amount paid now",
+    shippingCost: "Shipping cost",
     searchPlaceholder: "Search medicine by name, group or company...",
     searchHint: "Click the search field and choose a medicine",
     results: "Search results",
@@ -110,11 +111,13 @@ const text = {
     cancel: "لغو",
     currency: "واحد پول",
     billNumber: "بل نمبر",
+    systemBillNumber: "بل نمبر سیستم",
     date: "تاریخ خریداری (شمسی)",
     paymentStatus: "وضعیت پرداخت",
     paidFull: "مکمل پرداخت",
     debt: "قرض",
     paidAmount: "مقدار پرداخت فعلی",
+    shippingCost: "هزینه حمل‌ونقل",
     searchPlaceholder: "جستجوی دوا با نام، گروپ یا کمپنی...",
     searchHint: "در جستجو کلیک کنید و دوا را انتخاب نمایید",
     results: "نتایج جستجو",
@@ -171,11 +174,13 @@ const text = {
     cancel: "لغوه",
     currency: "اسعار",
     billNumber: "بل نمبر",
+    systemBillNumber: "د سیستم بل نمبر",
     date: "د پېرود نېټه (لمریز)",
     paymentStatus: "د ورکړې حالت",
     paidFull: "بشپړ ورکړل شوی",
     debt: "پور",
     paidAmount: "اوس ورکړل شوی مبلغ",
+    shippingCost: "د لېږد لګښت",
     searchPlaceholder: "درمل د نوم، ګروپ یا کمپنۍ له مخې ولټوئ...",
     searchHint: "د لټون په ساحه کلیک او درمل وټاکئ",
     results: "د لټون پایلې",
@@ -237,7 +242,7 @@ const today = () => {
 
 const nextSequentialPurchaseBill = (rows) => {
   const max = (Array.isArray(rows) ? rows : []).reduce((highest, row) => {
-    const value = String(row?.billNumber || row?.billNo || row?.invoiceNumber || "").trim();
+    const value = String(row?.systemBillNumber || row?.systemBillNo || row?.billNumber || row?.billNo || row?.invoiceNumber || "").trim();
     const match = value.match(/^PUR-(\d{6})$/i);
     if (!match) return highest;
     const number = Number(match[1]);
@@ -254,7 +259,7 @@ function PurchaseNew() {
   const [purchaseItems, setPurchaseItems, , purchaseItemsLoaded] = useJsonCollection("purchaseItems");
   const [suppliers, setSuppliers, , suppliersLoaded] = useJsonCollection("suppliers");
   const [products, setProducts, , productsLoaded] = useJsonCollection("products");
-  const [manufacturers] = useJsonCollection("manufacturers");
+  const [manufacturerCompanies] = useJsonCollection("manufacturerCompanies");
   const [productGroups] = useJsonCollection("productGroups");
   const [stockMovements, setStockMovements, , stockMovementsLoaded] = useJsonCollection("stockMovements");
   const [hydratedEditId, setHydratedEditId] = useState(null);
@@ -265,9 +270,11 @@ function PurchaseNew() {
   const [quickName, setQuickName] = useState("");
   const [currency, setCurrency] = useState("AFN");
   const [billNumber, setBillNumber] = useState("");
+  const [systemBillNumber, setSystemBillNumber] = useState("");
   const [purchaseDate, setPurchaseDate] = useState(today());
   const [paymentStatus, setPaymentStatus] = useState("paid");
   const [paidAmount, setPaidAmount] = useState("");
+  const [shippingCost, setShippingCost] = useState("");
   const [query, setQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const [activeResultIndex, setActiveResultIndex] = useState(0);
@@ -287,7 +294,7 @@ function PurchaseNew() {
 
   useEffect(() => {
     if (!purchasesLoaded || isEditing) return;
-    setBillNumber(nextSequentialPurchaseBill(purchases));
+    setSystemBillNumber(nextSequentialPurchaseBill(purchases));
   }, [purchasesLoaded, isEditing, purchases]);
   const supplierBalanceCurrency = (supplier) => String(supplier?.currency || currency || "AFN").toUpperCase();
   const receivedQuantity = (row) => num(row.receivedQuantity ?? (num(row.quantity) * positiveUnitCount(row.unitsPerUnit)));
@@ -302,18 +309,32 @@ function PurchaseNew() {
   );
   const productDisplayName = (product) =>
     product?.productName || product?.name || product?.title || product?.medicineName || "—";
+  const manufacturers = useMemo(() => manufacturerCompanies.filter((item) => item && item.status !== "inactive"), [manufacturerCompanies]);
   const manufacturerName = (item) => item?.manufacturerName || item?.companyName || item?.name || "";
+  const normalizedManufacturerName = (value) => String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
   const manufacturerIdForProduct = (product) => {
-    const directId = product?.manufacturerId || product?.companyId || "";
-    if (directId) return directId;
-    const wantedName = String(product?.manufacturerName || product?.companyName || product?.company || "").trim().toLowerCase();
+    const directId = product?.manufacturerCompanyId || product?.manufacturerId || "";
+    if (directId && manufacturers.some((item) => String(item.id) === String(directId))) return directId;
+    const wantedName = normalizedManufacturerName(product?.manufacturerName || product?.companyName || product?.company || "");
     if (!wantedName) return "";
-    return manufacturers.find((item) => manufacturerName(item).trim().toLowerCase() === wantedName)?.id || "";
+    return manufacturers.find((item) => normalizedManufacturerName(manufacturerName(item)) === wantedName)?.id || "";
   };
   const getStock = useCallback(
     (product) => Math.max(getProductStock(stockMovements, product?.id, legacyProductStock(product)), 0),
     [stockMovements]
   );
+
+  useEffect(() => {
+    if (!manufacturerCompanies.length || !items.length) return;
+    setItems((current) => current.map((row) => {
+      if (row.manufacturerId && manufacturers.some((item) => String(item.id) === String(row.manufacturerId))) return row;
+      const product = products.find((item) => String(item.id) === String(row.productId));
+      const manufacturerId = manufacturerIdForProduct(product || row);
+      if (!manufacturerId) return row;
+      const selected = manufacturers.find((item) => String(item.id) === String(manufacturerId));
+      return { ...row, manufacturerId, manufacturerName: manufacturerName(selected) };
+    }));
+  }, [manufacturerCompanies, products]);
   const normalizeSearchText = (value) =>
     String(value || "")
       .toLowerCase()
@@ -390,11 +411,13 @@ function PurchaseNew() {
 
     setSupplierId(String(purchase.supplierId || purchase.supplier_id || ""));
     setCurrency(purchase.currency || "AFN");
-    setBillNumber(purchase.billNumber || purchase.billNo || purchase.invoiceNumber || nextSequentialPurchaseBill(purchases));
+    setBillNumber(purchase.billNumber || purchase.billNo || purchase.invoiceNumber || "");
+    setSystemBillNumber(purchase.systemBillNumber || purchase.systemBillNo || nextSequentialPurchaseBill(purchases));
     setPurchaseDate(purchase.purchaseDate || purchase.date || String(purchase.createdAt || "").slice(0, 10) || today());
     const hasDebt = num(purchase.remainingAmount || purchase.remaining || 0) > 0 || purchase.paymentStatus === "debt" || purchase.paymentMode === "installment";
     setPaymentStatus(hasDebt ? "debt" : "paid");
     setPaidAmount(cleanNumberInput(purchase.paidAmount ?? purchase.paid ?? ""));
+    setShippingCost(cleanNumberInput(purchase.shippingCost ?? purchase.transportCost ?? purchase.freightCost ?? ""));
 
     const restoredItems = sourceRows.map((row, index) => {
       const productId = row.productId || row.product_id || row.idProduct;
@@ -408,7 +431,6 @@ function PurchaseNew() {
         lineId: row.lineId || row.id || `purchase-line-${purchaseId}-${index + 1}`,
         productId,
         productName: row.productName || row.name || productDisplayName(product),
-        image: row.image || productImageSrc(product),
         group: row.group || groupNameById(productGroups, product?.groupId, product?.group || ""),
         unit: row.unit || product?.productUnit || "piece",
         baseUnit: row.baseUnit || row.stockUnit || "piece",
@@ -487,7 +509,6 @@ function PurchaseNew() {
       lineId,
       productId: product.id,
       productName: productDisplayName(product),
-      image: productImageSrc(product),
       group: groupNameById(productGroups, product.groupId, product.group || ""),
       unit: product.productUnit || "piece",
       baseUnit: "piece",
@@ -624,9 +645,9 @@ function PurchaseNew() {
   };
 
   const removeItem = (lineId) => setItems((current) => current.filter((row) => String(row.lineId) !== String(lineId)));
-  const lineTotal = (row) => Math.max(num(row.quantity) * num(row.purchasePrice), 0);
+  const lineTotal = (row) => Math.max(receivedQuantity(row) * num(row.purchasePrice), 0);
   const subtotal = items.reduce((sum, row) => sum + lineTotal(row), 0);
-  const grandTotal = subtotal;
+  const grandTotal = subtotal + num(shippingCost);
   const paid = paymentStatus === "paid" ? grandTotal : Math.min(num(paidAmount), grandTotal);
   const remaining = Math.max(grandTotal - paid, 0);
 
@@ -670,17 +691,20 @@ function PurchaseNew() {
     const existingPurchase = isEditing ? purchases.find((row) => String(row.id) === String(purchaseId)) : null;
     const targetPurchaseId = existingPurchase?.id || `purchase-${Date.now()}`;
     const supplier = suppliers.find((row) => String(row.id) === String(supplierId));
-    const finalBillNumber = String(existingPurchase?.billNumber || existingPurchase?.billNo || existingPurchase?.invoiceNumber || billNumber || nextSequentialPurchaseBill(purchases)).trim();
+    const finalBillNumber = String(billNumber).trim();
+    const finalSystemBillNumber = String(existingPurchase?.systemBillNumber || existingPurchase?.systemBillNo || systemBillNumber || nextSequentialPurchaseBill(purchases)).trim();
     const purchase = {
       id: targetPurchaseId,
       supplierId,
       supplierName: supplier?.supplierName || "",
       billNumber: finalBillNumber,
+      systemBillNumber: finalSystemBillNumber,
       purchaseDate,
       currency,
       paymentMode: paymentStatus === "paid" ? "cash" : "installment",
       paymentStatus,
       paidAmount: paid,
+      shippingCost: num(shippingCost),
       totalAmount: grandTotal,
       remainingAmount: remaining,
       itemCount: items.length,
@@ -713,7 +737,7 @@ function PurchaseNew() {
       movementType: "purchase",
       referenceType: "purchase",
       referenceId: targetPurchaseId,
-      referenceNumber: finalBillNumber,
+      referenceNumber: finalBillNumber || finalSystemBillNumber,
       quantityIn: receivedQuantity(row),
       quantityOut: 0,
       quantity: receivedQuantity(row),
@@ -846,7 +870,7 @@ function PurchaseNew() {
 
                 <label className="purchase-field purchase-top-field purchase-top-bill">
                   <span>{t.billNumber}</span>
-                  <input value={billNumber} readOnly />
+                  <input value={billNumber} onChange={(e) => setBillNumber(e.target.value)} />
                 </label>
 
                 <label className="purchase-field purchase-top-field purchase-top-currency">
@@ -867,7 +891,6 @@ function PurchaseNew() {
             <div className="purchase-items-list">
               {items.map((row) => (
                 <article className="purchase-item-row purchase-keyboard-row" key={row.lineId || row.id}>
-                  <img src={row.image} alt="" />
                   <div className="purchase-item-name">
                     <strong>{row.productName}</strong>
                     <small>{row.group || "—"} · {t.purchaseUnit}: {unitLabel(row.purchaseUnit)}</small>
@@ -937,6 +960,10 @@ function PurchaseNew() {
                       onChange={(e) => updateItem(row.lineId, "purchasePrice", e.target.value)}
                     />
                   </label>
+                  <div className="purchase-line-total">
+                    <span>{t.total}</span>
+                    <strong>{money(lineTotal(row))} {currency}</strong>
+                  </div>
                   <label className="purchase-expiry-field">
                     <span>{t.expiryDate}</span>
                     <input
@@ -946,10 +973,6 @@ function PurchaseNew() {
                       onChange={(e) => updateItemField(row.lineId, { expiryDate: e.target.value })}
                     />
                   </label>
-                  <div className="purchase-line-total">
-                    <span>{t.total}</span>
-                    <strong>{money(lineTotal(row))} {currency}</strong>
-                  </div>
                   <button className="purchase-remove" type="button" title={t.remove} onClick={() => removeItem(row.lineId)}><Trash2 size={16} /></button>
                 </article>
               ))}
@@ -992,7 +1015,6 @@ function PurchaseNew() {
                             onKeyDown={(event) => handleResultKeyDown(event, product, index)}
                             onClick={() => addProduct(product)}
                           >
-                            <img src={productImageSrc(product)} alt="" />
                             <span>
                               <strong>{productDisplayName(product)}</strong>
                               <small>{groupNameById(productGroups, product.groupId, product.group || "—")} · {unitLabel(product.productUnit || "piece")} · 1 = {productPiecesPerUnit(product)} {unitLabel("piece")}</small>
@@ -1016,6 +1038,7 @@ function PurchaseNew() {
                 <div className="purchase-summary-grid">
                   <div className="purchase-summary-row"><span>{t.itemCount}</span><strong>{items.length.toLocaleString("en-US")}</strong></div>
                   <div className="purchase-summary-row"><span>{t.subtotal}</span><strong>{money(subtotal)} {currency}</strong></div>
+                  <div className="purchase-summary-row"><span>{t.shippingCost}</span><strong>{money(shippingCost)} {currency}</strong></div>
                   <div className="purchase-summary-row purchase-summary-grand"><span>{t.grandTotal}</span><strong>{money(grandTotal)} {currency}</strong></div>
                   <div className="purchase-summary-row"><span>{t.paid}</span><strong>{money(paid)} {currency}</strong></div>
                   <div className={`purchase-summary-row ${remaining > 0 ? "has-debt" : ""}`}><span>{t.remaining}</span><strong>{money(remaining)} {currency}</strong></div>
@@ -1040,6 +1063,18 @@ function PurchaseNew() {
                     value={paymentStatus === "debt" ? paidAmount : plainAmount(grandTotal)}
                     disabled={paymentStatus !== "debt"}
                     onChange={(e) => setPaidAmount(cleanNumberInput(e.target.value))}
+                  />
+                </label>
+                <label className="purchase-field">
+                  <span>{t.shippingCost}</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    dir="ltr"
+                    min="0"
+                    step="0.01"
+                    value={shippingCost}
+                    onChange={(e) => setShippingCost(cleanNumberInput(e.target.value))}
                   />
                 </label>
                 <div className="purchase-payment-record"><span>{t.paid}</span><strong>{paymentStatus === "paid" ? t.paidFull : `${money(paid)} ${currency}`}</strong></div>

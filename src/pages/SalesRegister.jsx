@@ -46,9 +46,9 @@ const translations = {
     totalSales: "Total Sales",
     totalPaid: "Total Paid",
     totalDue: "Total Due",
-    search: "Search invoice or customer...",
+    search: "Search bill, system number or customer...",
     noSales: "No sales have been registered yet.",
-    invoiceNo: "Invoice No.", customer: "Customer", date: "Date", items: "Items", total: "Total", paid: "Paid", due: "Due", paymentType: "Payment Type",
+    invoiceNo: "Invoice No.", systemBillNo: "System No.", customer: "Customer", date: "Date", items: "Items", total: "Total", paid: "Paid", due: "Due", paymentType: "Payment Type",
     modalTitle: "Register New Sale",
     modalHint: "Choose a customer, add several products and complete the payment details.",
     selectCustomer: "Select customer",
@@ -119,9 +119,9 @@ const translations = {
     totalSales: "مجموع فروشات",
     totalPaid: "مجموع پرداخت",
     totalDue: "مجموع باقی‌مانده",
-    search: "جستجوی بل یا مشتری...",
+    search: "جستجوی بل، نمبر سیستم یا مشتری...",
     noSales: "هنوز فروش ثبت نشده است.",
-    invoiceNo: "بل نمبر", customer: "مشتری", date: "تاریخ", items: "اقلام", total: "جمله", paid: "پرداخت", due: "باقی‌مانده", paymentType: "حالت پرداخت",
+    invoiceNo: "بل نمبر", systemBillNo: "نمبر سیستم", customer: "مشتری", date: "تاریخ", items: "اقلام", total: "جمله", paid: "پرداخت", due: "باقی‌مانده", paymentType: "حالت پرداخت",
     modalTitle: "ثبت فروش جدید",
     modalHint: "مشتری را انتخاب کنید، چند دوا را اضافه نموده و معلومات پرداخت را تکمیل کنید.",
     selectCustomer: "مشتری را انتخاب کنید",
@@ -192,9 +192,9 @@ const translations = {
     totalSales: "ټول خرڅلاو",
     totalPaid: "ټولې تادیې",
     totalDue: "ټول پاتې",
-    search: "د بل یا پېرودونکي لټون...",
+    search: "د بل، سیستم نمبر یا پېرودونکي لټون...",
     noSales: "تر اوسه خرڅلاو نه دی ثبت شوی.",
-    invoiceNo: "بل نمبر", customer: "پېرودونکی", date: "نېټه", items: "توکي", total: "ټول", paid: "تادیه", due: "پاتې", paymentType: "د تادیې ډول",
+    invoiceNo: "بل نمبر", systemBillNo: "سیستم نمبر", customer: "پېرودونکی", date: "نېټه", items: "توکي", total: "ټول", paid: "تادیه", due: "پاتې", paymentType: "د تادیې ډول",
     modalTitle: "نوی خرڅلاو ثبتول",
     modalHint: "پېرودونکی وټاکئ، څو توکي اضافه کړئ او د تادیې معلومات بشپړ کړئ.",
     selectCustomer: "پېرودونکی وټاکئ",
@@ -513,8 +513,11 @@ export default function SalesRegister() {
   const filteredSales = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return sales;
-    return sales.filter((sale) => `${sale.invoiceNumber || ""} ${sale.customerName || customerName(sale.customerId)}`.toLowerCase().includes(q));
+    return sales.filter((sale) => `${sale.billNumber || ""} ${sale.systemBillNumber || ""} ${sale.invoiceNumber || ""} ${sale.customerName || customerName(sale.customerId)}`.toLowerCase().includes(q));
   }, [sales, search, customers]);
+
+  const manualBillNumber = (sale) => sale.billNumber || (!sale.systemBillNumber ? sale.invoiceNumber : "") || "—";
+  const systemBillNumber = (sale) => sale.systemBillNumber || sale.systemBillNo || sale.invoiceNumber || "—";
 
   const saleDay = (sale) => String(sale.saleDate || sale.createdAt || "").slice(0, 10);
   const dailySales = useMemo(
@@ -639,11 +642,12 @@ export default function SalesRegister() {
         </div>
         <div className="sales-register-table-wrap">
           <table>
-            <thead><tr><th>{t.invoiceNo}</th><th>{t.customer}</th><th>{t.items}</th><th>{t.total}</th><th>{t.discount}</th><th>{t.paid}</th><th>{t.due}</th><th>{t.paymentType}</th><th>{t.date}</th><th>{t.actions}</th></tr></thead>
+            <thead><tr><th>{t.invoiceNo}</th><th>{t.systemBillNo}</th><th>{t.customer}</th><th>{t.items}</th><th>{t.total}</th><th>{t.discount}</th><th>{t.paid}</th><th>{t.due}</th><th>{t.paymentType}</th><th>{t.date}</th><th>{t.actions}</th></tr></thead>
             <tbody>
               {filteredSales.map((sale) => (
                 <tr key={sale.id} className="sales-register-clickable-row" onClick={() => navigate(`/sale-detail/${sale.id}`)} title={t.clickRecord}>
-                  <td><strong>{sale.invoiceNumber}</strong></td>
+                  <td><strong>{manualBillNumber(sale)}</strong></td>
+                  <td><strong>{systemBillNumber(sale)}</strong></td>
                   <td>{sale.customerName || customerName(sale.customerId)}</td>
                   <td>{sale.items?.length || 0}</td>
                   <td>{money(sale.totalAmount)}</td>
@@ -671,7 +675,7 @@ export default function SalesRegister() {
                   </td>
                 </tr>
               ))}
-              {!filteredSales.length && <tr><td colSpan="10" className="sales-register-empty">{t.noSales}</td></tr>}
+              {!filteredSales.length && <tr><td colSpan="11" className="sales-register-empty">{t.noSales}</td></tr>}
             </tbody>
           </table>
         </div>

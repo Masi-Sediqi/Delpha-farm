@@ -14,7 +14,6 @@ import {
 } from "react-router-dom";
 import {
   FileBarChart,
-  FileMinus2,
   LayoutDashboard,
   MoreHorizontal,
   ReceiptText,
@@ -45,7 +44,7 @@ import ToastHost from "./components/ToastHost";
 import { useJsonCollection } from "./hooks/useJsonCollection";
 import { downloadBackup } from "./utils/backup";
 import { notify } from "./utils/notify";
-import { canViewModule } from "./utils/permissions";
+import { canViewModule, createFullPermissions, hasPermission, moduleKeyForPath } from "./utils/permissions";
 import { IS_DEMO, APP_MODE, environmentStorageKey } from "./config/appConfig";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -55,7 +54,6 @@ const Products = lazy(() => import("./pages/Products"));
 const ProductDetail = lazy(() => import("./pages/ProductDetail"));
 const Purchasing = lazy(() => import("./pages/Purchasing"));
 const Payables = lazy(() => import("./pages/Payables"));
-const PayablesBatch = lazy(() => import("./pages/PayablesBatch"));
 const PrintPayablesBatch = lazy(() => import("./pages/PrintPayablesBatch"));
 const PurchaseNew = lazy(() => import("./pages/PurchaseNew"));
 const PurchaseDetail = lazy(() => import("./pages/PurchaseDetail"));
@@ -65,11 +63,10 @@ const CustomerDetail = lazy(() => import("./pages/CustomerDetail"));
 const SalesRegister = lazy(() => import("./pages/SalesRegister"));
 const SaleNew = lazy(() => import("./pages/SaleNew"));
 const Receivables = lazy(() => import("./pages/Receivables"));
-const ReceivablesBatch = lazy(() => import("./pages/ReceivablesBatch"));
 const PrintReceivablesBatch = lazy(() => import("./pages/PrintReceivablesBatch"));
 const PurchaseReturns = lazy(() => import("./pages/PurchaseReturns"));
 const SaleReturns = lazy(() => import("./pages/SaleReturns"));
-const Expenses = lazy(() => import("./pages/Expenses"));
+const CashFlow = lazy(() => import("./pages/CashJournal"));
 const ReceivablesPayables = lazy(() => import("./pages/ReceivablesPayables"));
 const GeneralJournal = lazy(() => import("./pages/GeneralJournal"));
 const Banks = lazy(() => import("./pages/Banks"));
@@ -88,12 +85,12 @@ const License = lazy(() => import("./pages/License"));
 const defaultAdminAccount = {
   id: "default-admin",
   fullName: "System Admin",
-  email: "",
-  password: "",
+  email: "admin@gmail.com",
+  password: "mynameisadmin",
   secondaryPassword: "",
   role: "Admin",
   status: "Active",
-  permissions: {},
+  permissions: createFullPermissions(),
   isDefaultAdmin: true,
   createdAt: "2026-07-18",
 };
@@ -119,6 +116,7 @@ const shellLabels = {
     banks: "Banks",
     cashCount: "Cash Count",
     expenses: "Expenses",
+    cashJournal: "Cash Journal",
     accounts: "Accounts",
     receivablesPayables: "Receivables & Payables",
     generalJournal: "General Journal",
@@ -141,6 +139,7 @@ const shellLabels = {
     banks: "بانک‌ها",
     cashCount: "شمارش نقدی",
     expenses: "مصارف",
+    cashJournal: "روز نامچه / نقدی",
     accounts: "اکونت‌ها",
     receivablesPayables: "دریافتنی و پرداختنی",
     generalJournal: "ژورنال عمومی",
@@ -163,6 +162,7 @@ const shellLabels = {
     banks: "بانکونه",
     cashCount: "د نغدو شمېرنه",
     expenses: "مصارف",
+    cashJournal: "ورځپاڼه / نغدي",
     accounts: "اکونټونه",
     receivablesPayables: "ترلاسه کېدونکي او ورکول کېدونکي",
     generalJournal: "عمومي ژورنال",
@@ -174,7 +174,7 @@ const shellLabels = {
 
 function applyStoredTheme() {
   const storedTheme = localStorage.getItem(appThemeStorageKey) || "minimalism";
-  const theme = ["neon", "glassmorphism"].includes(storedTheme) ? "aurora" : storedTheme;
+  const theme = ["black-white", "aurora", "dark"].includes(storedTheme) ? "black-white" : "minimalism";
   if (theme !== storedTheme) localStorage.setItem(appThemeStorageKey, theme);
   document.body.dataset.theme = theme;
   document.documentElement.dataset.theme = theme;
@@ -271,8 +271,19 @@ function BusyLoader({ label = "System is preparing..." }) {
   );
 }
 
-function ProtectedModule({ currentUser, moduleKey, children }) {
-  if (!canViewModule(currentUser, moduleKey)) {
+function NavigationLoader({ label }) {
+  return (
+    <div className="navigation-loader" role="status" aria-live="polite" aria-label={label}>
+      <div className="navigation-loader-box">
+        <span className="navigation-loader-spinner" aria-hidden="true" />
+        <span>{label}</span>
+      </div>
+    </div>
+  );
+}
+
+function ProtectedModule({ currentUser, moduleKey, action = "view", children }) {
+  if (!hasPermission(currentUser, moduleKey, action)) {
     return <PermissionDenied />;
   }
 
@@ -284,6 +295,7 @@ function App() {
   const [accounts, setAccounts, , accountsLoaded] = useJsonCollection("accounts");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [navigationLoading, setNavigationLoading] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const [licenseStatus, setLicenseStatus] = useState(null);
@@ -299,6 +311,21 @@ function App() {
   const routeClassName = location.pathname === "/"
     ? "route-dashboard"
     : `route-${location.pathname.replace(/^\/+/, "").replace(/[^a-zA-Z0-9]+/g, "-") || "dashboard"}`;
+
+  useEffect(() => {
+    setNavigationLoading(true);
+    const timer = window.setTimeout(() => setNavigationLoading(false), 420);
+    return () => window.clearTimeout(timer);
+  }, [location.key, location.pathname]);
+
+  const beginNavigation = (event) => {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const link = event.target.closest?.("a[href]");
+    if (!link || link.hasAttribute("download") || link.target === "_blank") return;
+    const href = link.getAttribute("href");
+    if (!href || href === `#${location.pathname}`) return;
+    setNavigationLoading(true);
+  };
 
   useEffect(() => {
     applyStoredTheme();
@@ -372,7 +399,7 @@ function App() {
   // in-memory bootstrap administrator. If the first account is created during
   // that session, keep the operator inside until they explicitly log out.
   // On the next app start, existing accounts require normal login.
-  const currentUser = (bootstrapSession || (accountsLoaded && !hasUserAccounts))
+  const currentUser = bootstrapSession
     ? defaultAdminAccount
     : effectiveAccounts.find((account) => String(account.id) === String(sessionId));
 
@@ -447,7 +474,9 @@ function App() {
     // A persisted login bypasses the login() function, so start the trial here
     // as well. startLicenseSession is idempotent and will not reset its expiry.
     checkSession(true);
-    const timer = window.setInterval(() => checkSession(false), 1000);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") checkSession(false);
+    }, 30000);
     return () => { cancelled = true; window.clearInterval(timer); };
   }, [currentUser, navigate]);
 
@@ -508,11 +537,6 @@ function App() {
   useEffect(() => {
     if (!accountsLoaded) return;
 
-    if (!hasUserAccounts && !sessionId) {
-      setBootstrapSession(true);
-      return;
-    }
-
     // Never restore the bootstrap identity from persistent storage. It is only
     // valid for the current first-run session before an explicit logout.
     if (String(sessionId) === "default-admin") {
@@ -531,9 +555,15 @@ function App() {
       }
     }
 
-    localStorage.setItem(sessionStorageKey, String(account.id));
-    setBootstrapSession(false);
-    setSessionId(String(account.id));
+    if (account.isDefaultAdmin) {
+      localStorage.removeItem(sessionStorageKey);
+      setSessionId(null);
+      setBootstrapSession(true);
+    } else {
+      localStorage.setItem(sessionStorageKey, String(account.id));
+      setBootstrapSession(false);
+      setSessionId(String(account.id));
+    }
   };
 
   const logout = () => {
@@ -542,28 +572,56 @@ function App() {
     setSessionId(null);
   };
 
+  useEffect(() => {
+    if (!currentUser) return undefined;
+    const protectAction = (event) => {
+      const control = event.target.closest("button, a, [role='button'], [role='menuitem']");
+      if (!control) return;
+      const href = control.getAttribute("href") || "";
+      const targetPath = href.startsWith("/") ? href : location.pathname;
+      const moduleKey = moduleKeyForPath(targetPath);
+      const textValue = `${control.textContent || ""} ${control.getAttribute("title") || ""} ${control.getAttribute("aria-label") || ""}`.toLowerCase();
+      const contextValue = `${control.closest("form, [role='dialog']")?.textContent || ""}`.toLowerCase();
+      let action = "";
+      if (/\/print(?:\/|$)/.test(targetPath) || /(print|چاپ)/i.test(textValue)) action = "print";
+      else if (/(delete|remove|حذف|پاک)/i.test(textValue)) action = "delete";
+      else if (/\/edit(?:\/|$)/.test(targetPath) || /(edit|update|ایدیت|ویرایش|سمون)/i.test(textValue)) action = "edit";
+      else if (/\/new(?:\/|$)/.test(targetPath) || /(add|new|create|register|افزودن|اضافه|جدید|ثبت|نوی)/i.test(textValue)) action = "create";
+      else if (/(save|ذخیره|خوندي)/i.test(textValue)) {
+        action = /(add|new|create|register|افزودن|اضافه|جدید|ثبت|نوی)/i.test(contextValue) ? "create" : "edit";
+      }
+      if (!action || hasPermission(currentUser, moduleKey, action)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      notify("You do not have permission for this action.", "error");
+    };
+    document.addEventListener("click", protectAction, true);
+    return () => document.removeEventListener("click", protectAction, true);
+  }, [currentUser, location.pathname]);
+
   // Keep the sidebar focused on the same high-level areas used by the Access system.
   // Supporting tools (returns, banks, cash count, expenses and journals) stay available
   // through their parent modules instead of occupying permanent sidebar space.
   const menuItems = [
     { to: "/", label: labels.dashboard, moduleKey: "dashboard", icon: LayoutDashboard },
     { to: "/suppliers", label: labels.suppliers, moduleKey: "suppliers", icon: Truck },
-    { to: "/products", label: labels.products, moduleKey: "customers", icon: ReceiptText },
-    { to: "/purchasing", label: labels.purchasing, moduleKey: "suppliers", icon: ShoppingCart },
-    { to: "/payables", label: labels.payables, moduleKey: "suppliers", icon: BadgeDollarSign },
+    { to: "/products", label: labels.products, moduleKey: "products", icon: ReceiptText },
+    { to: "/purchasing", label: labels.purchasing, moduleKey: "purchasing", icon: ShoppingCart },
+    { to: "/payables", label: labels.payables, moduleKey: "payables", icon: BadgeDollarSign },
     { to: "/customer-registry", label: labels.customerRegistry, moduleKey: "customers", icon: Users },
-    { to: "/sales-register", label: labels.salesRegister, moduleKey: "customers", icon: ShoppingBag },
-    { to: "/receivables", label: labels.receivables, moduleKey: "customers", icon: BadgeDollarSign },
-    { to: "/inventory", label: labels.inventory, moduleKey: "reports", icon: Boxes },
-    { to: "/expenses", label: labels.expenses, moduleKey: "reports", icon: FileMinus2 },
-    { to: "/accounts", label: labels.accounts, moduleKey: "settings", icon: Users },
+    { to: "/sales-register", label: labels.salesRegister, moduleKey: "sales", icon: ShoppingBag },
+    { to: "/receivables", label: labels.receivables, moduleKey: "receivables", icon: BadgeDollarSign },
+    { to: "/inventory", label: labels.inventory, moduleKey: "inventory", icon: Boxes },
+    { to: "/cash-journal", label: labels.cashJournal, moduleKey: "reports", icon: BookOpenCheck },
+    { to: "/accounts", label: labels.accounts, moduleKey: "accounts", icon: Users },
     { to: "/reports", label: labels.reports, moduleKey: "reports", icon: FileBarChart },
-    { to: "/trash", label: labels.trash, moduleKey: "settings", icon: Trash2 },
+    { to: "/trash", label: labels.trash, moduleKey: "trash", icon: Trash2 },
     { to: "/settings", label: labels.settings, moduleKey: "settings", icon: SettingsIcon },
   ];
 
-  const protect = (moduleKey, element) => (
-    <ProtectedModule currentUser={currentUser} moduleKey={moduleKey}>
+  const protect = (moduleKey, element, action = "view") => (
+    <ProtectedModule currentUser={currentUser} moduleKey={moduleKey} action={action}>
       {element}
     </ProtectedModule>
   );
@@ -590,7 +648,7 @@ function App() {
     appContent = (
       <Suspense fallback={<BusyLoader label="Opening login..." />}>
         <Login
-          accounts={effectiveAccounts}
+          accounts={hasUserAccounts ? effectiveAccounts : [defaultAdminAccount]}
           setAccounts={setAccounts}
           onLogin={login}
           company={company}
@@ -601,6 +659,7 @@ function App() {
     appContent = (
       <div
         className={`app app-${appDirection} ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}
+        onClickCapture={beginNavigation}
         dir={appDirection}
         data-direction={appDirection}
         data-language={appLanguage}
@@ -685,40 +744,36 @@ function App() {
 
               <Route path="/suppliers" element={protect("suppliers", <Suppliers />)} />
               <Route path="/supplier-detail/:supplierId" element={protect("suppliers", <SupplierDetail />)} />
-              <Route path="/products" element={protect("customers", <Products />)} />
-              <Route path="/product-detail/:productId" element={protect("customers", <ProductDetail />)} />
-              <Route path="/purchasing" element={protect("suppliers", <Purchasing />)} />
-              <Route path="/payables" element={protect("suppliers", <Payables />)} />
-              <Route path="/payables/payments/new" element={protect("suppliers", <PayablesBatch />)} />
-              <Route path="/payables/payments/:batchId/edit" element={protect("suppliers", <PayablesBatch />)} />
-              <Route path="/payables/payments/:batchId/print" element={protect("suppliers", <PrintPayablesBatch />)} />
-              <Route path="/purchasing/new" element={protect("suppliers", <PurchaseNew />)} />
-              <Route path="/purchasing/:purchaseId/print" element={protect("suppliers", <PrintPurchase />)} />
-              <Route path="/purchasing/:purchaseId" element={protect("suppliers", <PurchaseDetail />)} />
-              <Route path="/purchasing/:purchaseId/edit" element={protect("suppliers", <PurchaseNew />)} />
-              <Route path="/purchase-returns" element={protect("suppliers", <PurchaseReturns />)} />
+              <Route path="/products" element={protect("products", <Products />)} />
+              <Route path="/product-detail/:productId" element={protect("products", <ProductDetail />)} />
+              <Route path="/purchasing" element={protect("purchasing", <Purchasing />)} />
+              <Route path="/payables" element={protect("payables", <Payables />)} />
+              <Route path="/payables/payments/:batchId/print" element={protect("payables", <PrintPayablesBatch />, "print")} />
+              <Route path="/purchasing/new" element={protect("purchasing", <PurchaseNew />, "create")} />
+              <Route path="/purchasing/:purchaseId/print" element={protect("purchasing", <PrintPurchase />, "print")} />
+              <Route path="/purchasing/:purchaseId" element={protect("purchasing", <PurchaseDetail />)} />
+              <Route path="/purchasing/:purchaseId/edit" element={protect("purchasing", <PurchaseNew />, "edit")} />
+              <Route path="/purchase-returns" element={protect("purchaseReturns", <PurchaseReturns />)} />
               <Route path="/customer-registry" element={protect("customers", <CustomersRegistry />)} />
               <Route path="/customer-detail/:customerId" element={protect("customers", <CustomerDetail />)} />
-              <Route path="/sales-register" element={protect("customers", <SalesRegister />)} />
-              <Route path="/sales" element={protect("customers", <SalesRegister />)} />
-              <Route path="/sales/new" element={protect("customers", <SaleNew />)} />
-              <Route path="/sales/:saleId/edit" element={protect("customers", <SaleNew />)} />
-              <Route path="/receivables" element={protect("customers", <Receivables />)} />
-              <Route path="/receivables/payments/new" element={protect("customers", <ReceivablesBatch />)} />
-              <Route path="/receivables/payments/:batchId/edit" element={protect("customers", <ReceivablesBatch />)} />
-              <Route path="/receivables/payments/:batchId/print" element={protect("customers", <PrintReceivablesBatch />)} />
-              <Route path="/sale-returns" element={protect("customers", <SaleReturns />)} />
-              <Route path="/inventory" element={protect("reports", <Inventory />)} />
+              <Route path="/sales-register" element={protect("sales", <SalesRegister />)} />
+              <Route path="/sales" element={protect("sales", <SalesRegister />)} />
+              <Route path="/sales/new" element={protect("sales", <SaleNew />, "create")} />
+              <Route path="/sales/:saleId/edit" element={protect("sales", <SaleNew />, "edit")} />
+              <Route path="/receivables" element={protect("receivables", <Receivables />)} />
+              <Route path="/receivables/payments/:batchId/print" element={protect("receivables", <PrintReceivablesBatch />, "print")} />
+              <Route path="/sale-returns" element={protect("saleReturns", <SaleReturns />)} />
+              <Route path="/inventory" element={protect("inventory", <Inventory />)} />
               <Route path="/banks" element={protect("reports", <Banks />)} />
               <Route path="/cash-count" element={protect("reports", <CashCount />)} />
-              <Route path="/expenses" element={protect("reports", <Expenses />)} />
+              <Route path="/cash-journal" element={protect("reports", <CashFlow />)} />
               <Route path="/receivables-payables" element={protect("reports", <ReceivablesPayables />)} />
               <Route path="/general-journal" element={protect("reports", <GeneralJournal />)} />
-              <Route path="/sale-detail/:saleId/print" element={protect("customers", <SaleDetail autoPrint />)} />
-              <Route path="/sale-detail/:saleId" element={protect("customers", <SaleDetail />)} />
+              <Route path="/sale-detail/:saleId/print" element={protect("sales", <SaleDetail autoPrint />, "print")} />
+              <Route path="/sale-detail/:saleId" element={protect("sales", <SaleDetail />)} />
               <Route path="/reports" element={protect("reports", <Reports />)} />
-              <Route path="/trash" element={protect("settings", <Trash />)} />
-              <Route path="/accounts" element={protect("settings", <Accounts accounts={effectiveAccounts} setAccounts={setAccounts} currentUser={currentUser} />)} />
+              <Route path="/trash" element={protect("trash", <Trash />)} />
+              <Route path="/accounts" element={protect("accounts", <Accounts accounts={effectiveAccounts} setAccounts={setAccounts} currentUser={currentUser} />)} />
 
               <Route path="/settings" element={protect("settings", <Settings accounts={effectiveAccounts} setAccounts={setAccounts} currentUser={currentUser} />)} />
 
@@ -740,6 +795,9 @@ function App() {
 
         <ToastHost />
         <ConfirmDialogHost />
+        {navigationLoading && (
+          <NavigationLoader label={appLanguage === "fa" ? "در حال بارگذاری..." : appLanguage === "ps" ? "د پورته کېدو په حال کې..." : "Loading..."} />
+        )}
       </div>
     );
   }

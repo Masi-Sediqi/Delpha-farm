@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
-import { Edit3, PackagePlus, Plus, Search, Trash2, X } from "lucide-react";
+import { CopyPlus, Edit3, PackagePlus, Plus, Search, Trash2, X } from "lucide-react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import { confirmAction } from "../utils/confirmDialog";
 import { notify } from "../utils/notify";
-import { defaultProductImage, productImageSrc } from "../utils/productImages";
 import { countryNameById, groupNameById, makeMasterId, normalizeMasterName } from "../utils/productMasterData";
 import { replaceReferenceMovements, stockMovementId } from "../utils/stock";
 import "./Products.css";
@@ -92,7 +91,6 @@ const translations = {
     oneWeek: "1 week",
     lowStock: "Low Stock",
     quantity: "Quantity",
-    image: "Image",
     chooseImage: "Choose Image",
     removeImage: "Remove Image",
     salePrice: "Sale Price",
@@ -123,6 +121,9 @@ const translations = {
     descriptionPlaceholder: "Write an optional description...",
     cancel: "Cancel",
     save: "Save Product",
+    saveAll: "Save All Products",
+    addAnother: "Add another product",
+    productNumber: "Product {number}",
     update: "Update Product",
     required: "Please enter the product name and select a group.",
     requiredProductName: "Product name is required.",
@@ -221,7 +222,6 @@ const translations = {
     oneWeek: "۱ هفته",
     lowStock: "موجودی کم",
     quantity: "مقدار",
-    image: "عکس",
     chooseImage: "انتخاب عکس",
     removeImage: "حذف عکس",
     salePrice: "قیمت فروش",
@@ -252,6 +252,9 @@ const translations = {
     descriptionPlaceholder: "در صورت نیاز توضیحات بنویسید...",
     cancel: "لغو",
     save: "ذخیره جنس",
+    saveAll: "ذخیره تمام اجناس",
+    addAnother: "افزودن جنس دیگر",
+    productNumber: "جنس {number}",
     update: "ثبت تغییرات",
     required: "لطفاً نام جنس را وارد و گروپ را انتخاب کنید.",
     requiredProductName: "لطفاً نام جنس را وارد کنید.",
@@ -350,7 +353,6 @@ const translations = {
     oneWeek: "۱ اونۍ",
     lowStock: "کم موجودي",
     quantity: "مقدار",
-    image: "انځور",
     chooseImage: "انځور وټاکئ",
     removeImage: "انځور لرې کړئ",
     salePrice: "د خرڅلاو بیه",
@@ -381,6 +383,9 @@ const translations = {
     descriptionPlaceholder: "که اړتیا وي تشریحات ولیکئ...",
     cancel: "لغوه",
     save: "توکی ذخیره کول",
+    saveAll: "ټول توکي ذخیره کول",
+    addAnother: "بل توکی اضافه کړئ",
+    productNumber: "توکی {number}",
     update: "بدلونونه ثبتول",
     required: "مهرباني وکړئ د توکي نوم ولیکئ او ګروپ وټاکئ.",
     requiredProductName: "مهرباني وکړئ د توکي نوم ولیکئ.",
@@ -466,7 +471,6 @@ const emptyForm = {
   alertBeforeExpiryDays: "180",
   lowStockThreshold: "",
   quantity: "",
-  image: defaultProductImage,
   salePrice: "",
   purchasePrice: "",
   description: "",
@@ -487,6 +491,7 @@ function Products() {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState(emptyForm);
+  const [batchForms, setBatchForms] = useState([{ ...emptyForm }]);
   const [addingGroup, setAddingGroup] = useState(false);
   const [newGroup, setNewGroup] = useState("");
   const [addingCountry, setAddingCountry] = useState(false);
@@ -573,6 +578,10 @@ function Products() {
   const openNew = () => {
     setEditingId(null);
     setFormData({ ...emptyForm, groupId: defaultGroupId, countryId: defaultCountryId });
+    setBatchForms([
+      { ...emptyForm, countryId: defaultCountryId },
+      { ...emptyForm, countryId: defaultCountryId },
+    ]);
     setFieldErrors({});
     setAddingGroup(false);
     setNewGroup("");
@@ -659,6 +668,61 @@ function Products() {
       }
       return { ...previous, [name]: value };
     });
+  };
+
+  const updateBatchForm = (index, event) => {
+    const { name, value } = event.target;
+    setBatchForms((current) => current.map((item, itemIndex) =>
+      itemIndex === index ? { ...item, [name]: value } : item
+    ));
+    if (fieldErrors.batch) setFieldErrors({});
+  };
+
+  const addBatchForm = () => {
+    setBatchForms((current) => [...current, { ...emptyForm, countryId: defaultCountryId }]);
+  };
+
+  const removeBatchForm = (index) => {
+    setBatchForms((current) => current.length === 1
+      ? [{ ...emptyForm, countryId: defaultCountryId }]
+      : current.filter((_, itemIndex) => itemIndex !== index));
+  };
+
+  const addBatchMasterOption = async (type, index) => {
+    const labels = {
+      productForm: t.newProductFormPlaceholder,
+      country: t.newCountryPlaceholder,
+      manufacturer: t.manufacturerCompanyPlaceholder,
+    };
+    const rawName = window.prompt(labels[type] || t.addAnother, "");
+    const name = String(rawName || "").trim().replace(/\s+/g, " ");
+    if (!name) return;
+
+    if (type === "productForm") {
+      const existingDefault = productFormOptions.find((entry) => normalizeMasterName(t[entry.labelKey]) === normalizeMasterName(name));
+      const existingCustom = customProductForms.find((entry) => normalizeMasterName(entry.name) === normalizeMasterName(name));
+      let value = existingDefault?.value || (existingCustom ? `custom:${existingCustom.id}` : "");
+      if (!value) {
+        const row = { id: makeMasterId("product-form", name), name, createdAt: new Date().toISOString() };
+        if (!await setCustomProductForms([...customProductForms, row])) return;
+        value = `custom:${row.id}`;
+      }
+      setBatchForms((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, productForm: value } : item));
+      return;
+    }
+
+    if (type === "country") {
+      const existing = productCountries.find((entry) => normalizeMasterName(entry.name || entry.en) === normalizeMasterName(name));
+      const row = existing || { id: makeMasterId("country", name), name, en: name, fa: name, ps: name, createdAt: new Date().toISOString() };
+      if (!existing && !await setProductCountries([...productCountries, row])) return;
+      setBatchForms((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, countryId: row.id } : item));
+      return;
+    }
+
+    const existing = manufacturerCompanies.find((entry) => normalizeMasterName(entry.name) === normalizeMasterName(name));
+    const row = existing || { id: makeMasterId("manufacturer", name), name, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    if (!existing && !await setManufacturerCompanies([...manufacturerCompanies, row])) return;
+    setBatchForms((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, manufacturerName: row.name } : item));
   };
 
   const saveInlineGroup = async () => {
@@ -855,6 +919,53 @@ function Products() {
     event.preventDefault();
     setFieldErrors({});
 
+    if (!editingId) {
+      const rows = batchForms.filter((item) => item.productName.trim());
+      const names = rows.map((item) => normalizedProductName(item.productName));
+      const duplicateInBatch = names.some((name, index) => names.indexOf(name) !== index);
+      const duplicateExisting = rows.some((item) => isDuplicateProductName(item.productName, null));
+      if (!rows.length) {
+        setFieldErrors({ batch: t.requiredProductName });
+        return;
+      }
+      if (duplicateInBatch || duplicateExisting) {
+        setFieldErrors({ batch: t.duplicateProductName });
+        return;
+      }
+
+      const now = new Date().toISOString();
+      const records = rows.map((item, index) => ({
+        ...emptyForm,
+        ...item,
+        id: `sale-product-${Date.now()}-${index}`,
+        productName: item.productName.trim(),
+        manufacturerName: String(item.manufacturerName || "").trim(),
+        supplierName: supplierNameById(item.supplierId, ""),
+        unit: item.unit || "afn",
+        productUnit: "piece",
+        cartonSize: String(item.cartonSize || "").trim(),
+        expiryDate: "",
+        alertBeforeExpiryDays: 180,
+        lowStockThreshold: 0,
+        quantity: 0,
+        currentStock: 0,
+        stock: 0,
+        piecesPerUnit: Math.max(1, Number(item.cartonSize || 1)),
+        totalPieceQuantity: 0,
+        discount: Number(item.discount || 0),
+        salePrice: Number(item.salePrice || 0),
+        purchasePrice: Number(item.purchasePrice || 0),
+        description: String(item.description || "").trim(),
+        createdAt: now,
+        updatedAt: now,
+      }));
+      const saved = await setProducts([...records, ...products]);
+      if (!saved) return;
+      notify(t.saved);
+      closeModal();
+      return;
+    }
+
     let selectedGroupId = formData.groupId;
     let selectedCountryId = formData.countryId;
 
@@ -893,7 +1004,6 @@ function Products() {
     const nextErrors = {};
     if (!formData.productName.trim()) nextErrors.productName = t.requiredProductName;
     else if (isDuplicateProductName(formData.productName)) nextErrors.productName = t.duplicateProductName;
-    if (!selectedGroupId) nextErrors.group = t.requiredGroup;
     if (Object.keys(nextErrors).length) {
       setFieldErrors(nextErrors);
       return;
@@ -923,7 +1033,6 @@ function Products() {
       stock: openingQuantity,
       piecesPerUnit: unitMultiplier,
       totalPieceQuantity: openingQuantity * unitMultiplier,
-      image: formData.image || defaultProductImage,
       cartonSize: formData.cartonSize.trim(),
       discount: Number(formData.discount || 0),
       salePrice: Number(formData.salePrice || 0),
@@ -1034,7 +1143,6 @@ function Products() {
               {filteredProducts.map((product) => (
                 <tr key={product.id} className="sales-product-clickable-row" role="button" tabIndex={0} onClick={() => navigate(`/product-detail/${product.id}`)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") navigate(`/product-detail/${product.id}`); }}>
                   <td className="sales-product-name-cell">
-                    <img src={productImageSrc(product)} alt="" />
                     <div><strong>{product.productName}</strong>{product.description && <small>{product.description}</small>}</div>
                   </td>
                   <td><span className="sales-product-group-badge">{groupLabel(product)}</span></td>
@@ -1069,7 +1177,7 @@ function Products() {
               <button type="button" className="sales-product-modal-close" onClick={closeModal} aria-label={t.cancel}><X size={20} /></button>
             </div>
 
-            <form onSubmit={handleSubmit} className="sales-product-form">
+            {editingId ? (<form onSubmit={handleSubmit} className="sales-product-form">
               <div className="sales-product-form-grid">
                 <label className={`sales-product-field sales-product-field-wide ${fieldErrors.productName ? "has-error" : ""}`}>
                   <span>{t.productName} *</span>
@@ -1338,7 +1446,72 @@ function Products() {
                 <button type="button" className="sales-product-cancel-btn" onClick={closeModal}>{t.cancel}</button>
                 <button type="submit" className="sales-product-save-btn">{editingId ? t.update : t.save}</button>
               </div>
-            </form>
+            </form>) : (
+              <form onSubmit={handleSubmit} className="sales-product-form sales-product-batch-form">
+                {fieldErrors.batch && <div className="sales-product-batch-error" role="alert">{fieldErrors.batch}</div>}
+                <div className="sales-product-batch-grid">
+                  {batchForms.map((item, index) => (
+                    <section className="sales-product-batch-card" key={index}>
+                      <header>
+                        <strong>{formatTemplate(t.productNumber, { number: index + 1 })}</strong>
+                        <button type="button" onClick={() => removeBatchForm(index)} aria-label={t.delete} title={t.delete}><Trash2 size={15} /></button>
+                      </header>
+                      <div className="sales-product-batch-fields">
+                        <label className="sales-product-field sales-product-field-wide">
+                          <span>{t.productName} *</span>
+                          <input name="productName" value={item.productName} onChange={(event) => updateBatchForm(index, event)} placeholder={t.productPlaceholder} autoFocus={index === 0} />
+                        </label>
+                        <label className="sales-product-field">
+                          <span>{t.cartonSize}</span>
+                          <input type="number" min="1" step="1" name="cartonSize" value={item.cartonSize} onChange={(event) => updateBatchForm(index, event)} placeholder={t.cartonPlaceholder} />
+                        </label>
+                        <label className="sales-product-field">
+                          <span>{t.productForm}</span>
+                          <span className="sales-product-batch-select"><select name="productForm" value={item.productForm || ""} onChange={(event) => updateBatchForm(index, event)}>
+                              <option value="">{t.selectProductForm}</option>
+                              {productFormOptions.map((option) => <option key={option.value} value={option.value}>{t[option.labelKey]}</option>)}
+                              {customProductForms.filter((entry) => entry?.name).map((entry) => <option key={entry.id} value={`custom:${entry.id}`}>{entry.name}</option>)}
+                            </select><button type="button" onClick={() => addBatchMasterOption("productForm", index)} title={t.addProductForm} aria-label={t.addProductForm}><Plus size={14} /></button></span>
+                        </label>
+                        <label className="sales-product-field">
+                          <span>{t.madeIn}</span>
+                          <span className="sales-product-batch-select"><select name="countryId" value={item.countryId || ""} onChange={(event) => updateBatchForm(index, event)}>
+                              <option value="">{t.selectCountry}</option>
+                              {allCountries.map((country) => <option key={country.id} value={country.id}>{country[language] || country.en || country.name}</option>)}
+                            </select><button type="button" onClick={() => addBatchMasterOption("country", index)} title={t.addNewCountry} aria-label={t.addNewCountry}><Plus size={14} /></button></span>
+                        </label>
+                        <label className="sales-product-field">
+                          <span>{t.manufacturerCompany}</span>
+                          <span className="sales-product-batch-select"><select name="manufacturerName" value={item.manufacturerName || ""} onChange={(event) => updateBatchForm(index, event)}>
+                              <option value="">{t.selectManufacturerCompany}</option>
+                              {manufacturerOptions.map((entry) => <option key={entry.id} value={entry.name}>{entry.name}</option>)}
+                            </select><button type="button" onClick={() => addBatchMasterOption("manufacturer", index)} title={t.addManufacturerCompany} aria-label={t.addManufacturerCompany}><Plus size={14} /></button></span>
+                        </label>
+                        <label className="sales-product-field">
+                          <span>{t.currency}</span>
+                          <select name="unit" value={item.unit || "afn"} onChange={(event) => updateBatchForm(index, event)}>
+                            {currencyOptions.map((currency) => <option key={currency} value={currency}>{t[currency]}</option>)}
+                          </select>
+                        </label>
+                        <label className="sales-product-field">
+                          <span>{t.purchasePrice}</span>
+                          <input type="number" min="0" step="0.01" name="purchasePrice" value={item.purchasePrice} onChange={(event) => updateBatchForm(index, event)} placeholder={t.pricePlaceholder} />
+                        </label>
+                        <label className="sales-product-field">
+                          <span>{t.salePrice}</span>
+                          <input type="number" min="0" step="0.01" name="salePrice" value={item.salePrice} onChange={(event) => updateBatchForm(index, event)} placeholder={t.pricePlaceholder} />
+                        </label>
+                      </div>
+                    </section>
+                  ))}
+                </div>
+                <button type="button" className="sales-product-add-row" onClick={addBatchForm}><CopyPlus size={17} />{t.addAnother}</button>
+                <div className="sales-product-modal-footer">
+                  <button type="button" className="sales-product-cancel-btn" onClick={closeModal}>{t.cancel}</button>
+                  <button type="submit" className="sales-product-save-btn">{t.saveAll}</button>
+                </div>
+              </form>
+            )}
           </section>
         </div>
       ), document.body)}

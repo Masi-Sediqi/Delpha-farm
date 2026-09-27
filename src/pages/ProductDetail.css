@@ -211,6 +211,15 @@ body[data-theme="neon"].dark-mode .product-detail-tabs button.active *,body[data
   font-size:11px;
   text-align:center;
 }
+.product-detail-batch-dashboard{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0}
+.product-detail-rechart-panel{min-width:0;padding:14px 14px 8px;border:1px solid var(--pd-border);border-radius:8px;background:var(--pd-surface)}
+.product-detail-rechart-panel-wide{grid-column:1/-1}
+.product-detail-rechart-canvas{width:100%;height:270px;min-height:270px}
+.product-detail-rechart-panel-wide .product-detail-rechart-canvas{height:310px;min-height:310px}
+.product-detail-rechart-panel .recharts-cartesian-grid line{stroke:var(--pd-border)}
+.product-detail-rechart-panel .recharts-text{fill:var(--pd-muted);font-size:10px;font-family:inherit}
+.product-detail-rechart-panel .recharts-legend-item-text{color:var(--pd-muted)!important;font-size:11px}
+.product-detail-rechart-panel .recharts-default-tooltip{border:1px solid var(--pd-border)!important;border-radius:6px!important;background:var(--pd-surface)!important;color:var(--pd-text)!important;box-shadow:0 10px 28px rgba(15,23,42,.12)}
 .product-detail-gauge-card{
   min-height:205px;
   margin-bottom:12px;
@@ -303,4 +312,8 @@ body.dark-mode .product-detail-gauge-card{
   }
   .product-detail-chart-block{padding:10px 8px 4px}
   .product-detail-line-chart{height:230px}
+  .product-detail-batch-dashboard{grid-template-columns:1fr}
+  .product-detail-rechart-panel-wide{grid-column:auto}
+  .product-detail-rechart-canvas,
+  .product-detail-rechart-panel-wide .product-detail-rechart-canvas{height:240px;min-height:240px}
 }

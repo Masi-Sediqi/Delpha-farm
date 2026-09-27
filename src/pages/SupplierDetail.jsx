@@ -25,6 +25,7 @@ import { confirmAction } from "../utils/confirmDialog";
 import { formatDateTime } from "../utils/afghanDate";
 import { notify } from "../utils/notify";
 import "./SupplierDetail.css";
+import "./SupplierCurrencyStack.css";
 
 const languageKey = "afghan-power-language";
 const rtlLanguages = new Set(["fa", "ps"]);
@@ -294,6 +295,11 @@ const formatCurrencyMap = (map, { absolute = false } = {}) => {
     });
   return rows.join(" · ") || "0 AFN";
 };
+const SupplierCurrencyStack = ({ values, absolute = false }) => {
+  const order = ["AFN", "USD", "INR", "EUR"];
+  const rows = order.filter((code) => Math.abs(numeric(values?.[code])) > 0.000001);
+  return <span className="supplier-currency-stack">{(rows.length ? rows : ["AFN"]).map((code) => <span key={code}><b>{(absolute ? Math.abs(numeric(values?.[code])) : numeric(values?.[code])).toLocaleString(undefined, { maximumFractionDigits: 2 })}</b><em>{code}</em></span>)}</span>;
+};
 const today = () => new Date().toISOString().slice(0, 10);
 const normalizeDate = (value) => {
   if (!value) return today();
@@ -311,6 +317,7 @@ export default function SupplierDetail() {
   const [purchaseItems] = useJsonCollection("purchaseItems");
   const [purchaseReturns] = useJsonCollection("purchaseReturns");
   const [payments, setPayments] = useJsonCollection("supplierPayments");
+  const [partyCashTransactions] = useJsonCollection("partyCashTransactions");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [showPayment, setShowPayment] = useState(false);
   const [editingPaymentId, setEditingPaymentId] = useState(null);
@@ -384,6 +391,10 @@ export default function SupplierDetail() {
     () => payments.filter((item) => String(item.supplierId) === String(supplierId)),
     [payments, supplierId]
   );
+  const supplierCashTransactions = useMemo(
+    () => partyCashTransactions.filter((item) => item.partyType === "supplier" && String(item.partyId) === String(supplierId)),
+    [partyCashTransactions, supplierId]
+  );
 
   const ledger = useMemo(() => {
     const entries = [];
@@ -399,6 +410,7 @@ export default function SupplierDetail() {
         debit: openingBalance > 0 ? openingBalance : 0,
         credit: openingBalance < 0 ? Math.abs(openingBalance) : 0,
         order: new Date(supplier?.createdAt || 0).getTime() || 0,
+        sequence: new Date(supplier?.createdAt || 0).getTime() || 0,
       });
     }
 
@@ -428,6 +440,7 @@ export default function SupplierDetail() {
         debit: purchaseTotal,
         credit: paidAtPurchase,
         order,
+        sequence: new Date(purchase.createdAt || purchaseDate || 0).getTime() || order,
       });
     });
 
@@ -447,6 +460,7 @@ export default function SupplierDetail() {
         debit: 0,
         credit: numeric(item.totalAmount),
         order: order + 2,
+        sequence: new Date(item.createdAt || returnDate || 0).getTime() || order,
       });
     });
 
@@ -463,17 +477,38 @@ export default function SupplierDetail() {
         debit: 0,
         credit: numeric(payment.amount),
         order,
+        sequence: new Date(payment.createdAt || payment.date || 0).getTime() || order,
       });
     });
 
-    entries.sort((a, b) => (a.order - b.order) || String(a.id).localeCompare(String(b.id)));
+    supplierCashTransactions.forEach((payment) => {
+      const amount = numeric(payment.amount);
+      const cashOut = payment.direction === "out";
+      const order = new Date(payment.date || payment.createdAt || 0).getTime() || 0;
+      entries.push({
+        id: `cash-journal-${payment.id}`,
+        date: payment.date || payment.createdAt || "",
+        reference: payment.reference || payment.id,
+        description: payment.description || t.manualPayment,
+        kind: "cash-journal",
+        sourceId: payment.id,
+        currency: normalizeCurrency(payment.currency || currencyCode),
+        debit: cashOut ? 0 : amount,
+        credit: cashOut ? amount : 0,
+        order: order + 3,
+        sequence: new Date(payment.createdAt || payment.date || 0).getTime() || order,
+      });
+    });
+
+    entries.sort((a, b) => (a.order - b.order) || (a.sequence - b.sequence) || String(a.id).localeCompare(String(b.id)));
     const runningByCurrency = {};
-    return entries.map((entry) => {
+    const balancedEntries = entries.map((entry) => {
       const code = normalizeCurrency(entry.currency || supplier?.currency || currencyCode);
       runningByCurrency[code] = numeric(runningByCurrency[code]) + numeric(entry.debit) - numeric(entry.credit);
       return { ...entry, currency: code, balance: runningByCurrency[code] };
     });
-  }, [supplier, supplierId, supplierPurchases, purchaseItems, supplierReturns, supplierPayments, currencyCode, t.opening, t.purchase, t.purchasePayment, t.purchaseReturn, t.manualPayment]);
+    return balancedEntries.reverse();
+  }, [supplier, supplierId, supplierPurchases, purchaseItems, supplierReturns, supplierPayments, supplierCashTransactions, currencyCode, t.opening, t.purchase, t.purchasePayment, t.purchaseReturn, t.manualPayment]);
 
   const totalPurchasesByCurrency = useMemo(() => {
     const totals = {};
@@ -505,7 +540,10 @@ export default function SupplierDetail() {
   }, [supplierReturns, supplierPurchases, supplier, currencyCode]);
   const currentBalances = useMemo(() => {
     const balances = {};
-    ledger.forEach((entry) => { balances[entry.currency] = numeric(entry.balance); });
+    ledger.forEach((entry) => {
+      const code = normalizeCurrency(entry.currency || currencyCode);
+      balances[code] = numeric(balances[code]) + numeric(entry.debit) - numeric(entry.credit);
+    });
     if (!ledger.length && numeric(supplier?.openingBalance) !== 0) balances[currencyCode] = numeric(supplier.openingBalance);
     return balances;
   }, [ledger, supplier, currencyCode]);
@@ -614,6 +652,8 @@ export default function SupplierDetail() {
 
   const positiveBalances = Object.values(currentBalances).filter((value) => numeric(value) > 0.000001);
   const negativeBalances = Object.values(currentBalances).filter((value) => numeric(value) < -0.000001);
+  const weOweSupplierBalances = Object.fromEntries(Object.entries(currentBalances).filter(([, value]) => numeric(value) > 0.000001));
+  const supplierOwesBalances = Object.fromEntries(Object.entries(currentBalances).filter(([, value]) => numeric(value) < -0.000001).map(([code, value]) => [code, Math.abs(numeric(value))]));
   const balanceState = positiveBalances.length ? "owe" : negativeBalances.length ? "receivable" : "settled";
   const balanceLabel = positiveBalances.length && !negativeBalances.length ? t.youOwe : negativeBalances.length && !positiveBalances.length ? t.supplierOwes : t.currentBalance;
 
@@ -744,7 +784,8 @@ export default function SupplierDetail() {
                   </tbody>
                 </table>
               </div>
-              <div className={`supplier-detail-result ${balanceState}`}><div><span>{balanceLabel}</span><small>{t.currentBalance}</small></div><strong>{formatCurrencyMap(currentBalances, { absolute: true })}</strong></div>
+              <div className="supplier-detail-result owe"><div><span>{t.youOwe}</span><small>{t.currentBalance}</small></div><strong><SupplierCurrencyStack values={weOweSupplierBalances} absolute /></strong></div>
+              <div className="supplier-detail-result receivable"><div><span>{t.supplierOwes}</span><small>{t.currentBalance}</small></div><strong><SupplierCurrencyStack values={supplierOwesBalances} absolute /></strong></div>
             </>
           )}
 

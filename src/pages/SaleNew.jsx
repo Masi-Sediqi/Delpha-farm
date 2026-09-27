@@ -16,7 +16,6 @@ import {
 import ShamsiDateInput from "../components/ShamsiDateInput";
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import { notify } from "../utils/notify";
-import { productImageSrc } from "../utils/productImages";
 import { groupNameById } from "../utils/productMasterData";
 import {
   allocateProductBatchesFEFO,
@@ -42,7 +41,7 @@ const today = () => {
 // numbers (for example SAL-65663702) are intentionally ignored.
 const nextSaleBillNumber = (rows = []) => {
   const maxSequence = (Array.isArray(rows) ? rows : []).reduce((max, row) => {
-    const value = String(row?.invoiceNumber || row?.billNumber || row?.billNo || "").trim();
+    const value = String(row?.systemBillNumber || row?.systemBillNo || row?.invoiceNumber || row?.billNumber || row?.billNo || "").trim();
     const match = /^SAL-(\d{6})$/.exec(value);
     if (!match) return max;
     return Math.max(max, Number(match[1]) || 0);
@@ -73,6 +72,7 @@ const text = {
     cancel: "Cancel",
     currency: "Currency",
     billNumber: "Bill number",
+    systemBillNumber: "System bill number",
     date: "Sale date (Solar Hijri)",
     paymentStatus: "Payment status",
     paidFull: "Fully paid",
@@ -118,6 +118,8 @@ const text = {
     updated: "Sale updated successfully.",
     notFound: "Sale record not found.",
     nameRequired: "Enter customer name.",
+    exchangeRate: "Exchange rate",
+    missingExchangeRate: "Set the exchange rate in Settings before selling this product:",
   },
   fa: {
     title: "فروش جدید",
@@ -140,6 +142,7 @@ const text = {
     cancel: "لغو",
     currency: "واحد پول",
     billNumber: "بل نمبر",
+    systemBillNumber: "بل نمبر سیستم",
     date: "تاریخ فروش (شمسی)",
     paymentStatus: "وضعیت پرداخت",
     paidFull: "مکمل پرداخت",
@@ -185,6 +188,8 @@ const text = {
     updated: "فروش با موفقیت ویرایش شد.",
     notFound: "ریکارد فروش پیدا نشد.",
     nameRequired: "نام مشتری را وارد کنید.",
+    exchangeRate: "نرخ تبادله",
+    missingExchangeRate: "پیش از فروش این محصول، نرخ اسعار را در تنظیمات وارد کنید:",
   },
   ps: {
     title: "نوی خرڅلاو",
@@ -207,6 +212,7 @@ const text = {
     cancel: "لغوه",
     currency: "اسعار",
     billNumber: "بل نمبر",
+    systemBillNumber: "د سیستم بل نمبر",
     date: "د خرڅلاو نېټه (لمریز)",
     paymentStatus: "د ورکړې حالت",
     paidFull: "بشپړ ورکړل شوی",
@@ -252,6 +258,8 @@ const text = {
     updated: "خرڅلاو په بریالیتوب سم شو.",
     notFound: "د خرڅلاو ریکارډ ونه موندل شو.",
     nameRequired: "د پېرودونکي نوم ولیکئ.",
+    exchangeRate: "د تبادلې نرخ",
+    missingExchangeRate: "د دې محصول له پلور مخکې په تنظیماتو کې د اسعارو نرخ ولیکئ:",
   },
 };
 
@@ -265,13 +273,15 @@ function SaleNew() {
   const [products] = useJsonCollection("products");
   const [productGroups] = useJsonCollection("productGroups");
   const [stockMovements, setStockMovements] = useJsonCollection("stockMovements");
+  const [settings] = useJsonCollection("settings");
 
   const [customerId, setCustomerId] = useState("");
   const [customerInfoOpen, setCustomerInfoOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [quickName, setQuickName] = useState("");
   const [currency, setCurrency] = useState("AFN");
-  const [billNumber, setBillNumber] = useState("SAL-000001");
+  const [billNumber, setBillNumber] = useState("");
+  const [systemBillNumber, setSystemBillNumber] = useState("");
   const [saleDate, setSaleDate] = useState(today());
   const [paymentStatus, setPaymentStatus] = useState("paid");
   const [paidAmount, setPaidAmount] = useState("");
@@ -287,6 +297,21 @@ function SaleNew() {
 
   const t = text[language] || text.en;
   const direction = language === "en" ? "ltr" : "rtl";
+  const exchangeRates = settings?.[0]?.exchangeRates || {};
+  const normalizeCurrency = (value) => {
+    const code = String(value || "AFN").trim().toUpperCase();
+    return code === "PKR" ? "INR" : code;
+  };
+  const rateToAfn = (code) => {
+    const normalized = normalizeCurrency(code);
+    return normalized === "AFN" ? 1 : Number(exchangeRates[normalized] || 0);
+  };
+  const currencyRate = (from, to) => {
+    const sourceRate = rateToAfn(from);
+    const targetRate = rateToAfn(to);
+    return sourceRate > 0 && targetRate > 0 ? sourceRate / targetRate : 0;
+  };
+  const convertCurrency = (amount, from, to) => num(amount) * currencyRate(from, to);
   const selectedCustomer = useMemo(
     () => customers.find((row) => String(row.id) === String(customerId)) || null,
     [customers, customerId]
@@ -306,11 +331,10 @@ function SaleNew() {
     if (!customerId) setCustomerInfoOpen(false);
   }, [customerId]);
 
-  // Generate the next system bill number only for a NEW sale.
-  // Edit mode always keeps the bill number already saved on that sale.
+  // Generate the next system bill number only for a new sale.
   useEffect(() => {
     if (isEditMode) return;
-    setBillNumber(nextSaleBillNumber(sales));
+    setSystemBillNumber(nextSaleBillNumber(sales));
   }, [isEditMode, sales]);
 
   const normalizeSearchText = (value) => String(value || "")
@@ -373,7 +397,13 @@ function SaleNew() {
     if (!isEditMode || editInitialized || !editingSale) return;
     setCustomerId(editingSale.customerId || "");
     setCurrency(editingSale.currency || "AFN");
-    setBillNumber(editingSale.invoiceNumber || editingSale.billNumber || editingSale.billNo || nextSaleBillNumber(sales));
+    setBillNumber(editingSale.billNumber || editingSale.billNo || "");
+    setSystemBillNumber(
+      editingSale.systemBillNumber
+      || editingSale.systemBillNo
+      || editingSale.invoiceNumber
+      || nextSaleBillNumber(sales)
+    );
     setSaleDate(editingSale.saleDate || today());
     const debt = num(editingSale.remainingAmount) > 0 || editingSale.paymentStatus === "debt" || editingSale.paymentMode === "installment";
     setPaymentStatus(debt ? "debt" : "paid");
@@ -386,13 +416,17 @@ function SaleNew() {
         lineId: item.lineId || `sale-line-${editingSale.id || "edit"}-${itemIndex}-${item.productId}`,
         productId: item.productId,
         productName: item.productName || productDisplayName(product),
-        image: item.image || productImageSrc(product),
         group: item.group || groupNameById(productGroups, product?.groupId, product?.group || ""),
         unit: item.unit || product?.unit || "piece",
         purchaseUnit: item.purchaseUnit || item.packageUnit || product?.productUnit || product?.purchaseUnit || product?.packageUnit || product?.unit || "piece",
         unitsPerUnit,
         packageQuantity: num(item.packageQuantity ?? item.purchaseQuantity) || (pieceQuantity / unitsPerUnit),
         quantity: pieceQuantity,
+        // Legacy sale rows were already stored in the invoice currency.
+        sourceCurrency: normalizeCurrency(item.sourceCurrency || editingSale.currency || product?.unit || "AFN"),
+        sourcePurchasePrice: num(item.sourcePurchasePrice ?? item.purchasePrice ?? product?.purchasePrice),
+        sourceSalePrice: num(item.sourceSalePrice ?? item.salePrice ?? product?.salePrice),
+        exchangeRate: num(item.exchangeRate) || 1,
         purchasePrice: num(item.purchasePrice ?? product?.purchasePrice),
         cartonSize: item.cartonSize ?? product?.cartonSize ?? unitsPerUnit,
         manufacturerName: item.manufacturerName || item.manufacturerCompany || product?.manufacturerName || product?.companyName || "",
@@ -453,6 +487,13 @@ function SaleNew() {
     const stock = getStock(product);
     if (stock <= 0) return;
 
+    const sourceCurrency = normalizeCurrency(product.unit || "AFN");
+    const rate = currencyRate(sourceCurrency, currency);
+    if (!rate) {
+      notify(`${t.missingExchangeRate} ${sourceCurrency}`, "warning");
+      return;
+    }
+
     const productKey = String(product.id);
     const unitsPerUnit = productPiecesPerUnit(product);
     const lineId = `sale-line-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -473,18 +514,21 @@ function SaleNew() {
         lineId,
         productId: product.id,
         productName: productDisplayName(product),
-        image: productImageSrc(product),
         group: groupNameById(productGroups, product.groupId, product.group || ""),
         unit: product.unit || "piece",
         purchaseUnit: product.productUnit || product.purchaseUnit || product.packageUnit || product.unit || "piece",
         unitsPerUnit,
         packageQuantity: Number((pieceQuantityToAdd / unitsPerUnit).toFixed(4)),
         quantity: pieceQuantityToAdd,
-        purchasePrice: num(product.purchasePrice),
+        sourceCurrency,
+        sourcePurchasePrice: num(product.purchasePrice),
+        sourceSalePrice: num(product.salePrice),
+        exchangeRate: rate,
+        purchasePrice: convertCurrency(product.purchasePrice, sourceCurrency, currency),
         cartonSize: product.cartonSize ?? unitsPerUnit,
         manufacturerName: product.manufacturerName || product.companyName || "",
         expiryDate: product.expiryDate || "",
-        salePrice: num(product.salePrice),
+        salePrice: convertCurrency(product.salePrice, sourceCurrency, currency),
         discountAmount: 0,
         currentStock: stock,
       }];
@@ -630,7 +674,13 @@ function SaleNew() {
       if (key === "salePrice") {
         const price = Math.max(Number(value || 0), 0);
         const nextGross = num(row.quantity) * price;
-        return { ...row, salePrice: value, discountAmount: Math.min(num(row.discountAmount), nextGross) };
+        const reverseRate = currencyRate(currency, row.sourceCurrency || currency);
+        return {
+          ...row,
+          salePrice: value,
+          sourceSalePrice: reverseRate ? price * reverseRate : price,
+          discountAmount: Math.min(num(row.discountAmount), nextGross),
+        };
       }
       if (key === "discountAmount") {
         const gross = num(row.quantity) * num(row.salePrice);
@@ -639,6 +689,28 @@ function SaleNew() {
       }
       return { ...row, [key]: value };
     }));
+  };
+
+  const changeCurrency = (nextCurrency) => {
+    const normalized = normalizeCurrency(nextCurrency);
+    const missing = items.find((row) => !currencyRate(row.sourceCurrency || currency, normalized));
+    if (missing) {
+      notify(`${t.missingExchangeRate} ${normalizeCurrency(missing.sourceCurrency || currency)}`, "warning");
+      return;
+    }
+    setItems((current) => current.map((row) => {
+      const sourceCurrency = normalizeCurrency(row.sourceCurrency || currency);
+      const rate = currencyRate(sourceCurrency, normalized);
+      const salePrice = num(row.sourceSalePrice ?? row.salePrice) * rate;
+      return {
+        ...row,
+        exchangeRate: rate,
+        purchasePrice: num(row.sourcePurchasePrice ?? row.purchasePrice) * rate,
+        salePrice,
+        discountAmount: Math.min(num(row.discountAmount), num(row.quantity) * salePrice),
+      };
+    }));
+    setCurrency(normalized);
   };
 
   const updatePackageQuantity = (lineId, value) => {
@@ -680,7 +752,8 @@ function SaleNew() {
     const number = num(value);
     return Number.isInteger(number) ? String(number) : number.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
   };
-  const lineGross = (row) => Math.max(num(row.quantity) * num(row.salePrice), 0);
+  const pieceQuantity = (row) => num(row.quantity);
+  const lineGross = (row) => Math.max(pieceQuantity(row) * num(row.salePrice), 0);
   const lineDiscount = (row) => Math.min(num(row.discountAmount), lineGross(row));
   const lineTotal = (row) => Math.max(lineGross(row) - lineDiscount(row), 0);
   const subtotal = items.reduce((sum, row) => sum + lineGross(row), 0);
@@ -772,13 +845,22 @@ function SaleNew() {
 
     const now = new Date().toISOString();
     const recordId = isEditMode ? editingSale.id : `sale-${Date.now()}`;
-    const invoiceNumber = String(billNumber || "").trim() || (isEditMode ? (editingSale.invoiceNumber || editingSale.billNumber || editingSale.billNo) : nextSaleBillNumber(sales));
+    const finalBillNumber = String(billNumber || "").trim();
+    const finalSystemBillNumber = String(
+      editingSale?.systemBillNumber
+      || editingSale?.systemBillNo
+      || systemBillNumber
+      || nextSaleBillNumber(sales)
+    ).trim();
+    const invoiceNumber = finalBillNumber || finalSystemBillNumber;
     const customer = customers.find((row) => String(row.id) === String(customerId));
     const sale = {
       id: recordId,
       customerId,
       customerName: customer?.fullName || customer?.companyName || "",
       invoiceNumber,
+      billNumber: finalBillNumber,
+      systemBillNumber: finalSystemBillNumber,
       saleDate,
       currency,
       paymentMode: paymentStatus === "paid" ? "cash" : "installment",
@@ -879,12 +961,11 @@ function SaleNew() {
                     onClick={() => addProduct(product)}
                     aria-disabled={unavailable}
                   >
-                    <img src={productImageSrc(product)} alt="" />
                     <span>
                       <strong>{productDisplayName(product)}</strong>
                       <small>{groupNameById(productGroups, product.groupId, product.group || "—")} · {t.stock}: {formatQuantity(remainingStock)}</small>
                     </span>
-                    <em>{unavailable ? t.outOfStock : `${num(product.salePrice).toFixed(2)} ${currency}`}</em>
+                    <em>{unavailable ? t.outOfStock : `${convertCurrency(product.salePrice, product.unit || "AFN", currency).toFixed(2)} ${currency}`}</em>
                     <b className="sale-result-check" aria-hidden="true"><Check size={13} /></b>
                   </button>
                 );
@@ -993,12 +1074,17 @@ function SaleNew() {
 
                 <label className="purchase-field purchase-top-field purchase-top-bill">
                   <span>{t.billNumber}</span>
-                  <input value={billNumber} readOnly aria-readonly="true" />
+                  <input value={billNumber} onChange={(e) => setBillNumber(e.target.value)} />
+                </label>
+
+                <label className="purchase-field purchase-top-field purchase-top-bill">
+                  <span>{t.systemBillNumber}</span>
+                  <input value={systemBillNumber} readOnly aria-readonly="true" />
                 </label>
 
                 <label className="purchase-field purchase-top-field purchase-top-currency">
                   <span>{t.currency}</span>
-                  <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+                  <select value={currency} onChange={(e) => changeCurrency(e.target.value)}>
                     {currencies.map((code) => <option key={code} value={code}>{code}</option>)}
                   </select>
                 </label>
@@ -1018,27 +1104,8 @@ function SaleNew() {
               )}
               {items.map((row, index) => (
                 <article className="purchase-item-row sale-entry-item-row" key={row.lineId}>
-                  <img src={row.image} alt="" />
                   <div className="purchase-item-name sale-product-info">
-                    <div className="sale-product-title"><strong>{row.productName}</strong><small>{row.group || "—"} · {t.unit}: {unitLabel(row.purchaseUnit || row.unit)}</small></div>
-                    <div className="sale-product-meta">
-                      <div className="sale-meta-badge sale-meta-size">
-                        <span>{t.cartonSize}</span>
-                        <b>{row.cartonSize || row.unitsPerUnit || "—"}</b>
-                      </div>
-                      <div className="sale-meta-badge sale-meta-cost">
-                        <span>{t.costPrice}</span>
-                        <b>{num(row.purchasePrice).toFixed(2)} {currency}</b>
-                      </div>
-                      <div className="sale-meta-badge sale-meta-maker">
-                        <span>{t.manufacturer}</span>
-                        <b title={row.manufacturerName || "—"}>{row.manufacturerName || "—"}</b>
-                      </div>
-                      <div className="sale-meta-badge sale-meta-expiry">
-                        <span>{t.expiryDate}</span>
-                        <b dir="ltr">{row.expiryDate || "—"}</b>
-                      </div>
-                    </div>
+                    <div className="sale-product-title"><strong>{row.productName}</strong></div>
                   </div>
                   <label><span>{t.qty} ({unitLabel(row.purchaseUnit)})</span><input ref={(node) => {
                     const key = String(row.lineId);

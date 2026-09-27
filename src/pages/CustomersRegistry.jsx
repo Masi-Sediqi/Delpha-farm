@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import { Building2, Edit3, MapPin, Phone, Plus, Search, Trash2, UserRound, X } from "lucide-react";
+import { Building2, Check, Edit3, MapPin, Phone, Plus, Search, Trash2, UserRound, X } from "lucide-react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import { confirmAction } from "../utils/confirmDialog";
 import { notify } from "../utils/notify";
 import "./CustomersRegistry.css";
+import "./CustomersRegistryCategory.css";
 
 const rtlLanguages = new Set(["fa", "ps"]);
 const labelsByLanguage = {
@@ -19,6 +20,7 @@ const labelsByLanguage = {
     modalEditTitle: "Edit Customer",
     modalSubtitle: "Enter the customer's contact and account information.",
     customerType: "Customer Type",
+    category: "Category", addCategory: "Add category", categoryPlaceholder: "Enter category name",
     individual: "Individual",
     business: "Business",
     fullName: "Full Name",
@@ -81,6 +83,7 @@ const labelsByLanguage = {
     modalEditTitle: "ویرایش مشتری",
     modalSubtitle: "معلومات تماس و حساب مشتری را وارد کنید.",
     customerType: "نوع مشتری",
+    category: "کتگوری", addCategory: "افزودن کتگوری", categoryPlaceholder: "نام کتگوری را وارد کنید",
     individual: "شخصی",
     business: "شرکتی",
     fullName: "نام مکمل",
@@ -143,6 +146,7 @@ const labelsByLanguage = {
     modalEditTitle: "د پېرودونکي سمون",
     modalSubtitle: "د پېرودونکي د اړیکې او حساب معلومات ولیکئ.",
     customerType: "د پېرودونکي ډول",
+    category: "کټګوري", addCategory: "کټګوري اضافه کړئ", categoryPlaceholder: "د کټګورۍ نوم ولیکئ",
     individual: "شخصي",
     business: "شرکت",
     fullName: "بشپړ نوم",
@@ -200,6 +204,8 @@ const labelsByLanguage = {
 const blankForm = {
   fullName: "",
   companyName: "",
+  categoryId: "",
+  categoryName: "",
   phone: "",
   address: "",
   currency: "AFN",
@@ -213,11 +219,14 @@ export default function CustomersRegistry() {
   const t = labelsByLanguage[language] || labelsByLanguage.en;
   const isRtl = rtlLanguages.has(language);
   const [customers, setCustomers] = useJsonCollection("customerRegistry");
+  const [customerCategories, setCustomerCategories] = useJsonCollection("customerCategories");
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(blankForm);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [categoryDraft, setCategoryDraft] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -233,7 +242,7 @@ export default function CustomersRegistry() {
     const q = query.trim().toLowerCase();
     if (!q) return customers;
     return customers.filter((item) =>
-      [item.fullName, item.companyName, item.phone, item.address]
+      [item.fullName, item.companyName, item.categoryName, item.phone, item.address]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(q))
     );
@@ -256,6 +265,16 @@ export default function CustomersRegistry() {
   const closeModal = () => {
     setIsOpen(false);
     setFieldErrors({});
+  };
+  const addCategory = async () => {
+    const name = categoryDraft.trim().replace(/\s+/g, " ");
+    if (!name) return;
+    const existing = customerCategories.find((item) => String(item.name || "").trim().toLowerCase() === name.toLowerCase());
+    const row = existing || { id: `customer-category-${Date.now()}`, name, createdAt: new Date().toISOString() };
+    if (!existing && !(await setCustomerCategories([...customerCategories, row]))) return;
+    setForm((current) => ({ ...current, categoryId: row.id, categoryName: row.name }));
+    setCategoryDraft("");
+    setAddingCategory(false);
   };
   const change = (key, value) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -363,7 +382,7 @@ export default function CustomersRegistry() {
                   <td>
                     <div className="customer-name-cell">
                       <span className="customer-avatar"><UserRound size={18} /></span>
-                      <div><strong>{item.fullName}</strong><small>{item.companyName || "—"}</small></div>
+                      <div><strong>{item.fullName}</strong><small>{[item.companyName, item.categoryName].filter(Boolean).join(" · ") || "—"}</small></div>
                     </div>
                   </td>
                   <td><strong>{item.phone}</strong></td>
@@ -413,6 +432,7 @@ export default function CustomersRegistry() {
                   <div className="customer-form-grid">
                     <label className={`customer-field ${fieldErrors.fullName ? "has-error" : ""}`}><span>{t.fullName} *</span><input value={form.fullName} onChange={(e) => change("fullName", e.target.value)} aria-invalid={Boolean(fieldErrors.fullName)} aria-describedby={fieldErrors.fullName ? "customer-full-name-error" : undefined} autoFocus />{fieldErrors.fullName && <small id="customer-full-name-error" className="customer-field-error" role="alert">{fieldErrors.fullName}</small>}</label>
                     <label className="customer-field customer-span-6"><span>{t.companyName}</span><div className="customer-input-icon"><Building2 size={17} /><input value={form.companyName} onChange={(e) => change("companyName", e.target.value)} /></div></label>
+                    <label className="customer-field customer-span-6"><span>{t.category}</span><div className={`customer-category-control ${addingCategory ? "is-adding" : ""}`}>{addingCategory ? <input value={categoryDraft} onChange={(e) => setCategoryDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCategory(); } if (e.key === "Escape") { setCategoryDraft(""); setAddingCategory(false); } }} placeholder={t.categoryPlaceholder} autoFocus/> : <select value={form.categoryId || ""} onChange={(e) => { const selected = customerCategories.find((item) => String(item.id) === String(e.target.value)); setForm((current) => ({ ...current, categoryId: e.target.value, categoryName: selected?.name || "" })); }}><option value="">—</option>{customerCategories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>}<button type="button" onClick={addingCategory ? addCategory : () => setAddingCategory(true)} title={t.addCategory} aria-label={t.addCategory}>{addingCategory ? <Check size={16}/> : <Plus size={16}/>}</button></div></label>
                   </div>
                 </section>
 

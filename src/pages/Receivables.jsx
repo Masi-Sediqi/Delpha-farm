@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { CircleDollarSign, CreditCard, MoreHorizontal, Plus, Printer, ReceiptText, Search, UserRound, WalletCards } from "lucide-react";
+import { CircleDollarSign, CreditCard, MoreHorizontal, Printer, ReceiptText, Search, UserRound, WalletCards } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import { confirmAction } from "../utils/confirmDialog";
@@ -236,7 +236,6 @@ export default function Receivables() {
           <div className="payables-title-line"><WalletCards size={24} /><h1>{t.title}</h1></div>
           <p>{t.subtitle}</p>
         </div>
-        <button type="button" className="payables-batch-btn" onClick={() => navigate("/receivables/payments/new")}><Plus size={15} />{t.registerReceivables}</button>
       </header>
 
       <section className="payables-stats">

@@ -12,6 +12,8 @@ import {
   PackageX,
   Search,
   Settings,
+  Moon,
+  Sun,
   Trash2,
   User,
 } from "lucide-react";
@@ -22,6 +24,7 @@ import { buildSystemSearchResults } from "../utils/systemSearch";
 
 const NOTIFICATION_STATE_KEY = "medicine-notification-state";
 const LANGUAGE_STATE_KEY = "afghan-power-language";
+const THEME_STATE_KEY = "afghan-power-theme";
 const languages = [
   { key: "fa", label: "دری", short: "DRI", direction: "rtl" },
   { key: "ps", label: "پشتو", short: "PS", direction: "rtl" },
@@ -35,7 +38,7 @@ const labels = {
     openFull: "Open all results", expired: "Expired batches", expiring: "Expiry alerts",
     low: "Low stock", out: "Out of stock", expiredTitle: "Expired batch", expiringTitle: "Expiry warning",
     lowTitle: "Low stock warning", outTitle: "Out of stock", read: "Read", unread: "New", settings: "Settings",
-    logout: "Logout", noResult: "No matching record found.",
+    logout: "Logout", noResult: "No matching record found.", darkMode: "Dark mode", lightMode: "Light mode",
     types: { Product: "Product", Supplier: "Supplier", Customer: "Customer", Purchase: "Purchase", Sale: "Sale", Payment: "Payment" },
   },
   fa: {
@@ -44,7 +47,7 @@ const labels = {
     openFull: "تمام نتایج", expired: "بچ‌های منقضی‌شده", expiring: "هشدارهای انقضا",
     low: "موجودی کم", out: "محصولات خلاص‌شده", expiredTitle: "بچ منقضی شده", expiringTitle: "هشدار تاریخ انقضا",
     lowTitle: "هشدار موجودی کم", outTitle: "موجودی خلاص شده", read: "خوانده‌شده", unread: "جدید", settings: "تنظیمات",
-    logout: "خروج", noResult: "ریکارد مطابق پیدا نشد.",
+    logout: "خروج", noResult: "ریکارد مطابق پیدا نشد.", darkMode: "حالت تاریک", lightMode: "حالت روشن",
     types: { Product: "محصول", Supplier: "تأمین‌کننده", Customer: "مشتری", Purchase: "خریداری", Sale: "فروش", Payment: "پرداخت" },
   },
   ps: {
@@ -53,7 +56,7 @@ const labels = {
     openFull: "ټولې پایلې", expired: "ختم شوي بچونه", expiring: "د ختمېدو خبرتیاوې",
     low: "کمه موجودي", out: "خلاص شوي محصولات", expiredTitle: "بچ ختم شوی", expiringTitle: "د ختمېدو خبرتیا",
     lowTitle: "د کمې موجودۍ خبرتیا", outTitle: "موجودي خلاصه ده", read: "لوستل شوی", unread: "نوی", settings: "تنظیمات",
-    logout: "وتل", noResult: "سم ریکارډ ونه موندل شو.",
+    logout: "وتل", noResult: "سم ریکارډ ونه موندل شو.", darkMode: "تیاره حالت", lightMode: "روښانه حالت",
     types: { Product: "محصول", Supplier: "عرضه کوونکی", Customer: "پېرودونکی", Purchase: "پېرود", Sale: "خرڅلاو", Payment: "تادیه" },
   },
 };
@@ -79,6 +82,7 @@ function HeaderActions({ currentUser, onLogout, compact = false }) {
   const navigate = useNavigate();
   const [openMenu, setOpenMenu] = useState(null);
   const [language, setLanguage] = useState(() => localStorage.getItem(LANGUAGE_STATE_KEY) || "en");
+  const [darkMode, setDarkMode] = useState(() => ["black-white", "aurora", "dark"].includes(localStorage.getItem(THEME_STATE_KEY)));
   const [notificationState, setNotificationState] = useState(readState);
   const [settings, setSettings] = useJsonCollection("settings");
   const [products] = useJsonCollection("products");
@@ -86,6 +90,27 @@ function HeaderActions({ currentUser, onLogout, compact = false }) {
   const currentSettings = settings[0] || {};
   const currency = currentSettings.currency === "PKR" ? "INR" : (currentSettings.currency || "AFN");
   const t = labels[language] || labels.en;
+
+  useEffect(() => {
+    const syncTheme = () => setDarkMode(document.body.classList.contains("dark-mode"));
+    window.addEventListener("app-theme-updated", syncTheme);
+    window.addEventListener("storage", syncTheme);
+    return () => {
+      window.removeEventListener("app-theme-updated", syncTheme);
+      window.removeEventListener("storage", syncTheme);
+    };
+  }, []);
+
+  const toggleDarkMode = () => {
+    const nextDark = !darkMode;
+    const theme = nextDark ? "black-white" : "minimalism";
+    localStorage.setItem(THEME_STATE_KEY, theme);
+    document.body.dataset.theme = theme;
+    document.documentElement.dataset.theme = theme;
+    document.body.classList.toggle("dark-mode", nextDark);
+    setDarkMode(nextDark);
+    window.dispatchEvent(new Event("app-theme-updated"));
+  };
 
   const notificationGroups = useMemo(() => {
     const expired = [], expiring = [], low = [], out = [];
@@ -168,6 +193,7 @@ function HeaderActions({ currentUser, onLogout, compact = false }) {
       {openMenu === "mobile" && <div className="dropdown mobile-actions-dropdown">
         <strong>{currentUser?.fullName || currentUser?.email || "User"}</strong><p>{currentUser?.email || ""}</p>
         <Link to="/settings" className="dropdown-action" onClick={() => setOpenMenu(null)}><Settings size={15}/>{t.settings}</Link>
+        <button type="button" className="dropdown-action header-theme-menu-action" onClick={toggleDarkMode}>{darkMode ? <Sun size={15}/> : <Moon size={15}/>} {darkMode ? t.lightMode : t.darkMode}</button>
         <div className="dropdown-alerts"><span><Globe2 size={15}/>{t.language}<b>{activeLanguage.short}</b></span>{languages.map((item) => <button type="button" key={item.key} onClick={() => selectLanguage(item.key)}>{item.label}</button>)}</div>
         <button type="button" className="dropdown-logout" onClick={onLogout}><LogOut size={15}/>{t.logout}</button>
       </div>}
@@ -175,6 +201,9 @@ function HeaderActions({ currentUser, onLogout, compact = false }) {
   }
 
   return <div className="topbar-actions">
+    <button type="button" className="icon-btn header-theme-toggle" onClick={toggleDarkMode} aria-label={darkMode ? t.lightMode : t.darkMode} title={darkMode ? t.lightMode : t.darkMode}>
+      {darkMode ? <Sun size={20}/> : <Moon size={20}/>}
+    </button>
     <div className="header-menu currency-menu">
       <button type="button" className="icon-btn header-currency-btn" onClick={() => setOpenMenu(openMenu === "currency" ? null : "currency")} aria-label={t.currency} title={`${t.currency}: ${currency}`}><CircleDollarSign size={20}/></button>
       {openMenu === "currency" && <div className="dropdown currency-dropdown">

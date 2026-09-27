@@ -314,6 +314,7 @@ export default function CustomerDetail() {
   const [saleReturns] = useJsonCollection("saleReturns");
   const [saleReturnItems] = useJsonCollection("saleReturnItems");
   const [payments, setPayments] = useJsonCollection("customerPayments");
+  const [partyCashTransactions] = useJsonCollection("partyCashTransactions");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [showPayment, setShowPayment] = useState(false);
   const [activeTab, setActiveTab] = useState("ledger");
@@ -359,6 +360,10 @@ export default function CustomerDetail() {
   const customerPayments = useMemo(
     () => payments.filter((item) => String(item.customerId) === String(customerId)),
     [payments, customerId]
+  );
+  const customerCashTransactions = useMemo(
+    () => partyCashTransactions.filter((item) => item.partyType === "customer" && String(item.partyId) === String(customerId)),
+    [partyCashTransactions, customerId]
   );
 
   const ledger = useMemo(() => {
@@ -438,6 +443,24 @@ export default function CustomerDetail() {
       });
     });
 
+    customerCashTransactions.forEach((payment) => {
+      const amount = numeric(payment.amount);
+      const cashIn = payment.direction === "in";
+      const order = new Date(payment.date || payment.createdAt || 0).getTime() || 0;
+      entries.push({
+        id: `cash-journal-${payment.id}`,
+        date: payment.date || payment.createdAt || "",
+        reference: payment.reference || payment.id,
+        description: payment.description || t.manualPayment,
+        kind: "cash-journal",
+        sourceId: payment.id,
+        currency: normalizeCurrency(payment.currency || currencyCode),
+        debit: cashIn ? 0 : amount,
+        credit: cashIn ? amount : 0,
+        order: order + 3,
+      });
+    });
+
     entries.sort((a, b) => (a.order - b.order) || String(a.id).localeCompare(String(b.id)));
     const runningByCurrency = {};
     return entries.map((entry) => {
@@ -445,7 +468,7 @@ export default function CustomerDetail() {
       runningByCurrency[code] = numeric(runningByCurrency[code]) + numeric(entry.debit) - numeric(entry.credit);
       return { ...entry, currency: code, balance: runningByCurrency[code] };
     });
-  }, [customer, customerId, customerSales, customerReturns, customerPayments, currencyCode, t.opening, t.sale, t.saleReturn, t.manualPayment]);
+  }, [customer, customerId, customerSales, customerReturns, customerPayments, customerCashTransactions, currencyCode, t.opening, t.sale, t.saleReturn, t.manualPayment]);
 
   const totalSalesByCurrency = useMemo(() => {
     const totals = {};
@@ -480,6 +503,8 @@ export default function CustomerDetail() {
 
   const positiveBalanceExists = Object.values(currentBalances).some((value) => numeric(value) > 0.000001);
   const negativeBalanceExists = Object.values(currentBalances).some((value) => numeric(value) < -0.000001);
+  const customerOwesBalances = Object.fromEntries(Object.entries(currentBalances).filter(([, value]) => numeric(value) > 0.000001));
+  const weOweCustomerBalances = Object.fromEntries(Object.entries(currentBalances).filter(([, value]) => numeric(value) < -0.000001).map(([code, value]) => [code, Math.abs(numeric(value))]));
   const preferredPaymentCurrency = Object.entries(currentBalances).find(([, value]) => numeric(value) > 0.000001)?.[0] || currencyCode;
   const saleRows = useMemo(
     () => [...customerSales].sort((a, b) => new Date(b.saleDate || b.createdAt || 0) - new Date(a.saleDate || a.createdAt || 0)),
@@ -793,7 +818,8 @@ export default function CustomerDetail() {
                   </tbody>
                 </table>
               </div>
-              <div className={`customer-detail-result ${balanceState}`}><div><span>{balanceLabel}</span><small>{t.currentBalance}</small></div><strong><CurrencyStack values={currentBalances} absolute /></strong></div>
+              <div className={`customer-detail-result ${balanceState}`}><div><span>{t.customerOwes}</span><small>{t.currentBalance}</small></div><strong><CurrencyStack values={customerOwesBalances} /></strong></div>
+              <div className="customer-detail-result owe"><div><span>{t.youOweCustomer}</span><small>{t.currentBalance}</small></div><strong><CurrencyStack values={weOweCustomerBalances} /></strong></div>
             </>
           )}
 

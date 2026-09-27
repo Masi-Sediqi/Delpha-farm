@@ -314,7 +314,7 @@
 }
 
 .sales-product-modal {
-  width: min(820px, 100%);
+  width: min(1180px, 100%);
   max-height: calc(100vh - 48px);
   overflow: auto;
   border: 1px solid #e5e7eb;
@@ -368,6 +368,23 @@
 .sales-product-form {
   padding: 20px;
 }
+
+.sales-product-batch-form{overflow-x:auto}
+.sales-product-batch-grid{display:grid;grid-template-columns:1fr;gap:10px;align-items:start;min-width:1100px}
+.sales-product-batch-card{min-width:0;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;overflow:hidden}
+.sales-product-batch-card>header{min-height:44px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e2e8f0;background:#fff}
+.sales-product-batch-card>header strong{color:#172033;font-size:13px}
+.sales-product-batch-card>header button{width:30px;height:30px;padding:0;display:grid;place-items:center;border:1px solid #fee2e2;border-radius:6px;background:#fff;color:#dc2626;cursor:pointer}
+.sales-product-batch-fields{padding:12px;display:grid;grid-template-columns:minmax(190px,1.5fr) repeat(7,minmax(120px,1fr));gap:8px;align-items:start}
+.sales-product-batch-fields .sales-product-field-wide{grid-column:auto}
+.sales-product-batch-fields .sales-product-field textarea{min-height:64px}
+.sales-product-batch-select{display:grid!important;grid-template-columns:minmax(0,1fr) 32px;gap:5px;align-items:center}
+.sales-product-batch-select select{min-width:0}
+.sales-product-batch-select button{width:32px;height:42px;padding:0;display:grid;place-items:center;border:1px solid #d8dee9;border-radius:7px;background:#fff;color:#334155;cursor:pointer}
+.sales-product-batch-select button:hover{border-color:#4f46e5;background:#eef2ff;color:#4f46e5}
+.sales-product-add-row{min-height:40px;margin-top:14px;padding:0 14px;display:inline-flex;align-items:center;gap:8px;border:1px dashed #94a3b8;border-radius:7px;background:#fff;color:#334155;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+.sales-product-add-row:hover{border-color:#4f46e5;color:#4f46e5}
+.sales-product-batch-error{margin-bottom:12px;padding:10px 12px;border:1px solid #fecaca;border-radius:7px;background:#fef2f2;color:#b91c1c;font-size:12px;font-weight:750}
 
 .sales-product-form-grid {
   display: grid;
@@ -720,6 +737,7 @@ body[data-theme="neon"].dark-mode .sales-products-search { background: #111827; 
   .sales-product-modal { width: 100%; max-height: 94vh; border-radius: 20px 20px 0 0; }
   .sales-product-form { padding: 16px; }
   .sales-product-form-grid { grid-template-columns: 1fr; }
+  .sales-product-batch-grid { min-width: 1040px; }
   .sales-product-field-wide { grid-column: auto; }
   .sales-product-inline-manager,
   .sales-product-inline-manager.is-editing { width: 100%; }
@@ -797,7 +815,35 @@ body[data-theme="neon"].dark-mode .sales-product-inline-delete{
   background:#111827;
   border-color:#334155;
 }
+
+/* The batch editor needs the full desktop canvas; App.css limits ordinary dialogs to 820px. */
+.sales-product-modal-layer .sales-product-modal[role="dialog"]{
+  width:min(1760px,calc(100vw - 48px))!important;
+  max-width:none!important;
+  overflow-x:hidden!important;
+}
+.sales-product-modal .sales-product-batch-form{
+  overflow-x:visible!important;
+}
+.sales-product-modal .sales-product-batch-grid{
+  min-width:0;
+}
+.sales-product-modal .sales-product-batch-fields{
+  grid-template-columns:minmax(150px,1.45fr) repeat(7,minmax(92px,1fr));
+}
+
+@media(max-width:1200px){
+  .sales-product-modal .sales-product-batch-fields{
+    grid-template-columns:repeat(4,minmax(0,1fr));
+  }
+}
 @media(max-width:640px){
+  .sales-product-modal-layer .sales-product-modal[role="dialog"]{
+    width:100%!important;
+  }
+  .sales-product-modal .sales-product-batch-fields{
+    grid-template-columns:1fr;
+  }
   .sales-product-manufacturer-manager:not(.is-editing){
     grid-template-columns:minmax(0,1fr) 30px 30px 30px;
   }

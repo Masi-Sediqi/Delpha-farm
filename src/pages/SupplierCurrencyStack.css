@@ -1,0 +1,4 @@
+.supplier-currency-stack{display:flex;flex-direction:column;align-items:flex-end;gap:4px;line-height:1.1}
+.supplier-currency-stack>span{display:flex;align-items:baseline;gap:6px;white-space:nowrap}
+.supplier-currency-stack b{font:inherit;font-weight:850}
+.supplier-currency-stack em{font-size:10px;font-style:normal;font-weight:800;opacity:.75}

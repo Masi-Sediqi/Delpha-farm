@@ -3,6 +3,20 @@ import { useNavigate, useParams } from "react-router-dom";
 import Box from "@mui/material/Box";
 import { LineChart } from "@mui/x-charts/LineChart";
 import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart as RechartsLineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import {
   GaugeContainer,
   GaugeValueArc,
   GaugeReferenceArc,
@@ -363,6 +377,22 @@ function ProductDetail() {
     .sort((a, b) => dateValue(a.sale?.saleDate || a.sale?.createdAt) - dateValue(b.sale?.saleDate || b.sale?.createdAt))
     .slice(-12);
 
+  const batchChartData = batchBalances.map((row) => ({
+    label: row.batchNo || t.unknown,
+    received: numeric(row.quantityIn),
+    issued: numeric(row.quantityOut),
+    available: numeric(row.available),
+  }));
+  const purchaseChartData = recentPurchases.map((row) => ({
+    label: row.purchase?.billNumber || chartDateLabel(row.purchase?.purchaseDate || row.purchase?.createdAt),
+    quantity: numeric(row.quantity),
+    bonus: numeric(row.bonus),
+  }));
+  const salesChartData = recentSales.map((row) => ({
+    label: row.sale?.invoiceNumber || chartDateLabel(row.sale?.saleDate || row.sale?.createdAt),
+    quantity: numeric(row.quantity),
+  }));
+
   const movementEvents = [
     ...productPurchases.map((row) => ({
       type: "purchase",
@@ -583,24 +613,56 @@ function ProductDetail() {
       {activeTab === "batches" && (
         <section className="product-detail-content product-detail-card">
           <div className="product-detail-section-heading"><Layers3 size={20} /><div><h2>{t.batchInventory}</h2></div></div>
-          <div className="product-detail-chart-block">
-            <div className="product-detail-chart-head"><div><strong>{t.batchTrend}</strong><span>{product.productName}</span></div></div>
-            {batchBalances.length ? (
-              <Box className="product-detail-line-chart">
-                <LineChart
-                  height={250}
-                  series={[
-                    { data: batchBalances.map((row) => numeric(row.quantityIn)), label: t.receivedSeries, shape: "cross", showMark: ({ index }) => index % 2 === 0 },
-                    { data: batchBalances.map((row) => numeric(row.quantityOut)), label: t.issuedSeries, shape: "diamond", showMark: ({ index }) => index % 2 === 0 },
-                    { data: batchBalances.map((row) => numeric(row.available)), label: t.availableSeries, showMark: true },
-                  ]}
-                  xAxis={[{ scaleType: "point", data: batchBalances.map((row) => row.batchNo || t.unknown), height: 34 }]}
-                  yAxis={[{ width: 54 }]}
-                  margin={{ right: 24, left: 8, top: 16, bottom: 8 }}
-                  grid={{ horizontal: true }}
-                />
-              </Box>
-            ) : <div className="product-detail-chart-empty">{t.noChartData}</div>}
+          <div className="product-detail-batch-dashboard">
+            <article className="product-detail-rechart-panel product-detail-rechart-panel-wide">
+              <div className="product-detail-chart-head"><div><strong>{t.batchTrend}</strong><span>{product.productName}</span></div></div>
+              {batchChartData.length ? <div className="product-detail-rechart-canvas">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={batchChartData} margin={{ top: 12, right: 16, left: -12, bottom: 0 }}>
+                    <defs><linearGradient id="batchAvailableFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#2563eb" stopOpacity={0.3}/><stop offset="100%" stopColor="#2563eb" stopOpacity={0.03}/></linearGradient></defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="label" tickLine={false} axisLine={false} />
+                    <YAxis tickLine={false} axisLine={false} width={48} />
+                    <Tooltip />
+                    <Legend />
+                    <Area type="monotone" dataKey="available" name={t.availableSeries} stroke="#2563eb" strokeWidth={3} fill="url(#batchAvailableFill)" />
+                    <Line type="monotone" dataKey="received" name={t.receivedSeries} stroke="#059669" strokeWidth={2} dot={{ r: 3 }} />
+                    <Line type="monotone" dataKey="issued" name={t.issuedSeries} stroke="#dc2626" strokeWidth={2} dot={{ r: 3 }} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div> : <div className="product-detail-chart-empty">{t.noChartData}</div>}
+            </article>
+
+            <article className="product-detail-rechart-panel">
+              <div className="product-detail-chart-head"><div><strong>{t.purchaseTrend}</strong><span>{product.productName}</span></div></div>
+              {purchaseChartData.length ? <div className="product-detail-rechart-canvas">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={purchaseChartData} margin={{ top: 12, right: 12, left: -16, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="label" tickLine={false} axisLine={false} />
+                    <YAxis tickLine={false} axisLine={false} width={44} />
+                    <Tooltip /><Legend />
+                    <Bar dataKey="quantity" name={t.quantitySeries} fill="#059669" radius={[4,4,0,0]} />
+                    <Bar dataKey="bonus" name={t.bonusSeries} fill="#7dd3a8" radius={[4,4,0,0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div> : <div className="product-detail-chart-empty">{t.noChartData}</div>}
+            </article>
+
+            <article className="product-detail-rechart-panel">
+              <div className="product-detail-chart-head"><div><strong>{t.salesTrend}</strong><span>{product.productName}</span></div></div>
+              {salesChartData.length ? <div className="product-detail-rechart-canvas">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsLineChart data={salesChartData} margin={{ top: 12, right: 16, left: -16, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="label" tickLine={false} axisLine={false} />
+                    <YAxis tickLine={false} axisLine={false} width={44} />
+                    <Tooltip /><Legend />
+                    <Line type="monotone" dataKey="quantity" name={t.quantitySeries} stroke="#dc2626" strokeWidth={3} dot={{ r: 4, fill: "#fff" }} activeDot={{ r: 6 }} />
+                  </RechartsLineChart>
+                </ResponsiveContainer>
+              </div> : <div className="product-detail-chart-empty">{t.noChartData}</div>}
+            </article>
           </div>
           <div className="product-detail-table-wrap">
             <table>
