@@ -13,6 +13,9 @@ release/
 !.env.production
 *.local
 
+# Offline local application data
+transport-backend/data/
+
 # Logs
 logs/
 *.log

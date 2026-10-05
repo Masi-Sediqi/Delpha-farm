@@ -13,6 +13,11 @@ const app = express();
 const port = Number(process.env.ISP_API_PORT || 5000);
 const host = process.env.ISP_API_HOST || "0.0.0.0";
 const serverDirectory = path.dirname(fileURLToPath(import.meta.url));
+const localStorageMode = String(process.env.ISP_STORAGE || "postgresql").toLowerCase() === "file";
+const localDataDirectory = path.join(serverDirectory, "data");
+const localStorePath = path.join(localDataDirectory, "local-storage.json");
+let localState = { collections: {}, backups: [] };
+let localSaveQueue = Promise.resolve();
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -48,9 +53,34 @@ const mergeById = (current, incoming) => {
   return [...merged.values()];
 };
 
+async function saveLocalState() {
+  const snapshot = JSON.stringify(localState);
+  localSaveQueue = localSaveQueue.then(async () => {
+    await fs.mkdir(localDataDirectory, { recursive: true });
+    const temporaryPath = `${localStorePath}.${process.pid}.${Date.now()}.tmp`;
+    await fs.writeFile(temporaryPath, snapshot, "utf8");
+    await fs.rename(temporaryPath, localStorePath);
+  });
+  return localSaveQueue;
+}
+
+async function loadLocalState() {
+  await fs.mkdir(localDataDirectory, { recursive: true });
+  try {
+    const parsed = JSON.parse(await fs.readFile(localStorePath, "utf8"));
+    localState = {
+      collections: parsed && typeof parsed.collections === "object" ? parsed.collections : {},
+      backups: Array.isArray(parsed?.backups) ? parsed.backups : [],
+    };
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+    await saveLocalState();
+  }
+}
+
 function runAccessExport(databasePath) {
   const powershell = process.env.WINDIR
-    ? path.join(process.env.WINDIR, "SysWOW64", "WindowsPowerShell", "v1.0", "powershell.exe")
+    ? path.join(process.env.WINDIR, "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
     : "powershell.exe";
   const script = path.join(serverDirectory, "access-export.ps1");
   return new Promise((resolve, reject) => {
@@ -173,7 +203,7 @@ function mapAccessCollections(data) {
       const packageQuantity = Math.max(0, number(line.SQtyOut) - number(line.SQtyIn));
       const quantity = packageQuantity * cartonSize;
       const lineTotal = number(line.STtlPrice);
-      return { lineId: `${saleId}-line-${index + 1}`, productId: legacyId("product", line.ItmID), productName: product?.productName || `#${line.ItmID}`, packageQuantity, quantity, cartonSize: String(cartonSize), unitsPerUnit: cartonSize, salePrice: packageQuantity ? lineTotal / packageQuantity : number(line.SUntPrc1 || line.SUntPrc2 || product?.salePrice), purchasePrice: number(line.SUntCst1 || product?.purchasePrice), lineTotal, discountAmount: number(line.SDiscAmnt), importSource: "access" };
+      return { lineId: `${saleId}-line-${index + 1}`, productId: legacyId("product", line.ItmID), productName: product?.productName || `#${line.ItmID}`, productNameEnglish: product?.productNameEnglish || "", packageQuantity, quantity, cartonSize: String(cartonSize), unitsPerUnit: cartonSize, salePrice: packageQuantity ? lineTotal / packageQuantity : number(line.SUntPrc1 || line.SUntPrc2 || product?.salePrice), purchasePrice: number(line.SUntCst1 || product?.purchasePrice), lineTotal, discountPercent: number(line.SDiscPrcnt), discountAmount: number(line.SDiscAmnt), importSource: "access" };
     });
     const totalAmount = number(row.InvTtl) || items.reduce((sum, item) => sum + item.lineTotal, 0);
     const paidAmount = number(row.TtlSCr);
@@ -184,6 +214,10 @@ function mapAccessCollections(data) {
 }
 
 async function initializeDatabase() {
+  if (localStorageMode) {
+    await loadLocalState();
+    return;
+  }
   const database = process.env.PGDATABASE || "apg_medicine";
   if (!/^[a-zA-Z0-9_]+$/.test(database)) throw new Error("Invalid PostgreSQL database name.");
   const admin = new Client({
@@ -217,6 +251,9 @@ async function initializeDatabase() {
 }
 
 app.get("/api/health", async (_request, response) => {
+  if (localStorageMode) {
+    return response.json({ ok: true, storage: "local-file", database: localStorePath });
+  }
   try {
     const result = await pool.query("SELECT current_database() AS database, NOW() AS time");
     response.json({ ok: true, storage: "postgresql", ...result.rows[0] });
@@ -226,6 +263,12 @@ app.get("/api/health", async (_request, response) => {
 });
 
 app.get("/api/collections", async (_request, response, next) => {
+  if (localStorageMode) {
+    const collections = Object.entries(localState.collections)
+      .map(([name, record]) => ({ name, revision: String(record.revision || 1), updatedAt: record.updatedAt }))
+      .sort((left, right) => left.name.localeCompare(right.name));
+    return response.json(collections);
+  }
   try {
     const result = await pool.query("SELECT name, revision, updated_at AS \"updatedAt\" FROM app_collections ORDER BY name");
     response.json(result.rows);
@@ -235,6 +278,14 @@ app.get("/api/collections", async (_request, response, next) => {
 });
 
 app.get("/api/collections/:name", async (request, response, next) => {
+  if (localStorageMode) {
+    const record = localState.collections[request.params.name];
+    if (!record) return response.status(404).json({ error: "Collection not found." });
+    const revision = String(record.revision || 1);
+    response.set("ETag", `"${revision}"`);
+    if (request.get("If-None-Match") === `"${revision}"`) return response.status(304).end();
+    return response.json({ name: request.params.name, items: record.items, revision, updatedAt: record.updatedAt });
+  }
   try {
     const result = await pool.query(
       "SELECT name, items, revision, updated_at AS \"updatedAt\" FROM app_collections WHERE name = $1",
@@ -254,6 +305,18 @@ app.put("/api/collections/:name", async (request, response, next) => {
   try {
     if (!Array.isArray(request.body?.items)) {
       return response.status(400).json({ error: "items must be an array." });
+    }
+    if (localStorageMode) {
+      const name = request.params.name;
+      const previous = localState.collections[name];
+      const record = {
+        items: request.body.items,
+        revision: Number(previous?.revision || 0) + 1,
+        updatedAt: new Date().toISOString(),
+      };
+      localState.collections[name] = record;
+      await saveLocalState();
+      return response.json({ name, ...record, revision: String(record.revision) });
     }
     const result = await pool.query(
       `INSERT INTO app_collections (name, items)
@@ -294,6 +357,27 @@ app.post("/api/import/access", async (request, response, next) => {
         source: originalName,
         report: Object.fromEntries(Object.entries(incoming).map(([name, items]) => [name, { imported: items.length }])),
       });
+    }
+    if (localStorageMode) {
+      const current = localState.collections;
+      localState.backups.push({
+        sourceName: originalName,
+        collections: Object.fromEntries(Object.entries(current).map(([name, record]) => [name, record.items])),
+        createdAt: new Date().toISOString(),
+      });
+      const report = {};
+      for (const [name, items] of Object.entries(incoming)) {
+        const previous = current[name];
+        const merged = mergeById(previous?.items, items);
+        current[name] = {
+          items: merged,
+          revision: Number(previous?.revision || 0) + 1,
+          updatedAt: new Date().toISOString(),
+        };
+        report[name] = { imported: items.length, total: merged.length };
+      }
+      await saveLocalState();
+      return response.json({ ok: true, storage: "local-file", source: originalName, report });
     }
     const client = await pool.connect();
     try {
@@ -336,7 +420,10 @@ app.use((error, _request, response, _next) => {
 });
 
 initializeDatabase()
-  .then(() => app.listen(port, host, () => console.log(`[API] PostgreSQL API listening on http://${host}:${port}`)))
+  .then(() => app.listen(port, host, () => {
+    const storageLabel = localStorageMode ? "local file" : "PostgreSQL";
+    console.log(`[API] ${storageLabel} API listening on http://${host}:${port}`);
+  }))
   .catch((error) => {
     console.error("[API] Unable to initialize PostgreSQL:", error.message);
     process.exit(1);

@@ -2,7 +2,10 @@ const fs = require("fs");
 const http = require("http");
 const { spawn } = require("child_process");
 const path = require("path");
+const modeIndex = process.argv.indexOf("--mode");
+const viteMode = modeIndex >= 0 ? process.argv[modeIndex + 1] : "demo";
 require("dotenv").config();
+require("dotenv").config({ path: path.join(process.cwd(), `.env.${viteMode}`), override: false });
 
 const host = process.env.ISP_API_HOST || "127.0.0.1";
 const port = Number(process.env.ISP_API_PORT || 5000);
@@ -66,7 +69,7 @@ async function main() {
     );
   }
 
-  children.push(run("WEB", "vite", ["--host", "0.0.0.0", "--open", "http://127.0.0.1:5173/"]));
+  children.push(run("WEB", "vite", ["--mode", viteMode, "--host", "0.0.0.0", "--open", "http://127.0.0.1:5173/"]));
 
   const shutdown = () => children.forEach(stop);
   process.on("SIGINT", () => { shutdown(); process.exit(0); });
