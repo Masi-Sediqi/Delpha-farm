@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { Download, FileBarChart, Printer, Save, Search, Settings2 } from "lucide-react";
+import { Download, FileBarChart, FileSpreadsheet, Printer, Save, Search, Settings2 } from "lucide-react";
+import ExcelJS from "exceljs";
+import html2pdf from "html2pdf.js";
 import { useNavigate } from "react-router-dom";
 import ShamsiDateInput from "../components/ShamsiDateInput";
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import { formatAfghanDate, todayDateValue } from "../utils/afghanDate";
 import "./Reports.css";
 
-const reportTypes = [["purchases","خریداری"],["sales","فروشات"],["purchaseReturns","برگشت خریداری / نمونه / تاریخ‌گذشته"],["saleReturns","برگشت فروش / موجودی افتتاحیه"],["payables","تادیات"],["receivables","طلبات"],["cashFlow","جریان نقدی"],["expenses","مصارف"],["profit","مفاد"],["dayBook","روزنامچه عمومی"]];
+const reportTypes = [["purchases","خریداری"],["sales","فروشات"],["payables","تادیات"],["receivables","طلبات"],["expenses","مصارف"],["profit","مفاد"]];
 const bases = {
   purchases:[["supplier","تأمین‌کننده"],["product","محصول"],["company","کمپنی"],["country","ساخت کشور"],["group","گروپ"],["batch","لات نمبر"],["supplierProduct","تأمین‌کننده - محصول"],["productSupplier","محصول - تأمین‌کننده"]],
   sales:[["customer","مشتری"],["product","محصول"],["company","کمپنی"],["country","ساخت کشور"],["group","گروپ"],["batch","لات نمبر"],["customerProduct","مشتری - محصول"],["productCustomer","محصول - مشتری"]],
@@ -16,31 +18,166 @@ const n=(v)=>Number(v)||0;
 const dateOf=(x)=>String(x?.purchaseDate||x?.saleDate||x?.returnDate||x?.date||x?.createdAt||"").slice(0,10);
 const money=(v)=>n(v).toLocaleString("en-US",{maximumFractionDigits:2});
 const currencyLabel=(value)=>{const code=String(value||"AFN").toUpperCase();return({AFN:"افغانی",PKR:"کلدار",USD:"دالر",EUR:"یورو"}[code]||code)};
+const normalizeCurrencyCode=(value)=>{const code=String(value||"AFN").toUpperCase();if(code.includes("USD"))return"USD";if(code.includes("EUR"))return"EUR";if(code.includes("PKR"))return"PKR";if(code.includes("INR"))return"INR";return"AFN"};
 const gregorianReportDate=(value)=>{const raw=String(value||"").slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(raw))return raw||"-";const [year,month,day]=raw.split("-");const months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];return `${day}-${months[Number(month)-1]||month}-${year.slice(-2)}`};
 const afghanReportDate=(value)=>{const raw=formatAfghanDate(value,{pad:true});if(!raw||raw==="-")return "-";const [year,month,day]=raw.split("/");return `${day}/${month}/${year}`};
 const today=()=>todayDateValue?.()||new Date().toISOString().slice(0,10);
 const iso=(d)=>d.toISOString().slice(0,10);
 const weekStart=(date)=>{const d=new Date(date);d.setDate(d.getDate()-((d.getDay()+1)%7));return d};
+const excelColumn=(index)=>{let value=index+1,name="";while(value){const remainder=(value-1)%26;name=String.fromCharCode(65+remainder)+name;value=Math.floor((value-1)/26)}return name};
+async function buildStyledXlsxBuffer({title,subtitle,headers,rows,widths}){
+  const workbook=new ExcelJS.Workbook();
+  workbook.creator="APG Medicine Management";
+  workbook.created=new Date();
+  workbook.views=[{rightToLeft:true}];
+  const worksheet=workbook.addWorksheet("Report",{views:[{rightToLeft:true,state:"frozen",ySplit:subtitle?3:2,topLeftCell:subtitle?"A4":"A3"}]});
+  worksheet.properties.defaultRowHeight=18;
+  worksheet.pageSetup={paperSize:9,orientation:"landscape",fitToPage:true,fitToWidth:1,fitToHeight:0};
+  worksheet.pageMargins={left:0.25,right:0.25,top:0.4,bottom:0.4,header:0.2,footer:0.2};
+  worksheet.columns=widths.map((width,index)=>({key:`column-${index}`,width}));
+  worksheet.mergeCells(1,1,1,headers.length);
+  const titleCell=worksheet.getCell(1,1);
+  titleCell.value=title;
+  titleCell.font={name:"Arial",size:22,bold:true,color:{argb:"FFFFFFFF"}};
+  titleCell.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FF1F4E78"}};
+  titleCell.alignment={horizontal:"center",vertical:"middle"};
+  titleCell.border={top:{style:"thin",color:{argb:"FF808080"}},bottom:{style:"thin",color:{argb:"FF808080"}},left:{style:"thin",color:{argb:"FF808080"}},right:{style:"thin",color:{argb:"FF808080"}}};
+  worksheet.getRow(1).height=34;
+  let headerRowNumber=2;
+  if(subtitle){
+    worksheet.mergeCells(2,1,2,headers.length);
+    const subtitleCell=worksheet.getCell(2,1);
+    subtitleCell.value=subtitle;
+    subtitleCell.font={name:"Calibri",size:10,color:{argb:"FF64748B"}};
+    subtitleCell.alignment={horizontal:"center",vertical:"middle"};
+    worksheet.getRow(2).height=20;
+    headerRowNumber=3;
+  }
+  const headerRow=worksheet.getRow(headerRowNumber);
+  headers.forEach((header,index)=>{
+    const cell=headerRow.getCell(index+1);
+    cell.value=header;
+    cell.font={name:"Calibri",size:11,bold:true,color:{argb:"FF111111"}};
+    cell.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFC0C0C0"}};
+    cell.alignment={horizontal:"center",vertical:"middle",wrapText:true};
+    cell.border={top:{style:"thin",color:{argb:"FF808080"}},bottom:{style:"thin",color:{argb:"FF808080"}},left:{style:"thin",color:{argb:"FF808080"}},right:{style:"thin",color:{argb:"FF808080"}}};
+  });
+  headerRow.height=30;
+  rows.forEach((values,rowIndex)=>{
+    const outputRow=worksheet.getRow(headerRowNumber+rowIndex+1);
+    values.forEach((value,columnIndex)=>{
+      const cell=outputRow.getCell(columnIndex+1);
+      cell.value=value??"";
+      cell.font={name:"Calibri",size:11,color:{argb:"FF111111"}};
+      cell.alignment={horizontal:"right",vertical:"center",wrapText:true};
+      cell.border={top:{style:"thin",color:{argb:"FFD9E0E6"}},bottom:{style:"thin",color:{argb:"FFD9E0E6"}},left:{style:"thin",color:{argb:"FFD9E0E6"}},right:{style:"thin",color:{argb:"FFD9E0E6"}}};
+    });
+    outputRow.height=22;
+  });
+  worksheet.autoFilter={from:{row:headerRowNumber,column:1},to:{row:Math.max(headerRowNumber,headerRowNumber+rows.length),column:headers.length}};
+  worksheet.pageSetup.printTitlesRow=`${headerRowNumber}:${headerRowNumber}`;
+  worksheet.printArea=`A1:${excelColumn(headers.length-1)}${Math.max(headerRowNumber,headerRowNumber+rows.length)}`;
+  return workbook.xlsx.writeBuffer();
+}
+
+
 function row(source,item,extra={}){return{id:`${source}-${item.id||Math.random()}-${extra.id||""}`,source,date:dateOf(item),reference:item.systemBillNumber||item.invoiceNumber||item.billNumber||item.reference||item.id||"-",party:extra.party||item.supplierName||item.customerName||item.partyName||item.description||"-",supplier:item.supplierName||"",customer:item.customerName||"",product:extra.product||item.productName||"",company:extra.company||"",country:extra.country||"",group:extra.group||"",batch:extra.batch||item.batchNo||"",quantity:n(extra.quantity??item.quantity??item.itemCount),amount:n(extra.amount??item.totalAmount??item.amount),cost:n(extra.cost),currency:item.currency||extra.currency||"AFN",details:extra.details||item.description||"-"}}
 
 export default function Reports(){
   const navigate=useNavigate();
-  const [purchases]=useJsonCollection("purchases"),[purchaseItems]=useJsonCollection("purchaseItems"),[sales]=useJsonCollection("salesRegister"),[purchaseReturns]=useJsonCollection("purchaseReturns"),[saleReturns]=useJsonCollection("saleReturns"),[supplierPayments]=useJsonCollection("supplierPayments"),[customerPayments]=useJsonCollection("customerPayments"),[cashTransactions]=useJsonCollection("partyCashTransactions"),[expenses]=useJsonCollection("expenses"),[products]=useJsonCollection("products");
-  const [reportType,setReportType]=useState("sales"),[basis,setBasis]=useState("company"),[basisValue,setBasisValue]=useState(""),[preset,setPreset]=useState("all"),[from,setFrom]=useState(today()),[to,setTo]=useState(today()),[measure,setMeasure]=useState("both"),[trade,setTrade]=useState("all"),[shown,setShown]=useState(false);
-  useEffect(()=>{setBasis((bases[reportType]||[])[0]?.[0]||"party");setBasisValue("");setShown(false)},[reportType]);
+  const [purchases]=useJsonCollection("purchases"),[purchaseItems]=useJsonCollection("purchaseItems"),[sales]=useJsonCollection("salesRegister"),[purchaseReturns]=useJsonCollection("purchaseReturns"),[saleReturns]=useJsonCollection("saleReturns"),[supplierPayments]=useJsonCollection("supplierPayments"),[customerPayments]=useJsonCollection("customerPayments"),[cashTransactions]=useJsonCollection("partyCashTransactions"),[expenses]=useJsonCollection("expenses"),[products]=useJsonCollection("products"),[suppliers]=useJsonCollection("suppliers"),[customers]=useJsonCollection("customerRegistry");
+  const [reportType,setReportType]=useState("sales"),[basis,setBasis]=useState("company"),[basisValue,setBasisValue]=useState(""),[preset,setPreset]=useState("all"),[from,setFrom]=useState(today()),[to,setTo]=useState(today()),[measure,setMeasure]=useState("both"),[trade,setTrade]=useState("all"),[reportSearch,setReportSearch]=useState(""),[shown,setShown]=useState(false);
+  useEffect(()=>{setBasis((bases[reportType]||[])[0]?.[0]||"party");setBasisValue("");setReportSearch("");setShown(false)},[reportType]);
   const productMap=useMemo(()=>new Map(products.map(p=>[String(p.id),p])),[products]);
   const allRows=useMemo(()=>{
     const prs=purchases.flatMap(p=>{const items=purchaseItems.filter(i=>String(i.purchaseId)===String(p.id));return(items.length?items:[{}]).map(i=>{const product=productMap.get(String(i.productId))||{};const quantity=n(i.receivedQuantity??i.quantity);const totalCost=n(i.lineTotal??p.totalAmount);return {...row("خریداری",p,{id:i.id,product:i.productName||product.productName,company:i.manufacturerName||product.manufacturerName,country:product.countryName||product.madeIn,group:product.groupName||product.group,batch:i.batchNo,quantity,amount:totalCost,cost:n(i.purchasePrice)*quantity}),purchaseCurrency:currencyLabel(p.currency||i.currency||product.currency),purchaseCompany:i.manufacturerName||product.manufacturerName||"-",cardNumber:p.cardNumber||p.billNumber||p.reference||p.legacyId||"-",accountName:p.supplierName||"-",productNameDari:i.productName||product.productName||"-",productNameEnglish:i.productNameEnglish||product.productNameEnglish||"-----",dateM:dateOf(p),dateS:afghanReportDate(dateOf(p)),unitCost:n(i.purchasePrice??product.purchasePrice),totalCost,expiryDate:i.expiryDate?afghanReportDate(i.expiryDate):""}})});
     const srs=sales.flatMap(s=>{const items=s.items?.length?s.items:[null];return items.map((i,index)=>{const product=productMap.get(String(i?.productId))||{};const quantity=i?.quantity??i?.packageQuantity??0;const amount=n(i?.lineTotal??(items.length===1?s.totalAmount:0));const discountAmount=n(i?.discountAmount);const grossSale=amount+discountAmount;return {...row("فروشات",s,{id:i?.id||index,product:i?.productName||product.productName,company:i?.companyName||product.manufacturerName,country:product.countryName||product.madeIn,group:product.groupName||product.group,batch:i?.batchNo,quantity,amount,cost:n(i?.purchasePrice)*n(quantity)}),billCurrency:s.currency||"AFN",productNameDari:i?.productName||product.productName||"-",productNameEnglish:i?.productNameEnglish||product.productNameEnglish||"-",invoiceNumber:s.invoiceNumber||s.billNumber||s.systemBillNumber||"-",dateM:dateOf(s),dateS:afghanReportDate(dateOf(s)),discountPercent:n(i?.discountPercent??i?.discountRate),discountAmount,totalPrice:amount,grossSale}})});
-    const pr=purchaseReturns.map(x=>row("برگشت خریداری",x)),sr=saleReturns.map(x=>row("برگشت فروش",x)),pay=supplierPayments.map(x=>row("تادیه",x)),rec=customerPayments.map(x=>row("طلب",x)),cash=cashTransactions.map(x=>row(x.type==="payment"?"پرداخت نقدی":"دریافت نقدی",x)),exp=expenses.map(x=>row("مصرف",x));
-    if(reportType==="purchases")return prs;if(reportType==="sales")return srs;if(reportType==="purchaseReturns")return pr;if(reportType==="saleReturns")return sr;if(reportType==="payables")return pay;if(reportType==="receivables")return rec;if(reportType==="cashFlow")return[...rec,...pay,...cash];if(reportType==="expenses")return exp;if(reportType==="profit")return srs.map(x=>({...x,source:"مفاد",amount:x.amount-x.cost}));return[...prs,...srs,...pr,...sr,...pay,...rec,...cash,...exp];
-  },[reportType,purchases,purchaseItems,sales,purchaseReturns,saleReturns,supplierPayments,customerPayments,cashTransactions,expenses,productMap]);
+    const pr=purchaseReturns.map(x=>row("برگشت خریداری",x)),sr=saleReturns.map(x=>row("برگشت فروش",x)),paymentRows=supplierPayments.map(x=>row("تادیه",x)),receiptRows=customerPayments.map(x=>row("طلب",x)),cash=cashTransactions.map(x=>row(x.type==="payment"?"پرداخت نقدی":"دریافت نقدی",x)),exp=expenses.map(x=>row("مصرف",x));
+    const cutoff=preset==="all"?"":to;
+    const beforeCutoff=(item)=>!cutoff||!dateOf(item)||dateOf(item)<=cutoff;
+    const reportDate=(items,fallback)=>cutoff||items.map(dateOf).filter(Boolean).sort().pop()||fallback||"";
+    const payableRows=suppliers.flatMap(supplier=>{
+      const supplierId=String(supplier.id),sp=purchases.filter(x=>String(x.supplierId)===supplierId&&beforeCutoff(x)),srRows=purchaseReturns.filter(x=>String(x.supplierId)===supplierId&&beforeCutoff(x)),mp=supplierPayments.filter(x=>String(x.supplierId)===supplierId&&beforeCutoff(x));
+      const buckets=new Map();
+      const ensure=(currency)=>{const code=normalizeCurrencyCode(currency||supplier.currency);if(!buckets.has(code))buckets.set(code,{currency:code,purchased:0,paidAtPurchase:0,paidLater:0,returned:0,opening:0});return buckets.get(code)};
+      const supplierCurrency=normalizeCurrencyCode(supplier.currency);
+      if(n(supplier.openingBalance))ensure(supplierCurrency).opening+=n(supplier.openingBalance);
+      sp.forEach(p=>{const b=ensure(p.currency);b.purchased+=n(p.totalAmount);b.paidAtPurchase+=n(p.paidAmount)});
+      mp.forEach(p=>{ensure(p.currency).paidLater+=n(p.amount)});
+      srRows.forEach(ret=>{const linked=sp.find(p=>String(p.id)===String(ret.purchaseId));ensure(ret.currency||linked?.currency).returned+=n(ret.totalAmount)});
+      const party=supplier.supplierName||supplier.name||"-",activity=[...sp,...srRows,...mp];
+      return [...buckets.values()].map(b=>{const balance=Math.max(b.purchased+Math.max(b.opening,0)-b.paidAtPurchase-b.paidLater-b.returned,0);if(balance<=0.0001)return null;return{id:`payable-${supplierId}-${b.currency}`,source:"تادیات",date:reportDate(activity,supplier.createdAt),reference:"BALANCE",party,supplier:party,customer:"",product:"",quantity:0,amount:balance,currency:b.currency,details:"باقی‌مانده حساب تأمین‌کننده"}}).filter(Boolean);
+    });
+    const receivableRows=customers.flatMap(customer=>{
+      const customerId=String(customer.id),cs=sales.filter(x=>String(x.customerId)===customerId&&beforeCutoff(x)),cr=saleReturns.filter(x=>String(x.customerId)===customerId&&beforeCutoff(x)),cp=customerPayments.filter(x=>String(x.customerId)===customerId&&beforeCutoff(x));
+      const buckets=new Map();
+      const ensure=(currency)=>{const code=normalizeCurrencyCode(currency||customer.currency);if(!buckets.has(code))buckets.set(code,{currency:code,sold:0,paidAtSale:0,paidLater:0,returned:0,opening:0});return buckets.get(code)};
+      const customerCurrency=normalizeCurrencyCode(customer.currency);
+      if(n(customer.openingBalance))ensure(customerCurrency).opening+=n(customer.openingBalance);
+      cs.forEach(s=>{const b=ensure(s.currency);b.sold+=n(s.totalAmount);b.paidAtSale+=n(s.paidAmount)});
+      cp.forEach(p=>{ensure(p.currency).paidLater+=n(p.amount)});
+      cr.forEach(ret=>{const linked=cs.find(s=>String(s.id)===String(ret.saleId));ensure(ret.currency||linked?.currency).returned+=n(ret.totalAmount)});
+      const party=customer.fullName||customer.companyName||"-",activity=[...cs,...cr,...cp];
+      return [...buckets.values()].map(b=>{const balance=Math.max(Math.max(b.opening,0)+b.sold-b.paidAtSale-b.paidLater-b.returned+Math.min(b.opening,0),0);if(balance<=0.0001)return null;return{id:`receivable-${customerId}-${b.currency}`,source:"طلبات",date:reportDate(activity,customer.createdAt),reference:"BALANCE",party,customer:party,supplier:"",product:"",quantity:0,amount:balance,currency:b.currency,details:"باقی‌مانده حساب مشتری"}}).filter(Boolean);
+    });
+    if(reportType==="purchases")return prs;if(reportType==="sales")return srs;if(reportType==="purchaseReturns")return pr;if(reportType==="saleReturns")return sr;if(reportType==="payables")return payableRows;if(reportType==="receivables")return receivableRows;if(reportType==="cashFlow")return[...receiptRows,...paymentRows,...cash];if(reportType==="expenses")return exp;if(reportType==="profit")return srs.map(x=>({...x,source:"مفاد",amount:x.amount-x.cost}));return[...prs,...srs,...pr,...sr,...paymentRows,...receiptRows,...cash,...exp];
+  },[reportType,purchases,purchaseItems,sales,purchaseReturns,saleReturns,supplierPayments,customerPayments,cashTransactions,expenses,productMap,suppliers,customers,preset,to]);
   const basisKey=(x)=>basis==="supplierProduct"?`${x.supplier} - ${x.product}`:basis==="productSupplier"?`${x.product} - ${x.supplier}`:basis==="customerProduct"?`${x.customer} - ${x.product}`:basis==="productCustomer"?`${x.product} - ${x.customer}`:(x[basis]||(basis==="party"?x.party:""));
   const basisOptions=useMemo(()=>[...new Set(allRows.map(basisKey).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"fa")),[allRows,basis]);
-  const rows=useMemo(()=>allRows.filter(x=>(preset==="all"||((!from||x.date>=from)&&(!to||x.date<=to)))&&(!basisValue||basisKey(x)===basisValue)).sort((a,b)=>String(b.date).localeCompare(String(a.date))),[allRows,preset,from,to,basisValue,basis]);
+  const rows=useMemo(()=>{const query=reportSearch.trim().toLocaleLowerCase();return allRows.filter(x=>(preset==="all"||((!from||x.date>=from)&&(!to||x.date<=to)))&&(!basisValue||basisKey(x)===basisValue)&&(!query||Object.values(x).some(value=>String(value??"").toLocaleLowerCase().includes(query)))).sort((a,b)=>String(b.date).localeCompare(String(a.date)))},[allRows,preset,from,to,basisValue,basis,reportSearch]);
   const totals=useMemo(()=>rows.reduce((a,x)=>{a[x.currency]=(a[x.currency]||0)+x.amount;return a},{}),[rows]);
   const applyPreset=(value)=>{setPreset(value);const now=new Date();let start=new Date(now),end=new Date(now);if(value==="yesterday"){start.setDate(start.getDate()-1);end=new Date(start)}if(value==="week")start=weekStart(now);if(value==="lastWeek"){end=weekStart(now);end.setDate(end.getDate()-1);start=new Date(end);start.setDate(start.getDate()-6)}if(value==="month")start=new Date(now.getFullYear(),now.getMonth(),1);if(value==="lastMonth"){start=new Date(now.getFullYear(),now.getMonth()-1,1);end=new Date(now.getFullYear(),now.getMonth(),0)}if(!["all","custom"].includes(value)){setFrom(iso(start));setTo(iso(end))}setShown(false)};
-  const exportCsv=()=>{const lines=reportType==="sales"?[["Bill Cur","Co.Name","Product Name1","Product Name2","Inv No","Date-M","Date-S","Customer Name","Qty","% Discnt","Discnt Amnt","Total Price","Gross Sale"],...rows.map(x=>[x.billCurrency,x.company,x.productNameDari,x.productNameEnglish,x.invoiceNumber,x.dateM,x.dateS,x.party,x.quantity,x.discountPercent,x.discountAmount,x.totalPrice,x.grossSale])]:reportType==="purchases"?[["Bill Cur","Co.Name","Card No","Date-M","Date-S","Account Name","Product Name1","Product Name2","Unit Cost","Qty","Total Cost","Expiry Date"],...rows.map(x=>[x.purchaseCurrency,x.purchaseCompany,x.cardNumber,x.dateM,x.dateS,x.accountName,x.productNameDari,x.productNameEnglish,x.unitCost,x.quantity,x.totalCost,x.expiryDate])]:[["Date","Reference","Type","Party","Product","Quantity","Amount","Currency"],...rows.map(x=>[x.date,x.reference,x.source,x.party,x.product,x.quantity,x.amount,x.currency])];const blob=new Blob(["\ufeff"+lines.map(line=>line.map(v=>`"${String(v??"").replaceAll('"','""')}"`).join(",")).join("\n")],{type:"text/csv;charset=utf-8"});const link=document.createElement("a");link.href=URL.createObjectURL(blob);link.download=`report-${reportType}-${today()}.csv`;link.click();URL.revokeObjectURL(link.href)};
+  const getExportData=()=>{
+    if(reportType==="sales")return{title:"راپور فروشات",subtitle:`به اساس کمپنی · ${basisValue||"همه کمپنی‌ها"}`,headers:["Bill Cur","Co.Name","Product Name1","Product Name2","Inv No","Date-M","Date-S","Customer Name","Qty","% Discnt","Discnt Amnt","Total Price","Gross Sale"],rows:rows.map(x=>[x.billCurrency,x.company||"-",x.productNameDari,x.productNameEnglish,x.invoiceNumber,x.dateM,x.dateS,x.party,x.quantity,x.discountPercent,x.discountAmount,x.totalPrice,x.grossSale]),widths:[12,18,34,24,14,14,14,30,12,12,16,16,16]};
+    if(reportType==="purchases")return{title:"راپور خریداری",subtitle:`به اساس کمپنی · ${basisValue||"همه کمپنی‌ها"}`,headers:["Bill Cur","Co.Name","Card No","Date-M","Date-S","Account Name","Product Name1","Product Name2","Unit Cost","Qty","Total Cost","Expiry Date"],rows:rows.map(x=>[x.purchaseCurrency,x.purchaseCompany,x.cardNumber,x.dateM,x.dateS,x.accountName,x.productNameDari,x.productNameEnglish,x.unitCost,x.quantity,x.totalCost,x.expiryDate]),widths:[12,18,20,14,14,32,36,26,16,12,18,18]};
+    const headers=["#","تاریخ","مرجع","نوع","شخص / حساب","محصول"];if(measure!=="amount")headers.push("تعداد");if(measure!=="quantity")headers.push("مبلغ","واحد پول");
+    const genericRows=rows.map((x,index)=>{const values=[index+1,formatAfghanDate(x.date)||x.date||"-",x.reference,x.source,x.party,x.product||"-"];if(measure!=="amount")values.push(x.quantity);if(measure!=="quantity")values.push(x.amount,x.currency);return values});
+    return{title:reportTypes.find(([key])=>key===reportType)?.[1]||"راپور",subtitle:`${preset==="all"?"تمام دوره‌ها":`${formatAfghanDate(from)} تا ${formatAfghanDate(to)}`} · ${basisValue||"همه"}`,headers,rows:genericRows,widths:[8,14,18,16,28,28,12,16,12].slice(0,headers.length)};
+  };
+  const exportExcel=async()=>{try{const data=getExportData(),buffer=await buildStyledXlsxBuffer(data),blob=new Blob([buffer],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=`report-${reportType}-${today()}.xlsx`;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}catch(error){console.error("Excel export failed",error);window.alert("خروجی Excel ساخته نشد. لطفاً دوباره تلاش کنید.")}};
+  const downloadPdf=async()=>{
+    const source=document.querySelector(".report-sheet");
+    if(!source)return;
+    const columnWidths=reportType==="sales"?[58,78,125,112,65,75,75,160,48,55,74,82,85]:reportType==="purchases"?[58,78,90,68,68,125,145,110,72,56,84,86]:[35,78,90,70,150,130,55,85,60];
+    const preparePdfClone=(clonedDocument)=>{
+      const sheet=clonedDocument.querySelector(".report-sheet");
+      if(!sheet)return;
+      clonedDocument.querySelectorAll(".report-sheet-tools,.no-print").forEach(element=>element.remove());
+      sheet.setAttribute("dir","rtl");
+      sheet.style.cssText="position:relative;width:1120px;min-width:0;max-width:none;margin:0;border:1px solid #dfe5e9;box-shadow:none;background:#fff;overflow:visible;font-family:Tahoma,Arial,sans-serif;direction:rtl;unicode-bidi:plaintext";
+      const table=sheet.querySelector("table");
+      if(!table)return;
+      table.style.cssText="width:100%;min-width:0;max-width:none;table-layout:fixed;border-collapse:collapse;white-space:normal;direction:rtl;unicode-bidi:plaintext;font-family:Tahoma,Arial,sans-serif";
+      const colgroup=clonedDocument.createElement("colgroup");
+      columnWidths.slice(0,table.rows[0]?.cells.length||columnWidths.length).forEach(width=>{const col=clonedDocument.createElement("col");col.style.width=width+"px";colgroup.appendChild(col)});
+      table.insertBefore(colgroup,table.firstChild);
+      const numericColumns=reportType==="sales"?[8,9,10,11,12]:reportType==="purchases"?[8,9,10]:[];
+      sheet.querySelectorAll("th,td").forEach(cell=>{
+        const columnIndex=cell.cellIndex;
+        cell.style.width="auto";
+        cell.style.minWidth="0";
+        cell.style.maxWidth="none";
+        cell.style.whiteSpace="normal";
+        cell.style.wordBreak="normal";
+        cell.style.overflowWrap="break-word";
+        cell.style.fontFamily="Tahoma,Arial,sans-serif";
+        cell.style.fontSize="9px";
+        cell.style.lineHeight="1.35";
+        cell.style.padding="5px 4px";
+        cell.style.verticalAlign="middle";
+        cell.style.textAlign=numericColumns.includes(columnIndex)?"right":"center";
+        cell.style.direction=numericColumns.includes(columnIndex)?"ltr":"rtl";
+        cell.style.unicodeBidi="plaintext";
+      });
+      sheet.querySelector("thead")?.style.setProperty("display","table-header-group");
+      sheet.querySelectorAll("tbody tr").forEach(rowElement=>{rowElement.style.breakInside="avoid";rowElement.style.pageBreakInside="avoid"});
+      sheet.querySelector(".report-table-wrap")?.style.setProperty("overflow","visible");
+      sheet.querySelectorAll("*").forEach(element=>{element.style.fontFamily="Tahoma,Arial,sans-serif";element.style.unicodeBidi="plaintext"});
+    };
+    const options={margin:[7,7,7,7],filename:`report-${reportType}-${today()}.pdf`,image:{type:"jpeg",quality:0.99},html2canvas:{scale:2,useCORS:true,backgroundColor:"#fff",logging:false,windowWidth:1120,onclone:preparePdfClone},jsPDF:{unit:"mm",format:"a4",orientation:"landscape",compress:true},pagebreak:{mode:["css","legacy"],avoid:["tr",".report-sheet>footer"]}};
+    try{if(document.fonts?.ready)await document.fonts.ready;await html2pdf().set(options).from(source).save()}catch(error){console.error("PDF export failed",error);window.alert("خروجی PDF ساخته نشد. لطفاً دوباره تلاش کنید.")}
+  };
+  const exportCsv=()=>{const{headers,rows:exportRows}=getExportData(),lines=[headers,...exportRows],blob=new Blob(["\ufeff"+lines.map(line=>line.map(v=>`"${String(v??"").replaceAll('"','""')}"`).join(",")).join("\n")],{type:"text/csv;charset=utf-8"}),url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=`report-${reportType}-${today()}.csv`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
   const saveSettings=()=>localStorage.setItem("reports-builder-settings",JSON.stringify({reportType,basis,basisValue,preset,from,to,measure,trade}));
   return <div className="reports-page" dir="rtl">
     <section className="report-builder no-print"><header><div><FileBarChart size={23}/><h1>گزارشات</h1></div><button className="exchange-button" onClick={()=>navigate("/settings")}><Settings2 size={16}/> نرخ تبادله</button></header>
@@ -55,9 +192,9 @@ export default function Reports(){
         <div className="report-actions"><button onClick={()=>setShown(true)}><FileBarChart size={17}/> نمایش راپور</button><button className="secondary" onClick={saveSettings}><Save size={16}/> ذخیره تنظیمات</button><span>تعداد راپور: <b>{rows.length}</b></span></div></div>
     </section>
     {shown&&<section className={`report-sheet ${reportType==="sales"?"report-sheet-sales":""} ${reportType==="purchases"?"report-sheet-purchases":""}`}>
-      <div className="report-sheet-tools no-print"><button onClick={()=>window.print()}><Printer size={16}/> چاپ</button><button onClick={exportCsv}><Download size={16}/> CSV</button></div>
+      <div className="report-sheet-tools no-print"><button onClick={downloadPdf}><Printer size={16}/> PDF</button><button onClick={exportExcel}><FileSpreadsheet size={16}/> Excel</button><button onClick={exportCsv}><Download size={16}/> CSV</button><label className="report-search-box"><Search size={15}/><input value={reportSearch} onChange={e=>setReportSearch(e.target.value)} placeholder="جستجو در راپور..." aria-label="جستجو در راپور"/></label></div>
       <header>
-        {reportType==="sales" ? <div className="report-sales-title"><h2>راپور فروشات</h2><p>به اساس کمپنی · {basisValue||"همه کمپنی‌ها"}</p></div> : reportType==="purchases" ? <div className="report-purchases-title"><h2>راپور خریداری</h2><p>به اساس کمپنی · {basisValue||"همه کمپنی‌ها"}</p></div> : <><div className="report-brand">APG</div><div><h2>{reportTypes.find(([k])=>k===reportType)?.[1]}</h2><p>{preset==="all"?"تمام دوره‌ها":`${formatAfghanDate(from)} تا ${formatAfghanDate(to)}`} · {basisValue||"همه"}</p></div></>}
+        {reportType==="sales" ? <div className="report-sales-title"><h2>راپور فروشات</h2><p>به اساس کمپنی · {basisValue||"همه کمپنی‌ها"}</p></div> : reportType==="purchases" ? <div className="report-purchases-title"><h2>راپور خریداری</h2><p>به اساس کمپنی · {basisValue||"همه کمپنی‌ها"}</p></div> : <div><h2>{reportTypes.find(([k])=>k===reportType)?.[1]}</h2><p>{preset==="all"?"تمام دوره‌ها":`${formatAfghanDate(from)} تا ${formatAfghanDate(to)}`} · {basisValue||"همه"}</p></div>}
         <div className="report-number">تعداد: {rows.length}</div>
       </header>
       <div className="report-table-wrap">

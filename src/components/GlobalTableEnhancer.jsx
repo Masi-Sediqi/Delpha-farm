@@ -17,7 +17,7 @@ function getDataRows(table) {
 }
 
 function shouldSkipTable(table) {
-  return table.closest("form") || table.closest(".receipt-page");
+  return table.closest("form") || table.closest(".receipt-page") || table.closest(".reports-page");
 }
 
 function findGlobalPagination(table) {
@@ -147,7 +147,10 @@ function bindFullTextCells(table) {
 }
 
 function enhanceTable(table) {
-  if (shouldSkipTable(table)) return;
+  if (shouldSkipTable(table)) {
+    cleanupEnhancedTable(table);
+    return;
+  }
 
   removeLegacyFilterRows(table);
   bindFullTextCells(table);
