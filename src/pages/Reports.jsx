@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Download, FileBarChart, FileSpreadsheet, Printer, Save, Search, Settings2 } from "lucide-react";
 import ExcelJS from "exceljs";
-import html2pdf from "html2pdf.js";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 import { useNavigate } from "react-router-dom";
 import ShamsiDateInput from "../components/ShamsiDateInput";
 import { useJsonCollection } from "../hooks/useJsonCollection";
@@ -136,46 +137,94 @@ export default function Reports(){
   };
   const exportExcel=async()=>{try{const data=getExportData(),buffer=await buildStyledXlsxBuffer(data),blob=new Blob([buffer],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=`report-${reportType}-${today()}.xlsx`;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}catch(error){console.error("Excel export failed",error);window.alert("خروجی Excel ساخته نشد. لطفاً دوباره تلاش کنید.")}};
   const downloadPdf=async()=>{
-    const source=document.querySelector(".report-sheet");
-    if(!source)return;
-    const columnWidths=reportType==="sales"?[58,78,125,112,65,75,75,160,48,55,74,82,85]:reportType==="purchases"?[58,78,90,68,68,125,145,110,72,56,84,86]:[35,78,90,70,150,130,55,85,60];
-    const preparePdfClone=(clonedDocument)=>{
-      const sheet=clonedDocument.querySelector(".report-sheet");
-      if(!sheet)return;
-      clonedDocument.querySelectorAll(".report-sheet-tools,.no-print").forEach(element=>element.remove());
-      sheet.setAttribute("dir","rtl");
-      sheet.style.cssText="position:relative;width:1120px;min-width:0;max-width:none;margin:0;border:1px solid #dfe5e9;box-shadow:none;background:#fff;overflow:visible;font-family:Tahoma,Arial,sans-serif;direction:rtl;unicode-bidi:plaintext";
-      const table=sheet.querySelector("table");
-      if(!table)return;
-      table.style.cssText="width:100%;min-width:0;max-width:none;table-layout:fixed;border-collapse:collapse;white-space:normal;direction:rtl;unicode-bidi:plaintext;font-family:Tahoma,Arial,sans-serif";
-      const colgroup=clonedDocument.createElement("colgroup");
-      columnWidths.slice(0,table.rows[0]?.cells.length||columnWidths.length).forEach(width=>{const col=clonedDocument.createElement("col");col.style.width=width+"px";colgroup.appendChild(col)});
-      table.insertBefore(colgroup,table.firstChild);
-      const numericColumns=reportType==="sales"?[8,9,10,11,12]:reportType==="purchases"?[8,9,10]:[];
-      sheet.querySelectorAll("th,td").forEach(cell=>{
-        const columnIndex=cell.cellIndex;
-        cell.style.width="auto";
-        cell.style.minWidth="0";
-        cell.style.maxWidth="none";
-        cell.style.whiteSpace="normal";
-        cell.style.wordBreak="normal";
-        cell.style.overflowWrap="break-word";
-        cell.style.fontFamily="Tahoma,Arial,sans-serif";
-        cell.style.fontSize="9px";
-        cell.style.lineHeight="1.35";
-        cell.style.padding="5px 4px";
-        cell.style.verticalAlign="middle";
-        cell.style.textAlign=numericColumns.includes(columnIndex)?"right":"center";
-        cell.style.direction=numericColumns.includes(columnIndex)?"ltr":"rtl";
-        cell.style.unicodeBidi="plaintext";
-      });
-      sheet.querySelector("thead")?.style.setProperty("display","table-header-group");
-      sheet.querySelectorAll("tbody tr").forEach(rowElement=>{rowElement.style.breakInside="avoid";rowElement.style.pageBreakInside="avoid"});
-      sheet.querySelector(".report-table-wrap")?.style.setProperty("overflow","visible");
-      sheet.querySelectorAll("*").forEach(element=>{element.style.fontFamily="Tahoma,Arial,sans-serif";element.style.unicodeBidi="plaintext"});
-    };
-    const options={margin:[7,7,7,7],filename:`report-${reportType}-${today()}.pdf`,image:{type:"jpeg",quality:0.99},html2canvas:{scale:2,useCORS:true,backgroundColor:"#fff",logging:false,windowWidth:1120,onclone:preparePdfClone},jsPDF:{unit:"mm",format:"a4",orientation:"landscape",compress:true},pagebreak:{mode:["css","legacy"],avoid:["tr",".report-sheet>footer"]}};
-    try{if(document.fonts?.ready)await document.fonts.ready;await html2pdf().set(options).from(source).save()}catch(error){console.error("PDF export failed",error);window.alert("خروجی PDF ساخته نشد. لطفاً دوباره تلاش کنید.")}
+    // Render a dedicated, paginated document rather than shrinking the on-screen table.
+    const data=getExportData();
+    const wide=data.headers.length>=11;
+    const pageWidth=wide?1480:1100;
+    const paper=wide?"a3":"a4";
+    const sheet=document.createElement("div");
+    sheet.setAttribute("dir","rtl");
+    sheet.style.cssText=`position:fixed;left:0;top:0;width:${pageWidth}px;background:#fff;color:#17212d;direction:rtl;font-family:Tahoma,"Noto Naskh Arabic","Noto Sans Arabic",Arial,sans-serif;z-index:2147483647;box-sizing:border-box;pointer-events:none;`;
+    const style=document.createElement("style");
+    style.textContent=`
+      .apg-pdf-page { box-sizing:border-box;width:100%;padding:24px 26px 18px;background:#fff;break-after:page;page-break-after:always; }
+      .apg-pdf-page:last-child { break-after:auto;page-break-after:auto; }
+      .apg-pdf-title { display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #075f4d;padding:0 0 14px;margin-bottom:10px;gap:24px; }
+      .apg-pdf-title h2 { font:bold 23px Tahoma,"Noto Naskh Arabic",Arial,sans-serif;direction:rtl;unicode-bidi:plaintext;margin:0 0 7px;color:#075f4d; }
+      .apg-pdf-title p { font:13px Tahoma,"Noto Naskh Arabic",Arial,sans-serif;direction:rtl;unicode-bidi:plaintext;margin:0;color:#536273; }
+      .apg-pdf-meta { white-space:nowrap;font-size:12px;color:#526173;direction:rtl; }
+      .apg-pdf-table { width:100%;border-collapse:collapse;table-layout:fixed;direction:rtl; }
+      .apg-pdf-table th { background:#e7f2ee;color:#113b31;font-weight:bold; }
+      .apg-pdf-table th,.apg-pdf-table td { box-sizing:border-box;border:1px solid #b7c6c0;padding:9px 5px;vertical-align:middle;text-align:center;direction:rtl;unicode-bidi:plaintext;font-family:Tahoma,"Noto Naskh Arabic","Noto Sans Arabic",Arial,sans-serif;line-height:1.7;font-size:${wide?12:13}px;overflow-wrap:anywhere;word-break:normal;white-space:normal; }
+      .apg-pdf-table tbody tr:nth-child(even) td { background:#f6faf8; }
+      .apg-pdf-table th { direction:rtl;unicode-bidi:plaintext; }
+      .apg-pdf-table td.apg-pdf-ltr { direction:ltr;unicode-bidi:isolate; }
+      .apg-pdf-foot { margin-top:14px;padding-top:8px;border-top:1px solid #c7d5cf;display:flex;justify-content:space-between;font-size:11px;color:#64748b; }
+    `;
+    sheet.appendChild(style);
+    const create=(tag,text,className)=>{const el=document.createElement(tag);if(className)el.className=className;if(text!==undefined)el.textContent=String(text??"-");return el};
+    // Restrict rows per page so no item is cut at a paper boundary.
+    const pageSize=wide?13:19;
+    const pages=Math.max(1,Math.ceil(data.rows.length/pageSize));
+    const weights=(data.widths||[]).slice(0,data.headers.length);
+    const totalWeight=weights.reduce((sum,value)=>sum+(Number(value)||1),0);
+    for(let index=0;index<pages;index++){
+      const page=create("section",undefined,"apg-pdf-page");
+      const heading=create("div",undefined,"apg-pdf-title");
+      const name=create("div");name.append(create("h2",data.title),create("p",data.subtitle));
+      heading.append(name,create("div",`تعداد: ${data.rows.length}  |  صفحه ${index+1} از ${pages}`,"apg-pdf-meta"));
+      page.appendChild(heading);
+      const table=create("table",undefined,"apg-pdf-table");
+      const cols=create("colgroup");
+      data.headers.forEach((_,i)=>{const col=create("col");col.style.width=`${((Number(weights[i])||1)/totalWeight)*100}%`;cols.appendChild(col)});
+      table.appendChild(cols);
+      const head=create("thead"),headerRow=create("tr");
+      data.headers.forEach(label=>headerRow.appendChild(create("th",label)));
+      head.appendChild(headerRow);table.appendChild(head);
+      const body=create("tbody");
+      const batch=data.rows.slice(index*pageSize,(index+1)*pageSize);
+      if(!batch.length){const tr=create("tr"),td=create("td","برای این فیلتر ریکاردی یافت نشد.");td.colSpan=data.headers.length;tr.appendChild(td);body.appendChild(tr)}
+      batch.forEach(record=>{const tr=create("tr");record.forEach(value=>{const td=create("td",value===""?"-":value);if(typeof value==="number"||/^[\d.,%/ -]+$/.test(String(value??"")))td.classList.add("apg-pdf-ltr");tr.appendChild(td)});body.appendChild(tr)});
+      table.appendChild(body);page.appendChild(table);
+      const foot=create("footer",undefined,"apg-pdf-foot");foot.append(create("span","APG Medicine Management"),create("span",`صفحه ${index+1} / ${pages}`));page.appendChild(foot);
+      sheet.appendChild(page);
+    }
+    // Capture every page while it is in the visible rendering area. Offscreen
+    // positioning produces blank canvases in Chromium/Edge on some systems.
+    const pdf=new jsPDF({unit:"mm",format:paper,orientation:"landscape",compress:true});
+    const paperWidth=pdf.internal.pageSize.getWidth();
+    const paperHeight=pdf.internal.pageSize.getHeight();
+    const pageNodes=[...sheet.querySelectorAll(".apg-pdf-page")];
+    const originalOverflow=document.documentElement.style.overflow;
+    try{
+      document.documentElement.style.overflow="hidden";
+      document.body.appendChild(sheet);
+      if(document.fonts?.ready)await document.fonts.ready;
+      for(let index=0;index<pageNodes.length;index++){
+        const page=pageNodes[index];
+        // Keep only the current page mounted, preventing html2canvas from
+        // capturing a multi-page area or producing an empty PDF image.
+        pageNodes.forEach((other)=>{other.style.display=other===page?"block":"none"});
+        // Browser-native SVG foreignObject preserves Persian/Arabic glyph joining
+        // and bidi shaping, unlike html2canvas's text-by-text canvas renderer.
+        const canvas=await html2canvas(page,{
+          foreignObjectRendering:true,
+          scale:1.6,useCORS:true,backgroundColor:"#ffffff",logging:false,
+          scrollX:0,scrollY:0,windowWidth:Math.max(window.innerWidth,pageWidth),
+          width:pageWidth,height:Math.ceil(page.getBoundingClientRect().height)
+        });
+        if(canvas.width===0||canvas.height===0)throw new Error("PDF page canvas is empty");
+        const img=canvas.toDataURL("image/jpeg",0.95);
+        const margin=6,availableWidth=paperWidth-2*margin,availableHeight=paperHeight-2*margin;
+        const ratio=Math.min(availableWidth/canvas.width,availableHeight/canvas.height);
+        const renderedWidth=canvas.width*ratio,renderedHeight=canvas.height*ratio;
+        if(index>0)pdf.addPage(paper,"landscape");
+        pdf.addImage(img,"JPEG",(paperWidth-renderedWidth)/2,margin,renderedWidth,renderedHeight);
+      }
+      pdf.save(`report-${reportType}-${today()}.pdf`);
+    }catch(error){console.error("PDF export failed",error);window.alert("خروجی PDF ساخته نشد. لطفاً دوباره تلاش کنید.")}
+    finally{sheet.remove();document.documentElement.style.overflow=originalOverflow}
+
   };
   const exportCsv=()=>{const{headers,rows:exportRows}=getExportData(),lines=[headers,...exportRows],blob=new Blob(["\ufeff"+lines.map(line=>line.map(v=>`"${String(v??"").replaceAll('"','""')}"`).join(",")).join("\n")],{type:"text/csv;charset=utf-8"}),url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=`report-${reportType}-${today()}.csv`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
   const saveSettings=()=>localStorage.setItem("reports-builder-settings",JSON.stringify({reportType,basis,basisValue,preset,from,to,measure,trade}));
