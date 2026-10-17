@@ -10,6 +10,7 @@ export default defineConfig({
   base: "./",
   cacheDir: "node_modules/.vite-afghan-power",
   plugins: [react()],
+  esbuild: { jsx: "automatic" },
   optimizeDeps: {
     include: ["exceljs", "html2canvas", "jspdf"],
   },
