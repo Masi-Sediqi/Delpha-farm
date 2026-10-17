@@ -8,6 +8,16 @@ import { notify } from "../utils/notify";
 import "./CustomersRegistry.css";
 import "./CustomersRegistryCategory.css";
 
+// Normalize names before comparing, so visually identical Dari/Pashto names match.
+const normalizeCustomerName = (value) => String(value ?? "")
+  .normalize("NFKC")
+  .replace(/[\u064A\u0649]/g, "ی")
+  .replace(/\u0643/g, "ک")
+  .replace(/[\u064B-\u065F\u0670\u200C\u200D\u0640]/g, "")
+  .replace(/\s+/g, " ")
+  .trim()
+  .toLocaleLowerCase();
+
 const rtlLanguages = new Set(["fa", "ps"]);
 const labelsByLanguage = {
   en: {
@@ -46,6 +56,7 @@ const labelsByLanguage = {
     required: "Full name and phone number are required.",
     fullNameRequired: "Please enter the full name.",
     phoneRequired: "Please enter the phone number.",
+    duplicateName: "A customer with this name already exists. Please choose a different name.",
     saved: "Customer saved successfully.",
     deleted: "Customer deleted successfully.",
     confirmDelete: "Delete this customer?",
@@ -109,6 +120,7 @@ const labelsByLanguage = {
     required: "نام مکمل و شماره تماس ضروری است.",
     fullNameRequired: "لطفاً نام مکمل را وارد کنید.",
     phoneRequired: "لطفاً شماره تماس را وارد کنید.",
+    duplicateName: "مشتری با این نام قبلاً ثبت شده است. لطفاً نام دیگری وارد کنید.",
     saved: "مشتری با موفقیت ذخیره شد.",
     deleted: "مشتری حذف شد.",
     confirmDelete: "این مشتری حذف شود؟",
@@ -172,6 +184,7 @@ const labelsByLanguage = {
     required: "بشپړ نوم او د اړیکې شمېره اړینه ده.",
     fullNameRequired: "مهرباني وکړئ بشپړ نوم ولیکئ.",
     phoneRequired: "مهرباني وکړئ د اړیکې شمېره ولیکئ.",
+    duplicateName: "په دې نوم مشتری مخکې ثبت شوی دی. مهرباني وکړئ بل نوم ولیکئ.",
     saved: "پېرودونکی په بریالیتوب ثبت شو.",
     deleted: "پېرودونکی حذف شو.",
     confirmDelete: "دا پېرودونکی حذف شي؟",
@@ -214,16 +227,16 @@ const blankForm = {
   notes: "",
 };
 
-export default function CustomersRegistry() {
+export default function CustomersRegistry({ modalOnly = false, onClose, onSaved, initialCurrency = "AFN" }) {
   const language = localStorage.getItem("afghan-power-language") || "en";
   const t = labelsByLanguage[language] || labelsByLanguage.en;
   const isRtl = rtlLanguages.has(language);
   const [customers, setCustomers] = useJsonCollection("customerRegistry");
   const [customerCategories, setCustomerCategories] = useJsonCollection("customerCategories");
   const [query, setQuery] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(modalOnly);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState(blankForm);
+  const [form, setForm] = useState(() => ({ ...blankForm, currency: initialCurrency }));
   const [fieldErrors, setFieldErrors] = useState({});
   const [addingCategory, setAddingCategory] = useState(false);
   const [categoryDraft, setCategoryDraft] = useState("");
@@ -265,6 +278,7 @@ export default function CustomersRegistry() {
   const closeModal = () => {
     setIsOpen(false);
     setFieldErrors({});
+    onClose?.();
   };
   const addCategory = async () => {
     const name = categoryDraft.trim().replace(/\s+/g, " ");
@@ -292,6 +306,10 @@ export default function CustomersRegistry() {
     const nextErrors = {};
     if (!form.fullName.trim()) nextErrors.fullName = t.fullNameRequired;
     if (!form.phone.trim()) nextErrors.phone = t.phoneRequired;
+    const normalizedName = normalizeCustomerName(form.fullName);
+    if (normalizedName && customers.some((item) =>
+      item.id !== editingId && normalizeCustomerName(item.fullName) === normalizedName
+    )) nextErrors.fullName = t.duplicateName;
     if (Object.keys(nextErrors).length) {
       setFieldErrors(nextErrors);
       return;
@@ -320,12 +338,14 @@ export default function CustomersRegistry() {
       updatedAt: new Date().toISOString(),
     };
 
+    const savedRecord = { ...record, id: editingId || `CUS-${Date.now()}`, createdAt: new Date().toISOString() };
     const ok = await setCustomers((current) => {
       if (editingId) return current.map((item) => (item.id === editingId ? { ...item, ...record } : item));
-      return [{ ...record, id: `CUS-${Date.now()}`, createdAt: new Date().toISOString() }, ...current];
+      return [savedRecord, ...current];
     });
     if (ok !== false) {
       notify(t.saved, "success", { silent: true });
+      onSaved?.(savedRecord);
       closeModal();
     }
   };
@@ -344,7 +364,8 @@ export default function CustomersRegistry() {
 
 
   return (
-    <div className="customer-registry-page" dir={isRtl ? "rtl" : "ltr"}>
+    <div className={modalOnly ? undefined : "customer-registry-page"} dir={isRtl ? "rtl" : "ltr"}>
+      {!modalOnly && <>
       <div className="customer-registry-heading">
         <div>
           <h1>{t.title}</h1>
@@ -404,6 +425,7 @@ export default function CustomersRegistry() {
       </div>
 
 
+      </>}
       {isOpen && createPortal(
         <div
           className="customer-modal-layer"

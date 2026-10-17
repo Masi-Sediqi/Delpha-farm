@@ -12,14 +12,14 @@ function Convert-Value($value) {
 }
 
 function Read-Table($database, [string]$name) {
-  $rows = @()
+  $rows = [System.Collections.Generic.List[object]]::new()
   $recordset = $database.OpenRecordset("SELECT * FROM [$name]")
   while (-not $recordset.EOF) {
     $row = [ordered]@{}
     foreach ($field in $recordset.Fields) {
       $row[$field.Name] = Convert-Value $field.Value
     }
-    $rows += [pscustomobject]$row
+    $rows.Add([pscustomobject]$row)
     $recordset.MoveNext()
   }
   $recordset.Close()

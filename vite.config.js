@@ -10,6 +10,9 @@ export default defineConfig({
   base: "./",
   cacheDir: "node_modules/.vite-afghan-power",
   plugins: [react()],
+  optimizeDeps: {
+    include: ["exceljs", "html2canvas", "jspdf"],
+  },
   define: {
     "globalThis.__APP_NETWORK_IP__": JSON.stringify(networkIp),
   },

@@ -1,0 +1,25 @@
+/*
+ * Global scrollbar presentation for Delpha web & Electron.
+ * Hides native scrollbar chrome WITHOUT disabling scrolling,
+ * changing overflow modes, or clipping table/modal content.
+ * Firefox: scrollbar-width; Chromium, Edge, Safari, Electron: ::-webkit-scrollbar.
+ */
+html, body, #root, * {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+#root::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+  background: transparent !important;
+}
+
+/* Prevent reserved scrollbar tracks from leaving an empty edge. */
+html, body, #root, * {
+  scrollbar-gutter: auto !important;
+}

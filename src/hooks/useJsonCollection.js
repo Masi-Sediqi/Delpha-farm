@@ -4,13 +4,23 @@ import { readBrowserCollection, writeBrowserCollection } from "../utils/browserS
 
 const collectionUpdateEvent = "app-json-collection-updated";
 const pollIntervalMs = 15000;
+const browserOnly = import.meta.env.VITE_USE_BROWSER_STORAGE !== "false";
 const stores = new Map();
+const initialLoadListeners = new Set();
+let initialLoads = 0;
+const publishInitialLoads = () => initialLoadListeners.forEach((listener) => listener());
+export const subscribeInitialLoads = (listener) => {
+  initialLoadListeners.add(listener);
+  return () => initialLoadListeners.delete(listener);
+};
+export const getInitialLoads = () => initialLoads;
 
 function getStore(name) {
   if (!stores.has(name)) {
     stores.set(name, {
       items: [], loaded: false, loading: null, subscribers: new Set(),
       pollTimer: null, focusHandler: null, errorShown: false,
+      pendingWrites: 0, writeQueue: Promise.resolve(), generation: 0,
     });
   }
   return stores.get(name);
@@ -26,10 +36,18 @@ function publish(name, items, loaded = true) {
 async function loadStore(name, { quiet = false } = {}) {
   const store = getStore(name);
   if (store.loading) return store.loading;
+  if (store.pendingWrites) return store.items;
+  const generation = store.generation;
+  const initialLoad = !store.loaded;
+  if (initialLoad) {
+    initialLoads += 1;
+    publishInitialLoads();
+  }
   store.loading = readBrowserCollection(name)
     .then((items) => {
-      if (items !== store.items) publish(name, items);
-      else if (!store.loaded) publish(name, items);
+      if (generation === store.generation && !store.pendingWrites) {
+        if (items !== store.items || !store.loaded) publish(name, items);
+      }
       store.errorShown = false;
       return items;
     })
@@ -42,13 +60,19 @@ async function loadStore(name, { quiet = false } = {}) {
       }
       return store.items;
     })
-    .finally(() => { store.loading = null; });
+    .finally(() => {
+      store.loading = null;
+      if (initialLoad) {
+        initialLoads -= 1;
+        publishInitialLoads();
+      }
+    });
   return store.loading;
 }
 
 function startPolling(name) {
   const store = getStore(name);
-  if (store.pollTimer) return;
+  if (browserOnly || store.pollTimer) return;
   store.pollTimer = window.setInterval(() => {
     if (document.visibilityState === "visible" && navigator.onLine) loadStore(name, { quiet: true });
   }, pollIntervalMs);
@@ -87,33 +111,43 @@ export function useJsonCollection(name) {
 
   useEffect(() => {
     const syncCollection = (event) => {
-      if (event?.detail?.name === name && Array.isArray(event.detail.items)) publish(name, event.detail.items);
+      if (event?.detail?.name === name && !event.detail.internal && Array.isArray(event.detail.items)) publish(name, event.detail.items);
     };
     window.addEventListener(collectionUpdateEvent, syncCollection);
     return () => window.removeEventListener(collectionUpdateEvent, syncCollection);
   }, [name]);
 
   const load = useCallback(() => loadStore(name), [name]);
-  const setItems = useCallback(async (nextValue) => {
+  const setItems = useCallback((nextValue) => {
     const currentStore = getStore(name);
     const previousItems = currentStore.items;
     const nextItems = typeof nextValue === "function" ? nextValue(previousItems) : nextValue;
     if (!Array.isArray(nextItems)) {
       notify(`Invalid data format for ${name}.`, "error");
-      return false;
+      return Promise.resolve(false);
     }
+    currentStore.generation += 1;
+    currentStore.pendingWrites += 1;
     publish(name, nextItems);
-    try {
-      const savedItems = await writeBrowserCollection(name, nextItems);
-      publish(name, savedItems);
-      window.dispatchEvent(new CustomEvent(collectionUpdateEvent, { detail: { name, items: savedItems } }));
-      return true;
-    } catch (error) {
-      console.error(`Unable to save ${name}:`, error);
-      publish(name, previousItems);
-      notify(`Unable to save ${name}. Please check the central server.`, "error");
-      return false;
-    }
+    const save = async () => {
+      try {
+        const savedItems = await writeBrowserCollection(name, nextItems);
+        // A newer optimistic change must not be overwritten by an older save.
+        if (currentStore.items === nextItems) publish(name, savedItems);
+        window.dispatchEvent(new CustomEvent(collectionUpdateEvent, { detail: { name, items: savedItems, internal: true } }));
+        return true;
+      } catch (error) {
+        console.error(`Unable to save ${name}:`, error);
+        if (currentStore.items === nextItems) publish(name, previousItems);
+        notify(`Unable to save ${name}. Please check browser storage permissions and available disk space.`, "error");
+        return false;
+      } finally {
+        currentStore.pendingWrites -= 1;
+      }
+    };
+    const result = currentStore.writeQueue.then(save, save);
+    currentStore.writeQueue = result.then(() => undefined);
+    return result;
   }, [name]);
 
   return [snapshot.items, setItems, load, snapshot.loaded];

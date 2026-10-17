@@ -1,3 +1,4 @@
+import { compareSupplierLedgerEntries } from "../utils/supplierLedger";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -32,6 +33,9 @@ const rtlLanguages = new Set(["fa", "ps"]);
 
 const translations = {
   en: {
+    transactionType: "Transaction Type",
+    creditPayment: "Payment (Credit)",
+    debitWithdrawal: "Withdrawal (Debit)",
     back: "Back to Suppliers",
     title: "Supplier Detail",
     subtitle: "Supplier profile, purchases, payments and running balance.",
@@ -89,7 +93,7 @@ const translations = {
     supplierOwes: "This supplier owes you",
     settled: "Account is settled",
     paymentTitle: "Register Supplier Payment",
-    paymentHint: "Record a payment made to this supplier. It will immediately appear in the supplier ledger.",
+    paymentHint: "Record a payment to or withdrawal from this supplier. It will immediately appear in the supplier ledger.",
     paymentDate: "Payment Date",
     amount: "Amount",
     unit: "Unit",
@@ -109,6 +113,9 @@ const translations = {
     supplierMissing: "Supplier not found.",
   },
   fa: {
+    transactionType: "نوع تراکنش",
+    creditPayment: "پرداخت (Credit)",
+    debitWithdrawal: "برداشت (Debit)",
     back: "برگشت به تأمین‌کننده‌گان",
     title: "جزئیات تأمین‌کننده",
     subtitle: "پروفایل، خریداری‌ها، پرداخت‌ها و بیلانس جاری تأمین‌کننده.",
@@ -166,7 +173,7 @@ const translations = {
     supplierOwes: "این تأمین‌کننده به ما قرضدار است",
     settled: "حساب تصفیه است",
     paymentTitle: "ثبت پرداخت تأمین‌کننده",
-    paymentHint: "پرداخت انجام‌شده به این تأمین‌کننده را ثبت کنید؛ ریکارد فوراً در لیجر نمایش داده می‌شود.",
+    paymentHint: "پرداخت به تأمین‌کننده یا برداشت از او را ثبت کنید؛ ریکارد فوراً در لیجر نمایش داده می‌شود.",
     paymentDate: "تاریخ پرداخت",
     amount: "مقدار",
     unit: "واحد",
@@ -186,6 +193,9 @@ const translations = {
     supplierMissing: "تأمین‌کننده پیدا نشد.",
   },
   ps: {
+    transactionType: "د معاملې ډول",
+    creditPayment: "تادیه (Credit)",
+    debitWithdrawal: "برداشت (Debit)",
     back: "عرضه کوونکو ته بېرته",
     title: "د عرضه کوونکي جزئیات",
     subtitle: "د عرضه کوونکي پروفایل، پېرودونه، تادیات او روان بیلانس.",
@@ -321,7 +331,7 @@ export default function SupplierDetail() {
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [showPayment, setShowPayment] = useState(false);
   const [editingPaymentId, setEditingPaymentId] = useState(null);
-  const [paymentForm, setPaymentForm] = useState({ date: today(), amount: "", currency: "afn", description: "" });
+  const [paymentForm, setPaymentForm] = useState({ date: today(), amount: "", type: "credit", currency: "afn", description: "" });
   const [printMode, setPrintMode] = useState(null);
   const [activeTab, setActiveTab] = useState("ledger");
 
@@ -345,7 +355,7 @@ export default function SupplierDetail() {
     const highlightPurchaseId = location.state?.highlightPurchaseId || params.get("highlightPurchase");
     if (location.state?.openPayment) {
       setEditingPaymentId(null);
-      setPaymentForm({ date: today(), amount: "", currency: String(location.state?.paymentCurrency || supplier?.currency || "afn").toLowerCase().replace("pkr", "inr"), description: "" });
+      setPaymentForm({ date: today(), amount: "", type: "credit", currency: String(location.state?.paymentCurrency || supplier?.currency || "afn").toLowerCase().replace("pkr", "inr"), description: "" });
       setShowPayment(true);
     }
     if (!highlightPurchaseId) return undefined;
@@ -470,12 +480,12 @@ export default function SupplierDetail() {
         id: `payment-${payment.id}`,
         date: payment.date || payment.createdAt || "",
         reference: payment.reference || `PAY-${String(payment.id).slice(-6)}`,
-        description: payment.description || t.manualPayment,
+        description: payment.description || (numeric(payment.amount) < 0 ? t.debitWithdrawal : t.manualPayment),
         kind: "manual-payment",
         sourceId: payment.id,
         currency: normalizeCurrency(payment.currency || supplier?.currency || currencyCode),
-        debit: 0,
-        credit: numeric(payment.amount),
+        debit: Math.max(-numeric(payment.amount), 0),
+        credit: Math.max(numeric(payment.amount), 0),
         order,
         sequence: new Date(payment.createdAt || payment.date || 0).getTime() || order,
       });
@@ -489,7 +499,7 @@ export default function SupplierDetail() {
         id: `cash-journal-${payment.id}`,
         date: payment.date || payment.createdAt || "",
         reference: payment.reference || payment.id,
-        description: payment.description || t.manualPayment,
+        description: payment.description || (numeric(payment.amount) < 0 ? t.debitWithdrawal : t.manualPayment),
         kind: "cash-journal",
         sourceId: payment.id,
         currency: normalizeCurrency(payment.currency || currencyCode),
@@ -500,15 +510,15 @@ export default function SupplierDetail() {
       });
     });
 
-    entries.sort((a, b) => (a.order - b.order) || (a.sequence - b.sequence) || String(a.id).localeCompare(String(b.id)));
+    entries.sort(compareSupplierLedgerEntries);
     const runningByCurrency = {};
     const balancedEntries = entries.map((entry) => {
       const code = normalizeCurrency(entry.currency || supplier?.currency || currencyCode);
       runningByCurrency[code] = numeric(runningByCurrency[code]) + numeric(entry.debit) - numeric(entry.credit);
       return { ...entry, currency: code, balance: runningByCurrency[code] };
     });
-    return balancedEntries.reverse();
-  }, [supplier, supplierId, supplierPurchases, purchaseItems, supplierReturns, supplierPayments, supplierCashTransactions, currencyCode, t.opening, t.purchase, t.purchasePayment, t.purchaseReturn, t.manualPayment]);
+    return balancedEntries;
+  }, [supplier, supplierId, supplierPurchases, purchaseItems, supplierReturns, supplierPayments, supplierCashTransactions, currencyCode, t.opening, t.purchase, t.purchasePayment, t.purchaseReturn, t.manualPayment, t.debitWithdrawal]);
 
   const totalPurchasesByCurrency = useMemo(() => {
     const totals = {};
@@ -561,14 +571,14 @@ export default function SupplierDetail() {
 
   const openPaymentModal = () => {
     setEditingPaymentId(null);
-    setPaymentForm({ date: today(), amount: "", currency: String(preferredPaymentCurrency).toLowerCase().replace("pkr", "inr"), description: "" });
+    setPaymentForm({ date: today(), amount: "", type: "credit", currency: String(preferredPaymentCurrency).toLowerCase().replace("pkr", "inr"), description: "" });
     setShowPayment(true);
   };
 
   const closePaymentModal = () => {
     setShowPayment(false);
     setEditingPaymentId(null);
-    setPaymentForm({ date: today(), amount: "", currency: String(supplier?.currency || "afn").toLowerCase().replace("pkr", "inr"), description: "" });
+    setPaymentForm({ date: today(), amount: "", type: "credit", currency: String(supplier?.currency || "afn").toLowerCase().replace("pkr", "inr"), description: "" });
   };
 
   const editLedgerEntry = (entry) => {
@@ -578,7 +588,8 @@ export default function SupplierDetail() {
       setEditingPaymentId(payment.id);
       setPaymentForm({
         date: normalizeDate(payment.date || payment.createdAt),
-        amount: String(payment.amount ?? ""),
+        amount: String(Math.abs(numeric(payment.amount))),
+        type: numeric(payment.amount) < 0 ? "debit" : "credit",
         currency: String(payment.currency || supplier?.currency || "afn").toLowerCase().replace("pkr", "inr"),
         description: payment.description || "",
       });
@@ -604,7 +615,7 @@ export default function SupplierDetail() {
   const savePayment = async (event) => {
     event.preventDefault();
     const amount = numeric(paymentForm.amount);
-    if (amount <= 0) {
+    if (!Number.isFinite(amount) || amount <= 0) {
       notify(t.requiredAmount, "warning");
       return;
     }
@@ -616,7 +627,8 @@ export default function SupplierDetail() {
       supplierId,
       supplierName: supplier?.supplierName || "",
       date: paymentForm.date || today(),
-      amount,
+      amount: paymentForm.type === "debit" ? -amount : amount,
+      type: paymentForm.type,
       currency: normalizeCurrency(paymentForm.currency || supplier?.currency || "AFN"),
       description: paymentForm.description.trim(),
       reference: previousPayment?.reference || `PAY-${String(Date.now()).slice(-7)}`,
@@ -670,6 +682,13 @@ export default function SupplierDetail() {
         <form className="supplier-payment-form" onSubmit={savePayment}>
           <div className="supplier-payment-card">
             <div className="supplier-payment-grid">
+              <label>
+                <span><Wallet size={15} />{t.transactionType}</span>
+                <select value={paymentForm.type} onChange={(e) => setPaymentForm((prev) => ({ ...prev, type: e.target.value }))}>
+                  <option value="credit">{t.creditPayment}</option>
+                  <option value="debit">{t.debitWithdrawal}</option>
+                </select>
+              </label>
               <label>
                 <span><CalendarDays size={15} />{t.paymentDate}</span>
                 <ShamsiDateInput value={paymentForm.date} onChange={(e) => setPaymentForm((prev) => ({ ...prev, date: e.target.value }))} />
@@ -766,9 +785,9 @@ export default function SupplierDetail() {
                       return (
                         <tr key={entry.id} id={entry.kind === "purchase" ? `supplier-ledger-purchase-${entry.sourceId}` : undefined}>
                           <td>{formatDateTime(entry.date)}</td><td><span className="supplier-ledger-reference">{entry.reference || "—"}</span></td>
-                          <td><span className={`supplier-ledger-description ${entry.kind || ""} ${entry.kind === "purchase" ? "is-purchase-badge" : entry.kind === "manual-payment" ? "is-payment-badge" : ""}`}>{entry.description}</span></td>
+                          <td><span className={`supplier-ledger-description ${entry.kind || ""} ${entry.kind === "purchase" ? "is-purchase-badge" : entry.kind === "manual-payment" ? (entry.debit > 0 ? "is-withdrawal-badge" : "is-payment-badge") : ""}`}>{entry.description}</span></td>
                           <td className="supplier-ledger-items">{isPurchase ? (entry.itemCount || 0) : "—"}</td>
-                          <td className="supplier-ledger-debit">{isPurchase ? `${numeric(entry.purchaseTotal).toLocaleString(undefined,{maximumFractionDigits:2})} ${entry.currency}` : (entry.debit ? `${entry.debit.toLocaleString(undefined,{maximumFractionDigits:2})} ${entry.currency}` : "—")}</td>
+                          <td className={entry.kind === "manual-payment" && entry.debit > 0 ? "supplier-money-in" : "supplier-ledger-debit"}>{isPurchase ? `${numeric(entry.purchaseTotal).toLocaleString(undefined,{maximumFractionDigits:2})} ${entry.currency}` : (entry.debit ? `${entry.debit.toLocaleString(undefined,{maximumFractionDigits:2})} ${entry.currency}` : "—")}</td>
                           <td className="supplier-ledger-credit">{isPurchase ? `${numeric(entry.paidAtPurchase).toLocaleString(undefined,{maximumFractionDigits:2})} ${entry.currency}` : (entry.credit ? `${entry.credit.toLocaleString(undefined,{maximumFractionDigits:2})} ${entry.currency}` : "—")}</td>
                           <td className={remainingValue > 0 ? "supplier-ledger-remaining owe" : "supplier-ledger-remaining"}>{isPurchase ? `${remainingValue.toLocaleString(undefined,{maximumFractionDigits:2})} ${entry.currency}` : "—"}</td>
                           <td className={entry.balance > 0 ? "supplier-ledger-balance owe" : entry.balance < 0 ? "supplier-ledger-balance receivable" : "supplier-ledger-balance"}>{Math.abs(entry.balance).toLocaleString(undefined,{maximumFractionDigits:2})} {entry.currency}</td>
@@ -802,7 +821,7 @@ export default function SupplierDetail() {
             <div className="supplier-tab-panel">
               <div className="supplier-detail-section-head ledger"><Wallet size={18} /><div><h2>{t.tabPayments}</h2><p>{paymentRows.length}</p></div></div>
               <div className="supplier-detail-ledger-wrap"><table><thead><tr><th>{t.date}</th><th>{t.reference}</th><th>{t.description}</th><th>{t.amountPaid}</th><th>{t.actions}</th></tr></thead><tbody>
-                {paymentRows.length ? paymentRows.map((entry) => <tr key={`payment-tab-${entry.id}`}><td>{formatDateTime(entry.date)}</td><td><span className="supplier-ledger-reference">{entry.reference || "—"}</span></td><td>{entry.description}</td><td className="supplier-ledger-credit">{numeric(entry.credit).toLocaleString(undefined,{maximumFractionDigits:2})} {entry.currency || currencyCode}</td><td><div className="supplier-ledger-actions"><button type="button" className="print" onClick={() => printPayment(entry)} aria-label={t.print}><Printer size={13}/></button><button type="button" className="edit" onClick={() => editLedgerEntry(entry)} aria-label={t.edit}><Edit3 size={14}/></button><button type="button" className="delete" onClick={() => deleteLedgerEntry(entry)} aria-label={t.delete}><Trash2 size={13}/></button></div></td></tr>) : <tr><td colSpan="5" className="supplier-ledger-empty">{t.noPayments}</td></tr>}
+                {paymentRows.length ? paymentRows.map((entry) => <tr key={`payment-tab-${entry.id}`}><td>{formatDateTime(entry.date)}</td><td><span className="supplier-ledger-reference">{entry.reference || "—"}</span></td><td>{entry.description}</td><td className={entry.debit > 0 ? "supplier-money-in" : "supplier-ledger-credit"}>{numeric(entry.credit || entry.debit).toLocaleString(undefined,{maximumFractionDigits:2})} {entry.currency || currencyCode}</td><td><div className="supplier-ledger-actions"><button type="button" className="print" onClick={() => printPayment(entry)} aria-label={t.print}><Printer size={13}/></button><button type="button" className="edit" onClick={() => editLedgerEntry(entry)} aria-label={t.edit}><Edit3 size={14}/></button><button type="button" className="delete" onClick={() => deleteLedgerEntry(entry)} aria-label={t.delete}><Trash2 size={13}/></button></div></td></tr>) : <tr><td colSpan="5" className="supplier-ledger-empty">{t.noPayments}</td></tr>}
               </tbody></table></div>
             </div>
           )}
@@ -859,7 +878,8 @@ export default function SupplierDetail() {
               <div className="supplier-payment-receipt-grid">
                 <div><span>{t.reference}</span><strong>{printMode.entry?.reference || printMode.payment?.reference || "—"}</strong></div>
                 <div><span>{t.paymentDate}</span><strong>{formatDateTime(printMode.payment?.date || printMode.payment?.createdAt)}</strong></div>
-                <div><span>{t.amountPaid}</span><strong>{numeric(printMode.payment?.amount).toLocaleString(undefined,{maximumFractionDigits:2})} {String(printMode.payment?.currency || currencyCode).toUpperCase()}</strong></div>
+                <div><span>{t.transactionType}</span><strong>{numeric(printMode.payment?.amount) < 0 ? t.debitWithdrawal : t.creditPayment}</strong></div>
+                <div><span>{t.amount}</span><strong>{Math.abs(numeric(printMode.payment?.amount)).toLocaleString(undefined,{maximumFractionDigits:2})} {String(printMode.payment?.currency || currencyCode).toUpperCase()}</strong></div>
                 <div><span>{t.paymentDescription}</span><strong>{printMode.payment?.description || t.manualPayment}</strong></div>
               </div>
               <div className="supplier-payment-receipt-signatures"><span>{t.supplierLabel}: ____________________</span><span>{t.payment}: ____________________</span></div>

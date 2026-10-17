@@ -38,6 +38,7 @@ import Header from "./components/Header";
 import GlobalTableEnhancer from "./components/GlobalTableEnhancer";
 import ConfirmDialogHost from "./components/ConfirmDialogHost";
 import StartupSplash from "./components/StartupSplash";
+import PageLoader, { PageTransition } from "./components/PageLoader";
 import StockBootstrap from "./components/StockBootstrap";
 import ProductMasterDataBootstrap from "./components/ProductMasterDataBootstrap";
 import ToastHost from "./components/ToastHost";
@@ -255,33 +256,6 @@ function PermissionDenied() {
   );
 }
 
-function BusyLoader({ label = "System is preparing..." }) {
-  return (
-    <div className="page-loading app-busy-loader" role="status" aria-live="polite">
-      <div className="app-busy-loader-card">
-        <div className="app-busy-orbit" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </div>
-        <strong>{label}</strong>
-        <p>Please wait a moment.</p>
-      </div>
-    </div>
-  );
-}
-
-function NavigationLoader({ label }) {
-  return (
-    <div className="navigation-loader" role="status" aria-live="polite" aria-label={label}>
-      <div className="navigation-loader-box">
-        <span className="navigation-loader-spinner" aria-hidden="true" />
-        <span>{label}</span>
-      </div>
-    </div>
-  );
-}
-
 function ProtectedModule({ currentUser, moduleKey, action = "view", children }) {
   if (!hasPermission(currentUser, moduleKey, action)) {
     return <PermissionDenied />;
@@ -295,7 +269,6 @@ function App() {
   const [accounts, setAccounts, , accountsLoaded] = useJsonCollection("accounts");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [navigationLoading, setNavigationLoading] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const [licenseStatus, setLicenseStatus] = useState(null);
@@ -312,20 +285,34 @@ function App() {
     ? "route-dashboard"
     : `route-${location.pathname.replace(/^\/+/, "").replace(/[^a-zA-Z0-9]+/g, "-") || "dashboard"}`;
 
+  // Keep the active view across refreshes without modifying the browser URL.
   useEffect(() => {
-    setNavigationLoading(true);
-    const timer = window.setTimeout(() => setNavigationLoading(false), 420);
-    return () => window.clearTimeout(timer);
-  }, [location.key, location.pathname]);
+    try { sessionStorage.setItem("delpha-last-route", `${location.pathname}${location.search}`); }
+    catch { /* Storage may be disabled in private browsing. */ }
+  }, [location.pathname, location.search]);
 
-  const beginNavigation = (event) => {
-    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-    const link = event.target.closest?.("a[href]");
-    if (!link || link.hasAttribute("download") || link.target === "_blank") return;
-    const href = link.getAttribute("href");
-    if (!href || href === `#${location.pathname}`) return;
-    setNavigationLoading(true);
-  };
+  // Preload common destinations once the browser is idle. React.lazy then reuses
+  // cached chunks, so first navigation is faster without delaying app startup.
+  useEffect(() => {
+    const warm = () => {
+      const pages = [
+        () => import("./pages/Dashboard"),
+        () => import("./pages/Products"),
+        () => import("./pages/Suppliers"),
+        () => import("./pages/CustomersRegistry"),
+        () => import("./pages/SalesRegister"),
+        () => import("./pages/Inventory"),
+        () => import("./pages/Reports"),
+      ];
+      pages.forEach((load) => load().catch(() => {}));
+    };
+    if (typeof window.requestIdleCallback === "function") {
+      const idleId = window.requestIdleCallback(warm, { timeout: 4000 });
+      return () => window.cancelIdleCallback?.(idleId);
+    }
+    const timer = window.setTimeout(warm, 1300);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     applyStoredTheme();
@@ -635,18 +622,18 @@ function App() {
     !licenseStatus.valid;
 
   if (!licenseLoaded) {
-    appContent = <BusyLoader label="Checking license..." />;
+    appContent = <PageLoader />;
   } else if (licenseGateLocked || location.pathname === "/license") {
     appContent = (
-      <Suspense fallback={<BusyLoader label="Opening license..." />}>
+      <Suspense fallback={<PageLoader />}>
         <License onLicenseChanged={setLicenseStatus} />
       </Suspense>
     );
   } else if (!accountsLoaded) {
-    appContent = <BusyLoader label="Preparing system..." />;
+    appContent = <PageLoader />;
   } else if (!currentUser) {
     appContent = (
-      <Suspense fallback={<BusyLoader label="Opening login..." />}>
+      <Suspense fallback={<PageLoader />}>
         <Login
           accounts={hasUserAccounts ? effectiveAccounts : [defaultAdminAccount]}
           setAccounts={setAccounts}
@@ -659,7 +646,6 @@ function App() {
     appContent = (
       <div
         className={`app app-${appDirection} ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}
-        onClickCapture={beginNavigation}
         dir={appDirection}
         data-direction={appDirection}
         data-language={appLanguage}
@@ -736,8 +722,9 @@ function App() {
         <GlobalTableEnhancer />
 
         <div className="page-content">
-          <Suspense fallback={<BusyLoader label="Loading module..." />}>
-            <div className={`page-fade-shell ${routeClassName}`} key={location.pathname}>
+          <Suspense fallback={<PageLoader />}>
+            <PageTransition key={`${location.pathname}${location.search}`} >
+            <div className={`page-fade-shell ${routeClassName}`}>
             <Routes>
               <Route path="/" element={protect("dashboard", <Dashboard currentUser={currentUser} />)} />
               <Route path="/search-results" element={protect("dashboard", <SearchResults />)} />
@@ -789,15 +776,13 @@ function App() {
               />
             </Routes>
             </div>
+            </PageTransition>
           </Suspense>
         </div>
         </main>
 
         <ToastHost />
         <ConfirmDialogHost />
-        {navigationLoading && (
-          <NavigationLoader label={appLanguage === "fa" ? "در حال بارگذاری..." : appLanguage === "ps" ? "د پورته کېدو په حال کې..." : "Loading..."} />
-        )}
       </div>
     );
   }

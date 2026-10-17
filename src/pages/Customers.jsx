@@ -12,6 +12,16 @@ import {
 import "./Customers.css";
 import ShamsiDateInput from "../components/ShamsiDateInput";
 
+// Normalize names before comparing, so visually identical Dari/Pashto names match.
+const normalizeCustomerName = (value) => String(value ?? "")
+  .normalize("NFKC")
+  .replace(/[\u064A\u0649]/g, "ی")
+  .replace(/\u0643/g, "ک")
+  .replace(/[\u064B-\u065F\u0670\u200C\u200D\u0640]/g, "")
+  .replace(/\s+/g, " ")
+  .trim()
+  .toLocaleLowerCase();
+
 const emptyForm = {
   customerId: "",
   customerName: "",
@@ -521,6 +531,13 @@ const saveIssueDevice = async (event) => {
 
     if (!cleanData.phone) {
       notify("Please enter customer phone.", "error");
+      return;
+    }
+
+    if (customers.some((customer, index) =>
+      index !== editIndex && normalizeCustomerName(customer.customerName || customer.fullName || customer.name) === normalizeCustomerName(cleanData.customerName)
+    )) {
+      notify("مشتری با این نام قبلاً ثبت شده است. لطفاً نام دیگری وارد کنید.", "error");
       return;
     }
 

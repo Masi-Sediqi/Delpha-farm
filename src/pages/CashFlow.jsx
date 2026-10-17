@@ -341,13 +341,13 @@ export default function CashFlow() {
     supplierPayments.forEach((payment) => {
       const supplier = supplierMap.get(String(payment.supplierId));
       const amount = numeric(payment.amount);
-      if (amount <= 0) return;
+      if (!amount) return;
       rows.push({
         id: `supplier-payment-${payment.id}`,
         date: payment.date || payment.createdAt,
-        direction: "out",
+        direction: amount < 0 ? "in" : "out",
         currency: normalizeCurrency(payment.currency || supplier?.currency, defaultCurrency),
-        amount,
+        amount: Math.abs(amount),
         source: "supplier",
         sourceLabel: t.supplierPayment,
         reference: payment.reference || supplier?.supplierName || t.supplier,

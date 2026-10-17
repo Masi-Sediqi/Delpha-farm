@@ -1,3 +1,4 @@
+import CustomersRegistry from "./CustomersRegistry";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -269,7 +270,7 @@ function SaleNew() {
   const isEditMode = Boolean(saleId);
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [sales, setSales] = useJsonCollection("salesRegister");
-  const [customers, setCustomers] = useJsonCollection("customerRegistry");
+  const [customers] = useJsonCollection("customerRegistry");
   const [products] = useJsonCollection("products");
   const [productGroups] = useJsonCollection("productGroups");
   const [stockMovements, setStockMovements] = useJsonCollection("stockMovements");
@@ -278,7 +279,6 @@ function SaleNew() {
   const [customerId, setCustomerId] = useState("");
   const [customerInfoOpen, setCustomerInfoOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
-  const [quickName, setQuickName] = useState("");
   const [currency, setCurrency] = useState("AFN");
   const [billNumber, setBillNumber] = useState("");
   const [systemBillNumber, setSystemBillNumber] = useState("");
@@ -766,32 +766,6 @@ function SaleNew() {
     if (paymentStatus === "paid") setPaidAmount(String(grandTotal || ""));
   }, [paymentStatus, grandTotal]);
 
-  const addQuickCustomer = async () => {
-    const name = quickName.trim();
-    if (!name) return notify(t.nameRequired, "warning");
-    const id = `CUS-${Date.now()}`;
-    const now = new Date().toISOString();
-    const customer = {
-      id,
-      fullName: name,
-      companyName: "",
-      currency,
-      phone: "",
-      address: "",
-      openingBalance: 0,
-      status: "active",
-      notes: "",
-      createdAt: now,
-      updatedAt: now,
-    };
-    const saved = await setCustomers([customer, ...customers]);
-    if (!saved) return;
-    setCustomerId(id);
-    setQuickName("");
-    setQuickOpen(false);
-    notify(t.customerSaved, "success");
-  };
-
   const saveSale = async () => {
     if (isEditMode && !editingSale) return notify(t.notFound, "warning");
     if (!customerId) return notify(t.requiredCustomer, "warning");
@@ -981,6 +955,7 @@ function SaleNew() {
 
   return (
     <div className="purchase-entry-page sale-entry-page" dir={direction}>
+      {quickOpen && <CustomersRegistry modalOnly initialCurrency={currency} onClose={() => { setQuickOpen(false); customerSelectRef.current?.focus(); }} onSaved={(customer) => { setCustomerId(customer.id); setCustomerInfoOpen(false); }} />}
       <header className="purchase-entry-header">
         <div>
           <button className="purchase-back" type="button" onClick={() => navigate("/sales-register")}><ArrowLeft size={16} />{t.back}</button>
@@ -1003,23 +978,7 @@ function SaleNew() {
                 <div className="purchase-top-meta-supplier sale-top-meta-customer">
                   <label className="purchase-field purchase-top-field">
                     <span><UserRound size={13} />{t.customer}</span>
-                    <div className={`purchase-select-with-add sale-customer-select-wrap ${quickOpen ? "is-quick-entry" : ""} ${customerId && !quickOpen ? "has-info" : ""}`}>
-                      {quickOpen ? (
-                        <>
-                          <input
-                            className="purchase-inline-supplier-input"
-                            autoFocus
-                            value={quickName}
-                            onChange={(e) => setQuickName(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === "Enter") addQuickCustomer(); if (e.key === "Escape") { setQuickOpen(false); setQuickName(""); } }}
-                            placeholder={t.customerPlaceholder}
-                            aria-label={t.customerName}
-                          />
-                          <button className="purchase-inline-supplier-save" type="button" onClick={addQuickCustomer} aria-label={t.add}><Check size={16} /></button>
-                          <button className="purchase-inline-supplier-cancel" type="button" onClick={() => { setQuickOpen(false); setQuickName(""); }} aria-label={t.cancel}>×</button>
-                        </>
-                      ) : (
-                        <>
+                    <div className={`purchase-select-with-add sale-customer-select-wrap ${customerId ? "has-info" : ""}`}>
                           <select
                             ref={customerSelectRef}
                             value={customerId}
@@ -1048,8 +1007,6 @@ function SaleNew() {
                             </button>
                           )}
                           <button className="purchase-inline-supplier-add" type="button" onClick={() => setQuickOpen(true)} aria-label={t.quickCustomer}><Plus size={17} /></button>
-                        </>
-                      )}
                     </div>
                   </label>
 
@@ -1071,11 +1028,6 @@ function SaleNew() {
                     </div>
                   )}
                 </div>
-
-                <label className="purchase-field purchase-top-field purchase-top-bill">
-                  <span>{t.billNumber}</span>
-                  <input value={billNumber} onChange={(e) => setBillNumber(e.target.value)} />
-                </label>
 
                 <label className="purchase-field purchase-top-field purchase-top-bill">
                   <span>{t.systemBillNumber}</span>

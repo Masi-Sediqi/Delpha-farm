@@ -1,11 +1,21 @@
 import ReactDOM from "react-dom/client";
-import { HashRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router-dom";
 
 import App from "./App";
 import "./App.css";
+import "./dark-theme-fixes.css";
+import "./hidden-scrollbars.css";
+import "./contrast-final-fixes.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
-  <HashRouter>
+  <MemoryRouter initialEntries={[(() => {
+    // Accept bookmarks created by older HashRouter releases without exposing
+    // route changes in the address bar during in-app navigation.
+    const legacy = window.location.hash.replace(/^#/, "");
+    if (legacy.startsWith("/")) return legacy;
+    try { return sessionStorage.getItem("delpha-last-route") || "/"; }
+    catch { return "/"; }
+  })()]}>
     <App />
-  </HashRouter>
+  </MemoryRouter>
 );

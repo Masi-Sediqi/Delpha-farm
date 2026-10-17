@@ -1,0 +1,192 @@
+/* Unified dark theme for all application screens. Screen only so PDF/print templates stay white. */
+@media screen {
+  body.dark-mode {
+    color-scheme: dark;
+    --page-bg: #080e20;
+    --bg: #080e20;
+    --card-bg: #101a32;
+    --surface: #101a32;
+    --surface-muted: #172440;
+    --input-bg: #0c152c;
+    --border-color: #2b3b5b;
+    --text-primary: #f2f5ff;
+    --text-secondary: #a8b6d1;
+    --text: #d7e1f3;
+    --text-h: #f7f9ff;
+    --border: #2b3b5b;
+    background: var(--page-bg);
+    color: var(--text-primary);
+  }
+  body.dark-mode :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) {
+    color: #f2f5ff !important;
+    background-color: #0c152c !important;
+    border-color: #354563 !important;
+    caret-color: #f2f5ff;
+    color-scheme: dark;
+  }
+  body.dark-mode :is(input, textarea)::placeholder { color: #aab7d0 !important; opacity: 1; }
+  body.dark-mode :is(input, select, textarea):disabled { opacity: .65; cursor: not-allowed; }
+  body.dark-mode :is(input, select, textarea):focus-visible { outline: 2px solid #658bfb; outline-offset: 1px; }
+  body.dark-mode option, body.dark-mode optgroup { color: #f2f5ff; background: #15213a; }
+  body.dark-mode :is(.customer-registry-page, .customer-table-card, .customer-modal, .customer-modal-head, .customer-modal-footer, .customer-form-section, .customer-ledger-modal, .customer-ledger-customer-card, .customer-ledger-summary, .customer-ledger-table-wrap, .report-builder, .report-options, .report-period) {
+    background: #101a32 !important; color: #f2f5ff !important; border-color: #2b3b5b !important;
+  }
+  body.dark-mode :is(.customer-search-box, .customer-input-icon, .customer-secondary-btn, .customer-close-btn, .customer-row-actions button, .customer-avatar, .customer-ledger-icon, .customer-table th, .customer-ledger-table th, .preset-row button:not(.active)) {
+    background: #192641 !important; color: #f2f5ff !important; border-color: #334564 !important;
+  }
+  body.dark-mode :is(.customer-search-box input, .customer-input-icon input) { background: transparent !important; }
+  body.dark-mode :is(.customer-field > span, .customer-registry-heading p, .customer-count, .customer-modal-head p, .customer-table td small, .customer-table th, .customer-ledger-meta, .customer-ledger-summary span, .customer-ledger-table th) {color: #b4c2dc !important;}
+  body.dark-mode :is(.customer-table td, .customer-ledger-table td) { background: #101a32 !important; border-color: #293956 !important; color: #e9efff !important; }
+  body.dark-mode :is(.customer-clickable-row:hover td, .customer-table tbody tr:hover td) { background: #1c2a47 !important; }
+  body.dark-mode :is(.customer-status.active, .customer-ledger-type.payment) { background: #103b32 !important; color: #78e7b3 !important; }
+  body.dark-mode :is(.customer-status.inactive, .customer-ledger-type.purchase) { background: #492532 !important; color: #ffb5bd !important; }
+  body.dark-mode .customer-ledger-type.opening { background: #1b365c !important; color: #a7ccff !important; }
+  body.dark-mode .customer-row-actions button:last-child { color: #ff8390 !important; }
+  body.dark-mode .customer-primary-btn { background: #3158bd !important; color: #fff !important; }
+  body.dark-mode .customer-ledger-summary strong { color: #f2f5ff !important; }
+  body.dark-mode .customer-ledger-summary strong.is-due {color: #ff8390 !important;}
+  body.dark-mode :is(.report-builder, .reports-page, .report-period, .report-options) {color: #eaf1ff !important;}
+  body.dark-mode .reports-page {background: #080e20 !important;}
+  body.dark-mode .report-period {background: #142b29 !important;}
+  body.dark-mode .report-builder > header {background: #075747 !important;}
+  body.dark-mode :is(.report-options select, .date-grid input, .preset-row button:not(.active), .report-actions button.secondary, .report-sheet-tools button) {background: #15233d !important; color: #f2f5ff !important; border-color: #344864 !important;}
+  body.dark-mode :is(.report-actions button, .preset-row button.active) {color: #fff !important;}
+  /* Report previews remain paper white, matching PDF output. Prevent generic dark text overrides. */
+  body.dark-mode .report-sheet {background: #fff !important; color: #16202d !important; filter: none !important; color-scheme: light;}
+  body.dark-mode .report-sheet :is(h1,h2,h3,p,span,td,a,strong) {color: #16202d !important;}
+  body.dark-mode .report-sheet :is(th, th span) {color: #064e3b !important;}
+  body.dark-mode .report-sheet :is(button, button span) {color: inherit !important;}
+  body.dark-mode .report-sheet :is(input,select,textarea) {background: #fff !important; color: #16202d !important; color-scheme: light;}
+  body.dark-mode .report-sheet tbody tr, body.dark-mode .report-sheet td {background: #fff !important; color: #16202d !important; border-color: #dfe5e9 !important;}
+  body.dark-mode .report-sheet th {background: #e3f2e8 !important; border-color: #dfe5e9 !important;}
+  body.dark-mode .report-sheet .report-sales-table th, body.dark-mode .report-sheet .report-purchases-table th {background: #c0c0c0 !important; color: #111 !important;}
+  body.dark-mode .report-sheet .report-sales-table th *, body.dark-mode .report-sheet .report-purchases-table th * {color: #111 !important;}
+  body.dark-mode .report-sheet > footer {background: #f8faf9 !important; color: #16202d !important;}
+  body.dark-mode :is(.shamsi-date-trigger, .dashboard-date-filters button, .dashboard-date-filters select) {background: #172440 !important; color: #f2f5ff !important; border-color: #344864 !important;}
+  body.dark-mode :is(.customer-registry-page, .reports-page) svg {color: inherit;}
+}
+@media print {
+  body.dark-mode {color-scheme: light;}
+  body.dark-mode .report-sheet {filter: none !important; background: #fff !important; color: #111 !important;}
+}
+
+/* Dark mode follow-up: readable segmented controls and upload/settings surfaces. */
+@media screen {
+  body.dark-mode :is(.inventory-tabs, .inventory-status-filter, .inventory-view-toggle) {
+    background: #172440 !important;
+    border-color: #354563 !important;
+    color-scheme: dark;
+  }
+  body.dark-mode :is(.inventory-tabs, .inventory-status-filter, .inventory-view-toggle) button {
+    background: transparent !important;
+    color: #dce6f9 !important;
+    border-color: transparent !important;
+    opacity: 1;
+  }
+  body.dark-mode :is(.inventory-tabs, .inventory-status-filter, .inventory-view-toggle) button:hover:not(.active) {
+    background: #243654 !important;
+    color: #fff !important;
+  }
+  body.dark-mode :is(.inventory-tabs, .inventory-status-filter, .inventory-view-toggle) button.active {
+    background: #3158bd !important;
+    border-color: #5075d9 !important;
+    color: #fff !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,.15);
+  }
+  body.dark-mode :is(.inventory-tabs, .inventory-status-filter, .inventory-view-toggle) button svg { color: currentColor !important; }
+  body.dark-mode .inventory-search { background: #0c152c !important; color: #b8c8df !important; border-color: #354563 !important; }
+  body.dark-mode .inventory-search input { color: #f2f5ff !important; background: transparent !important; }
+  body.dark-mode :is(.inventory-graph-view, .inventory-chart-card, .inventory-graph-product-card, .inventory-recharts-tooltip) { color: #f2f5ff; border-color: #354563; }
+  body.dark-mode :is(.inventory-status.is-in, .inventory-movement-type.is-in, .inventory-stock-positive, .inventory-in-number) { color: #75e6ad !important; }
+  body.dark-mode :is(.inventory-status.is-out, .inventory-movement-type.is-out, .inventory-stock-zero, .inventory-out-number) { color: #ff969e !important; }
+  body.dark-mode :is(.settings-file-control, .settings-preview-copy div, .settings-print-toggle, .settings-choice-grid button, .settings-tabs) {
+    background: #172440 !important;
+    border-color: #354563 !important;
+    color: #edf3ff !important;
+  }
+  body.dark-mode .settings-file-control input[type="file"] {
+    background: transparent !important;
+    color: #e5edff !important;
+    border: 0 !important;
+    width: 100%;
+    min-width: 0;
+    font-size: 12px;
+  }
+  body.dark-mode input[type="file"]::file-selector-button {
+    background: #3158bd !important;
+    color: white !important;
+    border: 1px solid #5075d9 !important;
+    border-radius: 8px;
+    padding: 7px 12px;
+    margin-inline-end: 10px;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  body.dark-mode :is(.settings-form label, .settings-card-single label, .settings-print-card label, .settings-section-title p, .settings-preview-copy span, .settings-tabs button, .settings-choice-grid span, .settings-print-toggle span) { color: #bac9e2 !important; }
+  body.dark-mode :is(.settings-choice-grid strong, .settings-print-toggle strong, .settings-section-title h3, .settings-preview-copy strong) { color: #f2f5ff !important; }
+  body.dark-mode .settings-tabs button.active, body.dark-mode .settings-choice-grid button.active {
+    background: #3158bd !important;
+    color: #fff !important;
+    border-color: #5075d9 !important;
+  }
+  body.dark-mode .settings-choice-grid button.active :is(strong,span) { color: #fff !important; }
+  body.dark-mode .settings-page :is(.settings-shell-card, .settings-card) { border-color: #354563 !important; }
+}
+
+/* Screen-only dark report canvas. PDF and print retain the original light paper layout. */
+@media screen {
+  body.dark-mode .reports-page .report-sheet {
+    background: #101a32 !important;
+    color: #eef3ff !important;
+    border: 1px solid #30415f !important;
+    color-scheme: dark;
+  }
+  body.dark-mode .reports-page .report-sheet > header,
+  body.dark-mode .reports-page .report-sheet > footer {
+    background: #141f37 !important;
+    border-color: #30415f !important;
+    color: #eef3ff !important;
+  }
+  body.dark-mode .reports-page .report-sheet :is(h1,h2,h3,p,span,td,a,strong,small),
+  body.dark-mode .reports-page .report-sheet :is(.report-sales-title,.report-purchases-title) :is(h2,p) {
+    color: #eaf1ff !important;
+  }
+  body.dark-mode .reports-page .report-sheet :is(.report-table-wrap,table,thead,tbody,tfoot,tr,td),
+  body.dark-mode .reports-page .report-sheet :is(.report-sales-table,.report-purchases-table) td {
+    background: #101a32 !important;
+    border-color: #354563 !important;
+    color: #eaf1ff !important;
+  }
+  body.dark-mode .reports-page .report-sheet :is(th,.report-sales-table th,.report-purchases-table th) {
+    background: #202f4d !important;
+    border-color: #425471 !important;
+    color: #eaf1ff !important;
+  }
+  body.dark-mode .reports-page .report-sheet th :is(span,small,strong) { color: #eaf1ff !important; }
+  body.dark-mode .reports-page .report-sheet tbody tr:hover td { background: #1b2b49 !important; }
+  body.dark-mode .reports-page .report-sheet > footer div { border-color: #16a085 !important; }
+  body.dark-mode .reports-page .report-sheet .report-search-box {
+    background: #0c152c !important;
+    border-color: #3a506c !important;
+    color: #d8e6fa !important;
+  }
+  body.dark-mode .reports-page .report-sheet .report-search-box input {
+    background: transparent !important;
+    color: #f2f5ff !important;
+    border: 0 !important;
+  }
+  body.dark-mode .reports-page .report-sheet .report-search-box input::placeholder { color: #aab7d0 !important; }
+  body.dark-mode .reports-page .report-sheet .report-sheet-tools button {
+    background: #192b48 !important;
+    color: #f2f5ff !important;
+    border-color: #415574 !important;
+  }
+  body.dark-mode .reports-page .report-sheet .report-sheet-tools button :is(svg,span) { color: #f2f5ff !important; }
+  body.dark-mode .reports-page .report-sheet .report-sheet-tools button:hover { background: #2b4368 !important; }
+  body.dark-mode .reports-page :is(.report-options,.report-period,.report-builder) {
+    border-color: #30415f !important;
+    color: #eaf1ff !important;
+  }
+  body.dark-mode .reports-page :is(.radio-row,.period-unit,.report-options,.date-grid) label { color: #eaf1ff !important; }
+  body.dark-mode .reports-page :is(.report-options,.date-grid) :is(input,select) { background: #0c152c !important; color: #f2f5ff !important; border-color: #354563 !important; }
+}

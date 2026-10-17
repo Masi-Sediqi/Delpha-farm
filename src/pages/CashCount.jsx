@@ -241,7 +241,7 @@ export default function CashCount() {
       const amount = numeric(item.amount);
       if (!amount) return;
       const supplier = supplierMap.get(String(item.supplierId));
-      rows.push({ direction: "out", currency: normalizeCurrency(item.currency || supplier?.currency, defaultCurrency), amount });
+      rows.push({ direction: amount < 0 ? "in" : "out", currency: normalizeCurrency(item.currency || supplier?.currency, defaultCurrency), amount: Math.abs(amount) });
     });
     expenses.forEach((item) => {
       const amount = numeric(item.amount);

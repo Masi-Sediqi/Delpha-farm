@@ -1,0 +1,43 @@
+.page-wait-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 49000;
+  display: grid;
+  place-items: center;
+  background: rgb(248 250 252 / 58%);
+  backdrop-filter: blur(3px);
+  cursor: progress;
+}
+.page-wait-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 25px 30px;
+  border: 1px solid rgb(148 163 184 / 20%);
+  border-radius: 20px;
+  background: #fff;
+  color: #475569;
+  box-shadow: 0 12px 45px rgb(15 23 42 / 9%);
+  font: inherit;
+  font-size: 12px;
+}
+.page-wait-ring {
+  display: block;
+  width: 32px;
+  height: 32px;
+  box-sizing: border-box;
+  border: 3px solid #e2e8f0;
+  border-top-color: #334155;
+  border-radius: 50%;
+  animation: page-wait-spin .8s linear infinite;
+  will-change: transform;
+}
+body.dark-mode .page-wait-overlay { background: rgb(2 6 23 / 55%); }
+body.dark-mode .page-wait-card { background: #171c26; color: #e2e8f0; border-color: #334155; }
+body.dark-mode .page-wait-ring { border-color: #334155; border-top-color: #e2e8f0; }
+@keyframes page-wait-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .page-wait-ring { animation: none; }
+}
+@media print { .page-wait-overlay { display: none !important; } }

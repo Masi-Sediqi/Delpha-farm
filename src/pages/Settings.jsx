@@ -1,3 +1,5 @@
+import PageLoader from "../components/PageLoader";
+import { mergeBrowserCollections } from "../utils/browserStorage";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -168,7 +170,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
         aurora: ["Aurora Flow", "Premium dark glass with company-colored aurora light"],
       },
       appDataTitle: "App Data", appDataDescription: "Export a backup, import a backup, or clear all saved app data.", demoEnvironment: "Demo Environment", productionEnvironment: "Production Environment", demoEnvironmentDescription: "Demo data is isolated from the customer production environment.", productionEnvironmentDescription: "Production data is isolated from the demo environment.", exportData: "Export Data", importData: "Import Data", automaticallyBackup: "Automatically Backup", automaticallyBackupDescription: "The system checks this schedule while the app is open and reports when a backup is created.", backupSchedule: "Backup Schedule", off: "Off", daily: "Daily", weekly: "Weekly", monthly: "Monthly", custom: "Custom", customIntervalDays: "Custom Interval (Days)", saveBackupSetting: "Save Backup Setting", clearDemoData: "Clear Demo Data", clearDemoInstruction: "Type CLEAR, then press Clear Demo Data.",
-      themeUpdated: "Theme updated successfully.", invalidLogo: "Please select an image file for the logo.", settingsSaved: "System settings saved successfully.", exportSuccess: "App data exported successfully.", exportError: "Unable to export app data.", invalidBackup: "This file does not contain valid app data.", importTitle: "Import App Data", importConfirm: "Import will replace {count} data table(s). Continue?", accessImportConfirm: "Import and merge the Access database into PostgreSQL? A server-side restore point will be created first.", importSuccess: "App data imported successfully. Refresh the app to see all changes.", accessImportSuccess: "Access data imported successfully: {count} records were processed.", importError: "Unable to import app data. Please select a valid JSON, ACCDB, or ACCDE file.", clearDisabled: "Clear Data is disabled in Production mode.", clearTypeConfirm: "Type CLEAR to confirm data clearing.", clearAllTitle: "Clear All App Data", clearAllMessage: "This will clear all saved app data, including settings. This cannot be undone. Continue?", clearData: "Clear Data", clearSuccess: "App data cleared successfully. Refresh the app to start clean.", clearError: "Unable to clear app data.",
+      themeUpdated: "Theme updated successfully.", invalidLogo: "Please select an image file for the logo.", settingsSaved: "System settings saved successfully.", exportSuccess: "App data exported successfully.", exportError: "Unable to export app data.", invalidBackup: "This file does not contain valid app data.", importTitle: "Import App Data", importConfirm: "Import will replace {count} data table(s). Continue?", accessImportConfirm: "Import and merge the Access data? A backup of current data will be created first.", importSuccess: "App data imported successfully. Refresh the app to see all changes.", accessImportSuccess: "Access data imported successfully: {count} records were processed.", importError: "Unable to import app data. Please select a valid JSON, ACCDB, or ACCDE file.", clearDisabled: "Clear Data is disabled in Production mode.", clearTypeConfirm: "Type CLEAR to confirm data clearing.", clearAllTitle: "Clear All App Data", clearAllMessage: "This will clear all saved app data, including settings. This cannot be undone. Continue?", clearData: "Clear Data", clearSuccess: "App data cleared successfully. Refresh the app to start clean.", clearError: "Unable to clear app data.",
     },
     fa: {
       pageTitle: "تنظیمات",
@@ -194,7 +196,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
         aurora: ["جریان شفق", "شیشه تیره حرفه‌ای با نور شفق هماهنگ با رنگ کمپنی"],
       },
       appDataTitle: "دیتای برنامه", appDataDescription: "از اطلاعات بکاپ بگیرید، بکاپ را وارد کنید یا تمام دیتای ذخیره‌شده برنامه را پاک کنید.", demoEnvironment: "محیط دمو", productionEnvironment: "محیط اصلی", demoEnvironmentDescription: "دیتای دمو از محیط اصلی مشتری جدا نگهداری می‌شود.", productionEnvironmentDescription: "دیتای اصلی از محیط دمو جدا نگهداری می‌شود.", exportData: "خروجی گرفتن از دیتا", importData: "وارد کردن دیتا", automaticallyBackup: "بکاپ خودکار", automaticallyBackupDescription: "سیستم هنگام باز بودن برنامه این زمان‌بندی را بررسی می‌کند و پس از ایجاد بکاپ اطلاع می‌دهد.", backupSchedule: "زمان‌بندی بکاپ", off: "خاموش", daily: "روزانه", weekly: "هفتگی", monthly: "ماهانه", custom: "دلخواه", customIntervalDays: "فاصله دلخواه (روز)", saveBackupSetting: "ذخیره تنظیمات بکاپ", clearDemoData: "پاک کردن دیتای دمو", clearDemoInstruction: "عبارت CLEAR را بنویسید، سپس روی پاک کردن دیتای دمو کلیک کنید.",
-      themeUpdated: "پوسته با موفقیت تغییر کرد.", invalidLogo: "لطفاً یک فایل تصویری برای لوگو انتخاب کنید.", settingsSaved: "تنظیمات سیستم با موفقیت ذخیره شد.", exportSuccess: "دیتای برنامه با موفقیت خروجی گرفته شد.", exportError: "خروجی گرفتن از دیتای برنامه انجام نشد.", invalidBackup: "این فایل دیتای معتبر برنامه را ندارد.", importTitle: "وارد کردن دیتای برنامه", importConfirm: "با وارد کردن بکاپ، {count} جدول داده جایگزین می‌شود. ادامه می‌دهید؟", accessImportConfirm: "دیتابیس Access با دیتای PostgreSQL یکجا و مرتب شود؟ پیش از انتقال یک نقطه بازیابی در سرور ساخته می‌شود.", importSuccess: "دیتای برنامه با موفقیت وارد شد. برای مشاهده همه تغییرات برنامه را تازه‌سازی کنید.", accessImportSuccess: "دیتای Access موفقانه انتقال شد؛ {count} رکورد پردازش گردید.", importError: "انتقال دیتا انجام نشد. لطفاً فایل معتبر JSON، ACCDB یا ACCDE انتخاب کنید.", clearDisabled: "پاک کردن دیتا در حالت اصلی غیرفعال است.", clearTypeConfirm: "برای تأیید پاک کردن دیتا، CLEAR را وارد کنید.", clearAllTitle: "پاک کردن تمام دیتای برنامه", clearAllMessage: "تمام دیتای ذخیره‌شده برنامه، شامل تنظیمات، پاک می‌شود و قابل بازگشت نیست. ادامه می‌دهید؟", clearData: "پاک کردن دیتا", clearSuccess: "دیتای برنامه با موفقیت پاک شد. برای شروع دوباره برنامه را تازه‌سازی کنید.", clearError: "پاک کردن دیتای برنامه انجام نشد.",
+      themeUpdated: "پوسته با موفقیت تغییر کرد.", invalidLogo: "لطفاً یک فایل تصویری برای لوگو انتخاب کنید.", settingsSaved: "تنظیمات سیستم با موفقیت ذخیره شد.", exportSuccess: "دیتای برنامه با موفقیت خروجی گرفته شد.", exportError: "خروجی گرفتن از دیتای برنامه انجام نشد.", invalidBackup: "این فایل دیتای معتبر برنامه را ندارد.", importTitle: "وارد کردن دیتای برنامه", importConfirm: "با وارد کردن بکاپ، {count} جدول داده جایگزین می‌شود. ادامه می‌دهید؟", accessImportConfirm: "اطلاعات فایل Access با اطلاعات فعلی یکجا شود؟ پیش از انتقال یک بک‌اپ از اطلاعات فعلی ساخته می‌شود.", importSuccess: "دیتای برنامه با موفقیت وارد شد. برای مشاهده همه تغییرات برنامه را تازه‌سازی کنید.", accessImportSuccess: "دیتای Access موفقانه انتقال شد؛ {count} رکورد پردازش گردید.", importError: "انتقال دیتا انجام نشد. لطفاً فایل معتبر JSON، ACCDB یا ACCDE انتخاب کنید.", clearDisabled: "پاک کردن دیتا در حالت اصلی غیرفعال است.", clearTypeConfirm: "برای تأیید پاک کردن دیتا، CLEAR را وارد کنید.", clearAllTitle: "پاک کردن تمام دیتای برنامه", clearAllMessage: "تمام دیتای ذخیره‌شده برنامه، شامل تنظیمات، پاک می‌شود و قابل بازگشت نیست. ادامه می‌دهید؟", clearData: "پاک کردن دیتا", clearSuccess: "دیتای برنامه با موفقیت پاک شد. برای شروع دوباره برنامه را تازه‌سازی کنید.", clearError: "پاک کردن دیتای برنامه انجام نشد.",
     },
     ps: {
       pageTitle: "تنظیمات",
@@ -464,6 +466,8 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
 
     try {
       setAppDataBusy(true);
+      // Paint the busy overlay before parsing or processing a large backup.
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       const extension = file.name.split(".").pop()?.toLowerCase();
       if (extension === "accdb" || extension === "accde") {
         const ok = await confirmAction({
@@ -472,7 +476,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
           confirmText: st.importData,
         });
         if (!ok) return;
-        const response = await fetch(apiUrl("import/access"), {
+        const response = await fetch(apiUrl(import.meta.env.VITE_USE_BROWSER_STORAGE !== "false" ? "import/access?convert=true" : "import/access"), {
           method: "POST",
           headers: {
             "Content-Type": "application/octet-stream",
@@ -482,9 +486,17 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.error || `Backend returned ${response.status}.`);
+        if (import.meta.env.VITE_USE_BROWSER_STORAGE !== "false") {
+          if (!result.collections || !Object.values(result.collections).some((items) => Array.isArray(items) && items.length)) {
+            throw new Error(st.invalidBackup);
+          }
+          await downloadBackup("before-access-import");
+          await mergeBrowserCollections(result.collections);
+        }
         const importedCount = Object.values(result.report || {}).reduce((sum, item) => sum + Number(item.imported || 0), 0);
         notify(st.accessImportSuccess.replace("{count}", String(importedCount)));
-        window.setTimeout(() => window.location.reload(), 1200);
+        await new Promise((resolve) => window.setTimeout(resolve, 1200));
+        window.location.reload();
         return;
       }
       const text = await file.text();
@@ -513,7 +525,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
       notify(st.importSuccess);
     } catch (error) {
       console.error("Unable to import app data:", error);
-      notify(st.importError, "error");
+      notify(`${st.importError}${error.message ? ` (${error.message})` : ""}`, "error");
     } finally {
       setAppDataBusy(false);
     }
@@ -584,6 +596,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
 
   return (
     <div className="settings-page">
+      {appDataBusy && createPortal(<PageLoader />, document.body)}
       <div className="settings-header">
         <h1>{st.pageTitle}</h1>
         <p>{st.pageDescription}</p>

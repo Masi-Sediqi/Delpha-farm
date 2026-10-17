@@ -63,7 +63,7 @@ const text = {
     emptyText: "Search above and select a medicine to add it to this purchase.",
     company: "Company",
     selectCompany: "Select company",
-    qty: "Quantity by unit",
+    qty: "Carton count",
     purchaseUnit: "Main unit",
     unitsPerUnit: "Pieces in unit",
     actualQty: "Quantity by piece",
@@ -126,7 +126,7 @@ const text = {
     emptyText: "از جستجوی بالا دوا را پیدا کرده و به این خریداری اضافه کنید.",
     company: "کمپنی",
     selectCompany: "کمپنی را انتخاب کنید",
-    qty: "مقدار به واحد اصلی",
+    qty: "تعداد کارتن",
     purchaseUnit: "واحد اصلی",
     unitsPerUnit: "تعداد دانه در واحد",
     actualQty: "مقدار به دانه",
@@ -189,7 +189,7 @@ const text = {
     emptyText: "له پورته لټون څخه درمل پیدا او دې پېرود ته یې اضافه کړئ.",
     company: "کمپنۍ",
     selectCompany: "کمپنۍ وټاکئ",
-    qty: "په اصلي واحد مقدار",
+    qty: "د کارتنونو شمېر",
     purchaseUnit: "اصلي واحد",
     unitsPerUnit: "په واحد کې دانې",
     actualQty: "په دانه مقدار",
@@ -325,15 +325,20 @@ function PurchaseNew() {
   );
 
   useEffect(() => {
-    if (!manufacturerCompanies.length || !items.length) return;
-    setItems((current) => current.map((row) => {
-      if (row.manufacturerId && manufacturers.some((item) => String(item.id) === String(row.manufacturerId))) return row;
-      const product = products.find((item) => String(item.id) === String(row.productId));
-      const manufacturerId = manufacturerIdForProduct(product || row);
-      if (!manufacturerId) return row;
-      const selected = manufacturers.find((item) => String(item.id) === String(manufacturerId));
-      return { ...row, manufacturerId, manufacturerName: manufacturerName(selected) };
-    }));
+    if (!manufacturerCompanies.length) return;
+    setItems((current) => {
+      let changed = false;
+      const next = current.map((row) => {
+        if (row.manufacturerId && manufacturers.some((item) => String(item.id) === String(row.manufacturerId))) return row;
+        const product = products.find((item) => String(item.id) === String(row.productId));
+        const manufacturerId = manufacturerIdForProduct(product || row) || manufacturers.find((item) => normalizedManufacturerName(manufacturerName(item)) === normalizedManufacturerName(row.manufacturerName))?.id;
+        if (!manufacturerId) return row;
+        const selected = manufacturers.find((item) => String(item.id) === String(manufacturerId));
+        changed = true;
+        return { ...row, manufacturerId, manufacturerName: manufacturerName(selected) };
+      });
+      return changed ? next : current;
+    });
   }, [manufacturerCompanies, products]);
   const normalizeSearchText = (value) =>
     String(value || "")
@@ -520,7 +525,7 @@ function PurchaseNew() {
       salePrice: num(product.salePrice),
       currentStock: getStock(product),
       manufacturerId: manufacturerIdForProduct(product),
-      manufacturerName: product.manufacturerName || product.companyName || "",
+      manufacturerName: manufacturers.find((item) => String(item.id) === String(manufacturerIdForProduct(product)))?.name || product.manufacturerName || product.companyName || "",
       batchNo: "",
       expiryDate: "",
     }]);
@@ -892,13 +897,14 @@ function PurchaseNew() {
               {items.map((row) => (
                 <article className="purchase-item-row purchase-keyboard-row" key={row.lineId || row.id}>
                   <div className="purchase-item-name">
-                    <strong>{row.productName}</strong>
+                    <span className="purchase-item-product-label">{language === "en" ? "Product name" : language === "ps" ? "د توکي نوم" : "نام جنس"}</span>
+                    <strong title={row.productName}>{row.productName}</strong>
                     <small>{row.group || "—"} · {t.purchaseUnit}: {unitLabel(row.purchaseUnit)}</small>
                   </div>
                   <label className="purchase-company-field">
                     <span>{t.company}</span>
                     <select
-                      value={row.manufacturerId || ""}
+                      value={row.manufacturerId || manufacturerIdForProduct(products.find((product) => String(product.id) === String(row.productId)) || row) || ""}
                       onChange={(e) => {
                         const selected = manufacturers.find((item) => String(item.id) === String(e.target.value));
                         updateItemField(row.lineId, {
@@ -916,7 +922,7 @@ function PurchaseNew() {
                     </select>
                   </label>
                   <label>
-                    <span>{t.qty} ({unitLabel(row.purchaseUnit)})</span>
+                    <span>{t.qty}</span>
                     <input
                       ref={(node) => {
                         const key = String(row.lineId);

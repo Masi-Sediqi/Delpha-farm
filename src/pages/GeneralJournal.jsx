@@ -318,8 +318,8 @@ export default function GeneralJournal() {
       const supplier = `${t.supplier}: ${supplierName(payment.supplierId)}`;
       const ref = payment.reference || payment.paymentNo || payment.id;
       const date = payment.paymentDate || payment.date || String(payment.createdAt || "").slice(0, 10);
-      rows.push(line(`sp-dr-${payment.id}`, payment.id, date, ref, "supplier-payment", currency, supplier, amount, 0, payment.description || t.supplierPayment));
-      rows.push(line(`sp-cr-${payment.id}`, payment.id, date, ref, "supplier-payment", currency, t.cash, 0, amount, payment.description || t.supplierPayment));
+      rows.push(line(`sp-dr-${payment.id}`, payment.id, date, ref, "supplier-payment", currency, supplier, Math.max(amount, 0), Math.max(-amount, 0), payment.description || t.supplierPayment));
+      rows.push(line(`sp-cr-${payment.id}`, payment.id, date, ref, "supplier-payment", currency, t.cash, Math.max(-amount, 0), Math.max(amount, 0), payment.description || t.supplierPayment));
     });
 
     saleReturns.forEach((item) => {

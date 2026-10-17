@@ -1,0 +1,61 @@
+/* Contrast corrections for the black-and-white dark theme.
+   Keep this stylesheet after App.css and component styles.
+   The black foreground is ONLY applied where the background is light. */
+@media screen {
+  body.dark-mode[data-theme="black-white"] :is(
+    .supplier-detail-avatar,
+    .supplier-detail-payment-btn,
+    .supplier-payment-actions .primary,
+    .supplier-detail-tabs button.active
+  ) {
+    background: #f7f9ff !important;
+    border-color: #f7f9ff !important;
+    color: #111827 !important;
+    -webkit-text-fill-color: #111827;
+  }
+  body.dark-mode[data-theme="black-white"] :is(
+    .supplier-detail-avatar,
+    .supplier-detail-payment-btn,
+    .supplier-payment-actions .primary,
+    .supplier-detail-tabs button.active
+  ) :is(svg, span, b, strong, em) {
+    color: #111827 !important;
+    stroke: currentColor;
+    -webkit-text-fill-color: #111827;
+  }
+  /* Ensure the white action surfaces remain legible on hover/focus. */
+  body.dark-mode[data-theme="black-white"] :is(
+    .supplier-detail-payment-btn,
+    .supplier-detail-tabs button.active,
+    .supplier-payment-actions .primary
+  ):is(:hover, :focus-visible) {
+    background: #e2e8f0 !important;
+    border-color: #e2e8f0 !important;
+    color: #0f172a !important;
+  }
+  /* Leave inactive tabs dark, rather than blending into the light active tab. */
+  body.dark-mode[data-theme="black-white"] .supplier-detail-tabs button:not(.active) {
+    background: #172440 !important;
+    color: #dce7fb !important;
+    border-color: #354563 !important;
+  }
+  /* If a themed action is light, text/icons need a contrasting dark foreground. */
+  body.dark-mode[data-theme="black-white"] :is(
+    .product-detail-stock-badge,
+    .product-detail-inventory-grid article.primary,
+    .product-detail-icon,
+    .sales-register-primary,
+    .sales-register-item-no,
+    .sale-detail-tool.primary
+  ) {
+    color: #101827 !important;
+  }
+  body.dark-mode[data-theme="black-white"] :is(
+    .product-detail-stock-badge,
+    .product-detail-inventory-grid article.primary,
+    .product-detail-icon,
+    .sales-register-primary,
+    .sales-register-item-no,
+    .sale-detail-tool.primary
+  ) :is(svg, span, strong, b) { color: inherit !important; }
+}

@@ -8,7 +8,7 @@ const storeName = "collections";
 const localStoragePrefix = IS_PRODUCTION
   ? "afghan-power-production-collection:"
   : "afghan-power-collection:";
-const browserStorageOnly = import.meta.env.VITE_USE_BROWSER_STORAGE === "true";
+const browserStorageOnly = import.meta.env.VITE_USE_BROWSER_STORAGE !== "false";
 const apiRoot = import.meta.env.VITE_API_ROOT || (
   typeof window !== "undefined" && window.location.protocol.startsWith("http")
     ? `${window.location.protocol}//${window.location.hostname}:5000/api`
@@ -41,30 +41,34 @@ function openDatabase() {
       }
     };
 
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      const db = request.result;
+      db.onversionchange = () => db.close();
+      resolve(db);
+    };
     request.onerror = () => reject(request.error);
-  });
+    request.onblocked = () => reject(new Error("IndexedDB upgrade was blocked by another tab."));
+  }).catch((error) => { databasePromise = null; throw error; });
 
   return databasePromise;
 }
 
 function runStore(mode, action) {
-  return openDatabase().then(
-    (database) =>
-      new Promise((resolve, reject) => {
-        if (!database) {
-          resolve(undefined);
-          return;
-        }
-
-        const transaction = database.transaction(storeName, mode);
-        const store = transaction.objectStore(storeName);
-        const request = action(store);
-
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-      })
-  );
+  return openDatabase().then((database) => new Promise((resolve, reject) => {
+    if (!database) { resolve(undefined); return; }
+    let result;
+    const transaction = database.transaction(storeName, mode);
+    transaction.oncomplete = () => resolve(result);
+    transaction.onabort = () => reject(transaction.error || new Error("IndexedDB transaction aborted"));
+    transaction.onerror = () => reject(transaction.error || new Error("IndexedDB transaction failed"));
+    try {
+      const request = action(transaction.objectStore(storeName));
+      request.onsuccess = () => { result = request.result; };
+    } catch (error) {
+      transaction.abort();
+      reject(error);
+    }
+  }));
 }
 
 function readLocalStorageCollection(name) {
@@ -92,7 +96,17 @@ export async function readBrowserCollection(name) {
     ? (Array.isArray(localRecord?.items) ? localRecord.items : [])
     : readLocalStorageCollection(name);
 
-  if (browserStorageOnly) return localData;
+  if (browserStorageOnly) {
+    // Recover earlier localStorage-only installations without replacing existing IndexedDB data.
+    if (hasIndexedDb() && !localRecord) {
+      const legacy = readLocalStorageCollection(name);
+      if (legacy.length) {
+        await writeLocalCache(name, legacy);
+        return legacy;
+      }
+    }
+    return localData;
+  }
 
   const knownRevision = collectionRevisions.get(name);
   const response = await fetch(`${apiRoot}/collections/${encodeURIComponent(name)}`, {
@@ -161,4 +175,29 @@ export async function listBrowserCollectionNames() {
 
   const keys = await runStore("readonly", (store) => store.getAllKeys());
   return Array.isArray(keys) ? keys.map(String) : [];
+}
+
+// Commit the entire Access import together, preserving unrelated existing records.
+export async function mergeBrowserCollections(collections) {
+  const entries = Object.entries(collections);
+  if (!entries.length || entries.some(([, items]) => !Array.isArray(items))) throw new Error("Invalid Access collections.");
+  const merged = await Promise.all(entries.map(async ([name, items]) => {
+    const current = await readBrowserCollection(name);
+    const byId = new Map(current.map((item) => [String(item.id), item]));
+    for (const item of items) {
+      if (item.id == null) throw new Error("Access record is missing its identifier.");
+      byId.set(String(item.id), { ...byId.get(String(item.id)), ...item });
+    }
+    return [name, [...byId.values()]];
+  }));
+  const database = await openDatabase();
+  if (!database) throw new Error("IndexedDB is required to safely import Access data.");
+  await new Promise((resolve, reject) => {
+    const transaction = database.transaction(storeName, "readwrite");
+    transaction.oncomplete = resolve;
+    transaction.onerror = () => reject(transaction.error || new Error("Access import failed."));
+    transaction.onabort = () => reject(transaction.error || new Error("Access import cancelled."));
+    const store = transaction.objectStore(storeName);
+    for (const [name, items] of merged) store.put({ name, items, updatedAt: new Date().toISOString() });
+  });
 }

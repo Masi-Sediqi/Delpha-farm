@@ -1466,14 +1466,6 @@ function Products() {
                           <input type="number" min="1" step="1" name="cartonSize" value={item.cartonSize} onChange={(event) => updateBatchForm(index, event)} placeholder={t.cartonPlaceholder} />
                         </label>
                         <label className="sales-product-field">
-                          <span>{t.productForm}</span>
-                          <span className="sales-product-batch-select"><select name="productForm" value={item.productForm || ""} onChange={(event) => updateBatchForm(index, event)}>
-                              <option value="">{t.selectProductForm}</option>
-                              {productFormOptions.map((option) => <option key={option.value} value={option.value}>{t[option.labelKey]}</option>)}
-                              {customProductForms.filter((entry) => entry?.name).map((entry) => <option key={entry.id} value={`custom:${entry.id}`}>{entry.name}</option>)}
-                            </select><button type="button" onClick={() => addBatchMasterOption("productForm", index)} title={t.addProductForm} aria-label={t.addProductForm}><Plus size={14} /></button></span>
-                        </label>
-                        <label className="sales-product-field">
                           <span>{t.madeIn}</span>
                           <span className="sales-product-batch-select"><select name="countryId" value={item.countryId || ""} onChange={(event) => updateBatchForm(index, event)}>
                               <option value="">{t.selectCountry}</option>
@@ -1488,14 +1480,14 @@ function Products() {
                             </select><button type="button" onClick={() => addBatchMasterOption("manufacturer", index)} title={t.addManufacturerCompany} aria-label={t.addManufacturerCompany}><Plus size={14} /></button></span>
                         </label>
                         <label className="sales-product-field">
+                          <span>{t.purchasePrice}</span>
+                          <input type="number" min="0" step="0.01" name="purchasePrice" value={item.purchasePrice} onChange={(event) => updateBatchForm(index, event)} placeholder={t.pricePlaceholder} />
+                        </label>
+                        <label className="sales-product-field">
                           <span>{t.currency}</span>
                           <select name="unit" value={item.unit || "afn"} onChange={(event) => updateBatchForm(index, event)}>
                             {currencyOptions.map((currency) => <option key={currency} value={currency}>{t[currency]}</option>)}
                           </select>
-                        </label>
-                        <label className="sales-product-field">
-                          <span>{t.purchasePrice}</span>
-                          <input type="number" min="0" step="0.01" name="purchasePrice" value={item.purchasePrice} onChange={(event) => updateBatchForm(index, event)} placeholder={t.pricePlaceholder} />
                         </label>
                         <label className="sales-product-field">
                           <span>{t.salePrice}</span>
