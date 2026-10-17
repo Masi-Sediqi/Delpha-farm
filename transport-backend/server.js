@@ -60,6 +60,43 @@ async function saveLocalState() {
     const temporaryPath = `${localStorePath}.${process.pid}.${Date.now()}.tmp`;
     await fs.writeFile(temporaryPath, snapshot, "utf8");
     await fs.rename(temporaryPath, localStorePath);
+async function loadLocalState() {
+  await fs.mkdir(localDataDirectory, { recursive: true });
+  try {
+    const parsed = JSON.parse(await fs.readFile(localStorePath, "utf8"));
+    localState = {
+      collections: parsed && typeof parsed.collections === "object" ? parsed.collections : {},
+      backups: Array.isArray(parsed?.backups) ? parsed.backups : [],
+    };
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+    await saveLocalState();
+  }
+}
+
+function runAccessExport(databasePath) {
+  const powershell = process.env.WINDIR
+    ? path.join(process.env.WINDIR, "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
+    : "powershell.exe";
+  const script = path.join(serverDirectory, "access-export.ps1");
+  return new Promise((resolve, reject) => {
+    const child = spawn(powershell, ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script, "-DatabasePath", databasePath], {
+      windowsHide: true,
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => { stdout += chunk; });
+    child.stderr.on("data", (chunk) => { stderr += chunk; });
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code !== 0) return reject(new Error(stderr.trim() || "Unable to read the Access database."));
+      try { resolve(JSON.parse(stdout.replace(/^\uFEFF/, ""))); }
+      catch { reject(new Error("Access returned invalid data.")); }
+    });
+  });
+}
   });
   return localSaveQueue;
 }

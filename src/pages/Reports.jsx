@@ -185,7 +185,7 @@ export default function Reports(){
     // Restrict rows per page so no item is cut at a paper boundary.
     const weights=(data.widths||[]).slice(0,data.headers.length);
     const totalWeight=weights.reduce((sum,value)=>sum+(Number(value)||1),0);
-    const makePage=(index)=>{
+    const makePage=(index)=>
       const page=create("section",undefined,"apg-pdf-page");
       const heading=create("div",undefined,"apg-pdf-title");
       const name=create("div");name.append(create("h2",data.title),create("p",data.subtitle));
@@ -241,6 +241,9 @@ export default function Reports(){
           },
           foreignObjectRendering:true,
           scale:1,useCORS:true,backgroundColor:"#ffffff",logging:false,
+          scrollX:0,scrollY:0,windowWidth:Math.max(window.innerWidth,pageWidth),
+          width:pageWidth,height:Math.ceil(page.getBoundingClientRect().height)
+        });
           scrollX:0,scrollY:0,windowWidth:Math.max(window.innerWidth,pageWidth),
           width:pageWidth,height:Math.ceil(page.getBoundingClientRect().height)
         });
