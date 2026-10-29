@@ -2,14 +2,16 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { getInitialLoads, subscribeInitialLoads } from "../hooks/useJsonCollection";
 import "./PageLoader.css";
 
-export default function PageLoader() {
+export default function PageLoader({ onCancel }) {
   const language = localStorage.getItem("afghan-power-language") || "en";
+  const cancelLabel = language === "fa" ? "لغو بارگذاری" : language === "ps" ? "پورته کول لغوه کړئ" : "Cancel loading";
   const label = language === "fa" ? "لطفاً کمی صبر کنید…" : language === "ps" ? "لږ صبر وکړئ…" : "Please wait…";
   return (
     <div className="page-wait-overlay" role="status" aria-live="polite" aria-label={label}>
       <div className="page-wait-card">
         <span className="page-wait-ring" aria-hidden="true" />
         <span>{label}</span>
+        {onCancel && <button type="button" className="page-wait-cancel" onClick={onCancel}>{cancelLabel}</button>}
       </div>
     </div>
   );
@@ -18,6 +20,7 @@ export default function PageLoader() {
 export function PageTransition({ children }) {
   const [mounted, setMounted] = useState(false);
   const [painted, setPainted] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
   const pending = useSyncExternalStore(subscribeInitialLoads, getInitialLoads, getInitialLoads);
 
   // Give the loader a frame to paint before mounting a potentially heavy page.
@@ -48,7 +51,7 @@ export function PageTransition({ children }) {
   return (
     <div aria-busy={busy}>
       {mounted && children}
-      {busy && <PageLoader />}
+      {busy && !dismissed && <PageLoader onCancel={() => setDismissed(true)} />}
     </div>
   );
 }

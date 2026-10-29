@@ -1,11 +1,6 @@
-Delpha targeted patch (2026-10-29)
-Files are relative to the repository root.
-- ProductMasterDataBootstrap: waits for initial collections to load; migrates once per mount rather than repeatedly writing productGroups/countries after every refresh.
-- useJsonCollection: reduces background polling from 15s to 60s. This does not solve whole-collection PUT cost.
-- Settings: explains why ACCDE fails on Ubuntu and why import is currently 403-disabled.
+دکمه لغو در پنجره بارگذاری Import فایل ACCDE/ACCDB و JSON افزوده شد.
+لغو هنگام آپلود درخواست شبکه را با AbortController متوقف می‌کند و پنجره را می‌بندد.
+توجه: اگر پردازش سمت سرور قبلا شروع شده باشد، قطع درخواست لزوماً عملیات دیتابیس را برنمی‌گرداند. نیاز به پشتیبانی لغو از سمت Backend دارد.
+فایل‌ها را در همین مسیرهای src در Repository قرار داده و Commit کنید؛ سپس روی VPS: git pull --ff-only origin main && npm run build:production
 
-This is a mitigation, NOT confirmation that all data is on VPS. Some UI preferences, report settings and AI agent conversations still use localStorage. The normal business collection path is server mode when VITE_USE_BROWSER_STORAGE=false, but verify the deployed build and actual PostgreSQL data.
-
-SECURITY: Before production use, rotate the previously exposed admin password. Do not enable Access import without secure authenticated conversion and validation. Do not expose PostgreSQL directly to the internet.
-
-Deploy: commit these three files to your repo; git pull --ff-only; npm run build:production; verify /api/health, /api/collections unauthorized 401, and test create/reload from two browsers. No PM2 restart needed for these frontend changes.
+در بارگذاری اولیه سیستم، دکمه لغو فقط صفحه انتظار را می‌بندد؛ درخواست‌های داده در پس‌زمینه ادامه پیدا می‌کنند و این کار تغییرات سرور را لغو نمی‌کند.

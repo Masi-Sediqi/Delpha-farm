@@ -41,3 +41,6 @@ body.dark-mode .page-wait-ring { border-color: #334155; border-top-color: #e2e8f
   .page-wait-ring { animation: none; }
 }
 @media print { .page-wait-overlay { display: none !important; } }
+
+.page-wait-cancel { cursor:pointer; padding:9px 18px; border:1px solid #64748b; border-radius:10px; color:inherit; background:transparent; font:inherit; font-size:13px; }
+.page-wait-cancel:hover { background:rgb(100 116 139 / 12%); }

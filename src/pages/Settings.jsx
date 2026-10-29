@@ -1,6 +1,6 @@
 import PageLoader from "../components/PageLoader";
 import { mergeBrowserCollections } from "../utils/browserStorage";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Banknote,
@@ -120,6 +120,13 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
   const [autoBackupMode, setAutoBackupMode] = useState("off");
   const [autoBackupCustomDays, setAutoBackupCustomDays] = useState("7");
   const [appDataBusy, setAppDataBusy] = useState(false);
+  const [isImportRunning, setIsImportRunning] = useState(false);
+  const importAbortRef = useRef(null);
+  const cancelImport = () => {
+    importAbortRef.current?.abort();
+    setIsImportRunning(false);
+    setAppDataBusy(false);
+  };
   const [clearConfirm, setClearConfirm] = useState("");
   const [showUserModal, setShowUserModal] = useState(false);
   const [editingUserId, setEditingUserId] = useState(null);
@@ -460,12 +467,15 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
   };
 
   const importData = async (event) => {
+    const controller = new AbortController();
+    importAbortRef.current = controller;
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
 
     try {
       setAppDataBusy(true);
+      setIsImportRunning(true);
       // Paint the busy overlay before parsing or processing a large backup.
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       const extension = file.name.split(".").pop()?.toLowerCase();
@@ -475,7 +485,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
           message: st.accessImportConfirm,
           confirmText: st.importData,
         });
-        if (!ok) return;
+        if (!ok || controller.signal.aborted) return;
         const response = await fetch(apiUrl(import.meta.env.VITE_USE_BROWSER_STORAGE !== "false" ? "import/access?convert=true" : "import/access"), {
           method: "POST",
           headers: {
@@ -483,14 +493,12 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
             "X-File-Name": encodeURIComponent(file.name),
           },
           body: file,
+          signal: controller.signal,
         });
+        if (controller.signal.aborted) return;
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) {
-          if (response.status === 403 && (extension === "accdb" || extension === "accde")) {
-            throw new Error("Access import is disabled on the server. ACCDE/ACCDB conversion requires a compatible Windows conversion service; uploading cannot import it on this Ubuntu VPS.");
-          }
-          throw new Error(result.error || `Backend returned ${response.status}.`);
-        }
+        if (controller.signal.aborted) return;
+        if (!response.ok) throw new Error(result.error || `Backend returned ${response.status}.`);
         if (import.meta.env.VITE_USE_BROWSER_STORAGE !== "false") {
           if (!result.collections || !Object.values(result.collections).some((items) => Array.isArray(items) && items.length)) {
             throw new Error(st.invalidBackup);
@@ -505,6 +513,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
         return;
       }
       const text = await file.text();
+      if (controller.signal.aborted) return;
       const parsed = JSON.parse(text);
       const data = parsed.collections && typeof parsed.collections === "object"
         ? parsed.collections
@@ -524,14 +533,18 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
       });
       if (!ok) return;
 
+      if (controller.signal.aborted) return;
       await Promise.all(
         importable.map((name) => writeBrowserCollection(name, data[name]))
       );
       notify(st.importSuccess);
     } catch (error) {
+      if (controller.signal.aborted || error?.name === "AbortError") return;
       console.error("Unable to import app data:", error);
       notify(`${st.importError}${error.message ? ` (${error.message})` : ""}`, "error");
     } finally {
+      if (importAbortRef.current === controller) importAbortRef.current = null;
+      setIsImportRunning(false);
       setAppDataBusy(false);
     }
   };
@@ -601,7 +614,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
 
   return (
     <div className="settings-page">
-      {appDataBusy && createPortal(<PageLoader />, document.body)}
+      {appDataBusy && createPortal(<PageLoader onCancel={isImportRunning ? cancelImport : undefined} />, document.body)}
       <div className="settings-header">
         <h1>{st.pageTitle}</h1>
         <p>{st.pageDescription}</p>
