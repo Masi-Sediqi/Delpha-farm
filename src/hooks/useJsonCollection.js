@@ -74,10 +74,10 @@ function startPolling(name) {
   const store = getStore(name);
   if (browserOnly || store.pollTimer) return;
   store.pollTimer = window.setInterval(() => {
-    if (document.visibilityState === "visible" && navigator.onLine) loadStore(name, { quiet: true });
+    if (document.visibilityState === "visible" && navigator.onLine && !store.pendingWrites) loadStore(name, { quiet: true });
   }, pollIntervalMs);
   store.focusHandler = () => {
-    if (document.visibilityState === "visible" && navigator.onLine) loadStore(name, { quiet: true });
+    if (document.visibilityState === "visible" && navigator.onLine && !store.pendingWrites) loadStore(name, { quiet: true });
   };
   window.addEventListener("focus", store.focusHandler);
 }

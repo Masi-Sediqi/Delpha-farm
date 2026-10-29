@@ -108,10 +108,15 @@ export async function readBrowserCollection(name, { updateRevision = true } = {}
     return localData;
   }
 
+  // Never let HTTP's conditional cache turn a real collection into an empty array.
+  // The server revision must describe the exact items returned in this response.
   const response = await fetch(`${apiRoot}/collections/${encodeURIComponent(name)}`, {
-    headers: {},
+    cache: "no-store",
+    headers: { "Cache-Control": "no-cache" },
   });
-  if (response.status === 304) return localData;
+  if (response.status === 304) {
+    throw new Error(`Unexpected cached response for ${name}; reload the collection.`);
+  }
   if (response.status === 404) {
     // Never silently migrate local data into an empty server database.
     if (updateRevision) collectionRevisions.set(name, "0");
@@ -159,13 +164,28 @@ export async function writeBrowserCollection(name, items, previousItems = null) 
 
   const put = (payload, version) => fetch(`${apiRoot}/collections/${encodeURIComponent(name)}`, {
     method: "PUT",
+    cache: "no-store",
     headers: { "Content-Type": "application/json", "If-Match": `"${version}"` },
     body: JSON.stringify({ items: payload }),
   });
-  let response = await put(items, revision);
-  if (response.status === 409) {
-    // Refresh the conflict snapshot without publishing or changing revisions while in flight.
-    const get = await fetch(`${apiRoot}/collections/${encodeURIComponent(name)}`, { cache: "no-store" });
+  let payload = items;
+  let version = revision;
+  // A changed server revision is normal with multiple tabs/users. Rebase the
+  // original user action, never overwrite another user's edit to the same ID.
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const response = await put(payload, version);
+    if (response.ok) {
+      const record = await response.json();
+      if (record.revision != null) collectionRevisions.set(name, String(record.revision));
+      return Array.isArray(record.items) ? record.items : payload;
+    }
+    if (response.status !== 409) {
+      const details = await response.json().catch(() => ({}));
+      throw new Error(details.error || `Backend returned HTTP ${response.status} for ${name}.`);
+    }
+    const get = await fetch(`${apiRoot}/collections/${encodeURIComponent(name)}`, {
+      cache: "no-store", headers: { "Cache-Control": "no-cache" },
+    });
     let latest, nextRevision;
     if (get.status === 404) { latest = []; nextRevision = "0"; }
     else if (get.ok) {
@@ -173,21 +193,17 @@ export async function writeBrowserCollection(name, items, previousItems = null) 
       latest = data.items;
       nextRevision = String(data.revision);
     } else throw new Error(`Cannot load current ${name}: HTTP ${get.status}`);
-    // On conflict, only merge non-overlapping record changes. Never force-overwrite.
+    if (!Array.isArray(latest) || !/^\d+$/.test(nextRevision)) {
+      throw new Error(`Invalid server revision/data for ${name}.`);
+    }
     const merged = mergeIndependentChanges(previousItems, items, latest);
     if (!merged) {
-      throw new Error(`Conflict in ${name}: the same record changed on the server. Reload to review changes.`);
+      throw new Error(`Conflict in ${name}: a record was changed elsewhere. Reload to review it before saving.`);
     }
-    response = await put(merged, nextRevision);
-    if (response.status === 409) throw new Error(`Concurrent update to ${name}; please retry after reloading.`);
+    payload = merged;
+    version = nextRevision;
   }
-  if (!response.ok) {
-    const details = await response.json().catch(() => ({}));
-    throw new Error(details.error || `Backend returned HTTP ${response.status} for ${name}.`);
-  }
-  const record = await response.json();
-  if (record.revision != null) collectionRevisions.set(name, String(record.revision));
-  return Array.isArray(record.items) ? record.items : items;
+  throw new Error(`Repeated concurrent edits to ${name}. Close other tabs and retry.`);
 }
 
 async function writeLocalCache(name, items) {
