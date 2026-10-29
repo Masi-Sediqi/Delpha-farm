@@ -441,17 +441,28 @@ app.put("/api/collections/:name", async (request, response, next) => {
     if (!match) return response.status(428).json({ error: "If-Match revision is required." });
     const revision = Number(match[1]);
     if (!Number.isSafeInteger(revision) || revision < 0) return response.status(400).json({ error: "Invalid revision." });
-    const result = await pool.query(
-      `INSERT INTO app_collections (name, items, revision)
-       SELECT $1, $2::jsonb, 1 WHERE $3::bigint = 0
-       ON CONFLICT (name) DO UPDATE SET
-         items = EXCLUDED.items,
-         revision = app_collections.revision + 1,
-         updated_at = NOW()
-       WHERE app_collections.revision = $3::bigint
-       RETURNING name, items, revision, updated_at AS "updatedAt"`,
-      [request.params.name, JSON.stringify(request.body.items), revision]
-    );
+    // A revision of 0 creates a collection only if it does not exist.
+    // Existing collections MUST use UPDATE: the previous INSERT ... SELECT
+    // WHERE revision = 0 skipped the entire statement for revisions > 0,
+    // so ON CONFLICT never ran and every subsequent save returned 409.
+    const params = [request.params.name, JSON.stringify(request.body.items), revision];
+    const result = revision === 0
+      ? await pool.query(
+          `INSERT INTO app_collections (name, items, revision)
+           VALUES ($1, $2::jsonb, 1)
+           ON CONFLICT (name) DO NOTHING
+           RETURNING name, items, revision, updated_at AS "updatedAt"`,
+          params.slice(0, 2)
+        )
+      : await pool.query(
+          `UPDATE app_collections
+           SET items = $2::jsonb,
+               revision = revision + 1,
+               updated_at = NOW()
+           WHERE name = $1 AND revision = $3::bigint
+           RETURNING name, items, revision, updated_at AS "updatedAt"`,
+          params
+        );
     if (!result.rowCount) return response.status(409).json({ error: "Collection changed on the server. Reload before saving." });
     response.json(result.rows[0]);
   } catch (error) {
