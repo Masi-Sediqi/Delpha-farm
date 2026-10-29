@@ -88,13 +88,13 @@ function writeLocalStorageCollection(name, items) {
   );
 }
 
-export async function readBrowserCollection(name) {
+export async function readBrowserCollection(name, { updateRevision = true } = {}) {
   const localRecord = browserStorageOnly && hasIndexedDb()
     ? await runStore("readonly", (store) => store.get(name))
     : null;
   const localData = browserStorageOnly && hasIndexedDb()
     ? (Array.isArray(localRecord?.items) ? localRecord.items : [])
-    : readLocalStorageCollection(name);
+    : browserStorageOnly ? readLocalStorageCollection(name) : [];
 
   if (browserStorageOnly) {
     // Recover earlier localStorage-only installations without replacing existing IndexedDB data.
@@ -108,53 +108,86 @@ export async function readBrowserCollection(name) {
     return localData;
   }
 
-  const knownRevision = collectionRevisions.get(name);
   const response = await fetch(`${apiRoot}/collections/${encodeURIComponent(name)}`, {
     headers: {},
   });
   if (response.status === 304) return localData;
   if (response.status === 404) {
     // Never silently migrate local data into an empty server database.
-    collectionRevisions.set(name, "0");
+    if (updateRevision) collectionRevisions.set(name, "0");
     return [];
   }
   if (!response.ok) throw new Error(`Backend returned ${response.status}.`);
   const record = await response.json();
-  if (record.revision != null) collectionRevisions.set(name, String(record.revision));
+  if (updateRevision && record.revision != null) collectionRevisions.set(name, String(record.revision));
   const data = Array.isArray(record.items) ? record.items : [];
   if (browserStorageOnly) await writeLocalCache(name, data);
   return data;
 }
 
-export async function writeBrowserCollection(name, items) {
-  if (!Array.isArray(items)) {
-    throw new Error("Collection payload must be an array.");
+// Record-level three-way merge. Never overwrite a server-side change to the same ID.
+function mergeIndependentChanges(previous, proposed, latest) {
+  const valid = (rows) => rows.every((row) => row && typeof row === "object" && row.id != null);
+  if (![previous, proposed, latest].every(Array.isArray) ||
+      ![previous, proposed, latest].every(valid)) return null;
+  const index = (rows) => new Map(rows.map((row) => [String(row.id), row]));
+  const before = index(previous), after = index(proposed), server = index(latest);
+  if (before.size !== previous.length || after.size !== proposed.length || server.size !== latest.length) return null;
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const keys = new Set([...before.keys(), ...after.keys()]);
+  const changed = [...keys].filter((id) => !same(before.get(id), after.get(id)));
+  for (const id of changed) {
+    if (!same(before.get(id), server.get(id))) return null;
   }
+  const result = new Map(server);
+  for (const id of changed) {
+    if (after.has(id)) result.set(id, after.get(id));
+    else result.delete(id);
+  }
+  // Preserve the user's desired ordering for their modified records.
+  return [...result.values()];
+}
 
+export async function writeBrowserCollection(name, items, previousItems = null) {
+  if (!Array.isArray(items)) throw new Error("Collection payload must be an array.");
   if (browserStorageOnly) {
     await writeLocalCache(name, items);
     return items;
   }
-
   const revision = collectionRevisions.get(name);
-  if (revision == null) {
-    throw new Error(`Collection ${name} has not been loaded from the server. Save cancelled.`);
-  }
-  const response = await fetch(`${apiRoot}/collections/${encodeURIComponent(name)}`, {
+  if (revision == null) throw new Error(`Collection ${name} was not loaded from the server.`);
+
+  const put = (payload, version) => fetch(`${apiRoot}/collections/${encodeURIComponent(name)}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json", "If-Match": `"${revision}"` },
-    body: JSON.stringify({ items }),
+    headers: { "Content-Type": "application/json", "If-Match": `"${version}"` },
+    body: JSON.stringify({ items: payload }),
   });
+  let response = await put(items, revision);
   if (response.status === 409) {
-    collectionRevisions.delete(name);
-    throw new Error(`Conflict: ${name} was changed on another device. Refresh before saving.`);
+    // Refresh the conflict snapshot without publishing or changing revisions while in flight.
+    const get = await fetch(`${apiRoot}/collections/${encodeURIComponent(name)}`, { cache: "no-store" });
+    let latest, nextRevision;
+    if (get.status === 404) { latest = []; nextRevision = "0"; }
+    else if (get.ok) {
+      const data = await get.json();
+      latest = data.items;
+      nextRevision = String(data.revision);
+    } else throw new Error(`Cannot load current ${name}: HTTP ${get.status}`);
+    // On conflict, only merge non-overlapping record changes. Never force-overwrite.
+    const merged = mergeIndependentChanges(previousItems, items, latest);
+    if (!merged) {
+      throw new Error(`Conflict in ${name}: the same record changed on the server. Reload to review changes.`);
+    }
+    response = await put(merged, nextRevision);
+    if (response.status === 409) throw new Error(`Concurrent update to ${name}; please retry after reloading.`);
   }
-  if (!response.ok) throw new Error(`Backend returned ${response.status}.`);
+  if (!response.ok) {
+    const details = await response.json().catch(() => ({}));
+    throw new Error(details.error || `Backend returned HTTP ${response.status} for ${name}.`);
+  }
   const record = await response.json();
   if (record.revision != null) collectionRevisions.set(name, String(record.revision));
-  const savedItems = Array.isArray(record.items) ? record.items : items;
-  if (browserStorageOnly) await writeLocalCache(name, savedItems);
-  return savedItems;
+  return Array.isArray(record.items) ? record.items : items;
 }
 
 async function writeLocalCache(name, items) {

@@ -131,7 +131,9 @@ export function useJsonCollection(name) {
     publish(name, nextItems);
     const save = async () => {
       try {
-        const savedItems = await writeBrowserCollection(name, nextItems);
+        // Finish any earlier read before choosing an optimistic concurrency revision.
+        if (currentStore.loading) await currentStore.loading;
+        const savedItems = await writeBrowserCollection(name, nextItems, previousItems);
         // A newer optimistic change must not be overwritten by an older save.
         if (currentStore.items === nextItems) publish(name, savedItems);
         window.dispatchEvent(new CustomEvent(collectionUpdateEvent, { detail: { name, items: savedItems, internal: true } }));
@@ -139,7 +141,7 @@ export function useJsonCollection(name) {
       } catch (error) {
         console.error(`Unable to save ${name}:`, error);
         if (currentStore.items === nextItems) publish(name, previousItems);
-        notify(`Unable to save ${name}. Please check the server connection or reload after a revision conflict.`, "error");
+        notify(error.message || `Unable to save ${name}.`, "error");
         return false;
       } finally {
         currentStore.pendingWrites -= 1;
