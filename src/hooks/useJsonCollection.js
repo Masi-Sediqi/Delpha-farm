@@ -139,7 +139,7 @@ export function useJsonCollection(name) {
       } catch (error) {
         console.error(`Unable to save ${name}:`, error);
         if (currentStore.items === nextItems) publish(name, previousItems);
-        notify(`Unable to save ${name}. Please check browser storage permissions and available disk space.`, "error");
+        notify(`Unable to save ${name}. Please check the server connection or reload after a revision conflict.`, "error");
         return false;
       } finally {
         currentStore.pendingWrites -= 1;

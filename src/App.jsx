@@ -266,7 +266,19 @@ function ProtectedModule({ currentUser, moduleKey, action = "view", children }) 
 
 function App() {
   const [settings, , loadSettings] = useJsonCollection("settings");
+  const [serverUser, setServerUser] = useState(null);
+  const [authChecked, setAuthChecked] = useState(IS_DEMO);
   const [accounts, setAccounts, , accountsLoaded] = useJsonCollection("accounts");
+  useEffect(() => {
+    if (IS_DEMO) return;
+    let active = true;
+    fetch("/api/auth/me", { credentials: "same-origin" })
+      .then(async (r) => r.ok ? (await r.json()).user : null)
+      .then((user) => { if (active) setServerUser(user); })
+      .catch(() => { if (active) setServerUser(null); })
+      .finally(() => { if (active) setAuthChecked(true); });
+    return () => { active = false; };
+  }, []);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const location = useLocation();
@@ -386,9 +398,9 @@ function App() {
   // in-memory bootstrap administrator. If the first account is created during
   // that session, keep the operator inside until they explicitly log out.
   // On the next app start, existing accounts require normal login.
-  const currentUser = bootstrapSession
-    ? defaultAdminAccount
-    : effectiveAccounts.find((account) => String(account.id) === String(sessionId));
+  const currentUser = IS_DEMO
+    ? (bootstrapSession ? defaultAdminAccount : effectiveAccounts.find((account) => String(account.id) === String(sessionId)))
+    : (serverUser ? { ...serverUser, permissions: createFullPermissions() } : null);
 
   useEffect(() => {
     window.addEventListener("company-settings-updated", loadSettings);
@@ -508,7 +520,7 @@ function App() {
   }, [company.autoBackupCustomDays, company.autoBackupMode, currentUser]);
 
   useEffect(() => {
-    if (!accountsLoaded) return;
+    if (!IS_DEMO || !accountsLoaded) return;
 
     // Migrate older installations by removing the old persisted default admin.
     // The bootstrap administrator now exists only in memory when there are no
@@ -522,7 +534,7 @@ function App() {
   }, [accountsLoaded, accounts, setAccounts]);
 
   useEffect(() => {
-    if (!accountsLoaded) return;
+    if (!IS_DEMO || !accountsLoaded) return;
 
     // Never restore the bootstrap identity from persistent storage. It is only
     // valid for the current first-run session before an explicit logout.
@@ -533,6 +545,12 @@ function App() {
   }, [accountsLoaded, hasUserAccounts, sessionId]);
 
   const login = async (account) => {
+    if (!IS_DEMO) {
+      setServerUser(account);
+      await Promise.allSettled([loadSettings()]);
+      return;
+    }
+
     if (window.ispDesktop?.startLicenseSession) {
       const nextStatus = await window.ispDesktop.startLicenseSession(account.id);
       setLicenseStatus(nextStatus);
@@ -554,6 +572,11 @@ function App() {
   };
 
   const logout = () => {
+    if (!IS_DEMO) {
+      fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }).catch(console.error);
+      setServerUser(null);
+      return;
+    }
     localStorage.removeItem(sessionStorageKey);
     setBootstrapSession(false);
     setSessionId(null);
@@ -629,7 +652,7 @@ function App() {
         <License onLicenseChanged={setLicenseStatus} />
       </Suspense>
     );
-  } else if (!accountsLoaded) {
+  } else if (!authChecked || (IS_DEMO && !accountsLoaded)) {
     appContent = <PageLoader />;
   } else if (!currentUser) {
     appContent = (

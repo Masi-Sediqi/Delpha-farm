@@ -89,10 +89,10 @@ function writeLocalStorageCollection(name, items) {
 }
 
 export async function readBrowserCollection(name) {
-  const localRecord = hasIndexedDb()
+  const localRecord = browserStorageOnly && hasIndexedDb()
     ? await runStore("readonly", (store) => store.get(name))
     : null;
-  const localData = hasIndexedDb()
+  const localData = browserStorageOnly && hasIndexedDb()
     ? (Array.isArray(localRecord?.items) ? localRecord.items : [])
     : readLocalStorageCollection(name);
 
@@ -110,18 +110,19 @@ export async function readBrowserCollection(name) {
 
   const knownRevision = collectionRevisions.get(name);
   const response = await fetch(`${apiRoot}/collections/${encodeURIComponent(name)}`, {
-    headers: knownRevision ? { "If-None-Match": `"${knownRevision}"` } : {},
+    headers: {},
   });
   if (response.status === 304) return localData;
   if (response.status === 404) {
-    if (!localData.length) return [];
-    return writeBrowserCollection(name, localData);
+    // Never silently migrate local data into an empty server database.
+    collectionRevisions.set(name, "0");
+    return [];
   }
   if (!response.ok) throw new Error(`Backend returned ${response.status}.`);
   const record = await response.json();
   if (record.revision != null) collectionRevisions.set(name, String(record.revision));
   const data = Array.isArray(record.items) ? record.items : [];
-  await writeLocalCache(name, data);
+  if (browserStorageOnly) await writeLocalCache(name, data);
   return data;
 }
 
@@ -135,16 +136,24 @@ export async function writeBrowserCollection(name, items) {
     return items;
   }
 
+  const revision = collectionRevisions.get(name);
+  if (revision == null) {
+    throw new Error(`Collection ${name} has not been loaded from the server. Save cancelled.`);
+  }
   const response = await fetch(`${apiRoot}/collections/${encodeURIComponent(name)}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "If-Match": `"${revision}"` },
     body: JSON.stringify({ items }),
   });
+  if (response.status === 409) {
+    collectionRevisions.delete(name);
+    throw new Error(`Conflict: ${name} was changed on another device. Refresh before saving.`);
+  }
   if (!response.ok) throw new Error(`Backend returned ${response.status}.`);
   const record = await response.json();
   if (record.revision != null) collectionRevisions.set(name, String(record.revision));
   const savedItems = Array.isArray(record.items) ? record.items : items;
-  await writeLocalCache(name, savedItems);
+  if (browserStorageOnly) await writeLocalCache(name, savedItems);
   return savedItems;
 }
 

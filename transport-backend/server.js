@@ -1,4 +1,6 @@
 import "dotenv/config";
+import { randomBytes, createHash, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
+import { promisify } from "node:util";
 import express from "express";
 import cors from "cors";
 import pg from "pg";
@@ -9,9 +11,10 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const { Client, Pool } = pg;
+const scrypt = promisify(scryptCallback);
 const app = express();
 const port = Number(process.env.ISP_API_PORT || 5000);
-const host = process.env.ISP_API_HOST || "0.0.0.0";
+const host = process.env.ISP_API_HOST || "127.0.0.1";
 const serverDirectory = path.dirname(fileURLToPath(import.meta.url));
 const localStorageMode = String(process.env.ISP_STORAGE || "postgresql").toLowerCase() === "file";
 const localDataDirectory = path.join(serverDirectory, "data");
@@ -29,7 +32,8 @@ const pool = new Pool({
   max: 10,
 });
 
-app.use(cors({ origin: true }));
+// Same-origin requests only: do not reflect arbitrary CORS origins.
+app.disable("x-powered-by");
 app.use("/api/import/access", express.raw({ type: "application/octet-stream", limit: "100mb" }));
 app.use(express.json({ limit: "50mb" }));
 
@@ -247,6 +251,17 @@ async function initializeDatabase() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  await pool.query(`CREATE TABLE IF NOT EXISTS delpha_users (
+    id BIGSERIAL PRIMARY KEY, email TEXT NOT NULL UNIQUE, full_name TEXT NOT NULL,
+    password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'Admin',
+    status TEXT NOT NULL DEFAULT 'Active', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS delpha_sessions (
+    id BIGSERIAL PRIMARY KEY, user_id BIGINT NOT NULL REFERENCES delpha_users(id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL UNIQUE, expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS delpha_sessions_expiry_idx ON delpha_sessions(expires_at)`);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS app_import_backups (
       id BIGSERIAL PRIMARY KEY,
@@ -268,6 +283,102 @@ app.get("/api/health", async (_request, response) => {
     response.status(503).json({ ok: false, error: "Database connection failed." });
   }
 });
+
+
+// Delpha server-side authentication. Session tokens never enter JavaScript.
+const sessionCookie = "delpha_session";
+const sha256 = (value) => createHash("sha256").update(value).digest("hex");
+const passwordHash = async (password, salt = randomBytes(16).toString("hex")) => {
+  const hash = await scrypt(password, salt, 64);
+  return `${salt}:${hash.toString("hex")}`;
+};
+const verifyPassword = async (password, stored) => {
+  if (typeof stored !== "string" || !stored.includes(":")) return false;
+  const [salt, expectedHex] = stored.split(":");
+  if (!/^[a-f0-9]{32}$/.test(salt) || !/^[a-f0-9]{128}$/.test(expectedHex)) return false;
+  const expected = Buffer.from(expectedHex, "hex");
+  const actual = await scrypt(password, salt, expected.length);
+  return timingSafeEqual(expected, actual);
+};
+const cookieValue = (request) => {
+  const cookies = String(request.headers.cookie || "").split(";");
+  const entry = cookies.find((part) => part.trim().startsWith(`${sessionCookie}=`));
+  return entry ? entry.trim().slice(sessionCookie.length + 1) : "";
+};
+const clearSessionCookie = (response) => response.setHeader("Set-Cookie", `${sessionCookie}=; HttpOnly; Secure; SameSite=Lax; Path=/api; Max-Age=0`);
+const safeUser = (row) => ({ id: String(row.id), email: row.email, fullName: row.full_name, role: row.role, status: row.status });
+const isSafeOrigin = (request) => {
+  const origin = request.headers.origin;
+  if (!origin) return true; // Non-browser clients must still authenticate.
+  try {
+    const parsed = new URL(origin);
+    const host = request.get("host");
+    return parsed.protocol === "https:" && parsed.host === host;
+  } catch { return false; }
+};
+app.use("/api", (request, response, next) => {
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(request.method) && !isSafeOrigin(request)) {
+    return response.status(403).json({ error: "Invalid request origin." });
+  }
+  next();
+});
+const loginAttempts = new Map();
+app.use("/api/auth/login", (request, response, next) => {
+  const key = request.ip;
+  const now = Date.now();
+  const entry = loginAttempts.get(key);
+  if (entry && now - entry.since < 15 * 60_000 && entry.count >= 10) {
+    return response.status(429).json({ error: "Too many login attempts. Try later." });
+  }
+  if (!entry || now - entry.since >= 15 * 60_000) loginAttempts.set(key, { since: now, count: 1 });
+  else entry.count += 1;
+  next();
+});
+app.post("/api/auth/login", async (request, response, next) => {
+  try {
+    const email = String(request.body?.email || "").trim().toLowerCase();
+    const password = String(request.body?.password || "");
+    if (!email || !password || password.length > 1024) return response.status(400).json({ error: "Invalid credentials." });
+    const found = await pool.query("SELECT * FROM delpha_users WHERE email=$1 AND status='Active'", [email]);
+    const account = found.rows[0];
+    if (!account || !(await verifyPassword(password, account.password_hash))) {
+      return response.status(401).json({ error: "Invalid credentials." });
+    }
+    const token = randomBytes(32).toString("hex");
+    await pool.query("INSERT INTO delpha_sessions(user_id, token_hash, expires_at) VALUES($1,$2,NOW()+INTERVAL '7 days')", [account.id, sha256(token)]);
+    response.setHeader("Set-Cookie", `${sessionCookie}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/api; Max-Age=604800`);
+    loginAttempts.delete(request.ip);
+    response.json({ user: safeUser(account) });
+  } catch (error) { next(error); }
+});
+async function requireSession(request, response, next) {
+  try {
+    const token = cookieValue(request);
+    if (!/^[a-f0-9]{64}$/.test(token)) return response.status(401).json({ error: "Authentication required." });
+    const found = await pool.query(`SELECT u.id, u.email, u.full_name, u.role, u.status
+      FROM delpha_sessions s JOIN delpha_users u ON u.id=s.user_id
+      WHERE s.token_hash=$1 AND s.expires_at>NOW() AND u.status='Active'`, [sha256(token)]);
+    if (!found.rows.length) return response.status(401).json({ error: "Session expired." });
+    request.authUser = safeUser(found.rows[0]);
+    next();
+  } catch (error) { next(error); }
+}
+app.get("/api/auth/me", requireSession, (request, response) => response.json({ user: request.authUser }));
+app.post("/api/auth/logout", requireSession, async (request, response, next) => {
+  try {
+    await pool.query("DELETE FROM delpha_sessions WHERE token_hash=$1", [sha256(cookieValue(request))]);
+    clearSessionCookie(response);
+    response.json({ ok: true });
+  } catch(error) { next(error); }
+});
+// No collections or imports are accessible without an authenticated server session.
+app.use("/api/collections", requireSession, (request, response, next) => {
+  if (request.authUser.role !== "Admin") return response.status(403).json({ error: "Admin access required." });
+  // Legacy account objects may contain cleartext passwords. Never expose or accept them.
+  if (request.path === "/accounts") return response.status(403).json({ error: "Legacy accounts disabled. Use server authentication." });
+  next();
+});
+app.use("/api/import", requireSession, (_request, response) => response.status(403).json({ error: "Legacy import disabled." }));
 
 app.get("/api/collections", async (_request, response, next) => {
   if (localStorageMode) {
@@ -325,16 +436,23 @@ app.put("/api/collections/:name", async (request, response, next) => {
       await saveLocalState();
       return response.json({ name, ...record, revision: String(record.revision) });
     }
+    // Optimistic concurrency: write only when the client's last-read revision matches.
+    const match = String(request.get("If-Match") || "").match(/^"(\d+)"$/);
+    if (!match) return response.status(428).json({ error: "If-Match revision is required." });
+    const revision = Number(match[1]);
+    if (!Number.isSafeInteger(revision) || revision < 0) return response.status(400).json({ error: "Invalid revision." });
     const result = await pool.query(
-      `INSERT INTO app_collections (name, items)
-       VALUES ($1, $2::jsonb)
+      `INSERT INTO app_collections (name, items, revision)
+       SELECT $1, $2::jsonb, 1 WHERE $3::bigint = 0
        ON CONFLICT (name) DO UPDATE SET
          items = EXCLUDED.items,
          revision = app_collections.revision + 1,
          updated_at = NOW()
+       WHERE app_collections.revision = $3::bigint
        RETURNING name, items, revision, updated_at AS "updatedAt"`,
-      [request.params.name, JSON.stringify(request.body.items)]
+      [request.params.name, JSON.stringify(request.body.items), revision]
     );
+    if (!result.rowCount) return response.status(409).json({ error: "Collection changed on the server. Reload before saving." });
     response.json(result.rows[0]);
   } catch (error) {
     next(error);

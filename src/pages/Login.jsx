@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Eye, EyeOff, LockKeyhole, LogIn, Mail } from "lucide-react";
 import { notify } from "../utils/notify";
 import "./Auth.css";
@@ -33,28 +33,33 @@ function Login({ accounts = [], onLogin, company }) {
   const direction = rtlLanguages.has(language) ? "rtl" : "ltr";
   const systemName = company.companyName || "APG";
   const systemSubtitle = company.systemSubtitle || "Pharmacy & Medicine Management System";
-  const activeAccounts = useMemo(() => accounts.filter((account) => String(account.status || "Active").toLowerCase() !== "inactive"), [accounts]);
+
 
   const submit = async (event) => {
     event.preventDefault();
     const normalizedEmail = email.trim().toLowerCase();
-    if (!normalizedEmail || !password || !confirmPassword) {
+    if (!normalizedEmail || !password) {
       notify(t.required, "error");
       return;
     }
-    if (password !== confirmPassword) {
+    if (confirmPassword && password !== confirmPassword) {
       notify(t.mismatch, "error");
       return;
     }
-    const account = activeAccounts.find((item) =>
-      String(item.email || item.username || "").trim().toLowerCase() === normalizedEmail
-    );
-    const passwordMatches = account && (account.password === password || account.secondaryPassword === password);
-    if (!passwordMatches) {
-      notify(t.invalid, "error");
-      return;
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST", credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: normalizedEmail, password }),
+      });
+      if (!response.ok) { notify(t.invalid, "error"); return; }
+      const data = await response.json();
+      if (!data.user) throw new Error("Invalid server response");
+      await onLogin(data.user);
+    } catch (error) {
+      console.error("Login failed:", error);
+      notify("Cannot connect to the authentication server.", "error");
     }
-    await onLogin(account);
   };
 
   return (

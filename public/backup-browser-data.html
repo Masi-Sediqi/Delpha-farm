@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>نسخه پشتیبان اطلاعات مرورگر</title>
+<style>body{font-family:Tahoma,Arial,sans-serif;background:#f5f7fb;color:#182334;max-width:650px;margin:70px auto;padding:20px;line-height:2}.panel{background:#fff;border:1px solid #ddd;border-radius:14px;padding:25px}button{background:#2563eb;color:#fff;border:0;border-radius:8px;padding:12px 25px;cursor:pointer;font:inherit}small{color:#555}#status{margin-top:12px}</style></head>
+<body><div class="panel"><h2>پشتیبان‌گیری از اطلاعات مرورگر</h2><p>این ابزار اطلاعات موجود در IndexedDB و LocalStorage همین آدرس و همین مرورگر را بدون تغییر، در فایل JSON ذخیره می‌کند.</p><p><strong>توجه:</strong> اگر اطلاعات پروژه را در localhost استفاده کرده‌اید، این صفحه را نیز از همان localhost باز کنید. فایل خروجی ممکن است حاوی اطلاعات محرمانه باشد.</p><button id="export">دریافت فایل پشتیبان</button><p id="status" role="status"></p><small>پس از دریافت نسخه پشتیبان، این دو فایل را از پوشه public حذف کنید.</small></div>
+<script>
+document.getElementById('export').addEventListener('click',()=>{
+ const b=document.getElementById('export'); b.disabled=true;
+ document.getElementById('status').textContent='در حال استخراج اطلاعات...';
+ const s=document.createElement('script');s.src='/backup-browser-data.js?ts='+Date.now();
+ s.onerror=()=>{document.getElementById('status').textContent='فایل اسکریپت پیدا نشد.';b.disabled=false;};
+ s.onload=()=>{document.getElementById('status').textContent='لطفاً پوشه Downloads و پیام‌های Console را بررسی کنید.';b.disabled=false;};
+ document.body.appendChild(s);
+});
+</script></body></html>
