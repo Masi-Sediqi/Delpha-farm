@@ -3,7 +3,7 @@ import { notify } from "../utils/notify";
 import { readBrowserCollection, writeBrowserCollection } from "../utils/browserStorage";
 
 const collectionUpdateEvent = "app-json-collection-updated";
-const pollIntervalMs = 15000;
+const pollIntervalMs = 60000;
 const browserOnly = import.meta.env.VITE_USE_BROWSER_STORAGE !== "false";
 const stores = new Map();
 const initialLoadListeners = new Set();

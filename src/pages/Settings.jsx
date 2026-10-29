@@ -485,7 +485,12 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
           body: file,
         });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.error || `Backend returned ${response.status}.`);
+        if (!response.ok) {
+          if (response.status === 403 && (extension === "accdb" || extension === "accde")) {
+            throw new Error("Access import is disabled on the server. ACCDE/ACCDB conversion requires a compatible Windows conversion service; uploading cannot import it on this Ubuntu VPS.");
+          }
+          throw new Error(result.error || `Backend returned ${response.status}.`);
+        }
         if (import.meta.env.VITE_USE_BROWSER_STORAGE !== "false") {
           if (!result.collections || !Object.values(result.collections).some((items) => Array.isArray(items) && items.length)) {
             throw new Error(st.invalidBackup);

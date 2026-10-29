@@ -18,16 +18,16 @@ const uniqueByName = (rows) => {
 };
 
 export default function ProductMasterDataBootstrap() {
-  const [products, setProducts] = useJsonCollection("products");
-  const [groups, setGroups] = useJsonCollection("productGroups");
-  const [countries, setCountries] = useJsonCollection("countries");
-  const [legacyGroups] = useJsonCollection("salesProductGroups");
-  const [legacyCountries] = useJsonCollection("productCountries");
-  const running = useRef(false);
+  const [products, setProducts, , productsLoaded] = useJsonCollection("products");
+  const [groups, setGroups, , groupsLoaded] = useJsonCollection("productGroups");
+  const [countries, setCountries, , countriesLoaded] = useJsonCollection("countries");
+  const [legacyGroups, , , legacyGroupsLoaded] = useJsonCollection("salesProductGroups");
+  const [legacyCountries, , , legacyCountriesLoaded] = useJsonCollection("productCountries");
+  const migrated = useRef(false);
 
   useEffect(() => {
-    if (running.current) return;
-    running.current = true;
+    if (migrated.current || ![productsLoaded, groupsLoaded, countriesLoaded, legacyGroupsLoaded, legacyCountriesLoaded].every(Boolean)) return;
+    migrated.current = true;
 
     const migrate = async () => {
       const groupRows = uniqueByName([
@@ -71,8 +71,10 @@ export default function ProductMasterDataBootstrap() {
       if (changed) await setProducts(migratedProducts);
     };
 
-    migrate().finally(() => { running.current = false; });
-  }, [products, groups, countries, legacyGroups, legacyCountries, setProducts, setGroups, setCountries]);
+    migrate().catch((error) => {
+      console.error("Master data initialization failed; reload to retry:", error);
+    });
+  }, [products, groups, countries, legacyGroups, legacyCountries, setProducts, setGroups, setCountries, productsLoaded, groupsLoaded, countriesLoaded, legacyGroupsLoaded, legacyCountriesLoaded]);
 
   return null;
 }

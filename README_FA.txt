@@ -1,13 +1,11 @@
-مرحله ۱: فقط دو فایل داخل پوشه public را به پوشه public پروژه خود کپی کنید:
-public/backup-browser-data.html
-public/backup-browser-data.js
+Delpha targeted patch (2026-10-29)
+Files are relative to the repository root.
+- ProductMasterDataBootstrap: waits for initial collections to load; migrates once per mount rather than repeatedly writing productGroups/countries after every refresh.
+- useJsonCollection: reduces background polling from 15s to 60s. This does not solve whole-collection PUT cost.
+- Settings: explains why ACCDE fails on Ubuntu and why import is currently 403-disabled.
 
-پروژه را در مرورگری که اطلاعات قبلی وجود دارد باز کنید، سپس به همان origin و مسیر زیر بروید:
-http://localhost:5173/backup-browser-data.html
-(شماره پورت را مطابق پروژه خود تغییر دهید.)
+This is a mitigation, NOT confirmation that all data is on VPS. Some UI preferences, report settings and AI agent conversations still use localStorage. The normal business collection path is server mode when VITE_USE_BROWSER_STORAGE=false, but verify the deployed build and actual PostgreSQL data.
 
-روی دکمه دریافت فایل پشتیبان کلیک کنید و فایل JSON را در جای امن نگه دارید.
-هیچ فایل فعلی پروژه را جایگزین یا پاک نکنید.
-برای نسخه آنلاین، پس از build/deploy این صفحه در https://yourdomain/backup-browser-data.html دیده می‌شود. فقط در مرورگری که داده دارد اجرا کنید.
-این مرحله فقط پشتیبان می‌گیرد. هنوز ذخیره‌سازی به سرور منتقل نشده است.
-پس از Backup، هر دو فایل را از public حذف کنید.
+SECURITY: Before production use, rotate the previously exposed admin password. Do not enable Access import without secure authenticated conversion and validation. Do not expose PostgreSQL directly to the internet.
+
+Deploy: commit these three files to your repo; git pull --ff-only; npm run build:production; verify /api/health, /api/collections unauthorized 401, and test create/reload from two browsers. No PM2 restart needed for these frontend changes.
