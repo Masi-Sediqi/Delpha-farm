@@ -1059,7 +1059,7 @@ function PurchaseNew() {
                             <span className="apg-picker-product"><strong>{productDisplayName(product)}</strong><small>{unitLabel(product.productUnit || "piece")} · 1 = {productPiecesPerUnit(product)} {unitLabel("piece")}</small></span>
                             <span className="apg-picker-maker">{product.manufacturerName || product.companyName || product.company || "—"}</span>
                             <span className="apg-picker-country">{countryNameById(productCountries, product.countryId, language, product.madeIn || "—")}</span>
-                            <em className="apg-picker-price">{money(product.purchasePrice)} {product.purchaseCurrency || product.unit || currency}</em>
+                            <em className="apg-picker-price">{money(product.purchasePrice)} {product.purchaseCurrency || currency}</em>
                           </button>
                         ))}
                       </div>

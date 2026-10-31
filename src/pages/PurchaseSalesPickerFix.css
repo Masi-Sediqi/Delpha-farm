@@ -1,137 +1,183 @@
-/* Delpha purchase/sales product picker: shared RTL/LTR-safe list layout. */
+/* Final shared product search table layout. Imported after PurchaseNew and SaleNew CSS. */
 .purchase-entry-page .purchase-inline-search-row .purchase-inline-search-results,
 .purchase-entry-page .sale-inline-search-row .sale-inline-search-results {
-  position:relative !important;
-  inset:auto !important;
-  display:block !important;
-  width:100% !important;
-  height:auto !important;
-  max-height:min(380px, 48vh) !important;
-  min-height:0 !important;
-  margin-top:6px !important;
-  overflow:hidden !important;
-  border:1px solid var(--border-color,#e2e8f0) !important;
+  position:relative !important; inset:auto !important; top:auto !important;
+  width:100% !important; height:auto !important; min-height:0 !important;
+  max-height:min(420px,52vh) !important; overflow:hidden !important;
+  margin-top:6px !important; border:1px solid var(--border-color,#dbe3ec) !important;
   border-radius:10px !important;
-  background:var(--card-bg,#fff) !important;
-  box-shadow:0 8px 20px rgba(15,23,42,.08) !important;
 }
 .purchase-entry-page .purchase-inline-search-row .purchase-inline-result-list,
-.purchase-entry-page .sale-inline-search-row .sale-inline-result-list {
-  display:flex !important;
-  flex-direction:column !important;
-  gap:0 !important;
-  min-height:0 !important;
-  height:auto !important;
-  max-height:min(318px, 39vh) !important;
-  overflow-y:auto !important;
-  overflow-x:hidden !important;
-  padding:4px 8px 8px !important;
-  align-content:initial !important;
+.purchase-entry-page .sale-inline-search-row .purchase-inline-result-list {
+  display:flex !important; flex-direction:column !important;
+  grid-template-columns:none !important; gap:0 !important;
+  width:100% !important; height:auto !important; min-height:0 !important;
+  max-height:min(330px,42vh) !important; overflow-y:auto !important; overflow-x:hidden !important;
+  padding:0 !important; align-content:initial !important;
 }
-.purchase-entry-page .purchase-inline-search-row .purchase-inline-result-list > .purchase-inline-result,
-.purchase-entry-page .sale-inline-search-row .sale-inline-result-list > .purchase-inline-result {
-  display:grid !important;
-  flex:0 0 auto !important;
-  grid-template-columns:minmax(0, 3fr) minmax(110px, 1.15fr) minmax(90px, 1fr) minmax(118px, 1.05fr) !important;
-  grid-template-rows:auto !important;
-  grid-auto-flow:row !important;
-  align-items:center !important;
-  gap:12px !important;
-  width:100% !important;
-  height:auto !important;
-  min-height:54px !important;
-  margin:0 !important;
-  padding:9px 12px !important;
-  border:0 !important;
-  border-bottom:1px solid var(--border-color,#e2e8f0) !important;
-  border-radius:0 !important;
-  background:transparent !important;
-  box-shadow:none !important;
-  transform:none !important;
-  text-align:start !important;
-  box-sizing:border-box !important;
-}
-.purchase-entry-page .purchase-inline-search-row .purchase-inline-result-list > .purchase-inline-result:last-child,
-.purchase-entry-page .sale-inline-search-row .sale-inline-result-list > .purchase-inline-result:last-child { border-bottom:0 !important; }
-.purchase-entry-page .purchase-inline-search-row .purchase-inline-result-list > .purchase-inline-result:hover,
-.purchase-entry-page .sale-inline-search-row .sale-inline-result-list > .purchase-inline-result:hover,
-.purchase-entry-page .purchase-inline-search-row .purchase-inline-result-list > .purchase-inline-result.active,
-.purchase-entry-page .sale-inline-search-row .sale-inline-result-list > .purchase-inline-result.active {
-  background:var(--hover-bg,#f1f5f9) !important;
-  border-radius:7px !important;
-}
-.purchase-entry-page .purchase-inline-search-row .purchase-inline-result-list > .purchase-inline-result > *,
-.purchase-entry-page .sale-inline-search-row .sale-inline-result-list > .purchase-inline-result > * {
-  grid-area:auto !important;
-  grid-column:auto !important;
-  grid-row:auto !important;
-  min-width:0 !important;
-  max-width:100% !important;
-  width:auto !important;
-  margin:0 !important;
-  padding:0 !important;
-  align-self:center !important;
-  justify-self:stretch !important;
-  text-align:start !important;
-  overflow-wrap:break-word !important;
-  word-break:normal !important;
-  white-space:normal !important;
-}
-.purchase-entry-page .purchase-inline-search-row .apg-picker-product strong,
-.purchase-entry-page .sale-inline-search-row .apg-picker-product strong {
-  display:block !important;
-  font-size:12.5px !important;
-  line-height:1.5 !important;
-  font-weight:700 !important;
-  white-space:normal !important;
-  text-overflow:clip !important;
-}
-.purchase-entry-page .purchase-inline-search-row .apg-picker-product small,
-.purchase-entry-page .sale-inline-search-row .apg-picker-product small {
-  display:block !important;
-  margin-top:3px !important;
-  font-size:10.5px !important;
-  line-height:1.3 !important;
-  color:var(--text-secondary,#64748b) !important;
-}
-.purchase-entry-page .purchase-inline-search-row .apg-picker-price,
-.purchase-entry-page .sale-inline-search-row .apg-picker-price {
-  justify-self:end !important;
-  direction:ltr !important;
-  text-align:end !important;
-  font-size:12px !important;
-  font-style:normal !important;
-  font-weight:750 !important;
+/* Header and rows use the same four RTL tracks, so every value sits beneath its heading. */
+.purchase-entry-page .apg-picker-header,
+.purchase-entry-page .purchase-inline-search-row .purchase-inline-result-list > button.purchase-inline-result,
+.purchase-entry-page .sale-inline-search-row .purchase-inline-result-list > button.purchase-inline-result {
+  --apg-cols:minmax(0,3fr) minmax(0,1.3fr) minmax(0,1.1fr) minmax(110px,1.1fr);
+  display:grid !important; grid-template-columns:var(--apg-cols) !important;
+  grid-template-rows:auto !important; grid-auto-flow:row !important;
+  column-gap:14px !important; row-gap:0 !important;
+  direction:rtl !important; align-items:center !important;
+  box-sizing:border-box !important; width:100% !important;
+  padding:10px 16px !important; text-align:right !important;
 }
 .purchase-entry-page .apg-picker-header {
-  display:grid !important;
-  grid-template-columns:minmax(0, 3fr) minmax(110px, 1.15fr) minmax(90px, 1fr) minmax(118px, 1.05fr) !important;
-  align-items:center !important;
-  gap:12px !important;
-  padding:9px 20px !important;
+  min-height:36px !important; background:var(--input-bg,#f8fafc) !important;
   border-bottom:1px solid var(--border-color,#e2e8f0) !important;
-  background:var(--input-bg,#f8fafc) !important;
-  font-size:11px !important;
-  font-weight:700 !important;
-  min-height:34px !important;
+  font-size:11px !important; font-weight:700 !important;
 }
-.purchase-entry-page .apg-picker-header > span { min-width:0 !important; text-align:start !important; }
-@media (max-width:900px) {
-  .purchase-entry-page .purchase-inline-search-row .purchase-inline-result-list > .purchase-inline-result,
-  .purchase-entry-page .sale-inline-search-row .sale-inline-result-list > .purchase-inline-result {
-    grid-template-columns:minmax(0, 1.8fr) minmax(0, 1fr) !important;
-    gap:5px 10px !important;
-  }
-  .purchase-entry-page .apg-picker-header { display:none !important; }
-  .purchase-entry-page .purchase-inline-search-row .apg-picker-price,
-  .purchase-entry-page .sale-inline-search-row .apg-picker-price { justify-self:start !important; }
+.purchase-entry-page .purchase-inline-search-row .purchase-inline-result-list > button.purchase-inline-result,
+.purchase-entry-page .sale-inline-search-row .purchase-inline-result-list > button.purchase-inline-result {
+  flex:0 0 auto !important; height:auto !important; min-height:56px !important;
+  max-height:none !important; margin:0 !important;
+  background:transparent !important; border:0 !important;
+  border-bottom:1px solid var(--border-color,#edf0f4) !important;
+  border-radius:0 !important; box-shadow:none !important;
+  transform:none !important; overflow:visible !important;
 }
-@media (max-width:520px) {
-  .purchase-entry-page .purchase-inline-search-row .purchase-inline-result-list > .purchase-inline-result,
-  .purchase-entry-page .sale-inline-search-row .sale-inline-result-list > .purchase-inline-result {
-    grid-template-columns:minmax(0,1fr) auto !important;
-    padding:10px !important;
+.purchase-entry-page .purchase-inline-search-row .purchase-inline-result-list > button.purchase-inline-result:hover,
+.purchase-entry-page .sale-inline-search-row .purchase-inline-result-list > button.purchase-inline-result:hover,
+.purchase-entry-page .purchase-inline-search-row .purchase-inline-result-list > button.purchase-inline-result.active,
+.purchase-entry-page .sale-inline-search-row .purchase-inline-result-list > button.purchase-inline-result.active {
+ background:var(--hover-bg,#f1f5f9) !important;
+}
+.purchase-entry-page .apg-picker-header > span,
+.purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-product,
+.purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-maker,
+.purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-country,
+.purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-price {
+  position:static !important; float:none !important; min-width:0 !important;
+  width:100% !important; max-width:100% !important; margin:0 !important;
+  padding:0 !important; justify-self:stretch !important; align-self:center !important;
+  direction:rtl !important; text-align:right !important; overflow-wrap:anywhere !important;
+  white-space:normal !important; grid-row:1 !important;
+}
+.purchase-entry-page .apg-picker-header > span:nth-child(1),
+.purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-product {grid-column:1 !important;}
+.purchase-entry-page .apg-picker-header > span:nth-child(2),
+.purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-maker {grid-column:2 !important;}
+.purchase-entry-page .apg-picker-header > span:nth-child(3),
+.purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-country {grid-column:3 !important;}
+.purchase-entry-page .apg-picker-header > span:nth-child(4),
+.purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-price {grid-column:4 !important;}
+.purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-price {
+  display:block !important; font-style:normal !important; font-weight:700 !important;
+  text-align:right !important; direction:ltr !important; unicode-bidi:plaintext !important;
+}
+.purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-product strong,
+.purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-product small {
+  display:block !important; overflow:visible !important; text-overflow:clip !important;
+  white-space:normal !important; line-height:1.5 !important;
+}
+.purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-product strong {font-size:12px !important;}
+.purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-product small {font-size:10px !important; color:var(--text-secondary,#64748b) !important;}
+@media(max-width:750px) {
+ .purchase-entry-page .apg-picker-header {display:none !important;}
+ .purchase-entry-page .purchase-inline-search-row .purchase-inline-result-list > button.purchase-inline-result,
+ .purchase-entry-page .sale-inline-search-row .purchase-inline-result-list > button.purchase-inline-result {
+   grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) !important;
+   grid-template-rows:auto auto !important; row-gap:6px !important;
+ }
+ .purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-product {grid-column:1 !important; grid-row:1 !important;}
+ .purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-maker {grid-column:2 !important; grid-row:1 !important;}
+ .purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-country {grid-column:1 !important; grid-row:2 !important;}
+ .purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-price {grid-column:2 !important; grid-row:2 !important;}
+}
+
+
+/* FIX: heading and row values share identical four tracks on every viewport. */
+@media (min-width: 751px) {
+  .purchase-entry-page .apg-picker-header,
+  .purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result {
+    display: grid !important;
+    direction: rtl !important;
+    grid-template-columns: minmax(0, 40%) minmax(0, 24%) minmax(0, 18%) minmax(0, 18%) !important;
+    grid-template-rows: auto !important;
+    justify-content: stretch !important;
+    align-items: center !important;
+    gap: 0 !important;
+    padding: 10px 14px !important;
+    margin: 0 !important;
+    width: 100% !important;
+    text-align: initial !important;
+    box-sizing: border-box !important;
   }
-  .purchase-entry-page .purchase-inline-search-row .apg-picker-product,
-  .purchase-entry-page .sale-inline-search-row .apg-picker-product { grid-column:1 / -1 !important; }
+  .purchase-entry-page .apg-picker-header > span,
+  .purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-product,
+  .purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-maker,
+  .purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-country,
+  .purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-price {
+    display: block !important;
+    position: static !important;
+    grid-row: 1 !important;
+    align-self: center !important;
+    justify-self: stretch !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    padding: 0 8px !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    line-height: 1.5 !important;
+    text-align: center !important;
+    direction: auto !important;
+  }
+  .purchase-entry-page .apg-picker-header > span:first-child,
+  .purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-product {
+    grid-column: 1 !important; text-align: right !important;
+  }
+  .purchase-entry-page .apg-picker-header > span:nth-child(2),
+  .purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-maker {grid-column: 2 !important;}
+  .purchase-entry-page .apg-picker-header > span:nth-child(3),
+  .purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-country {grid-column: 3 !important;}
+  .purchase-entry-page .apg-picker-header > span:nth-child(4),
+  .purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-price {
+    grid-column: 4 !important; text-align: center !important;
+  }
+  .purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-price {
+    direction: ltr !important; white-space: nowrap !important;
+  }
+}
+
+
+/* Unified tracks: header and data use the exact same layout and alignment. */
+@media (min-width: 751px) {
+  .purchase-entry-page .purchase-inline-search-row .purchase-inline-search-results .apg-picker-header,
+  .purchase-entry-page .sale-inline-search-row .sale-inline-search-results .apg-picker-header,
+  .purchase-entry-page .purchase-inline-search-row .purchase-inline-result-list > button.purchase-inline-result,
+  .purchase-entry-page .sale-inline-search-row .purchase-inline-result-list > button.purchase-inline-result {
+    display: grid !important;
+    grid-template-columns: minmax(0, 40fr) minmax(0, 24fr) minmax(0, 18fr) minmax(0, 18fr) !important;
+    gap: 0 !important;
+    padding-inline: 14px !important;
+    direction: rtl !important;
+    align-items: center !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .purchase-entry-page .apg-picker-header > span,
+  .purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-product,
+  .purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-maker,
+  .purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-country,
+  .purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-price {
+    min-width: 0 !important;
+    padding-inline: 8px !important;
+    text-align: center !important;
+    justify-self: stretch !important;
+    box-sizing: border-box !important;
+  }
+  .purchase-entry-page .apg-picker-header > span:first-child,
+  .purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-product {
+    text-align: right !important;
+  }
+  .purchase-entry-page .apg-picker-header > span:nth-child(3),
+  .purchase-entry-page .purchase-inline-result-list > button.purchase-inline-result > .apg-picker-country {
+    grid-column: 3 !important;
+    text-align: center !important;
+  }
 }
