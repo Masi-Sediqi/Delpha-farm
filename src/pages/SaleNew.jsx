@@ -28,6 +28,7 @@ import {
 } from "../utils/stock";
 import "./PurchaseNew.css";
 import "./SaleNew.css";
+import "./PurchaseSalesPickerFix.css";
 
 const languageKey = "afghan-power-language";
 const currencies = ["AFN", "USD", "EUR", "INR"];

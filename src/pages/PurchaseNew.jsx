@@ -26,6 +26,7 @@ import {
   stockMovementId,
 } from "../utils/stock";
 import "./PurchaseNew.css";
+import "./PurchaseSalesPickerFix.css";
 
 const languageKey = "afghan-power-language";
 const currencies = ["AFN", "USD", "EUR", "INR"];
