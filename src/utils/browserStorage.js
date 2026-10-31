@@ -1,133 +1,21 @@
-import { IS_PRODUCTION } from "../config/appConfig";
-
-const databaseName = IS_PRODUCTION
-  ? "afghan-power-browser-data-production"
-  : "afghan-power-browser-data";
-const databaseVersion = 1;
-const storeName = "collections";
-const localStoragePrefix = IS_PRODUCTION
-  ? "afghan-power-production-collection:"
-  : "afghan-power-collection:";
-const browserStorageOnly = import.meta.env.VITE_USE_BROWSER_STORAGE !== "false";
-const apiRoot = import.meta.env.VITE_API_ROOT || (
-  typeof window !== "undefined" && window.location.protocol.startsWith("http")
-    ? `${window.location.protocol}//${window.location.hostname}:5000/api`
-    : "http://127.0.0.1:5000/api"
-);
-
-let databasePromise;
+// Central PostgreSQL-only collection transport. No IndexedDB or LocalStorage writes.
+const apiRoot = import.meta.env.VITE_API_ROOT || "/api";
 const collectionRevisions = new Map();
 
-function hasIndexedDb() {
-  return typeof window !== "undefined" && "indexedDB" in window;
-}
-
-function openDatabase() {
-  if (!hasIndexedDb()) {
-    return Promise.resolve(null);
-  }
-
-  if (databasePromise) {
-    return databasePromise;
-  }
-
-  databasePromise = new Promise((resolve, reject) => {
-    const request = window.indexedDB.open(databaseName, databaseVersion);
-
-    request.onupgradeneeded = () => {
-      const database = request.result;
-      if (!database.objectStoreNames.contains(storeName)) {
-        database.createObjectStore(storeName, { keyPath: "name" });
-      }
-    };
-
-    request.onsuccess = () => {
-      const db = request.result;
-      db.onversionchange = () => db.close();
-      resolve(db);
-    };
-    request.onerror = () => reject(request.error);
-    request.onblocked = () => reject(new Error("IndexedDB upgrade was blocked by another tab."));
-  }).catch((error) => { databasePromise = null; throw error; });
-
-  return databasePromise;
-}
-
-function runStore(mode, action) {
-  return openDatabase().then((database) => new Promise((resolve, reject) => {
-    if (!database) { resolve(undefined); return; }
-    let result;
-    const transaction = database.transaction(storeName, mode);
-    transaction.oncomplete = () => resolve(result);
-    transaction.onabort = () => reject(transaction.error || new Error("IndexedDB transaction aborted"));
-    transaction.onerror = () => reject(transaction.error || new Error("IndexedDB transaction failed"));
-    try {
-      const request = action(transaction.objectStore(storeName));
-      request.onsuccess = () => { result = request.result; };
-    } catch (error) {
-      transaction.abort();
-      reject(error);
-    }
-  }));
-}
-
-function readLocalStorageCollection(name) {
-  try {
-    const raw = window.localStorage.getItem(`${localStoragePrefix}${name}`);
-    const data = raw ? JSON.parse(raw) : [];
-    return Array.isArray(data) ? data : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeLocalStorageCollection(name, items) {
-  window.localStorage.setItem(
-    `${localStoragePrefix}${name}`,
-    JSON.stringify(items)
-  );
-}
-
 export async function readBrowserCollection(name, { updateRevision = true } = {}) {
-  const localRecord = browserStorageOnly && hasIndexedDb()
-    ? await runStore("readonly", (store) => store.get(name))
-    : null;
-  const localData = browserStorageOnly && hasIndexedDb()
-    ? (Array.isArray(localRecord?.items) ? localRecord.items : [])
-    : browserStorageOnly ? readLocalStorageCollection(name) : [];
-
-  if (browserStorageOnly) {
-    // Recover earlier localStorage-only installations without replacing existing IndexedDB data.
-    if (hasIndexedDb() && !localRecord) {
-      const legacy = readLocalStorageCollection(name);
-      if (legacy.length) {
-        await writeLocalCache(name, legacy);
-        return legacy;
-      }
-    }
-    return localData;
-  }
-
-  // Never let HTTP's conditional cache turn a real collection into an empty array.
-  // The server revision must describe the exact items returned in this response.
   const response = await fetch(`${apiRoot}/collections/${encodeURIComponent(name)}`, {
-    cache: "no-store",
-    headers: { "Cache-Control": "no-cache" },
+    credentials: "include", cache: "no-store", headers: { "Cache-Control": "no-cache" },
   });
-  if (response.status === 304) {
-    throw new Error(`Unexpected cached response for ${name}; reload the collection.`);
-  }
+  if (response.status === 304) throw new Error(`Unexpected cached response for ${name}.`);
   if (response.status === 404) {
-    // Never silently migrate local data into an empty server database.
     if (updateRevision) collectionRevisions.set(name, "0");
     return [];
   }
-  if (!response.ok) throw new Error(`Backend returned ${response.status}.`);
+  if (!response.ok) throw new Error(`Central PostgreSQL API returned HTTP ${response.status} for ${name}.`);
   const record = await response.json();
+  if (!Array.isArray(record.items)) throw new Error(`Invalid central data for ${name}.`);
   if (updateRevision && record.revision != null) collectionRevisions.set(name, String(record.revision));
-  const data = Array.isArray(record.items) ? record.items : [];
-  if (browserStorageOnly) await writeLocalCache(name, data);
-  return data;
+  return record.items;
 }
 
 // Record-level three-way merge. Never overwrite a server-side change to the same ID.
@@ -155,15 +43,11 @@ function mergeIndependentChanges(previous, proposed, latest) {
 
 export async function writeBrowserCollection(name, items, previousItems = null) {
   if (!Array.isArray(items)) throw new Error("Collection payload must be an array.");
-  if (browserStorageOnly) {
-    await writeLocalCache(name, items);
-    return items;
-  }
   const revision = collectionRevisions.get(name);
   if (revision == null) throw new Error(`Collection ${name} was not loaded from the server.`);
 
   const put = (payload, version) => fetch(`${apiRoot}/collections/${encodeURIComponent(name)}`, {
-    method: "PUT",
+    method: "PUT", credentials: "include",
     cache: "no-store",
     headers: { "Content-Type": "application/json", "If-Match": `"${version}"` },
     body: JSON.stringify({ items: payload }),
@@ -184,7 +68,7 @@ export async function writeBrowserCollection(name, items, previousItems = null) 
       throw new Error(details.error || `Backend returned HTTP ${response.status} for ${name}.`);
     }
     const get = await fetch(`${apiRoot}/collections/${encodeURIComponent(name)}`, {
-      cache: "no-store", headers: { "Cache-Control": "no-cache" },
+      cache: "no-store", credentials: "include", headers: { "Cache-Control": "no-cache" },
     });
     let latest, nextRevision;
     if (get.status === 404) { latest = []; nextRevision = "0"; }
@@ -206,56 +90,42 @@ export async function writeBrowserCollection(name, items, previousItems = null) 
   throw new Error(`Repeated concurrent edits to ${name}. Close other tabs and retry.`);
 }
 
-async function writeLocalCache(name, items) {
-  if (!hasIndexedDb()) {
-    writeLocalStorageCollection(name, items);
-    return;
-  }
-  await runStore("readwrite", (store) => store.put({
-    name,
-    items,
-    updatedAt: new Date().toISOString(),
-  }));
-}
-
 export async function listBrowserCollectionNames() {
-  if (!browserStorageOnly) {
-    const response = await fetch(`${apiRoot}/collections`);
-    if (!response.ok) throw new Error(`Backend returned ${response.status}.`);
-    const collections = await response.json();
-    return Array.isArray(collections) ? collections.map((item) => String(item.name)) : [];
-  }
-  if (!hasIndexedDb()) {
-    return Object.keys(window.localStorage)
-      .filter((key) => key.startsWith(localStoragePrefix))
-      .map((key) => key.slice(localStoragePrefix.length));
-  }
-
-  const keys = await runStore("readonly", (store) => store.getAllKeys());
-  return Array.isArray(keys) ? keys.map(String) : [];
+  const response = await fetch(`${apiRoot}/collections`, { credentials: "include", cache: "no-store" });
+  if (!response.ok) throw new Error(`Central API returned HTTP ${response.status}.`);
+  const records = await response.json();
+  if (!Array.isArray(records)) throw new Error("Invalid central collections response.");
+  return records.map((entry) => String(entry.name));
 }
 
-// Commit the entire Access import together, preserving unrelated existing records.
-export async function mergeBrowserCollections(collections) {
-  const entries = Object.entries(collections);
-  if (!entries.length || entries.some(([, items]) => !Array.isArray(items))) throw new Error("Invalid Access collections.");
-  const merged = await Promise.all(entries.map(async ([name, items]) => {
-    const current = await readBrowserCollection(name);
-    const byId = new Map(current.map((item) => [String(item.id), item]));
-    for (const item of items) {
-      if (item.id == null) throw new Error("Access record is missing its identifier.");
-      byId.set(String(item.id), { ...byId.get(String(item.id)), ...item });
-    }
-    return [name, [...byId.values()]];
-  }));
-  const database = await openDatabase();
-  if (!database) throw new Error("IndexedDB is required to safely import Access data.");
-  await new Promise((resolve, reject) => {
-    const transaction = database.transaction(storeName, "readwrite");
-    transaction.oncomplete = resolve;
-    transaction.onerror = () => reject(transaction.error || new Error("Access import failed."));
-    transaction.onabort = () => reject(transaction.error || new Error("Access import cancelled."));
-    const store = transaction.objectStore(storeName);
-    for (const [name, items] of merged) store.put({ name, items, updatedAt: new Date().toISOString() });
+// All imports must go through the central server with transactional backup.
+export async function mergeBrowserCollections() {
+  throw new Error("Local Access import is disabled. Import through a validated PostgreSQL server endpoint.");
+}
+
+// Write all affected financial collections in a single PostgreSQL transaction.
+export async function writeAtomicFinanceBatch(changes) {
+  const entries = Object.entries(changes);
+  if (!entries.every(([name, items]) => Array.isArray(items) && collectionRevisions.has(name))) {
+    throw new Error("Please wait until all collections have loaded from PostgreSQL.");
+  }
+  const response = await fetch(`${apiRoot}/collections/atomic-batch`, {
+    method: "POST", credentials: "include", cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ changes: entries.map(([name, items]) => ({
+      name, items, revision: Number(collectionRevisions.get(name)),
+    })) }),
   });
+  if (!response.ok) {
+    const details = await response.json().catch(() => ({}));
+    throw new Error(details.error || `Atomic save failed: HTTP ${response.status}`);
+  }
+  const result = await response.json();
+  for (const [name, record] of Object.entries(result.collections || {})) {
+    collectionRevisions.set(name, String(record.revision));
+    window.dispatchEvent(new CustomEvent("app-json-collection-updated", {
+      detail: { name, items: record.items, internal: false },
+    }));
+  }
+  return result;
 }

@@ -1,0 +1,23 @@
+APG CENTRAL POSTGRESQL PATCH (no IndexedDB / localStorage collections)
+
+IMPORTANT BEFORE INSTALLING
+1. Export a JSON backup from EACH browser that contains valuable data. The browsers have DIFFERENT datasets.
+2. Preserve both JSON backup files separately. DO NOT click Clear Demo Data, clear site data, or delete IndexedDB yet.
+3. Back up PostgreSQL with pg_dump before installing.
+4. This patch does NOT migrate browser data into PostgreSQL automatically. Nothing has been deleted.
+
+INSTALL
+- Copy the changed files into the same relative paths in D:\Delpha-farm.
+- In your existing .env (NOT the .env.demo file) verify PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD.
+- Ensure ISP_STORAGE=postgresql is set in .env, or remove ISP_STORAGE=file. This patch forces PostgreSQL regardless.
+- Start: npm run dev. Vite forwards /api calls to localhost:5000.
+- Visit http://127.0.0.1:5000/api/health and confirm storage=postgresql and desired database.
+- Run: npm run build.
+- The backend requires server Admin authentication. If no server Admin exists, first initialize schema by starting backend, then run: node scripts/create-delpha-admin.mjs. Password minimum 12 characters.
+- Log in via server credentials. No browser local database fallback is available.
+
+WARNING
+- This patch enforces central storage, but it does not implement safe migration of the two different browser datasets.
+- The legacy ACCDE import endpoint is disabled by the current server auth rules; this patch does not claim ACCDE import is fixed.
+- This archive is only changed files and not a full project. 
+- Production deployment needs HTTPS, secure session cookies, and a configured reverse proxy; do not expose local dev service publicly.

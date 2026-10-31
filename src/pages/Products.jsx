@@ -462,6 +462,8 @@ const emptyForm = {
   cartonSize: "",
   productForm: "",
   manufacturerName: "",
+  secondaryManufacturerName: "",
+  saleCurrency: "afn",
   discount: "",
   supplierId: "",
   countryId: "",
@@ -607,6 +609,7 @@ function Products() {
       countryId: product.countryId || legacyCountry?.id || defaultCountryId,
       supplierId: product.supplierId || product.manufacturerId || product.companyId || "",
       manufacturerName: product.manufacturerName || product.companyName || "",
+      saleCurrency: currencyOptions.includes(product.saleCurrency) ? product.saleCurrency : (product.unit || "afn"),
       alertBeforeExpiryDays: String(product.alertBeforeExpiryDays || "180"),
     });
     setAddingGroup(false);
@@ -940,6 +943,7 @@ function Products() {
         id: `sale-product-${Date.now()}-${index}`,
         productName: item.productName.trim(),
         manufacturerName: String(item.manufacturerName || "").trim(),
+        saleCurrency: currencyOptions.includes(item.saleCurrency) ? item.saleCurrency : (item.unit || "afn"),
         supplierName: supplierNameById(item.supplierId, ""),
         unit: item.unit || "afn",
         productUnit: "piece",
@@ -1019,6 +1023,7 @@ function Products() {
       id: productId,
       productName: formData.productName.trim(),
       manufacturerName: String(formData.manufacturerName || "").trim(),
+      saleCurrency: currencyOptions.includes(formData.saleCurrency) ? formData.saleCurrency : (formData.unit || "afn"),
       groupId: selectedGroupId,
       supplierId: formData.supplierId,
       supplierName: supplierNameById(formData.supplierId, ""),
@@ -1407,6 +1412,13 @@ function Products() {
                 </label>
 
                 <label className="sales-product-field">
+                  <span>{t.currency}</span>
+                  <select name="saleCurrency" value={formData.saleCurrency || "afn"} onChange={handleChange}>
+                    {currencyOptions.map((currency) => <option key={currency} value={currency}>{t[currency]}</option>)}
+                  </select>
+                </label>
+
+                <label className="sales-product-field">
                   <span>{formatTemplate(t.salePricePerUnit, { unit: selectedUnitLabel })}</span>
                   <input type="number" min="0" step="0.01" name="salePrice" value={formData.salePrice} onChange={handleChange} placeholder={t.pricePlaceholder} />
                 </label>
@@ -1480,12 +1492,18 @@ function Products() {
                             </select><button type="button" onClick={() => addBatchMasterOption("manufacturer", index)} title={t.addManufacturerCompany} aria-label={t.addManufacturerCompany}><Plus size={14} /></button></span>
                         </label>
                         <label className="sales-product-field">
+                          <span>{t.currency}</span>
+                          <select name="unit" value={item.unit || "afn"} onChange={(event) => updateBatchForm(index, event)}>
+                            {currencyOptions.map((currency) => <option key={currency} value={currency}>{t[currency]}</option>)}
+                          </select>
+                        </label>
+                        <label className="sales-product-field">
                           <span>{t.purchasePrice}</span>
                           <input type="number" min="0" step="0.01" name="purchasePrice" value={item.purchasePrice} onChange={(event) => updateBatchForm(index, event)} placeholder={t.pricePlaceholder} />
                         </label>
                         <label className="sales-product-field">
                           <span>{t.currency}</span>
-                          <select name="unit" value={item.unit || "afn"} onChange={(event) => updateBatchForm(index, event)}>
+                          <select name="saleCurrency" value={item.saleCurrency || "afn"} onChange={(event) => updateBatchForm(index, event)}>
                             {currencyOptions.map((currency) => <option key={currency} value={currency}>{t[currency]}</option>)}
                           </select>
                         </label>

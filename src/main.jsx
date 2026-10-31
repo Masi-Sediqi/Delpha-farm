@@ -2,10 +2,13 @@ import ReactDOM from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
 
 import App from "./App";
+import { installFormDismissGuard } from "./formDismissGuard";
 import "./App.css";
 import "./dark-theme-fixes.css";
 import "./hidden-scrollbars.css";
 import "./contrast-final-fixes.css";
+
+installFormDismissGuard();
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <MemoryRouter initialEntries={[(() => {

@@ -12,11 +12,10 @@ const text = {
   ps: { eyebrow: "خوندي ننوتل", title: "خپل حساب ته ننوتل", subtitle: "هغه برېښنالیک او پټنوم ولیکئ چې مدیر درته ټاکلی دی.", email: "برېښنالیک", emailPlaceholder: "name@example.com", password: "پټنوم", passwordPlaceholder: "پټنوم ولیکئ", confirmPassword: "پټنوم بیا ولیکئ", confirmPlaceholder: "پټنوم بیا داخل کړئ", signIn: "سیسټم ته ننوتل", required: "د ننوتلو ټولې برخې بشپړې کړئ.", mismatch: "دواړه پټنومونه یو شان نه دي.", invalid: "برېښنالیک یا پټنوم ناسم دی." },
 };
 
-function Login({ accounts = [], onLogin, company }) {
+function Login({ accounts = [], onLogin, company, isDemo = false }) {
   const [language, setLanguage] = useState(() => localStorage.getItem(languageStorageKey) || "en");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
@@ -42,11 +41,13 @@ function Login({ accounts = [], onLogin, company }) {
       notify(t.required, "error");
       return;
     }
-    if (confirmPassword && password !== confirmPassword) {
-      notify(t.mismatch, "error");
-      return;
-    }
     try {
+      if (isDemo) {
+        const account = accounts.find((item) => String(item.email || item.username || "").trim().toLowerCase() === normalizedEmail && item.password === password && String(item.status || "Active").toLowerCase() === "active");
+        if (!account) { notify(t.invalid, "error"); return; }
+        await onLogin(account);
+        return;
+      }
       const response = await fetch("/api/auth/login", {
         method: "POST", credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
@@ -81,7 +82,6 @@ function Login({ accounts = [], onLogin, company }) {
           <p>{t.subtitle}</p>
           <label><span>{t.email}</span><span className="auth-input-wrap"><Mail size={17} /><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder={t.emailPlaceholder} autoComplete="username" autoFocus /></span></label>
           <label><span>{t.password}</span><span className="auth-input-wrap"><LockKeyhole size={17} /><input type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} placeholder={t.passwordPlaceholder} autoComplete="current-password" /><button type="button" className="auth-password-toggle" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></span></label>
-          <label><span>{t.confirmPassword}</span><span className="auth-input-wrap"><LockKeyhole size={17} /><input type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder={t.confirmPlaceholder} autoComplete="current-password" /></span></label>
           <button type="submit" className="auth-submit"><LogIn size={18} />{t.signIn}</button>
         </form>
       </section>

@@ -100,6 +100,17 @@ function applyCompanyThemeIdentity(companyName = "") {
 
 function Settings({ accounts = [], setAccounts, currentUser }) {
   const [settings, setSettings] = useJsonCollection("settings");
+  const [serverAccounts, setServerAccounts] = useState([]);
+  const isCentralUsers = !IS_DEMO;
+  const refreshServerUsers = async () => {
+    const response = await fetch("/api/admin/users", { credentials: "include", cache: "no-store" });
+    if (!response.ok) throw new Error(`Cannot load users: HTTP ${response.status}`);
+    setServerAccounts(await response.json());
+  };
+  useEffect(() => {
+    if (isCentralUsers && currentUser?.role === "Admin") refreshServerUsers().catch((error) => notify(error.message, "error"));
+  }, [isCentralUsers, currentUser?.id]);
+  const visibleAccounts = isCentralUsers ? serverAccounts : accounts;
   const current = settings[0] || {};
 
   const [activeTab, setActiveTab] = useState("identity");
@@ -291,7 +302,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
 
   const openAddUser = () => {
     setEditingUserId(null);
-    const firstAdministrator = accounts.length === 0 && currentUser?.isDefaultAdmin;
+    const firstAdministrator = !isCentralUsers && visibleAccounts.length === 0 && currentUser?.isDefaultAdmin;
     setUserForm({
       fullName: "",
       email: "",
@@ -334,14 +345,14 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
 
   const saveUserAccount = async (event) => {
     event.preventDefault();
-    if (!setAccounts) return;
+    if (!isCentralUsers && !setAccounts) return;
     const fullName = userForm.fullName.trim();
     const email = userForm.email.trim().toLowerCase();
     if (!fullName || !email) {
       notify(language === "fa" ? "نام و ایمیل الزامی است." : language === "ps" ? "نوم او برېښنالیک اړین دي." : "Name and email are required.", "error");
       return;
     }
-    const duplicate = accounts.some((account) => String(account.id) !== String(editingUserId) && String(account.email || account.username || "").toLowerCase() === email);
+    const duplicate = visibleAccounts.some((account) => String(account.id) !== String(editingUserId) && String(account.email || account.username || "").toLowerCase() === email);
     if (duplicate) {
       notify(language === "fa" ? "این ایمیل قبلاً استفاده شده است." : language === "ps" ? "دا برېښنالیک مخکې کارول شوی دی." : "This email is already in use.", "error");
       return;
@@ -350,16 +361,16 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
       notify(language === "fa" ? "پسورد را وارد کنید." : language === "ps" ? "پټنوم ولیکئ." : "Please enter a password.", "error");
       return;
     }
-    if (userForm.password && userForm.password.length < 4) {
-      notify(language === "fa" ? "پسورد حداقل 4 حرف باشد." : language === "ps" ? "پټنوم لږ تر لږه 4 توري وي." : "Password must be at least 4 characters.", "error");
+    if (userForm.password && userForm.password.length < 12) {
+      notify(language === "fa" ? "پسورد باید حداقل ۱۲ نویسه داشته باشد." : language === "ps" ? "پټنوم باید لږ تر لږه ۱۲ توري ولري." : "Password must be at least 12 characters.", "error");
       return;
     }
     if (userForm.password !== userForm.confirmPassword) {
       notify(language === "fa" ? "تکرار پسورد مطابقت ندارد." : language === "ps" ? "د پټنوم تکرار سمون نه خوري." : "Password confirmation does not match.", "error");
       return;
     }
-    const existing = accounts.find((account) => String(account.id) === String(editingUserId));
-    const isFirstAdministrator = !existing && accounts.length === 0 && currentUser?.isDefaultAdmin;
+    const existing = visibleAccounts.find((account) => String(account.id) === String(editingUserId));
+    const isFirstAdministrator = !isCentralUsers && !existing && visibleAccounts.length === 0 && currentUser?.isDefaultAdmin;
     const payload = {
       ...(existing || {}),
       fullName,
@@ -371,6 +382,20 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
       updatedAt: new Date().toISOString(),
       ...(userForm.password ? { password: userForm.password } : {}),
     };
+    if (isCentralUsers) {
+      try {
+        const response = await fetch(editingUserId ? `/api/admin/users/${encodeURIComponent(editingUserId)}` : "/api/admin/users", {
+          method: editingUserId ? "PATCH" : "POST", credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fullName, email, password: userForm.password || undefined, permissions: userForm.permissions }),
+        });
+        if (!response.ok) { const error = await response.json().catch(() => ({})); throw new Error(error.error || `HTTP ${response.status}`); }
+        await refreshServerUsers();
+        notify(editingUserId ? "User updated." : "User created.", "success");
+        closeUserModal();
+      } catch (error) { notify(error.message, "error"); }
+      return;
+    }
     const next = editingUserId
       ? accounts.map((account) => String(account.id) === String(editingUserId) ? payload : account)
       : [...accounts, { id: Date.now(), ...payload, createdAt: new Date().toISOString() }];
@@ -381,7 +406,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
   };
 
   const deleteUserAccount = async (account) => {
-    if (!setAccounts) return;
+    if (!isCentralUsers && !setAccounts) return;
     if (String(account.id) === String(currentUser?.id)) {
       notify(language === "fa" ? "اکانت فعلی را نمی‌توانید حذف کنید." : language === "ps" ? "اوسنی حساب نشئ حذف کولی." : "You cannot delete the current account.", "error");
       return;
@@ -392,6 +417,14 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
       confirmText: st.delete,
     });
     if (!ok) return;
+    if (isCentralUsers) {
+      try {
+        const response = await fetch(`/api/admin/users/${encodeURIComponent(account.id)}`, { method: "DELETE", credentials: "include" });
+        if (!response.ok) { const error = await response.json().catch(() => ({})); throw new Error(error.error || `HTTP ${response.status}`); }
+        await refreshServerUsers(); notify("User deleted.", "success");
+      } catch (error) { notify(error.message, "error"); }
+      return;
+    }
     const saved = await setAccounts(accounts.filter((item) => String(item.id) !== String(account.id)));
     if (!saved) return;
     notify(language === "fa" ? "کاربر حذف شد." : language === "ps" ? "کاروونکی حذف شو." : "User deleted.");
@@ -480,33 +513,33 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       const extension = file.name.split(".").pop()?.toLowerCase();
       if (extension === "accdb" || extension === "accde") {
-        const ok = await confirmAction({
-          title: st.importTitle,
-          message: st.accessImportConfirm,
-          confirmText: st.importData,
+        const accessEndpoint = apiUrl("import/access");
+        const makeAccessRequest = (preview) => fetch(`${accessEndpoint}${preview ? "?preview=true" : ""}`, {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/octet-stream", "X-File-Name": encodeURIComponent(file.name) },
+          body: file, signal: controller.signal,
         });
-        if (!ok || controller.signal.aborted) return;
-        const response = await fetch(apiUrl(import.meta.env.VITE_USE_BROWSER_STORAGE !== "false" ? "import/access?convert=true" : "import/access"), {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/octet-stream",
-            "X-File-Name": encodeURIComponent(file.name),
-          },
-          body: file,
-          signal: controller.signal,
-        });
+        let response;
+        try {
+          response = await makeAccessRequest(true);
+          const review = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(review.error || `Import preview failed: HTTP ${response.status}`);
+          const totals = Object.values(review.report || {}).reduce((a, r) => ({ added: a.added + (r.added || 0), conflicts: a.conflicts + (r.conflicts || 0) }), { added: 0, conflicts: 0 });
+          if (totals.conflicts) throw new Error(`Import blocked: ${totals.conflicts} existing records have conflicting IDs. No data changed.`);
+          const ok = await confirmAction({ title: st.importTitle,
+            message: `${totals.added} new records will be added to PostgreSQL. Existing records will be preserved. Continue?`,
+            confirmText: st.importData });
+          if (!ok || controller.signal.aborted) return;
+          response = await makeAccessRequest(false);
+        } catch (networkError) {
+          if (controller.signal.aborted || networkError?.name === "AbortError") throw networkError;
+          throw networkError;
+        }
         if (controller.signal.aborted) return;
         const result = await response.json().catch(() => ({}));
         if (controller.signal.aborted) return;
         if (!response.ok) throw new Error(result.error || `Backend returned ${response.status}.`);
-        if (import.meta.env.VITE_USE_BROWSER_STORAGE !== "false") {
-          if (!result.collections || !Object.values(result.collections).some((items) => Array.isArray(items) && items.length)) {
-            throw new Error(st.invalidBackup);
-          }
-          await downloadBackup("before-access-import");
-          await mergeBrowserCollections(result.collections);
-        }
-        const importedCount = Object.values(result.report || {}).reduce((sum, item) => sum + Number(item.imported || 0), 0);
+        const importedCount = Object.values(result.report || {}).reduce((sum, item) => sum + Number(item.added || 0), 0);
         notify(st.accessImportSuccess.replace("{count}", String(importedCount)));
         await new Promise((resolve) => window.setTimeout(resolve, 1200));
         window.location.reload();
@@ -515,28 +548,26 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
       const text = await file.text();
       if (controller.signal.aborted) return;
       const parsed = JSON.parse(text);
-      const data = parsed.collections && typeof parsed.collections === "object"
-        ? parsed.collections
-        : parsed;
-      const collections = await loadCollectionNames();
-      const importable = collections.filter((name) => Array.isArray(data[name]));
-
-      if (!importable.length) {
-        notify(st.invalidBackup, "error");
-        return;
+      if (!parsed || typeof parsed.collections !== "object" || Array.isArray(parsed.collections)) {
+        throw new Error(st.invalidBackup);
       }
-
-      const ok = await confirmAction({
-        title: st.importTitle,
-        message: st.importConfirm.replace("{count}", String(importable.length)),
-        confirmText: st.importData,
-      });
-      if (!ok) return;
-
-      if (controller.signal.aborted) return;
-      await Promise.all(
-        importable.map((name) => writeBrowserCollection(name, data[name]))
-      );
+      const endpoint = apiUrl("import/json");
+      const send = async (preview) => {
+        const response = await fetch(`${endpoint}${preview ? "?preview=true" : ""}`, {
+          method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(parsed), signal: controller.signal,
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || (data.conflict ? "Import has conflicting record IDs; no records were changed." : `Import failed: HTTP ${response.status}`));
+        return data;
+      };
+      const review = await send(true);
+      const totals = Object.values(review.report || {}).reduce((a, r) => ({ added: a.added + (r.added || 0), conflicts: a.conflicts + (r.conflicts || 0) }), { added: 0, conflicts: 0 });
+      if (totals.conflicts) throw new Error(`Import blocked: ${totals.conflicts} ID conflicts. No data changed.`);
+      const ok = await confirmAction({ title: st.importTitle,
+        message: `${totals.added} new records will be added to PostgreSQL. No existing records will be replaced. Continue?`, confirmText: st.importData });
+      if (!ok || controller.signal.aborted) return;
+      await send(false);
       notify(st.importSuccess);
     } catch (error) {
       if (controller.signal.aborted || error?.name === "AbortError") return;
@@ -1054,7 +1085,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {accounts.map((account) => (
+                  {visibleAccounts.map((account) => (
                     <tr key={account.id}>
                       <td>
                         <div className="settings-user-name">
@@ -1071,7 +1102,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
                       </td>
                     </tr>
                   ))}
-                  {accounts.length === 0 && <tr><td colSpan="3" className="settings-users-empty">{st.noUsers}</td></tr>}
+                  {visibleAccounts.length === 0 && <tr><td colSpan="3" className="settings-users-empty">{st.noUsers}</td></tr>}
                 </tbody>
               </table>
             </div>

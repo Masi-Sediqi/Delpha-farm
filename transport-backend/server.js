@@ -16,7 +16,7 @@ const app = express();
 const port = Number(process.env.ISP_API_PORT || 5000);
 const host = process.env.ISP_API_HOST || "127.0.0.1";
 const serverDirectory = path.dirname(fileURLToPath(import.meta.url));
-const localStorageMode = String(process.env.ISP_STORAGE || "postgresql").toLowerCase() === "file";
+const localStorageMode = false; // Force PostgreSQL. No file database fallback.
 const localDataDirectory = path.join(serverDirectory, "data");
 const localStorePath = path.join(localDataDirectory, "local-storage.json");
 let localState = { collections: {}, backups: [] };
@@ -32,8 +32,22 @@ const pool = new Pool({
   max: 10,
 });
 
-// Same-origin requests only: do not reflect arbitrary CORS origins.
+// Allow only loopback development frontends to access the local API.
+// Keep remote web origins blocked rather than reflecting arbitrary Origin headers.
+const localDevOrigins = new Set([
+  "http://127.0.0.1:5173", "http://localhost:5173",
+  "http://127.0.0.1:5174", "http://localhost:5174",
+]);
 app.disable("x-powered-by");
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || localDevOrigins.has(origin)) return callback(null, true);
+    return callback(null, false);
+  },
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  credentials: true,
+  allowedHeaders: ["Content-Type", "X-File-Name", "Authorization", "If-Match", "Cache-Control"],
+}));
 app.use("/api/import/access", express.raw({ type: "application/octet-stream", limit: "100mb" }));
 app.use(express.json({ limit: "50mb" }));
 
@@ -256,6 +270,7 @@ async function initializeDatabase() {
     password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'Admin',
     status TEXT NOT NULL DEFAULT 'Active', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`);
+  await pool.query(`ALTER TABLE delpha_users ADD COLUMN IF NOT EXISTS permissions JSONB NOT NULL DEFAULT '{}'::jsonb`);
   await pool.query(`CREATE TABLE IF NOT EXISTS delpha_sessions (
     id BIGSERIAL PRIMARY KEY, user_id BIGINT NOT NULL REFERENCES delpha_users(id) ON DELETE CASCADE,
     token_hash TEXT NOT NULL UNIQUE, expires_at TIMESTAMPTZ NOT NULL,
@@ -305,11 +320,13 @@ const cookieValue = (request) => {
   const entry = cookies.find((part) => part.trim().startsWith(`${sessionCookie}=`));
   return entry ? entry.trim().slice(sessionCookie.length + 1) : "";
 };
-const clearSessionCookie = (response) => response.setHeader("Set-Cookie", `${sessionCookie}=; HttpOnly; Secure; SameSite=Lax; Path=/api; Max-Age=0`);
-const safeUser = (row) => ({ id: String(row.id), email: row.email, fullName: row.full_name, role: row.role, status: row.status });
+const cookieSecure = process.env.NODE_ENV === "production";
+const clearSessionCookie = (response) => response.setHeader("Set-Cookie", `${sessionCookie}=; HttpOnly; ${cookieSecure ? "Secure; " : ""}SameSite=Lax; Path=/api; Max-Age=0`);
+const safeUser = (row) => ({ id: String(row.id), email: row.email, fullName: row.full_name, role: row.role, status: row.status, permissions: row.role === "Admin" ? null : (row.permissions || {}) });
 const isSafeOrigin = (request) => {
   const origin = request.headers.origin;
   if (!origin) return true; // Non-browser clients must still authenticate.
+  if (process.env.NODE_ENV !== "production" && localDevOrigins.has(origin) && ["127.0.0.1", "localhost"].includes(request.hostname)) return true;
   try {
     const parsed = new URL(origin);
     const host = request.get("host");
@@ -346,7 +363,7 @@ app.post("/api/auth/login", async (request, response, next) => {
     }
     const token = randomBytes(32).toString("hex");
     await pool.query("INSERT INTO delpha_sessions(user_id, token_hash, expires_at) VALUES($1,$2,NOW()+INTERVAL '7 days')", [account.id, sha256(token)]);
-    response.setHeader("Set-Cookie", `${sessionCookie}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/api; Max-Age=604800`);
+    response.setHeader("Set-Cookie", `${sessionCookie}=${token}; HttpOnly; ${cookieSecure ? "Secure; " : ""}SameSite=Lax; Path=/api; Max-Age=604800`);
     loginAttempts.delete(request.ip);
     response.json({ user: safeUser(account) });
   } catch (error) { next(error); }
@@ -355,7 +372,7 @@ async function requireSession(request, response, next) {
   try {
     const token = cookieValue(request);
     if (!/^[a-f0-9]{64}$/.test(token)) return response.status(401).json({ error: "Authentication required." });
-    const found = await pool.query(`SELECT u.id, u.email, u.full_name, u.role, u.status
+    const found = await pool.query(`SELECT u.id, u.email, u.full_name, u.role, u.status, u.permissions
       FROM delpha_sessions s JOIN delpha_users u ON u.id=s.user_id
       WHERE s.token_hash=$1 AND s.expires_at>NOW() AND u.status='Active'`, [sha256(token)]);
     if (!found.rows.length) return response.status(401).json({ error: "Session expired." });
@@ -363,6 +380,12 @@ async function requireSession(request, response, next) {
     next();
   } catch (error) { next(error); }
 }
+app.get("/api/auth/status", async (_request, response, next) => {
+  try {
+    const result = await pool.query("SELECT EXISTS(SELECT 1 FROM delpha_users WHERE role='Admin' AND status='Active') AS initialized");
+    response.json({ setupRequired: !result.rows[0].initialized });
+  } catch (error) { next(error); }
+});
 app.get("/api/auth/me", requireSession, (request, response) => response.json({ user: request.authUser }));
 app.post("/api/auth/logout", requireSession, async (request, response, next) => {
   try {
@@ -371,16 +394,152 @@ app.post("/api/auth/logout", requireSession, async (request, response, next) => 
     response.json({ ok: true });
   } catch(error) { next(error); }
 });
-// No collections or imports are accessible without an authenticated server session.
+// Authoritative PostgreSQL-backed user administration. Never store passwords in JSON collections.
+const permissionModules = new Set(["dashboard", "suppliers", "products", "purchasing", "payables", "purchaseReturns", "customers", "sales", "receivables", "saleReturns", "inventory", "expenses", "accounts", "reports", "trash", "settings"]);
+const permissionActions = new Set(["create", "edit", "delete", "print"]);
+function validatedPermissions(input) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return null;
+  if (Object.keys(input).some((key) => !permissionModules.has(key))) return null;
+  const output = {};
+  for (const moduleName of permissionModules) {
+    const row = input[moduleName] ?? {};
+    if (!row || typeof row !== "object" || Array.isArray(row) || Object.keys(row).some((key) => !permissionActions.has(key))) return null;
+    output[moduleName] = {};
+    for (const action of permissionActions) {
+      if (row[action] !== undefined && typeof row[action] !== "boolean") return null;
+      output[moduleName][action] = row[action] === true;
+    }
+  }
+  return output;
+}
+const requireAdmin = (request, response, next) => request.authUser.role === "Admin" ? next() : response.status(403).json({ error: "Admin access required." });
+app.use("/api/admin/users", requireSession, requireAdmin);
+app.get("/api/admin/users", async (_request, response, next) => {
+  try {
+    const result = await pool.query("SELECT id,email,full_name,role,status,permissions FROM delpha_users ORDER BY id");
+    response.json(result.rows.map(safeUser));
+  } catch (error) { next(error); }
+});
+app.post("/api/admin/users", async (request, response, next) => {
+  try {
+    const fullName = String(request.body?.fullName || "").trim();
+    const email = String(request.body?.email || "").trim().toLowerCase();
+    const password = String(request.body?.password || "");
+    const permissions = validatedPermissions(request.body?.permissions);
+    if (!fullName || fullName.length > 200 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 12 || password.length > 1024 || !permissions) {
+      return response.status(400).json({ error: "Invalid account data, permissions or password (minimum 12 characters)." });
+    }
+    // Ordinary accounts only; privileged accounts must be provisioned separately.
+    const result = await pool.query(`INSERT INTO delpha_users(email,full_name,password_hash,role,status,permissions)
+      VALUES($1,$2,$3,'User','Active',$4::jsonb)
+      RETURNING *`, [email,fullName,await passwordHash(password),JSON.stringify(permissions)]);
+    response.status(201).json({ user: safeUser(result.rows[0]) });
+  } catch (error) { if (error.code === "23505") return response.status(409).json({ error: "Email already exists." }); next(error); }
+});
+app.patch("/api/admin/users/:id", async (request, response, next) => {
+  try {
+    if (!/^\d+$/.test(request.params.id)) return response.status(400).json({ error: "Invalid user ID." });
+    const old = await pool.query("SELECT * FROM delpha_users WHERE id=$1", [request.params.id]);
+    if (!old.rowCount) return response.status(404).json({ error: "User not found." });
+    if (old.rows[0].role === "Admin") return response.status(403).json({ error: "Admin accounts cannot be modified here." });
+    const fullName = String(request.body?.fullName || "").trim();
+    const email = String(request.body?.email || "").trim().toLowerCase();
+    const password = String(request.body?.password || "");
+    const permissions = validatedPermissions(request.body?.permissions);
+    if (!fullName || fullName.length > 200 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || (password && (password.length < 12 || password.length > 1024)) || !permissions) return response.status(400).json({ error: "Invalid user data." });
+    const hashed = password ? await passwordHash(password) : null;
+    const result = await pool.query(`UPDATE delpha_users SET email=$2,full_name=$3,permissions=$4::jsonb,password_hash=COALESCE($5,password_hash)
+      WHERE id=$1 RETURNING *`, [request.params.id,email,fullName,JSON.stringify(permissions),hashed]);
+    await pool.query("DELETE FROM delpha_sessions WHERE user_id=$1", [request.params.id]);
+    response.json({ user: safeUser(result.rows[0]) });
+  } catch (error) { if (error.code === "23505") return response.status(409).json({ error: "Email already exists." }); next(error); }
+});
+app.delete("/api/admin/users/:id", async (request, response, next) => {
+  try {
+    if (!/^\d+$/.test(request.params.id) || String(request.authUser.id) === request.params.id) return response.status(400).json({ error: "Cannot delete this user." });
+    const result = await pool.query("DELETE FROM delpha_users WHERE id=$1 AND role <> 'Admin' RETURNING id", [request.params.id]);
+    if (!result.rowCount) return response.status(404).json({ error: "User not found or protected administrator." });
+    response.json({ ok: true });
+  } catch (error) { next(error); }
+});
+
+// Server-side collection authorization. The browser UI is not a security boundary.
+// Unknown collections and sensitive configuration are admin-only by default.
+const collectionPermissions = Object.freeze({
+  suppliers: "suppliers", supplierTypes: "suppliers", manufacturers: "products",
+  manufacturerCompanies: "products", products: "products", productCountries: "products",
+  productGroups: "products", productForms: "products", countries: "products",
+  companies: "products", salesProductGroups: "products",
+  customers: "customers", customerRegistry: "customers", customerCategories: "customers",
+  customerPackages: "customers", customerDevices: "customers",
+  purchases: "purchasing", purchaseItems: "purchasing", supplierPurchases: "purchasing",
+  salesRegister: "sales", transactions: "sales",
+  stockMovements: "inventory", inventory: "inventory",
+  supplierPayments: "payables", supplierPaymentBatches: "payables",
+  customerPayments: "receivables", customerPaymentBatches: "receivables",
+  purchaseReturns: "purchaseReturns", purchaseReturnItems: "purchaseReturns",
+  saleReturns: "saleReturns", saleReturnItems: "saleReturns",
+  expenses: "expenses", expenseReasons: "expenses", expenseAccounts: "expenses",
+  expenseCategories: "expenses", cashTransactions: "reports",
+  cashCounts: "reports", bankAccounts: "reports", bankTransactions: "reports",
+  journalEntries: "reports", partyCashTransactions: "reports",
+  trashPurchases: "trash"
+});
+// These collections affect several financial/inventory documents in separate writes.
+// They remain admin-write-only until atomic server transactions are introduced.
+const financialCollections = new Set([
+  "purchases", "purchaseItems", "supplierPurchases", "salesRegister", "transactions",
+  "stockMovements", "inventory", "supplierPayments", "supplierPaymentBatches",
+  "customerPayments", "customerPaymentBatches", "purchaseReturns", "purchaseReturnItems",
+  "saleReturns", "saleReturnItems", "expenses", "cashTransactions", "cashCounts",
+  "bankAccounts", "bankTransactions", "journalEntries", "partyCashTransactions", "trashPurchases"
+]);
+const isFullAdmin = (user) => user?.role === "Admin";
+const canReadCollection = (user, name) => {
+  if (isFullAdmin(user)) return name !== "accounts";
+  const moduleName = collectionPermissions[name];
+  const actions = moduleName && user?.permissions?.[moduleName];
+  return Boolean(actions && ["create", "edit", "delete", "print"].some((action) => actions[action] === true));
+};
+const rowsById = (items) => {
+  if (!Array.isArray(items)) return null;
+  const map = new Map();
+  for (const row of items) {
+    if (!row || typeof row !== "object" || Array.isArray(row) || row.id == null) return null;
+    const id = String(row.id);
+    if (map.has(id)) return null;
+    map.set(id, row);
+  }
+  return map;
+};
+const actionAllowedOnChanges = (user, moduleName, before, after) => {
+  const oldItems = rowsById(before), newItems = rowsById(after);
+  if (!oldItems || !newItems) return false;
+  const permissions = user.permissions?.[moduleName] || {};
+  const identical = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  for (const [id, row] of newItems) {
+    if (!oldItems.has(id) && permissions.create !== true) return false;
+    if (oldItems.has(id) && !identical(row, oldItems.get(id)) && permissions.edit !== true) return false;
+  }
+  for (const id of oldItems.keys()) if (!newItems.has(id) && permissions.delete !== true) return false;
+  return true;
+};
 app.use("/api/collections", requireSession, (request, response, next) => {
-  if (request.authUser.role !== "Admin") return response.status(403).json({ error: "Admin access required." });
-  // Legacy account objects may contain cleartext passwords. Never expose or accept them.
-  if (request.path === "/accounts") return response.status(403).json({ error: "Legacy accounts disabled. Use server authentication." });
+  if (request.path === "/accounts") return response.status(403).json({ error: "Legacy accounts disabled." });
+  if (request.path === "/atomic-batch" && request.method === "POST") return next();
+  // GET /api/collections is filtered at the route handler rather than here.
+  if (request.path === "/" || request.path === "") return next();
+  const name = decodeURIComponent(request.path.slice(1));
+  if (!canReadCollection(request.authUser, name)) return response.status(403).json({ error: "Collection access denied." });
+  if (request.method !== "GET" && !isFullAdmin(request.authUser)) {
+    if (request.method !== "PUT" || financialCollections.has(name)) return response.status(403).json({ error: "Financial writes require an authorized atomic operation." });
+    request.permissionModule = collectionPermissions[name];
+  }
   next();
 });
-app.use("/api/import", requireSession, (_request, response) => response.status(403).json({ error: "Legacy import disabled." }));
+app.use("/api/import/access", requireSession, requireAdmin);
 
-app.get("/api/collections", async (_request, response, next) => {
+app.get("/api/collections", async (request, response, next) => {
   if (localStorageMode) {
     const collections = Object.entries(localState.collections)
       .map(([name, record]) => ({ name, revision: String(record.revision || 1), updatedAt: record.updatedAt }))
@@ -389,7 +548,7 @@ app.get("/api/collections", async (_request, response, next) => {
   }
   try {
     const result = await pool.query("SELECT name, revision, updated_at AS \"updatedAt\" FROM app_collections ORDER BY name");
-    response.json(result.rows);
+    response.json(result.rows.filter((row) => canReadCollection(request.authUser, row.name)));
   } catch (error) {
     next(error);
   }
@@ -419,6 +578,64 @@ app.get("/api/collections/:name", async (request, response, next) => {
   }
 });
 
+// Atomic finance batch. The full purchase/sale and its stock effects commit together.
+// Only an authenticated Admin may use this endpoint until operation-level server
+// authorization and stock validation are implemented for ordinary users.
+app.post("/api/collections/atomic-batch", requireAdmin, async (request, response, next) => {
+  const changes = request.body?.changes;
+  const permitted = new Set(["salesRegister", "purchases", "purchaseItems", "stockMovements", "products", "saleReturns", "saleReturnItems", "purchaseReturns", "purchaseReturnItems", "trashPurchases"]);
+  if (!Array.isArray(changes) || changes.length < 2 || changes.length > 4 ||
+      changes.some((change) => !change || typeof change !== "object" ||
+        !permitted.has(change.name) || !Array.isArray(change.items) ||
+        !Number.isSafeInteger(change.revision) || change.revision < 0) ||
+      new Set(changes.map((change) => change.name)).size !== changes.length) {
+    return response.status(400).json({ error: "Invalid atomic batch." });
+  }
+  const names = changes.map(({ name }) => name);
+  const sale = names.includes("salesRegister");
+  const purchase = names.includes("purchases");
+  const sameNames = (expected) => names.length === expected.length && expected.every((name) => names.includes(name));
+  const validShape =
+    sameNames(["salesRegister", "stockMovements"]) ||
+    sameNames(["purchases", "purchaseItems", "stockMovements", "products"]) ||
+    sameNames(["purchaseReturns", "purchaseReturnItems", "stockMovements"]) ||
+    sameNames(["saleReturns", "saleReturnItems", "stockMovements"]) ||
+    sameNames(["trashPurchases", "purchases", "purchaseItems", "stockMovements"]);
+  if (!validShape) return response.status(400).json({ error: "Incomplete or unsupported atomic batch." });
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    // Serialize all batch writers. Existing single-collection writers remain
+    // guarded by the revision comparisons in the UPDATE / INSERT below.
+    const results = {};
+    for (const change of [...changes].sort((a,b) => a.name.localeCompare(b.name))) {
+      let result;
+      if (change.revision === 0) {
+        result = await client.query(`INSERT INTO app_collections(name,items,revision)
+          VALUES($1,$2::jsonb,1) ON CONFLICT(name) DO NOTHING
+          RETURNING name,items,revision,updated_at AS "updatedAt"`,
+          [change.name, JSON.stringify(change.items)]);
+      } else {
+        result = await client.query(`UPDATE app_collections SET items=$2::jsonb,
+          revision=revision+1, updated_at=NOW()
+          WHERE name=$1 AND revision=$3::bigint
+          RETURNING name,items,revision,updated_at AS "updatedAt"`,
+          [change.name, JSON.stringify(change.items), change.revision]);
+      }
+      if (!result.rowCount) {
+        await client.query("ROLLBACK");
+        return response.status(409).json({ error: `Concurrent change in ${change.name}. Reload and retry without losing your form.` });
+      }
+      results[change.name] = result.rows[0];
+    }
+    await client.query("COMMIT");
+    return response.json({ ok: true, collections: results });
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => {});
+    next(error);
+  } finally { client.release(); }
+});
+
 app.put("/api/collections/:name", async (request, response, next) => {
   try {
     if (!Array.isArray(request.body?.items)) {
@@ -441,6 +658,15 @@ app.put("/api/collections/:name", async (request, response, next) => {
     if (!match) return response.status(428).json({ error: "If-Match revision is required." });
     const revision = Number(match[1]);
     if (!Number.isSafeInteger(revision) || revision < 0) return response.status(400).json({ error: "Invalid revision." });
+    if (request.permissionModule) {
+      const previous = await pool.query("SELECT items, revision FROM app_collections WHERE name=$1", [request.params.name]);
+      const serverRevision = previous.rowCount ? Number(previous.rows[0].revision) : 0;
+      if (serverRevision !== revision) return response.status(409).json({ error: "Collection changed on the server. Reload before saving." });
+      const serverItems = previous.rowCount ? previous.rows[0].items : [];
+      if (!actionAllowedOnChanges(request.authUser, request.permissionModule, serverItems, request.body.items)) {
+        return response.status(403).json({ error: "Create, edit or delete permission denied for this operation." });
+      }
+    }
     // A revision of 0 creates a collection only if it does not exist.
     // Existing collections MUST use UPDATE: the previous INSERT ... SELECT
     // WHERE revision = 0 skipped the entire statement for revisions > 0,
@@ -470,6 +696,93 @@ app.put("/api/collections/:name", async (request, response, next) => {
   }
 });
 
+// Safe import: never overwrite an existing record with different content.
+function inspectImport(current, incoming) {
+  const report = {};
+  const conflicts = [];
+  const merged = {};
+  for (const [name, items] of Object.entries(incoming)) {
+    if (!/^[a-zA-Z][a-zA-Z0-9_-]{0,80}$/.test(name) || !Array.isArray(items)) {
+      throw Object.assign(new Error(`Invalid import collection: ${name}`), { status: 422 });
+    }
+    const existing = Array.isArray(current[name]) ? current[name] : [];
+    const indexed = new Map();
+    for (const item of existing) {
+      if (!item || typeof item !== "object" || item.id == null) {
+        throw Object.assign(new Error(`Existing ${name} contains a record without an ID.`), { status: 409 });
+      }
+      indexed.set(String(item.id), item);
+    }
+    const incomingIds = new Set();
+    let added = 0, unchanged = 0;
+    for (const item of items) {
+      if (!item || typeof item !== "object" || item.id == null || !String(item.id).trim()) {
+        throw Object.assign(new Error(`Import ${name} contains a record without an ID.`), { status: 422 });
+      }
+      const id = String(item.id);
+      if (incomingIds.has(id)) {
+        throw Object.assign(new Error(`Import ${name} contains duplicate ID ${id}.`), { status: 422 });
+      }
+      incomingIds.add(id);
+      if (indexed.has(id)) {
+        if (JSON.stringify(indexed.get(id)) !== JSON.stringify(item)) {
+          if (conflicts.length < 20) conflicts.push({ collection: name, id });
+        } else unchanged += 1;
+      } else { indexed.set(id, item); added += 1; }
+    }
+    report[name] = { source: items.length, existing: existing.length, added, unchanged, conflicts: items.length - added - unchanged, total: indexed.size };
+    merged[name] = [...indexed.values()];
+  }
+  return { report, conflicts, merged };
+}
+async function importIntoPostgres(incoming, sourceName, preview) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    // Serialize imports with other imports. Collection updates are protected by row locks.
+    await client.query("SELECT pg_advisory_xact_lock(71093451)");
+    const names = Object.keys(incoming).sort();
+    if (!names.length) throw Object.assign(new Error("No importable collections."), { status: 422 });
+    const allRows = await client.query("SELECT name, items FROM app_collections ORDER BY name FOR UPDATE");
+    const current = Object.fromEntries(allRows.rows.map((r) => [r.name, r.items]));
+    const review = inspectImport(current, incoming);
+    if (preview) {
+      await client.query("ROLLBACK");
+      return { ok: true, preview: true, report: review.report, conflicts: review.conflicts };
+    }
+    if (review.conflicts.length) {
+      await client.query("ROLLBACK");
+      return { ok: false, conflict: true, report: review.report, conflicts: review.conflicts };
+    }
+    // Transactional snapshot before any modification.
+    await client.query("INSERT INTO app_import_backups (source_name, collections) VALUES ($1, $2::jsonb)", [sourceName, JSON.stringify(current)]);
+    for (const name of names) {
+      if (!review.report[name].added) continue;
+      await client.query(`INSERT INTO app_collections(name, items, revision)
+        VALUES($1, $2::jsonb, 1)
+        ON CONFLICT(name) DO UPDATE SET items=EXCLUDED.items,
+        revision=app_collections.revision+1, updated_at=NOW()`, [name, JSON.stringify(review.merged[name])]);
+    }
+    await client.query("COMMIT");
+    return { ok: true, report: review.report, conflicts: [] };
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw error;
+  } finally { client.release(); }
+}
+app.use("/api/import/json", requireSession, requireAdmin);
+app.post("/api/import/json", async (request, response, next) => {
+  try {
+    const data = request.body?.collections;
+    if (!data || typeof data !== "object" || Array.isArray(data)) {
+      return response.status(422).json({ error: "Expected JSON backup with a collections object." });
+    }
+    const incoming = Object.fromEntries(Object.entries(data).filter(([, items]) => Array.isArray(items)));
+    const result = await importIntoPostgres(incoming, "json-backup", request.query.preview === "true");
+    response.status(result.conflict ? 409 : 200).json(result);
+  } catch (error) { next(error); }
+});
+
 app.post("/api/import/access", async (request, response, next) => {
   let originalName = text(request.headers["x-file-name"] || "legacy.accde");
   try { originalName = decodeURIComponent(originalName); } catch { /* Keep the transmitted name. */ }
@@ -484,8 +797,17 @@ app.post("/api/import/access", async (request, response, next) => {
   const temporaryPath = path.join(os.tmpdir(), `apg-access-${Date.now()}-${Math.random().toString(36).slice(2)}${extension}`);
   try {
     await fs.writeFile(temporaryPath, request.body);
-    const raw = await runAccessExport(temporaryPath);
+    let raw;
+    try {
+      raw = await runAccessExport(temporaryPath);
+    } catch (accessError) {
+      console.error("[API] Access extraction failed:", accessError);
+      return response.status(422).json({ error: `Access extraction failed: ${accessError.message}` });
+    }
     const incoming = mapAccessCollections(raw);
+    if (!Object.values(incoming).some((items) => Array.isArray(items) && items.length > 0)) {
+      return response.status(422).json({ error: "No recognizable records found in this Access file. Nothing was imported." });
+    }
     if (request.query.convert === "true") {
       return response.json({ ok: true, source: originalName, collections: incoming,
         report: Object.fromEntries(Object.entries(incoming).map(([name, items]) => [name, { imported: items.length }])) });
@@ -519,34 +841,8 @@ app.post("/api/import/access", async (request, response, next) => {
       await saveLocalState();
       return response.json({ ok: true, storage: "local-file", source: originalName, report });
     }
-    const client = await pool.connect();
-    try {
-      await client.query("BEGIN");
-      const currentResult = await client.query("SELECT name, items FROM app_collections");
-      const current = Object.fromEntries(currentResult.rows.map((row) => [row.name, row.items]));
-      await client.query(
-        "INSERT INTO app_import_backups (source_name, collections) VALUES ($1, $2::jsonb)",
-        [originalName, JSON.stringify(current)]
-      );
-      const report = {};
-      for (const [name, items] of Object.entries(incoming)) {
-        const merged = mergeById(current[name], items);
-        await client.query(
-          `INSERT INTO app_collections (name, items)
-           VALUES ($1, $2::jsonb)
-           ON CONFLICT (name) DO UPDATE SET items = EXCLUDED.items, revision = app_collections.revision + 1, updated_at = NOW()`,
-          [name, JSON.stringify(merged)]
-        );
-        report[name] = { imported: items.length, total: merged.length };
-      }
-      await client.query("COMMIT");
-      response.json({ ok: true, source: originalName, report });
-    } catch (error) {
-      await client.query("ROLLBACK");
-      throw error;
-    } finally {
-      client.release();
-    }
+    const result = await importIntoPostgres(incoming, originalName, request.query.preview === "true");
+    return response.status(result.conflict ? 409 : 200).json({ ...result, source: originalName });
   } catch (error) {
     next(error);
   } finally {
@@ -554,9 +850,12 @@ app.post("/api/import/access", async (request, response, next) => {
   }
 });
 
+// Block legacy import endpoints after the allowed ACCDB/ACCDE route.
+app.use("/api/import", requireSession, (_request, response) => response.status(403).json({ error: "Legacy import disabled." }));
+
 app.use((error, _request, response, _next) => {
   console.error("[API]", error);
-  response.status(500).json({ error: "Internal server error." });
+  response.status(error.status || 500).json({ error: error.status ? error.message : "Internal server error." });
 });
 
 initializeDatabase()

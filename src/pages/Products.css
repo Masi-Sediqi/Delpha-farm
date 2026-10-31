@@ -829,7 +829,7 @@ body[data-theme="neon"].dark-mode .sales-product-inline-delete{
   min-width:0;
 }
 .sales-product-modal .sales-product-batch-fields{
-  grid-template-columns:minmax(150px,1.45fr) repeat(6,minmax(92px,1fr));
+  grid-template-columns:minmax(150px,1.45fr) repeat(7,minmax(92px,1fr));
 }
 
 @media(max-width:1200px){

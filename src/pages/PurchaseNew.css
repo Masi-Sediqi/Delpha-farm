@@ -1653,3 +1653,32 @@ body.dark-mode .purchase-supplier-info-panel{
   .purchase-entry-page .purchase-keyboard-row label{grid-column:auto !important;}
   .purchase-entry-page .purchase-keyboard-row .purchase-expiry-field{grid-column:1/-1 !important;}
 }
+
+
+/* APG: prevent medicine names wrapping one word per line */
+.purchase-entry-page .sale-entry-item-row,
+.purchase-entry-page .purchase-item-row.purchase-keyboard-row { align-items:start !important; }
+.purchase-entry-page .sale-entry-item-row .sale-product-info,
+.purchase-entry-page .purchase-keyboard-row .purchase-item-name {
+  align-self:start !important; min-width:0 !important; text-align:start !important;
+}
+.purchase-entry-page .sale-entry-item-row .sale-product-title strong,
+.purchase-entry-page .purchase-keyboard-row .purchase-item-name strong {
+  display:block !important; white-space:normal !important; word-break:normal !important;
+  overflow-wrap:break-word !important; line-height:1.6 !important; font-size:13px !important;
+}
+.purchase-entry-page .apg-product-name-label { display:block; font-size:11px; font-weight:700; margin-bottom:6px; color:var(--text-secondary,#64748b); }
+.purchase-entry-page .apg-quantity-caption { display:flex !important; align-items:center; gap:6px; flex-wrap:wrap; }
+.purchase-entry-page .apg-quantity-unit-select {
+  width:auto !important; min-width:68px !important; max-width:95px; height:26px !important;
+  padding:0 5px !important; font-size:11px !important; border:1px solid var(--border-color,#dce3ea);
+  border-radius:6px; background:var(--input-bg,#fff); color:inherit;
+}
+@media (min-width:1101px) {
+  .purchase-entry-page .sale-entry-item-row {
+    grid-template-columns:minmax(200px,2fr) repeat(4,minmax(110px,1fr)) minmax(115px,1fr) 36px !important;
+  }
+  .purchase-entry-page .purchase-item-row.purchase-keyboard-row .purchase-item-name {
+    min-width:165px !important;
+  }
+}

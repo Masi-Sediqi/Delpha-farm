@@ -268,15 +268,20 @@ function App() {
   const [settings, , loadSettings] = useJsonCollection("settings");
   const [serverUser, setServerUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(IS_DEMO);
+  const [serverSetupRequired, setServerSetupRequired] = useState(false);
   const [accounts, setAccounts, , accountsLoaded] = useJsonCollection("accounts");
   useEffect(() => {
     if (IS_DEMO) return;
     let active = true;
-    fetch("/api/auth/me", { credentials: "same-origin" })
-      .then(async (r) => r.ok ? (await r.json()).user : null)
-      .then((user) => { if (active) setServerUser(user); })
-      .catch(() => { if (active) setServerUser(null); })
-      .finally(() => { if (active) setAuthChecked(true); });
+    Promise.all([
+      fetch("/api/auth/me", { credentials: "same-origin" }),
+      fetch("/api/auth/status", { credentials: "same-origin" }),
+    ]).then(async ([authResponse, statusResponse]) => {
+      if (!statusResponse.ok) throw new Error("Unable to check authentication setup");
+      const status = await statusResponse.json();
+      const user = authResponse.ok ? (await authResponse.json()).user : null;
+      if (active) { setServerSetupRequired(Boolean(status.setupRequired)); setServerUser(user); }
+    }).catch(console.error).finally(() => { if (active) setAuthChecked(true); });
     return () => { active = false; };
   }, []);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -394,13 +399,12 @@ function App() {
   );
   const hasUserAccounts = effectiveAccounts.length > 0;
 
-  // With no user-created accounts the first run opens directly with an
-  // in-memory bootstrap administrator. If the first account is created during
-  // that session, keep the operator inside until they explicitly log out.
-  // On the next app start, existing accounts require normal login.
+  // Before an administrator is created, local setup opens the app directly.
+  // Once an administrator exists, a valid user session is required.
+  const hasFullAdmin = effectiveAccounts.some((account) => String(account.role || "").toLowerCase() === "admin");
   const currentUser = IS_DEMO
-    ? (bootstrapSession ? defaultAdminAccount : effectiveAccounts.find((account) => String(account.id) === String(sessionId)))
-    : (serverUser ? { ...serverUser, permissions: createFullPermissions() } : null);
+    ? (!hasFullAdmin || bootstrapSession ? defaultAdminAccount : effectiveAccounts.find((account) => String(account.id) === String(sessionId)))
+    : (serverUser ? { ...serverUser, permissions: String(serverUser.role || "").toLowerCase() === "admin" ? createFullPermissions() : (serverUser.permissions || {}) } : serverSetupRequired ? defaultAdminAccount : null);
 
   useEffect(() => {
     window.addEventListener("company-settings-updated", loadSettings);
@@ -546,6 +550,7 @@ function App() {
 
   const login = async (account) => {
     if (!IS_DEMO) {
+      setServerSetupRequired(false);
       setServerUser(account);
       await Promise.allSettled([loadSettings()]);
       return;
@@ -573,7 +578,7 @@ function App() {
 
   const logout = () => {
     if (!IS_DEMO) {
-      fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }).catch(console.error);
+      if (!serverSetupRequired) fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }).catch(console.error);
       setServerUser(null);
       return;
     }
@@ -662,6 +667,7 @@ function App() {
           setAccounts={setAccounts}
           onLogin={login}
           company={company}
+          isDemo={IS_DEMO}
         />
       </Suspense>
     );
@@ -785,7 +791,7 @@ function App() {
               <Route path="/trash" element={protect("trash", <Trash />)} />
               <Route path="/accounts" element={protect("accounts", <Accounts accounts={effectiveAccounts} setAccounts={setAccounts} currentUser={currentUser} />)} />
 
-              <Route path="/settings" element={protect("settings", <Settings accounts={effectiveAccounts} setAccounts={setAccounts} currentUser={currentUser} />)} />
+              <Route path="/settings" element={protect("settings", <Settings accounts={effectiveAccounts} setAccounts={setAccounts} currentUser={currentUser} serverSetupRequired={serverSetupRequired} onAdministratorCreated={(user) => { setServerSetupRequired(false); setServerUser(user); }} />)} />
 
 
               <Route

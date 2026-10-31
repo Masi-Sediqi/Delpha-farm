@@ -1,3 +1,4 @@
+import { writeAtomicFinanceBatch } from "../utils/browserStorage";
 import CustomersRegistry from "./CustomersRegistry";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -17,7 +18,7 @@ import {
 import ShamsiDateInput from "../components/ShamsiDateInput";
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import { notify } from "../utils/notify";
-import { groupNameById } from "../utils/productMasterData";
+import { groupNameById, countryNameById } from "../utils/productMasterData";
 import {
   allocateProductBatchesFEFO,
   getProductStock,
@@ -273,6 +274,7 @@ function SaleNew() {
   const [customers] = useJsonCollection("customerRegistry");
   const [products] = useJsonCollection("products");
   const [productGroups] = useJsonCollection("productGroups");
+  const [productCountries] = useJsonCollection("countries");
   const [stockMovements, setStockMovements] = useJsonCollection("stockMovements");
   const [settings] = useJsonCollection("settings");
 
@@ -516,7 +518,8 @@ function SaleNew() {
         productName: productDisplayName(product),
         group: groupNameById(productGroups, product.groupId, product.group || ""),
         unit: product.unit || "piece",
-        purchaseUnit: product.productUnit || product.purchaseUnit || product.packageUnit || product.unit || "piece",
+        purchaseUnit: "carton",
+        cartonUnitsPerUnit: unitsPerUnit,
         unitsPerUnit,
         packageQuantity: Number((pieceQuantityToAdd / unitsPerUnit).toFixed(4)),
         quantity: pieceQuantityToAdd,
@@ -713,6 +716,18 @@ function SaleNew() {
     setCurrency(normalized);
   };
 
+  const changeLineQuantityUnit = (lineId, nextUnit) => {
+    setItems((current) => current.map((row) => {
+      if (String(row.lineId) !== String(lineId)) return row;
+      const product = products.find((candidate) => String(candidate.id) === String(row.productId));
+      const cartonFactor = positiveUnitCount(row.cartonUnitsPerUnit || productPiecesPerUnit(product));
+      const unitsPerUnit = nextUnit === "piece" ? 1 : cartonFactor;
+      const pieces = num(row.quantity);
+      return { ...row, purchaseUnit: nextUnit, cartonUnitsPerUnit: cartonFactor, unitsPerUnit,
+        packageQuantity: Number((pieces / unitsPerUnit).toFixed(4)) };
+    }));
+  };
+
   const updatePackageQuantity = (lineId, value) => {
     setItems((current) => current.map((row) => {
       if (String(row.lineId) !== String(lineId)) return row;
@@ -862,7 +877,7 @@ function SaleNew() {
     const nextSales = isEditMode
       ? sales.map((row) => String(row.id) === String(recordId) ? sale : row)
       : [sale, ...sales];
-    if (!(await setSales(nextSales))) return;
+
 
     const saleMovements = items.flatMap((row) => {
       const allocations = allocationByLine.get(String(row.lineId)) || [];
@@ -884,7 +899,15 @@ function SaleNew() {
       }));
     });
 
-    if (!(await setStockMovements(replaceReferenceMovements(stockMovements, "sale", recordId, saleMovements)))) return;
+    try {
+      await writeAtomicFinanceBatch({
+        salesRegister: nextSales,
+        stockMovements: replaceReferenceMovements(stockMovements, "sale", recordId, saleMovements),
+      });
+    } catch (error) {
+      notify(error.message || "Unable to save sale transaction.", "error");
+      return;
+    }
     notify(isEditMode ? t.updated : t.saved, "success");
     navigate("/sales-register");
   };
@@ -910,6 +933,8 @@ function SaleNew() {
         <div className={`purchase-inline-search-results sale-inline-search-results ${results.length ? "has-results" : "is-empty"}`}>
           <div className="purchase-search-results-head"><span>{t.results}</span><small>{results.length}</small></div>
           {results.length ? (
+            <>
+            <div className="apg-picker-header" aria-hidden="true"><span>نام جنس</span><span>کمپنی سازنده</span><span>کشور</span><span>قیمت فروش</span></div>
             <div className="purchase-inline-result-list sale-inline-result-list">
               {results.map((product, index) => {
                 const stock = getStock(product);
@@ -935,16 +960,15 @@ function SaleNew() {
                     onClick={() => addProduct(product)}
                     aria-disabled={unavailable}
                   >
-                    <span>
-                      <strong>{productDisplayName(product)}</strong>
-                      <small>{groupNameById(productGroups, product.groupId, product.group || "—")} · {t.stock}: {formatQuantity(remainingStock)}</small>
-                    </span>
-                    <em>{unavailable ? t.outOfStock : `${convertCurrency(product.salePrice, product.unit || "AFN", currency).toFixed(2)} ${currency}`}</em>
-                    <b className="sale-result-check" aria-hidden="true"><Check size={13} /></b>
+                    <span className="apg-picker-product"><strong>{productDisplayName(product)}</strong><small>{t.stock}: {formatQuantity(remainingStock)}</small></span>
+                    <span className="apg-picker-maker">{product.manufacturerName || product.companyName || product.company || "—"}</span>
+                    <span className="apg-picker-country">{countryNameById(productCountries, product.countryId, language, product.madeIn || "—")}</span>
+                    <em className="apg-picker-price">{unavailable ? t.outOfStock : `${convertCurrency(product.salePrice, product.saleCurrency || product.unit || "AFN", currency).toFixed(2)} ${currency}`}</em>
                   </button>
                 );
               })}
             </div>
+            </>
           ) : (
             <div className="purchase-no-result"><PackageSearch size={22} /><span>{t.searchHint}</span></div>
           )}
@@ -1057,9 +1081,9 @@ function SaleNew() {
               {items.map((row, index) => (
                 <article className="purchase-item-row sale-entry-item-row" key={row.lineId}>
                   <div className="purchase-item-name sale-product-info">
-                    <div className="sale-product-title"><strong>{row.productName}</strong></div>
+                    <div className="sale-product-title"><span className="apg-product-name-label">{language === "en" ? "Product name" : language === "ps" ? "د توکي نوم" : "نام جنس"}</span><strong title={row.productName}>{row.productName}</strong></div>
                   </div>
-                  <label><span>{t.qty} ({unitLabel(row.purchaseUnit)})</span><input ref={(node) => {
+                  <label><span className="apg-quantity-caption">{t.qty} <select aria-label="Quantity unit" className="apg-quantity-unit-select" value={row.purchaseUnit === "piece" ? "piece" : "carton"} onChange={(e) => changeLineQuantityUnit(row.lineId, e.target.value)}><option value="carton">{unitLabel("carton")}</option><option value="piece">{unitLabel("piece")}</option></select></span><input ref={(node) => {
                     const key = String(row.lineId);
                     if (node) packageQuantityInputRefs.current.set(key, node);
                     else packageQuantityInputRefs.current.delete(key);

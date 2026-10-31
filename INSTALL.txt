@@ -1,0 +1,6 @@
+APG Product Search Column Alignment Fix
+
+Copy the src folder into D:\Delpha-farm, keeping the paths.
+Files: src/pages/PurchaseNew.jsx, src/pages/SaleNew.jsx, src/pages/ProductPickerClean.css
+This fix positions product name/manufacturer/country/price under their matching column headings. No backend or database files are changed.
+Run npm run build, then restart the frontend and hard-refresh the browser.

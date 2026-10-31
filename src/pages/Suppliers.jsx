@@ -16,6 +16,7 @@ import {
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import { confirmAction } from "../utils/confirmDialog";
 import { notify } from "../utils/notify";
+import { findSupplierByName } from "../utils/supplierName";
 import "./Suppliers.css";
 
 const languageKey = "afghan-power-language";
@@ -78,6 +79,7 @@ const translations = {
     update: "Update Supplier",
     cancel: "Cancel",
     required: "Please enter the supplier name.",
+    duplicateName: "This supplier name already exists. Please choose another name.",
     saved: "Supplier saved successfully.",
     updated: "Supplier updated successfully.",
     deleted: "Supplier deleted successfully.",
@@ -139,6 +141,7 @@ const translations = {
     update: "ثبت تغییرات",
     cancel: "لغو",
     required: "لطفاً نام تأمین‌کننده را وارد کنید.",
+    duplicateName: "این نام تأمین‌کننده قبلاً ثبت شده است. نام دیگری وارد کنید.",
     saved: "تأمین‌کننده با موفقیت ذخیره شد.",
     updated: "تأمین‌کننده با موفقیت اصلاح شد.",
     deleted: "تأمین‌کننده با موفقیت حذف شد.",
@@ -200,6 +203,7 @@ const translations = {
     update: "بدلونونه ثبتول",
     cancel: "لغوه",
     required: "مهرباني وکړئ د عرضه کوونکي نوم ولیکئ.",
+    duplicateName: "دا عرضه کوونکی په همدې نوم مخکې ثبت شوی. بل نوم ولیکئ.",
     saved: "عرضه کوونکی په بریالیتوب ذخیره شو.",
     updated: "عرضه کوونکی په بریالیتوب سم شو.",
     deleted: "عرضه کوونکی په بریالیتوب حذف شو.",
@@ -379,6 +383,11 @@ export default function Suppliers() {
     event.preventDefault();
     if (!form.supplierName.trim()) {
       setFieldErrors({ supplierName: t.required });
+      return;
+    }
+    if (findSupplierByName(suppliers, form.supplierName, editingId)) {
+      setFieldErrors({ supplierName: t.duplicateName });
+      notify(t.duplicateName, "warning");
       return;
     }
     setFieldErrors({});

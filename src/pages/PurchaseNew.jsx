@@ -1,3 +1,4 @@
+import { writeAtomicFinanceBatch } from "../utils/browserStorage";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -15,8 +16,9 @@ import {
 } from "lucide-react";
 import ShamsiDateInput from "../components/ShamsiDateInput";
 import { useJsonCollection } from "../hooks/useJsonCollection";
+import { findSupplierByName } from "../utils/supplierName";
 import { notify } from "../utils/notify";
-import { groupNameById } from "../utils/productMasterData";
+import { groupNameById, countryNameById } from "../utils/productMasterData";
 import {
   getProductStock,
   legacyProductStock,
@@ -91,6 +93,7 @@ const text = {
     editTitle: "Edit Purchase",
     editSubtitle: "Update this purchase while keeping its original record number.",
     nameRequired: "Enter supplier name.",
+    duplicateSupplier: "This supplier name already exists. Select the existing supplier.",
   },
   fa: {
     title: "خریداری جدید",
@@ -154,6 +157,7 @@ const text = {
     editTitle: "ایدیت خریداری",
     editSubtitle: "معلومات این خریداری را با حفظ بل نمبر اصلی ویرایش کنید.",
     nameRequired: "نام تأمین‌کننده را وارد کنید.",
+    duplicateSupplier: "این تأمین‌کننده قبلاً ثبت شده است. تأمین‌کننده موجود را انتخاب کنید.",
   },
   ps: {
     title: "نوی پېرود",
@@ -217,6 +221,7 @@ const text = {
     editTitle: "د پېرود سمون",
     editSubtitle: "د اصلي بل نمبر په ساتلو سره د پېرود معلومات بدل کړئ.",
     nameRequired: "د عرضه کوونکي نوم ولیکئ.",
+    duplicateSupplier: "دا عرضه کوونکی مخکې ثبت شوی. هماغه عرضه کوونکی وټاکئ.",
   },
 };
 
@@ -261,6 +266,7 @@ function PurchaseNew() {
   const [products, setProducts, , productsLoaded] = useJsonCollection("products");
   const [manufacturerCompanies] = useJsonCollection("manufacturerCompanies");
   const [productGroups] = useJsonCollection("productGroups");
+  const [productCountries] = useJsonCollection("countries");
   const [stockMovements, setStockMovements, , stockMovementsLoaded] = useJsonCollection("stockMovements");
   const [hydratedEditId, setHydratedEditId] = useState(null);
 
@@ -517,7 +523,8 @@ function PurchaseNew() {
       group: groupNameById(productGroups, product.groupId, product.group || ""),
       unit: product.productUnit || "piece",
       baseUnit: "piece",
-      purchaseUnit: product.productUnit || product.purchaseUnit || product.packageUnit || "piece",
+      purchaseUnit: "carton",
+      cartonUnitsPerUnit: piecesPerUnit,
       unitsPerUnit: piecesPerUnit,
       receivedQuantity: piecesPerUnit,
       quantity: 1,
@@ -630,6 +637,18 @@ function PurchaseNew() {
     setItems((current) => current.map((row) => String(row.lineId) === String(lineId) ? { ...row, ...fields } : row));
   };
 
+  const changeLineQuantityUnit = (lineId, nextUnit) => {
+    setItems((current) => current.map((row) => {
+      if (String(row.lineId) !== String(lineId)) return row;
+      const product = products.find((candidate) => String(candidate.id) === String(row.productId));
+      const cartonFactor = positiveUnitCount(row.cartonUnitsPerUnit || productPiecesPerUnit(product));
+      const unitsPerUnit = nextUnit === "piece" ? 1 : cartonFactor;
+      const pieces = num(row.receivedQuantity ?? receivedQuantity(row));
+      return { ...row, purchaseUnit: nextUnit, cartonUnitsPerUnit: cartonFactor, unitsPerUnit,
+        quantity: Number((pieces / unitsPerUnit).toFixed(4)), receivedQuantity: pieces };
+    }));
+  };
+
   const updatePackageQuantity = (lineId, value) => {
     setItems((current) => current.map((row) => {
       if (String(row.lineId) !== String(lineId)) return row;
@@ -663,6 +682,7 @@ function PurchaseNew() {
   const addQuickSupplier = async () => {
     const name = quickName.trim();
     if (!name) return notify(t.nameRequired, "warning");
+    if (findSupplierByName(suppliers, name)) return notify(t.duplicateSupplier, "warning");
     const id = `SUP-${Date.now()}`;
     const now = new Date().toISOString();
     const supplier = {
@@ -718,7 +738,7 @@ function PurchaseNew() {
     };
 
     const nextPurchases = isEditing ? purchases.map((row) => String(row.id) === String(targetPurchaseId) ? purchase : row) : [purchase, ...purchases];
-    if (!(await setPurchases(nextPurchases))) return;
+
 
     const detailRows = items.map((row, index) => ({
       ...row,
@@ -734,7 +754,7 @@ function PurchaseNew() {
       updatedAt: now,
     }));
     const retainedPurchaseItems = purchaseItems.filter((row) => String(row.purchaseId) !== String(targetPurchaseId));
-    if (!(await setPurchaseItems([...detailRows, ...retainedPurchaseItems]))) return;
+
 
     const movements = items.map((row, index) => ({
       id: stockMovementId("purchase", targetPurchaseId, row.productId, `line-${row.lineId || index + 1}`),
@@ -759,7 +779,7 @@ function PurchaseNew() {
       createdAt: now,
       updatedAt: now,
     }));
-    if (!(await setStockMovements(replaceReferenceMovements(stockMovements, "purchase", targetPurchaseId, movements)))) return;
+
 
     const nextProducts = products.map((product) => {
       const matchingRows = items.filter((item) => String(item.productId) === String(product.id));
@@ -774,7 +794,19 @@ function PurchaseNew() {
         updatedAt: now,
       };
     });
-    await setProducts(nextProducts);
+
+
+    try {
+      await writeAtomicFinanceBatch({
+        purchases: nextPurchases,
+        purchaseItems: [...detailRows, ...retainedPurchaseItems],
+        stockMovements: replaceReferenceMovements(stockMovements, "purchase", targetPurchaseId, movements),
+        products: nextProducts,
+      });
+    } catch (error) {
+      notify(error.message || "Unable to save purchase transaction.", "error");
+      return;
+    }
 
     notify(isEditing ? t.updated : t.saved, "success", { silent: true });
     navigate("/purchasing");
@@ -922,7 +954,7 @@ function PurchaseNew() {
                     </select>
                   </label>
                   <label>
-                    <span>{t.qty}</span>
+                    <span className="apg-quantity-caption">{t.qty} <select aria-label="Quantity unit" className="apg-quantity-unit-select" value={row.purchaseUnit === "piece" ? "piece" : "carton"} onChange={(e) => changeLineQuantityUnit(row.lineId, e.target.value)}><option value="carton">{unitLabel("carton")}</option><option value="piece">{unitLabel("piece")}</option></select></span>
                     <input
                       ref={(node) => {
                         const key = String(row.lineId);
@@ -1004,6 +1036,8 @@ function PurchaseNew() {
                   <div className={`purchase-inline-search-results purchase-product-search-results ${results.length ? "has-results" : "is-empty"}`}>
                     <div className="purchase-search-results-head"><span>{t.results}</span><small>{results.length}</small></div>
                     {results.length ? (
+                      <>
+                      <div className="apg-picker-header" aria-hidden="true"><span>نام جنس</span><span>کمپنی سازنده</span><span>کشور</span><span>قیمت خرید</span></div>
                       <div className="purchase-inline-result-list purchase-product-result-list">
                         {results.map((product, index) => (
                           <button
@@ -1021,15 +1055,14 @@ function PurchaseNew() {
                             onKeyDown={(event) => handleResultKeyDown(event, product, index)}
                             onClick={() => addProduct(product)}
                           >
-                            <span>
-                              <strong>{productDisplayName(product)}</strong>
-                              <small>{groupNameById(productGroups, product.groupId, product.group || "—")} · {unitLabel(product.productUnit || "piece")} · 1 = {productPiecesPerUnit(product)} {unitLabel("piece")}</small>
-                            </span>
-                            <em>{money(product.purchasePrice)} {currency}</em>
-                            <b className="purchase-result-check" aria-hidden="true"><Check size={13} /></b>
+                            <span className="apg-picker-product"><strong>{productDisplayName(product)}</strong><small>{unitLabel(product.productUnit || "piece")} · 1 = {productPiecesPerUnit(product)} {unitLabel("piece")}</small></span>
+                            <span className="apg-picker-maker">{product.manufacturerName || product.companyName || product.company || "—"}</span>
+                            <span className="apg-picker-country">{countryNameById(productCountries, product.countryId, language, product.madeIn || "—")}</span>
+                            <em className="apg-picker-price">{money(product.purchasePrice)} {product.purchaseCurrency || product.unit || currency}</em>
                           </button>
                         ))}
                       </div>
+                      </>
                     ) : (
                       <div className="purchase-no-result"><PackageSearch size={22} /><span>{productsLoaded ? t.searchHint : "..."}</span></div>
                     )}

@@ -4,7 +4,7 @@ import { readBrowserCollection, writeBrowserCollection } from "../utils/browserS
 
 const collectionUpdateEvent = "app-json-collection-updated";
 const pollIntervalMs = 60000;
-const browserOnly = import.meta.env.VITE_USE_BROWSER_STORAGE !== "false";
+const browserOnly = false;
 const stores = new Map();
 const initialLoadListeners = new Set();
 let initialLoads = 0;
