@@ -29,6 +29,7 @@ import {
 import "./PurchaseNew.css";
 import "./SaleNew.css";
 import "./PurchaseSalesPickerFix.css";
+import "./SaleWholesaleLayout.css";
 
 const languageKey = "afghan-power-language";
 const currencies = ["AFN", "USD", "EUR", "INR"];
@@ -979,7 +980,7 @@ function SaleNew() {
   );
 
   return (
-    <div className="purchase-entry-page sale-entry-page" dir={direction}>
+    <div className="purchase-entry-page sale-entry-page sale-wholesale-page" dir={direction}>
       {quickOpen && <CustomersRegistry modalOnly initialCurrency={currency} onClose={() => { setQuickOpen(false); customerSelectRef.current?.focus(); }} onSaved={(customer) => { setCustomerId(customer.id); setCustomerInfoOpen(false); }} />}
       <header className="purchase-entry-header">
         <div>
@@ -990,9 +991,9 @@ function SaleNew() {
         <button className="purchase-save-top" type="button" onClick={saveSale}><Check size={17} />{isEditMode ? t.update : t.save}</button>
       </header>
 
-      <div className="purchase-entry-layout">
-        <main className="purchase-entry-main">
-          <section className="purchase-items-card">
+      <div className="purchase-entry-layout sale-wholesale-layout">
+        <main className="purchase-entry-main sale-wholesale-main">
+          <section className="purchase-items-card sale-wholesale-card">
             <div className="purchase-section-title purchase-section-title-with-meta sale-section-title-with-meta">
               <div className="purchase-section-heading">
                 <ShoppingBag size={18} />
@@ -1079,21 +1080,27 @@ function SaleNew() {
               {!items.length && (
                 <div className="purchase-items-empty sale-inline-empty"><ImageIcon size={34} /><strong>{t.emptyTitle}</strong><p>{t.emptyText}</p></div>
               )}
+              {!!items.length && (
+                <div className="sale-wholesale-grid-head" role="row">
+                  <span>نام جنس</span><span>سایز کارتن</span><span>قیمت نمایشی</span>
+                  <span>قیمت فروش</span><span>تعداد کارتن</span><span>مقدار دانه</span>
+                  <span>موجودی</span><span>مجموع</span><span>عملیات</span>
+                </div>
+              )}
               {items.map((row, index) => (
-                <article className="purchase-item-row sale-entry-item-row" key={row.lineId}>
-                  <div className="purchase-item-name sale-product-info">
-                    <div className="sale-product-title"><span className="apg-product-name-label">{language === "en" ? "Product name" : language === "ps" ? "د توکي نوم" : "نام جنس"}</span><strong title={row.productName}>{row.productName}</strong></div>
+                <article className="sale-wholesale-line" key={row.lineId}>
+                  <div className="sale-wholesale-product" title={row.productName}>
+                    <strong>{row.productName}</strong>
+                    <small>{row.manufacturerName || ""}</small>
                   </div>
-                  <label><span className="apg-quantity-caption">{t.qty} <select aria-label="Quantity unit" className="apg-quantity-unit-select" value={row.purchaseUnit === "piece" ? "piece" : "carton"} onChange={(e) => changeLineQuantityUnit(row.lineId, e.target.value)}><option value="carton">{unitLabel("carton")}</option><option value="piece">{unitLabel("piece")}</option></select></span><input ref={(node) => {
-                    const key = String(row.lineId);
-                    if (node) packageQuantityInputRefs.current.set(key, node);
-                    else packageQuantityInputRefs.current.delete(key);
-                  }} type="number" min="0" max={maxPackageQuantity(row)} step="any" value={row.packageQuantity} title={`${t.maxStock}: ${formatQuantity(maxPackageQuantity(row))} ${unitLabel(row.purchaseUnit)}`} onFocus={(e) => e.target.select()} onChange={(e) => updatePackageQuantity(row.lineId, e.target.value)} /><small className="sale-stock-limit">{t.maxStock}: {formatQuantity(maxPackageQuantity(row))} {unitLabel(row.purchaseUnit)}</small></label>
-                  <label><span>{t.actualQty}</span><input type="number" min="0" max={maxPiecesForLine(row)} step="any" value={row.quantity} title={`${t.maxStock}: ${formatQuantity(maxPiecesForLine(row))} ${unitLabel("piece")}`} onChange={(e) => updatePieceQuantity(row.lineId, e.target.value)} /><small className="sale-stock-limit">{t.maxStock}: {formatQuantity(maxPiecesForLine(row))} {unitLabel("piece")}</small></label>
-                  <label><span>{t.salePrice}</span><input type="number" min="0" step="0.01" value={row.salePrice} onChange={(e) => updateItem(row.lineId, "salePrice", e.target.value)} /></label>
-                  <label><span>{t.discount}</span><input type="number" min="0" max={lineGross(row)} step="0.01" value={row.discountAmount ?? 0} onChange={(e) => updateItem(row.lineId, "discountAmount", e.target.value)} /></label>
-                  <div className="purchase-line-total"><span>{t.total}</span><strong>{lineTotal(row).toFixed(2)} {currency}</strong></div>
-                  <button className="purchase-remove" type="button" title={t.remove} onKeyDown={(event) => handleSaleRemoveKeyDown(event, index)} onClick={() => removeItem(row.lineId)}><Trash2 size={16} /></button>
+                  <div className="sale-wholesale-size"><span>{formatQuantity(row.cartonSize || row.unitsPerUnit || 1)}</span></div>
+                  <div className="sale-wholesale-price-display"><span>{num(row.sourceSalePrice || row.salePrice).toFixed(2)}</span></div>
+                  <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">قیمت فروش</span><input aria-label="قیمت فروش" type="number" min="0" step="0.01" value={row.salePrice} onChange={(e) => updateItem(row.lineId, "salePrice", e.target.value)} /></label>
+                  <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">تعداد کارتن</span><input aria-label="تعداد کارتن" ref={(node) => { const key = String(row.lineId); if (node) packageQuantityInputRefs.current.set(key, node); else packageQuantityInputRefs.current.delete(key); }} type="number" min="0" max={maxPiecesForLine(row) / positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit)} step="any" value={num(row.quantity) / positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit)} onChange={(e) => { changeLineQuantityUnit(row.lineId, "carton"); updatePieceQuantity(row.lineId, String(num(e.target.value) * positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit))); }} /></label>
+                  <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">مقدار دانه</span><input aria-label="مقدار دانه" type="number" min="0" max={maxPiecesForLine(row)} step="any" value={row.quantity} onChange={(e) => updatePieceQuantity(row.lineId, e.target.value)} /></label>
+                  <div className="sale-wholesale-stock"><span>{formatQuantity(maxPiecesForLine(row))}</span></div>
+                  <div className="sale-wholesale-total"><strong>{lineTotal(row).toFixed(2)}</strong></div>
+                  <button className="sale-wholesale-remove" type="button" title={t.remove} aria-label={t.remove} onKeyDown={(event) => handleSaleRemoveKeyDown(event, index)} onClick={() => removeItem(row.lineId)}><Trash2 size={17} /></button>
                 </article>
               ))}
               {!!items.length && saleSearchField}
@@ -1105,7 +1112,7 @@ function SaleNew() {
           <section className="purchase-side-card purchase-summary-card">
             <div className="purchase-side-title"><ShoppingBag size={17} /><strong>{t.grandTotal}</strong></div>
             <div className="purchase-summary-row"><span>{t.totalBeforeDiscount}</span><strong>{subtotal.toFixed(2)} {currency}</strong></div>
-            <div className="purchase-summary-row sale-discount-summary"><span>{t.totalDiscount}</span><strong>- {totalDiscount.toFixed(2)} {currency}</strong></div>
+            
             <div className="purchase-summary-row purchase-summary-grand"><span>{t.grandTotal}</span><strong>{grandTotal.toFixed(2)} {currency}</strong></div>
             <div className="purchase-summary-row"><span>{t.paid}</span><strong>{paid.toFixed(2)} {currency}</strong></div>
             <div className={`purchase-summary-row ${remaining > 0 ? "has-debt" : ""}`}><span>{t.remaining}</span><strong>{remaining.toFixed(2)} {currency}</strong></div>
