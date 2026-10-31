@@ -1682,3 +1682,75 @@ body.dark-mode .purchase-supplier-info-panel{
     min-width:165px !important;
   }
 }
+
+/* APG picker layout correction: readable product / manufacturer / country / price rows.
+   Overrides earlier forced four-card columns that clipped long product names. */
+.purchase-entry-page .purchase-inline-search-row .purchase-product-result-list,
+.purchase-entry-page .sale-inline-search-row .sale-inline-result-list{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) !important;
+  min-height:0 !important;
+  max-height:min(340px,48vh) !important;
+  gap:5px !important;
+  padding:7px !important;
+  align-content:start !important;
+}
+.purchase-entry-page .purchase-inline-search-row .purchase-product-result-list .purchase-inline-result,
+.purchase-entry-page .sale-inline-search-row .sale-inline-result-list .purchase-inline-result{
+  display:grid !important;
+  grid-template-columns:minmax(210px,2fr) minmax(120px,1fr) minmax(110px,.8fr) minmax(100px,.75fr) !important;
+  grid-template-rows:auto !important;
+  height:auto !important;
+  min-height:54px !important;
+  padding:10px 14px !important;
+  gap:12px !important;
+  align-items:center !important;
+  text-align:start !important;
+  transform:none !important;
+}
+.purchase-entry-page .purchase-inline-search-row .purchase-product-result-list .purchase-inline-result > span,
+.purchase-entry-page .sale-inline-search-row .sale-inline-result-list .purchase-inline-result > span,
+.purchase-entry-page .purchase-inline-search-row .purchase-product-result-list .purchase-inline-result > em,
+.purchase-entry-page .sale-inline-search-row .sale-inline-result-list .purchase-inline-result > em{
+  grid-column:auto !important;
+  grid-row:auto !important;
+  min-width:0 !important;
+  align-self:center !important;
+  margin:0 !important;
+  white-space:normal !important;
+  overflow-wrap:anywhere !important;
+}
+.purchase-entry-page .purchase-inline-search-row .purchase-product-result-list .purchase-inline-result strong,
+.purchase-entry-page .sale-inline-search-row .sale-inline-result-list .purchase-inline-result strong{
+  font-size:12px !important;
+  line-height:1.5 !important;
+  white-space:normal !important;
+  overflow-wrap:anywhere !important;
+}
+.purchase-entry-page .purchase-inline-search-row .purchase-product-result-list .purchase-inline-result small,
+.purchase-entry-page .sale-inline-search-row .sale-inline-result-list .purchase-inline-result small{
+  font-size:10px !important;
+  line-height:1.4 !important;
+}
+.purchase-entry-page .purchase-inline-search-row .purchase-product-result-list .purchase-inline-result em,
+.purchase-entry-page .sale-inline-search-row .sale-inline-result-list .purchase-inline-result em{
+  font-size:12px !important;
+  justify-self:end !important;
+  text-align:end !important;
+}
+.purchase-entry-page .purchase-inline-search-row .purchase-product-search-results.has-results,
+.purchase-entry-page .sale-inline-search-row .sale-inline-search-results.has-results{
+  min-height:0 !important;
+}
+@media(max-width:800px){
+  .purchase-entry-page .purchase-inline-search-row .purchase-product-result-list .purchase-inline-result,
+  .purchase-entry-page .sale-inline-search-row .sale-inline-result-list .purchase-inline-result{
+    grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) !important;
+    gap:7px 12px !important;
+  }
+  .purchase-entry-page .purchase-inline-search-row .purchase-product-result-list .purchase-inline-result em,
+  .purchase-entry-page .sale-inline-search-row .sale-inline-result-list .purchase-inline-result em{
+    justify-self:start !important;
+  }
+  .purchase-entry-page .apg-picker-header{display:none !important}
+}

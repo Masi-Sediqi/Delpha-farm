@@ -1,12 +1,20 @@
-اصلاح قطعی خطای 409 در backend پروژه Delpha-farm
+APG: ACCDE/ACCDB -> JSON -> PostgreSQL
 
-مشکل: شرط SELECT ... WHERE $3=0 مانع اجرای UPSERT برای revision های بزرگتر از صفر می‌شد.
+1. On Windows install Microsoft Access Runtime of matching architecture, and Node.js 20+.
+2. Extract this ZIP to a folder. Do not put your Access file on the Linux VPS.
+3. Open PowerShell inside the extracted folder.
+4. Convert:
+   powershell -ExecutionPolicy Bypass -File .\Convert-APGAccess.ps1 -AccessFile "C:\path\file.accde"
+5. Review generated APG-import-*.json, including counts and relationships.
+6. Before uploading, take an independent PostgreSQL backup on the VPS.
+7. Preview only:
+   powershell -ExecutionPolicy Bypass -File .\Preview-Upload-APG.ps1 -JsonFile "C:\path\APG-import-....json"
+8. If counts are correct, no conflicts, and PostgreSQL backup exists, repeat with -Commit.
 
-نصب:
-1. فایل transport-backend/server.js را در مسیر مشابه Repository جایگزین و commit کنید.
-2. روی VPS از فایل موجود backup بگیرید، git pull --ff-only origin main را اجرا کنید.
-3. node --check transport-backend/server.js
-4. pm2 restart delpha-farm-api --update-env
-5. یک رکورد ثبت یا ویرایش کنید و بعد از Refresh از PostgreSQL تأیید نمایید.
-
-این اصلاح هیچ جدول یا رکورد موجود را حذف نمی‌کند.
+Requires current APG backend with POST /api/import/json from Phase 6.
+This API permits only Full Admin and merges by stable ID; conflict stops import.
+Do not share JSON: it contains commercial/customer data. Never send credentials to chat.
+If JSON exceeds server's 50MB request limit, do not manually split relationships: adjust limits after reviewing and backing up.
+This converter uses the exact Access mapping extracted from APG Phase 6 server.js.
+No files in your existing project are overwritten by this package.
+Live Access extraction and VPS import have NOT been tested here.

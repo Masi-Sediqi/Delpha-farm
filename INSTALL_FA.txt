@@ -1,1 +1,0 @@
-سه فایل را به D:\Delpha-farm\src\pages انتقال بدهید. ابتدا بکاپ بگیرید. سپس npm run build و npm run dev:production اجرا کنید. این تغییر صرفاً ظاهری است و PostgreSQL را تغییر نمی‌دهد.
