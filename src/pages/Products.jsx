@@ -408,6 +408,7 @@ const translations = {
 };
 
 const currencyOptions = ["afn", "usd", "inr", "eur"];
+const currencyCode = (value) => String(value || "afn").trim().toUpperCase();
 const productUnitOptions = [
   { value: "carton", labelKey: "unitCarton" },
   { value: "box", labelKey: "unitBox" },
@@ -481,16 +482,18 @@ const emptyForm = {
 function Products() {
   const navigate = useNavigate();
   const [products, setProducts] = useJsonCollection("products");
-  const [stockMovements, setStockMovements] = useJsonCollection("stockMovements");
   const [productGroups, setProductGroups] = useJsonCollection("productGroups");
-  const [suppliers] = useJsonCollection("suppliers");
-  const [legacyCompanies] = useJsonCollection("companies");
   const [productCountries, setProductCountries] = useJsonCollection("countries");
-  const [customProductForms, setCustomProductForms] = useJsonCollection("productForms");
-  const [manufacturerCompanies, setManufacturerCompanies] = useJsonCollection("manufacturerCompanies");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const loadProductFormData = showModal;
+  const loadProductLookupData = showModal || Boolean(search.trim());
+  const [stockMovements, setStockMovements] = useJsonCollection("stockMovements", { enabled: loadProductFormData });
+  const [suppliers] = useJsonCollection("suppliers", { enabled: loadProductLookupData });
+  const [legacyCompanies] = useJsonCollection("companies", { enabled: loadProductLookupData });
+  const [customProductForms, setCustomProductForms] = useJsonCollection("productForms", { enabled: loadProductFormData });
+  const [manufacturerCompanies, setManufacturerCompanies] = useJsonCollection("manufacturerCompanies", { enabled: loadProductFormData });
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState(emptyForm);
   const [batchForms, setBatchForms] = useState([{ ...emptyForm }]);
@@ -1155,8 +1158,8 @@ function Products() {
                   <td>{t[productUnitOptions.find((option) => option.value === (product.productUnit || "piece"))?.labelKey] || product.productUnit || t.unitPiece}</td>
                   <td>{countryLabel(product)}</td>
                   <td>{product.manufacturerName || product.companyName || "—"}</td>
-                  <td>{Number(product.salePrice || 0).toLocaleString("en-US")}</td>
-                  <td>{Number(product.purchasePrice || 0).toLocaleString("en-US")}</td>
+                  <td>{Number(product.salePrice || 0).toLocaleString("en-US")} <strong>{currencyCode(product.saleCurrency || product.unit)}</strong></td>
+                  <td>{Number(product.purchasePrice || 0).toLocaleString("en-US")} <strong>{currencyCode(product.unit)}</strong></td>
                   <td>
                     <div className="sales-product-row-actions">
                       <button type="button" onClick={(event) => { event.stopPropagation(); openEdit(product); }} title={t.edit}><Edit3 size={15} /></button>

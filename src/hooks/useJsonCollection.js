@@ -4,6 +4,7 @@ import { readBrowserCollection, writeBrowserCollection } from "../utils/browserS
 
 const collectionUpdateEvent = "app-json-collection-updated";
 const pollIntervalMs = 60000;
+const collectionCacheTtlMs = 30000;
 const browserOnly = false;
 const stores = new Map();
 const initialLoadListeners = new Set();
@@ -21,6 +22,7 @@ function getStore(name) {
       items: [], loaded: false, loading: null, subscribers: new Set(),
       pollTimer: null, focusHandler: null, errorShown: false,
       pendingWrites: 0, writeQueue: Promise.resolve(), generation: 0,
+      lastLoadedAt: 0,
     });
   }
   return stores.get(name);
@@ -33,10 +35,18 @@ function publish(name, items, loaded = true) {
   store.subscribers.forEach((subscriber) => subscriber(store.items, store.loaded));
 }
 
-async function loadStore(name, { quiet = false } = {}) {
+async function loadStore(name, { quiet = false, force = false } = {}) {
   const store = getStore(name);
   if (store.loading) return store.loading;
   if (store.pendingWrites) return store.items;
+
+  // Keep an already-loaded collection in memory while navigating between pages.
+  // This prevents remounting a page from immediately downloading the same JSON
+  // collection again. Background/focus polling can still refresh stale data.
+  const cacheAge = Date.now() - store.lastLoadedAt;
+  if (!force && store.loaded && store.lastLoadedAt > 0 && cacheAge < collectionCacheTtlMs) {
+    return store.items;
+  }
   const generation = store.generation;
   const initialLoad = !store.loaded;
   if (initialLoad) {
@@ -47,6 +57,7 @@ async function loadStore(name, { quiet = false } = {}) {
     .then((items) => {
       if (generation === store.generation && !store.pendingWrites) {
         if (items !== store.items || !store.loaded) publish(name, items);
+        store.lastLoadedAt = Date.now();
       }
       store.errorShown = false;
       return items;
@@ -74,7 +85,7 @@ function startPolling(name) {
   const store = getStore(name);
   if (browserOnly || store.pollTimer) return;
   store.pollTimer = window.setInterval(() => {
-    if (document.visibilityState === "visible" && navigator.onLine && !store.pendingWrites) loadStore(name, { quiet: true });
+    if (document.visibilityState === "visible" && navigator.onLine && !store.pendingWrites) loadStore(name, { quiet: true, force: true });
   }, pollIntervalMs);
   store.focusHandler = () => {
     if (document.visibilityState === "visible" && navigator.onLine && !store.pendingWrites) loadStore(name, { quiet: true });
@@ -91,7 +102,8 @@ function stopPolling(name) {
   store.focusHandler = null;
 }
 
-export function useJsonCollection(name, { enabled = true } = {}) {
+export function useJsonCollection(name, options = {}) {
+  const enabled = options?.enabled !== false;
   const store = getStore(name);
   const [snapshot, setSnapshot] = useState(() => ({ items: store.items, loaded: store.loaded }));
 
@@ -119,7 +131,7 @@ export function useJsonCollection(name, { enabled = true } = {}) {
     return () => window.removeEventListener(collectionUpdateEvent, syncCollection);
   }, [name]);
 
-  const load = useCallback(() => loadStore(name), [name]);
+  const load = useCallback(() => loadStore(name, { force: true }), [name]);
   const setItems = useCallback((nextValue) => {
     const currentStore = getStore(name);
     const previousItems = currentStore.items;
@@ -138,6 +150,7 @@ export function useJsonCollection(name, { enabled = true } = {}) {
         const savedItems = await writeBrowserCollection(name, nextItems, previousItems);
         // A newer optimistic change must not be overwritten by an older save.
         if (currentStore.items === nextItems) publish(name, savedItems);
+        currentStore.lastLoadedAt = Date.now();
         window.dispatchEvent(new CustomEvent(collectionUpdateEvent, { detail: { name, items: savedItems, internal: true } }));
         return true;
       } catch (error) {

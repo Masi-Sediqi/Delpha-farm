@@ -258,19 +258,20 @@ const translations = {
 };
 
 const numeric = (value) => Math.max(Number(value || 0), 0);
+const currencyCode = (value) => String(value || "AFN").trim().toUpperCase();
 const today = () => new Date().toISOString().slice(0, 10);
 
 export default function SalesRegister() {
   const [sales, setSales] = useJsonCollection("salesRegister");
   const navigate = useNavigate();
   const [customers] = useJsonCollection("customerRegistry");
-  const [products] = useJsonCollection("products");
-  const [productGroups] = useJsonCollection("productGroups");
-  const [stockMovements, setStockMovements] = useJsonCollection("stockMovements");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [search, setSearch] = useState("");
   const [productSearch, setProductSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [products] = useJsonCollection("products", { enabled: showModal });
+  const [productGroups] = useJsonCollection("productGroups", { enabled: showModal });
+  const [stockMovements, setStockMovements] = useJsonCollection("stockMovements", { enabled: showModal });
   const [dailyDate, setDailyDate] = useState("");
   const [editingSaleId, setEditingSaleId] = useState(null);
   const [customerId, setCustomerId] = useState("");
@@ -388,6 +389,7 @@ export default function SalesRegister() {
         cartons: 0,
         quantity: 1,
         salePrice: numeric(product.salePrice),
+        currency: currencyCode(product.saleCurrency || product.unit),
         discount: 0,
       },
     ]);
@@ -797,7 +799,7 @@ export default function SalesRegister() {
                           <label><span>{t.currentStock}</span><input value={item.currentStock} readOnly /></label>
                           <label><span>{t.cartons}</span><input type="number" min="0" step="1" value={item.cartons} onChange={(e) => updateItem(item.productId, "cartons", e.target.value)} /></label>
                           <label><span>{t.quantity}</span><input type="number" min="1" max={item.currentStock} step="1" value={item.quantity} onChange={(e) => updateItem(item.productId, "quantity", e.target.value)} /></label>
-                          <label><span>{t.salePrice}</span><input type="number" min="0" step="0.01" value={item.salePrice} onChange={(e) => updateItem(item.productId, "salePrice", e.target.value)} /></label>
+                          <label><span>{t.salePrice} ({currencyCode(item.currency)})</span><input type="number" min="0" step="0.01" value={item.salePrice} onChange={(e) => updateItem(item.productId, "salePrice", e.target.value)} /></label>
                           <label><span>{t.discount}</span><input type="number" min="0" step="0.01" value={item.discount} onChange={(e) => updateItem(item.productId, "discount", e.target.value)} /></label>
                           <label className="sales-register-line-total"><span>{t.lineTotal}</span><input value={lineTotal(item).toFixed(2)} readOnly /></label>
                         </div>

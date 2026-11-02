@@ -265,12 +265,11 @@ function ProtectedModule({ currentUser, moduleKey, action = "view", children }) 
 }
 
 function App() {
+  const [settings, , loadSettings] = useJsonCollection("settings");
   const [serverUser, setServerUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(IS_DEMO);
   const [serverSetupRequired, setServerSetupRequired] = useState(false);
-  const collectionAccessEnabled = IS_DEMO || Boolean(serverUser);
-  const [settings, , loadSettings] = useJsonCollection("settings", { enabled: collectionAccessEnabled });
-  const [accounts, setAccounts, , accountsLoaded] = useJsonCollection("accounts", { enabled: collectionAccessEnabled });
+  const [accounts, setAccounts, , accountsLoaded] = useJsonCollection("accounts");
   useEffect(() => {
     if (IS_DEMO) return;
     let active = true;
@@ -405,7 +404,7 @@ function App() {
   const hasFullAdmin = effectiveAccounts.some((account) => String(account.role || "").toLowerCase() === "admin");
   const currentUser = IS_DEMO
     ? (!hasFullAdmin || bootstrapSession ? defaultAdminAccount : effectiveAccounts.find((account) => String(account.id) === String(sessionId)))
-    : (serverUser ? { ...serverUser, permissions: String(serverUser.role || "").toLowerCase() === "admin" ? createFullPermissions() : (serverUser.permissions || {}) } : null);
+    : (serverUser ? { ...serverUser, permissions: String(serverUser.role || "").toLowerCase() === "admin" ? createFullPermissions() : (serverUser.permissions || {}) } : serverSetupRequired ? defaultAdminAccount : null);
 
   useEffect(() => {
     window.addEventListener("company-settings-updated", loadSettings);
@@ -669,7 +668,6 @@ function App() {
           onLogin={login}
           company={company}
           isDemo={IS_DEMO}
-          setupRequired={!IS_DEMO && serverSetupRequired}
         />
       </Suspense>
     );
@@ -754,7 +752,7 @@ function App() {
 
         <div className="page-content">
           <Suspense fallback={<PageLoader />}>
-            <PageTransition key={`${location.pathname}${location.search}`} >
+            <PageTransition>
             <div className={`page-fade-shell ${routeClassName}`}>
             <Routes>
               <Route path="/" element={protect("dashboard", <Dashboard currentUser={currentUser} />)} />

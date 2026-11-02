@@ -174,6 +174,12 @@ export default function CashCount() {
   const t = tr[language] || tr.en;
   const direction = rtlLanguages.has(language) ? "rtl" : "ltr";
 
+  const [activeCurrency, setActiveCurrency] = useState("AFN");
+  const [query, setQuery] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState({ date: todayDateValue(), currency: "AFN", notes: "", breakdown: makeBreakdown("AFN") });
+
   const [sales] = useJsonCollection("salesRegister");
   const [purchases] = useJsonCollection("purchases");
   const [customers] = useJsonCollection("customerRegistry");
@@ -186,13 +192,7 @@ export default function CashCount() {
   const [bankTransactions] = useJsonCollection("bankTransactions");
   const [manualEntries] = useJsonCollection("cashTransactions");
   const [counts, setCounts] = useJsonCollection("cashCounts");
-  const [accounts] = useJsonCollection("accounts");
-
-  const [activeCurrency, setActiveCurrency] = useState("AFN");
-  const [query, setQuery] = useState("");
-  const [showModal, setShowModal] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState({ date: todayDateValue(), currency: "AFN", notes: "", breakdown: makeBreakdown("AFN") });
+  const [accounts] = useJsonCollection("accounts", { enabled: showModal });
 
   const currentSettings = settings[0] || {};
   const defaultCurrency = normalizeCurrency(currentSettings.currency || "AFN");

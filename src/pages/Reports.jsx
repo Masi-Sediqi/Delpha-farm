@@ -87,10 +87,32 @@ function row(source,item,extra={}){return{id:`${source}-${item.id||Math.random()
 
 export default function Reports(){
   const navigate=useNavigate();
-  const [purchases]=useJsonCollection("purchases"),[purchaseItems]=useJsonCollection("purchaseItems"),[sales]=useJsonCollection("salesRegister"),[purchaseReturns]=useJsonCollection("purchaseReturns"),[saleReturns]=useJsonCollection("saleReturns"),[supplierPayments]=useJsonCollection("supplierPayments"),[customerPayments]=useJsonCollection("customerPayments"),[cashTransactions]=useJsonCollection("partyCashTransactions"),[expenses]=useJsonCollection("expenses"),[products]=useJsonCollection("products"),[suppliers]=useJsonCollection("suppliers"),[customers]=useJsonCollection("customerRegistry");
   const [pdfProgress,setPdfProgress]=useState(null);
   const pdfCancelRef=useRef(false);
   const [reportType,setReportType]=useState("sales"),[basis,setBasis]=useState("company"),[basisValue,setBasisValue]=useState(""),[preset,setPreset]=useState("all"),[from,setFrom]=useState(today()),[to,setTo]=useState(today()),[measure,setMeasure]=useState("both"),[trade,setTrade]=useState("all"),[reportSearch,setReportSearch]=useState(""),[shown,setShown]=useState(false);
+
+  // Load only the collections required by the currently selected report.
+  // Hooks are still called in a stable order; `enabled` only controls network loading.
+  const needsSales = ["sales", "receivables", "profit"].includes(reportType);
+  const needsPurchases = ["purchases", "payables"].includes(reportType);
+  const needsProducts = ["sales", "purchases", "profit"].includes(reportType);
+  const needsPurchaseReturns = ["purchaseReturns", "payables"].includes(reportType);
+  const needsSaleReturns = ["saleReturns", "receivables"].includes(reportType);
+  const needsSupplierPayments = ["payables", "cashFlow"].includes(reportType);
+  const needsCustomerPayments = ["receivables", "cashFlow"].includes(reportType);
+
+  const [purchases]=useJsonCollection("purchases",{enabled:needsPurchases});
+  const [purchaseItems]=useJsonCollection("purchaseItems",{enabled:reportType==="purchases"});
+  const [sales]=useJsonCollection("salesRegister",{enabled:needsSales});
+  const [purchaseReturns]=useJsonCollection("purchaseReturns",{enabled:needsPurchaseReturns});
+  const [saleReturns]=useJsonCollection("saleReturns",{enabled:needsSaleReturns});
+  const [supplierPayments]=useJsonCollection("supplierPayments",{enabled:needsSupplierPayments});
+  const [customerPayments]=useJsonCollection("customerPayments",{enabled:needsCustomerPayments});
+  const [cashTransactions]=useJsonCollection("partyCashTransactions",{enabled:reportType==="cashFlow"});
+  const [expenses]=useJsonCollection("expenses",{enabled:reportType==="expenses"});
+  const [products]=useJsonCollection("products",{enabled:needsProducts});
+  const [suppliers]=useJsonCollection("suppliers",{enabled:reportType==="payables"});
+  const [customers]=useJsonCollection("customerRegistry",{enabled:reportType==="receivables"});
   useEffect(()=>{setBasis((bases[reportType]||[])[0]?.[0]||"party");setBasisValue("");setReportSearch("");setShown(false)},[reportType]);
   const productMap=useMemo(()=>new Map(products.map(p=>[String(p.id),p])),[products]);
   const allRows=useMemo(()=>{
