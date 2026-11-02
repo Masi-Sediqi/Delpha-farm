@@ -1754,3 +1754,39 @@ body.dark-mode .purchase-supplier-info-panel{
   }
   .purchase-entry-page .apg-picker-header{display:none !important}
 }
+
+/* Purchase entry: dedicated sale price column without clipping. */
+.purchase-entry-page .purchase-item-row.purchase-keyboard-row {
+  grid-template-columns: repeat(2,minmax(100px,1fr)) repeat(3,minmax(100px,1fr)) minmax(110px,1fr) minmax(120px,1fr) 36px !important;
+}
+@media (max-width: 1100px) {
+  .purchase-entry-page .purchase-item-row.purchase-keyboard-row {
+    grid-template-columns: repeat(4,minmax(105px,1fr)) !important;
+  }
+}
+@media (max-width: 640px) {
+  .purchase-entry-page .purchase-item-row.purchase-keyboard-row {
+    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+  }
+}
+
+/* Single-line purchase items on desktop. Keep every field aligned with its label. */
+@media (min-width: 1101px) {
+ .purchase-entry-page .purchase-item-row.purchase-keyboard-row {
+  display:grid !important;
+  grid-template-columns:minmax(150px,2.5fr) minmax(86px,.95fr) minmax(65px,.68fr) minmax(70px,.75fr) minmax(76px,.8fr) minmax(76px,.8fr) minmax(82px,.9fr) minmax(105px,1.05fr) 30px !important;
+  gap:5px !important; align-items:end !important; padding:8px !important;
+ }
+ .purchase-entry-page .purchase-keyboard-row > * {grid-row:1 !important;grid-column:auto !important;min-width:0 !important;max-width:100% !important;}
+ .purchase-entry-page .purchase-keyboard-row .purchase-item-name {min-width:0 !important;align-self:center !important;}
+ .purchase-entry-page .purchase-keyboard-row label {min-width:0 !important;}
+ .purchase-entry-page .purchase-keyboard-row label input,
+ .purchase-entry-page .purchase-keyboard-row label select {width:100% !important;min-width:0 !important;padding-inline:5px !important;box-sizing:border-box !important;}
+ .purchase-entry-page .purchase-keyboard-row .purchase-line-total {overflow:hidden;align-self:center !important;}
+ .purchase-entry-page .purchase-keyboard-row .purchase-line-total strong {font-size:11px !important;white-space:nowrap;}
+ .purchase-entry-page .purchase-keyboard-row .purchase-remove {width:28px !important;height:32px !important;align-self:center !important;}
+}
+@media(min-width:1101px) and (max-width:1450px) {
+ .purchase-entry-page .purchase-items-card {overflow-x:auto;}
+ .purchase-entry-page .purchase-items-list {min-width:925px;}
+}

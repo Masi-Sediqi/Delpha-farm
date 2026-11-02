@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { CopyPlus, Edit3, PackagePlus, Plus, Search, Trash2, X } from "lucide-react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
@@ -408,7 +408,6 @@ const translations = {
 };
 
 const currencyOptions = ["afn", "usd", "inr", "eur"];
-const currencyCode = (value) => String(value || "afn").trim().toUpperCase();
 const productUnitOptions = [
   { value: "carton", labelKey: "unitCarton" },
   { value: "box", labelKey: "unitBox" },
@@ -459,6 +458,7 @@ const expiryAlertOptions = [
 
 const emptyForm = {
   productName: "",
+  productNameEn: "",
   groupId: "",
   cartonSize: "",
   productForm: "",
@@ -481,22 +481,21 @@ const emptyForm = {
 
 function Products() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useJsonCollection("products");
+  const [stockMovements, setStockMovements] = useJsonCollection("stockMovements");
   const [productGroups, setProductGroups] = useJsonCollection("productGroups");
+  const [suppliers] = useJsonCollection("suppliers");
+  const [legacyCompanies] = useJsonCollection("companies");
   const [productCountries, setProductCountries] = useJsonCollection("countries");
+  const [customProductForms, setCustomProductForms] = useJsonCollection("productForms");
+  const [manufacturerCompanies, setManufacturerCompanies] = useJsonCollection("manufacturerCompanies");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const loadProductFormData = showModal;
-  const loadProductLookupData = showModal || Boolean(search.trim());
-  const [stockMovements, setStockMovements] = useJsonCollection("stockMovements", { enabled: loadProductFormData });
-  const [suppliers] = useJsonCollection("suppliers", { enabled: loadProductLookupData });
-  const [legacyCompanies] = useJsonCollection("companies", { enabled: loadProductLookupData });
-  const [customProductForms, setCustomProductForms] = useJsonCollection("productForms", { enabled: loadProductFormData });
-  const [manufacturerCompanies, setManufacturerCompanies] = useJsonCollection("manufacturerCompanies", { enabled: loadProductFormData });
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState(emptyForm);
-  const [batchForms, setBatchForms] = useState([{ ...emptyForm }]);
+  const [batchForms, setBatchForms] = useState(() => Array.from({ length: 10 }, () => ({ ...emptyForm })));
   const [addingGroup, setAddingGroup] = useState(false);
   const [newGroup, setNewGroup] = useState("");
   const [addingCountry, setAddingCountry] = useState(false);
@@ -583,10 +582,7 @@ function Products() {
   const openNew = () => {
     setEditingId(null);
     setFormData({ ...emptyForm, groupId: defaultGroupId, countryId: defaultCountryId });
-    setBatchForms([
-      { ...emptyForm, countryId: defaultCountryId },
-      { ...emptyForm, countryId: defaultCountryId },
-    ]);
+    setBatchForms(Array.from({ length: 10 }, () => ({ ...emptyForm, countryId: defaultCountryId })));
     setFieldErrors({});
     setAddingGroup(false);
     setNewGroup("");
@@ -626,6 +622,19 @@ function Products() {
     setManufacturerDraft("");
     setShowModal(true);
   };
+
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (!editId) return;
+    const match = products.find((product) => String(product.id) === editId);
+    if (!match) return;
+    openEdit(match);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.delete("edit");
+      return next;
+    }, { replace: true });
+  }, [products, searchParams, setSearchParams]);
 
   const closeModal = () => {
     setShowModal(false);
@@ -689,8 +698,10 @@ function Products() {
   };
 
   const removeBatchForm = (index) => {
-    setBatchForms((current) => current.length === 1
-      ? [{ ...emptyForm, countryId: defaultCountryId }]
+    setBatchForms((current) => current.length <= 10
+      ? current.map((item, itemIndex) => itemIndex === index
+        ? { ...emptyForm, countryId: defaultCountryId }
+        : item)
       : current.filter((_, itemIndex) => itemIndex !== index));
   };
 
@@ -1137,6 +1148,7 @@ function Products() {
             <thead>
               <tr>
                 <th>{t.productName}</th>
+                <th>{language === "fa" ? "نام انگلیسی" : "English Name"}</th>
                 <th>{t.group}</th>
                 <th>{t.cartonSize}</th>
                 <th>{t.productUnit}</th>
@@ -1153,13 +1165,14 @@ function Products() {
                   <td className="sales-product-name-cell">
                     <div><strong>{product.productName}</strong>{product.description && <small>{product.description}</small>}</div>
                   </td>
+                  <td>{product.productNameEn || "—"}</td>
                   <td><span className="sales-product-group-badge">{groupLabel(product)}</span></td>
                   <td>{product.cartonSize || "—"}</td>
                   <td>{t[productUnitOptions.find((option) => option.value === (product.productUnit || "piece"))?.labelKey] || product.productUnit || t.unitPiece}</td>
                   <td>{countryLabel(product)}</td>
                   <td>{product.manufacturerName || product.companyName || "—"}</td>
-                  <td>{Number(product.salePrice || 0).toLocaleString("en-US")} <strong>{currencyCode(product.saleCurrency || product.unit)}</strong></td>
-                  <td>{Number(product.purchasePrice || 0).toLocaleString("en-US")} <strong>{currencyCode(product.unit)}</strong></td>
+                  <td>{Number(product.salePrice || 0).toLocaleString("en-US")}</td>
+                  <td>{Number(product.purchasePrice || 0).toLocaleString("en-US")}</td>
                   <td>
                     <div className="sales-product-row-actions">
                       <button type="button" onClick={(event) => { event.stopPropagation(); openEdit(product); }} title={t.edit}><Edit3 size={15} /></button>
@@ -1191,6 +1204,11 @@ function Products() {
                   <span>{t.productName} *</span>
                   <input name="productName" value={formData.productName} onChange={handleChange} placeholder={t.productPlaceholder} autoFocus aria-invalid={Boolean(fieldErrors.productName)} aria-describedby={fieldErrors.productName ? "product-name-error" : undefined} />
                   {fieldErrors.productName && <span id="product-name-error" className="sales-product-field-error" role="alert">{fieldErrors.productName}</span>}
+                </label>
+
+                <label className="sales-product-field sales-product-field-wide">
+                  <span>{language === "fa" ? "نام انگلیسی جنس" : "English product name"}</span>
+                  <input name="productNameEn" dir="ltr" value={formData.productNameEn || ""} onChange={handleChange} placeholder="English product name" />
                 </label>
 
                 <div className={`sales-product-field ${fieldErrors.group ? "has-error" : ""}`}>
@@ -1468,8 +1486,7 @@ function Products() {
                   {batchForms.map((item, index) => (
                     <section className="sales-product-batch-card" key={index}>
                       <header>
-                        <strong>{formatTemplate(t.productNumber, { number: index + 1 })}</strong>
-                        <button type="button" onClick={() => removeBatchForm(index)} aria-label={t.delete} title={t.delete}><Trash2 size={15} /></button>
+                        <button type="button" tabIndex={-1} onClick={() => removeBatchForm(index)} aria-label={t.delete} title={t.delete}><Trash2 size={15} /></button>
                       </header>
                       <div className="sales-product-batch-fields">
                         <label className="sales-product-field sales-product-field-wide">

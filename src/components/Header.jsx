@@ -9,7 +9,6 @@ import {
   Clock3,
   Globe2,
   LogOut,
-  PackageX,
   Search,
   Settings,
   Moon,
@@ -113,7 +112,7 @@ function HeaderActions({ currentUser, onLogout, compact = false }) {
   };
 
   const notificationGroups = useMemo(() => {
-    const expired = [], expiring = [], low = [], out = [];
+    const expired = [], expiring = [], low = [];
     const defaultLow = Math.max(Number(currentSettings.lowStockThreshold || 10), 0);
 
     products.forEach((product) => {
@@ -123,9 +122,7 @@ function HeaderActions({ currentUser, onLogout, compact = false }) {
       const expiryAlertDays = Math.max(Number(product.alertBeforeExpiryDays || 60), 0);
       const path = `/product-detail/${product.id}`;
 
-      if (stock <= 0) {
-        out.push({ id: `stock-out:${product.id}`, title: t.outTitle, description: name, path, icon: PackageX });
-      } else if (threshold > 0 && stock <= threshold) {
+      if (stock > 0 && threshold > 0 && stock <= threshold) {
         low.push({ id: `stock-low:${product.id}:${stock}:${threshold}`, title: t.lowTitle, description: `${name} · ${stock}`, path, icon: Box });
       }
 
@@ -150,7 +147,6 @@ function HeaderActions({ currentUser, onLogout, compact = false }) {
       { key: "expired", title: t.expired, icon: AlertTriangle, items: expired },
       { key: "expiring", title: t.expiring, icon: Clock3, items: expiring },
       { key: "low", title: t.low, icon: Box, items: low },
-      { key: "out", title: t.out, icon: PackageX, items: out },
     ].filter((group) => group.items.length);
   }, [products, stockMovements, currentSettings.lowStockThreshold, t]);
 

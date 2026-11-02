@@ -25,3 +25,9 @@
 .sale-wholesale-page .purchase-save-top { background:var(--wh-green); }
 @media(max-width:1000px){.sale-wholesale-page .sale-bottom-panels{grid-template-columns:1fr 1fr;}.sale-wholesale-grid-head,.sale-wholesale-line{min-width:1060px;}}
 @media(max-width:640px){.sale-wholesale-page .sale-bottom-panels{grid-template-columns:1fr;}.sale-wholesale-page .sale-top-meta{grid-template-columns:1fr 1fr !important;}.sale-wholesale-grid-head,.sale-wholesale-line{min-width:1000px;}}
+
+/* Stronger header contrast across both themes */
+.sale-wholesale-page .sale-wholesale-grid-head,
+.sale-wholesale-page .sale-wholesale-grid-head > span { color:#fff !important; -webkit-text-fill-color:#fff !important; }
+.sale-wholesale-edit-product { border:0; background:transparent; color:var(--primary,#0d8065); cursor:pointer; font-size:11px; padding:2px 0; text-align:right; align-self:flex-start; }
+.sale-wholesale-edit-product:hover { text-decoration:underline; }

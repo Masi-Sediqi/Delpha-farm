@@ -276,6 +276,7 @@ function PurchaseNew() {
   const [supplierInfoOpen, setSupplierInfoOpen] = useState(false);
   const [quickName, setQuickName] = useState("");
   const [currency, setCurrency] = useState("AFN");
+  const [saleCurrency, setSaleCurrency] = useState("AFN");
   const [billNumber, setBillNumber] = useState("");
   const [systemBillNumber, setSystemBillNumber] = useState("");
   const [purchaseDate, setPurchaseDate] = useState(today());
@@ -422,7 +423,8 @@ function PurchaseNew() {
     const sourceRows = storedRows.length ? storedRows : (embeddedRows.length ? embeddedRows : movementRows);
 
     setSupplierId(String(purchase.supplierId || purchase.supplier_id || ""));
-    setCurrency(purchase.currency || "AFN");
+    setCurrency(purchase.purchaseCurrency || purchase.currency || "AFN");
+    setSaleCurrency((purchase.saleCurrency || "AFN").toUpperCase());
     setBillNumber(purchase.billNumber || purchase.billNo || purchase.invoiceNumber || "");
     setSystemBillNumber(purchase.systemBillNumber || purchase.systemBillNo || nextSequentialPurchaseBill(purchases));
     setPurchaseDate(purchase.purchaseDate || purchase.date || String(purchase.createdAt || "").slice(0, 10) || today());
@@ -452,6 +454,7 @@ function PurchaseNew() {
         quantity: packageQuantity || (pieceQuantity / unitsPerUnit),
         purchasePrice: num(row.purchasePrice ?? row.unitCost ?? row.buyPrice ?? product?.purchasePrice),
         salePrice: num(row.salePrice ?? row.sellPrice ?? product?.salePrice),
+        saleCurrency: (row.saleCurrency || purchase.saleCurrency || product?.saleCurrency || "AFN").toUpperCase(),
         currentStock: row.currentStock ?? (product ? getStock(product) : 0),
         manufacturerId: row.manufacturerId || row.companyId || manufacturerIdForProduct(product),
         manufacturerName: row.manufacturerName || row.companyName || product?.manufacturerName || product?.companyName || "",
@@ -531,6 +534,7 @@ function PurchaseNew() {
       quantity: 1,
       purchasePrice: num(product.purchasePrice),
       salePrice: num(product.salePrice),
+      saleCurrency: (product.saleCurrency || saleCurrency).toUpperCase(),
       currentStock: getStock(product),
       manufacturerId: manufacturerIdForProduct(product),
       manufacturerName: manufacturers.find((item) => String(item.id) === String(manufacturerIdForProduct(product)))?.name || product.manufacturerName || product.companyName || "",
@@ -571,6 +575,11 @@ function PurchaseNew() {
       focusSearchResult(results.length - 1);
       return;
     }
+    if ((event.key === "ArrowDown" || event.key === "ArrowUp") && results.length) {
+      event.preventDefault();
+      moveSearchResult(activeResultIndex, event.key === "ArrowDown" ? 1 : -1);
+      return;
+    }
     if ((event.key === "ArrowLeft" || event.key === "ArrowRight") && results.length) {
       event.preventDefault();
       const visualStep = direction === "rtl"
@@ -603,6 +612,11 @@ function PurchaseNew() {
     if (event.key === "End") {
       event.preventDefault();
       focusSearchResult(results.length - 1);
+      return;
+    }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      moveSearchResult(index, event.key === "ArrowDown" ? 1 : -1);
       return;
     }
     if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
@@ -727,6 +741,8 @@ function PurchaseNew() {
       systemBillNumber: finalSystemBillNumber,
       purchaseDate,
       currency,
+      purchaseCurrency: currency,
+      saleCurrency,
       paymentMode: paymentStatus === "paid" ? "cash" : "installment",
       paymentStatus,
       paidAmount: paid,
@@ -747,6 +763,8 @@ function PurchaseNew() {
       lineId: row.lineId || row.id || `purchase-line-${targetPurchaseId}-${index + 1}`,
       purchaseId: targetPurchaseId,
       lineTotal: lineTotal(row),
+      purchaseCurrency: currency,
+      saleCurrency,
       receivedQuantity: receivedQuantity(row),
       baseUnit: row.baseUnit || row.unit || "piece",
       purchaseUnit: row.purchaseUnit || row.unit || "piece",
@@ -772,6 +790,9 @@ function PurchaseNew() {
       baseUnit: row.baseUnit || row.unit || "piece",
       unitsPerUnit: positiveUnitCount(row.unitsPerUnit),
       unitCost: num(row.purchasePrice),
+      purchaseCurrency: currency,
+      saleCurrency,
+      salePrice: num(row.salePrice),
       manufacturerId: row.manufacturerId || "",
       manufacturerName: row.manufacturerName || "",
       batchNo: row.batchNo || "",
@@ -789,7 +810,9 @@ function PurchaseNew() {
       return {
         ...product,
         purchasePrice: num(row.purchasePrice),
-        salePrice: num(row.salePrice || product.salePrice),
+        salePrice: num(row.salePrice ?? product.salePrice),
+        purchaseCurrency: currency.toLowerCase(),
+        saleCurrency: saleCurrency.toLowerCase(),
         purchaseUnit: row.purchaseUnit || product.purchaseUnit || product.unit || "piece",
         unitsPerUnit: positiveUnitCount(row.unitsPerUnit),
         updatedAt: now,
@@ -912,8 +935,15 @@ function PurchaseNew() {
                 </label>
 
                 <label className="purchase-field purchase-top-field purchase-top-currency">
-                  <span>{t.currency}</span>
+                  <span>{language === "en" ? "Purchase currency" : language === "ps" ? "د پېرود اسعار" : "اسعار خرید"}</span>
                   <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+                    {currencies.map((code) => <option key={code} value={code}>{code}</option>)}
+                  </select>
+                </label>
+
+                <label className="purchase-field purchase-top-field purchase-top-currency">
+                  <span>{language === "en" ? "Sale currency" : language === "ps" ? "د پلور اسعار" : "اسعار فروش"}</span>
+                  <select value={saleCurrency} onChange={(e) => setSaleCurrency(e.target.value)}>
                     {currencies.map((code) => <option key={code} value={code}>{code}</option>)}
                   </select>
                 </label>
@@ -955,7 +985,7 @@ function PurchaseNew() {
                     </select>
                   </label>
                   <label>
-                    <span className="apg-quantity-caption">{t.qty} <select aria-label="Quantity unit" className="apg-quantity-unit-select" value={row.purchaseUnit === "piece" ? "piece" : "carton"} onChange={(e) => changeLineQuantityUnit(row.lineId, e.target.value)}><option value="carton">{unitLabel("carton")}</option><option value="piece">{unitLabel("piece")}</option></select></span>
+                    <span className="apg-quantity-caption">{t.qty}</span>
                     <input
                       ref={(node) => {
                         const key = String(row.lineId);
@@ -997,6 +1027,17 @@ function PurchaseNew() {
                       value={row.purchasePrice}
                       onFocus={(e) => e.target.select()}
                       onChange={(e) => updateItem(row.lineId, "purchasePrice", e.target.value)}
+                    />
+                  </label>
+                  <label className="purchase-sale-price-field">
+                    <span>{t.salePrice} ({saleCurrency})</span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      dir="ltr"
+                      value={row.salePrice ?? ""}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => updateItem(row.lineId, "salePrice", e.target.value)}
                     />
                   </label>
                   <div className="purchase-line-total">

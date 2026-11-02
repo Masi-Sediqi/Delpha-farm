@@ -175,7 +175,7 @@ const shellLabels = {
 
 function applyStoredTheme() {
   const storedTheme = localStorage.getItem(appThemeStorageKey) || "minimalism";
-  const theme = ["black-white", "aurora", "dark"].includes(storedTheme) ? "black-white" : "minimalism";
+  const theme = storedTheme === "soft-green" ? "soft-green" : (["black-white", "aurora", "dark"].includes(storedTheme) ? "black-white" : "minimalism");
   if (theme !== storedTheme) localStorage.setItem(appThemeStorageKey, theme);
   document.body.dataset.theme = theme;
   document.documentElement.dataset.theme = theme;
@@ -752,7 +752,7 @@ function App() {
 
         <div className="page-content">
           <Suspense fallback={<PageLoader />}>
-            <PageTransition>
+            <PageTransition key={`${location.pathname}${location.search}`} >
             <div className={`page-fade-shell ${routeClassName}`}>
             <Routes>
               <Route path="/" element={protect("dashboard", <Dashboard currentUser={currentUser} />)} />

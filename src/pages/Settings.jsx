@@ -113,6 +113,23 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
   const visibleAccounts = isCentralUsers ? serverAccounts : accounts;
   const current = settings[0] || {};
 
+  const fontChoices = [
+    { value: 'system', label: 'System / پیش‌فرض' },
+    { value: 'tahoma', label: 'Tahoma / تاهوما' },
+    { value: 'segoe', label: 'Segoe UI' },
+    { value: 'arial', label: 'Arial' },
+  ];
+  const fontFamilyMap = { system: 'inherit', tahoma: 'Tahoma, Arial, sans-serif', segoe: '"Segoe UI", Arial, sans-serif', arial: 'Arial, sans-serif' };
+  const [uiFont, setUiFont] = useState(() => localStorage.getItem('delpha-ui-font') || 'system');
+  const [uiFontSize, setUiFontSize] = useState(() => Number(localStorage.getItem('delpha-ui-font-scale') || 100));
+  useEffect(() => {
+    const family = fontFamilyMap[uiFont] || 'inherit';
+    const scale = Math.max(85, Math.min(125, uiFontSize || 100));
+    document.documentElement.style.setProperty('--delpha-user-font', family);
+    document.documentElement.style.zoom = `${scale}%`;
+    localStorage.setItem('delpha-ui-font', uiFont);
+    localStorage.setItem('delpha-ui-font-scale', String(scale));
+  }, [uiFont, uiFontSize]);
   const [activeTab, setActiveTab] = useState("identity");
   const [companyName, setCompanyName] = useState(defaultSystemName);
   const [systemSubtitle, setSystemSubtitle] = useState(defaultSystemSubtitle);
@@ -676,6 +693,10 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
           <Banknote size={16} />
           {st.decimalsTab}
         </button>
+        <button type="button" className={activeTab === "theme" ? "active" : ""} onClick={() => setActiveTab("theme")}>{st.themeTab}</button>
+        <button type="button" className={activeTab === "typography" ? "active" : ""} onClick={() => setActiveTab("typography")}>
+          {language === 'fa' ? 'فونت و اندازه' : language === 'ps' ? 'فونټ او اندازه' : 'Font & Size'}
+        </button>
         <button
           type="button"
           className={activeTab === "printing" ? "active" : ""}
@@ -727,6 +748,26 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
       </div>
 
       <div className="settings-shell-card">
+      {activeTab === "theme" && (
+        <section className="settings-shell-card delpha-green-theme-settings">
+          <h2>{st.themeTitle}</h2>
+          <p>{st.themeDescription}</p>
+          <div className="delpha-theme-grid">
+            {[
+              ["minimalism", language === "fa" ? "روشن" : "Light", "#f8fafc", "#0f172a"],
+              ["black-white", language === "fa" ? "تاریک" : "Dark", "#101b38", "#e9f4ff"],
+              ["soft-green", language === "fa" ? "سبز ملایم واتساپ" : "WhatsApp Soft Green", "#c3dec3", "#075b47"],
+            ].map(([value, label, background, foreground]) => (
+              <button key={value} type="button" className="delpha-theme-choice"
+                aria-pressed={(localStorage.getItem("afghan-power-theme") || "minimalism") === value}
+                onClick={() => { localStorage.setItem("afghan-power-theme", value); window.dispatchEvent(new Event("app-theme-updated")); setActiveTab("identity"); window.requestAnimationFrame(() => setActiveTab("theme")); }}>
+                <span className="delpha-theme-swatch" style={{ background, color: foreground }}>{label}</span>
+                <strong>{label}</strong>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
       {activeTab === "identity" && (
         <form className="settings-card settings-card-flat" onSubmit={save}>
           <div className="settings-preview tab-visible">
@@ -913,6 +954,24 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
         </form>
       )}
 
+      {activeTab === "typography" && (
+        <section className="settings-card settings-card-flat settings-font-panel">
+          <h2>{language === 'fa' ? 'تنظیمات فونت سیستم' : language === 'ps' ? 'د سیسټم فونټ تنظیمات' : 'System Typography'}</h2>
+          <p>{language === 'fa' ? 'نوع و اندازه فونت را انتخاب کنید. تغییرات فوراً در تمام صفحات اعمال می‌شود.' : language === 'ps' ? 'فونټ او اندازه وټاکئ. بدلونونه سمدستي پلي کېږي.' : 'Select the font family and size. Changes apply instantly across the app.'}</p>
+          <div className="settings-font-controls">
+            <label><span>{language === 'fa' ? 'نوع فونت' : language === 'ps' ? 'د فونټ ډول' : 'Font family'}</span>
+              <select value={uiFont} onChange={(event) => setUiFont(event.target.value)}>
+                {fontChoices.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
+              </select>
+            </label>
+            <label><span>{language === 'fa' ? 'اندازه فونت' : language === 'ps' ? 'د فونټ اندازه' : 'Font size'}: {uiFontSize}%</span>
+              <input type="range" min="85" max="125" step="5" value={uiFontSize} onChange={(event) => setUiFontSize(Number(event.target.value))} />
+            </label>
+          </div>
+          <div className="settings-font-preview">{language === 'fa' ? 'پیش‌نمایش: نام جنس، کمپنی، تعداد کارتن و قیمت فروش' : language === 'ps' ? 'بېلګه: د توکي نوم، شرکت، شمېر او بیه' : 'Preview: Product, Company, Cartons and Sale Price'}</div>
+          <button type="button" onClick={() => {setUiFont('system');setUiFontSize(100);}}>{language === 'fa' ? 'بازگشت به پیش‌فرض' : language === 'ps' ? 'اصلي حالت ته ستنېدل' : 'Reset to defaults'}</button>
+        </section>
+      )}
       {activeTab === "printing" && (
         <form className="settings-print-card" onSubmit={save}>
           <section className="settings-panel">

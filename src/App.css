@@ -9380,3 +9380,16 @@ button.notification-icon {
   font-size:11px !important;
   font-weight:800 !important;
 }
+
+/* User-selected font family (loaded on startup; fallback to existing font). */
+body, body button, body input, body select, body textarea {font-family:var(--delpha-user-font, "Inter", "Segoe UI", Arial, sans-serif) !important;}
+
+/* Delpha soft-green mode inspired by the customer's former database and WhatsApp. */
+body[data-theme="soft-green"] { --bg:#c3dec3; --background:#c3dec3; --surface:#e1f0df; --text:#19372c; --muted:#536c5d; --border:#9ec5a5; background:#c3dec3!important;color:#19372c; }
+body[data-theme="soft-green"] #root, body[data-theme="soft-green"] .app, body[data-theme="soft-green"] .main, body[data-theme="soft-green"] .page-content {background:#c3dec3!important;color:#19372c;}
+body[data-theme="soft-green"] .sidebar, body[data-theme="soft-green"] .topbar {background:#075b47!important;color:#fff!important;border-color:#126f56!important;}
+body[data-theme="soft-green"] .sidebar a, body[data-theme="soft-green"] .sidebar button, body[data-theme="soft-green"] .topbar button {color:#fff;}
+body[data-theme="soft-green"] .card, body[data-theme="soft-green"] [class$="-card"], body[data-theme="soft-green"] [class$="-panel"], body[data-theme="soft-green"] .settings-shell-card, body[data-theme="soft-green"] .sales-products-card {background:#d9ebd7;color:#19372c;border-color:#9cc2a0;}
+body[data-theme="soft-green"] input, body[data-theme="soft-green"] select, body[data-theme="soft-green"] textarea {background:#f4faf1;color:#19372c;border-color:#91b69a;}
+body[data-theme="soft-green"] button:focus-visible {outline:2px solid #14785e;outline-offset:2px;}
+.delpha-theme-grid{display:flex;flex-wrap:wrap;gap:14px;margin-top:18px}.delpha-theme-choice{display:grid;gap:8px;min-width:150px;padding:12px;border:1px solid #a9b7ad;border-radius:10px;background:transparent;color:inherit;cursor:pointer}.delpha-theme-choice[aria-pressed="true"]{outline:2px solid #22a277}.delpha-theme-swatch{display:flex;align-items:center;justify-content:center;height:72px;border-radius:7px;font-weight:700}
