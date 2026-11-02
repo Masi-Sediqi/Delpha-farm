@@ -386,6 +386,43 @@ app.get("/api/auth/status", async (_request, response, next) => {
     response.json({ setupRequired: !result.rows[0].initialized });
   } catch (error) { next(error); }
 });
+app.post("/api/auth/setup", async (request, response, next) => {
+  const client = await pool.connect();
+  try {
+    const fullName = String(request.body?.fullName || "").trim();
+    const email = String(request.body?.email || "").trim().toLowerCase();
+    const password = String(request.body?.password || "");
+    if (!fullName || fullName.length > 200 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 12 || password.length > 1024) {
+      return response.status(400).json({ error: "Invalid administrator data. Password must be at least 12 characters." });
+    }
+
+    await client.query("BEGIN");
+    // Serialize first-run setup attempts. Once one active Admin exists this endpoint is permanently closed.
+    await client.query("LOCK TABLE delpha_users IN SHARE ROW EXCLUSIVE MODE");
+    const initialized = await client.query("SELECT EXISTS(SELECT 1 FROM delpha_users WHERE role='Admin' AND status='Active') AS initialized");
+    if (initialized.rows[0].initialized) {
+      await client.query("ROLLBACK");
+      return response.status(409).json({ error: "System setup has already been completed." });
+    }
+
+    const created = await client.query(`INSERT INTO delpha_users(email,full_name,password_hash,role,status,permissions)
+      VALUES($1,$2,$3,'Admin','Active','{}'::jsonb) RETURNING *`,
+      [email, fullName, await passwordHash(password)]);
+    const account = created.rows[0];
+    const token = randomBytes(32).toString("hex");
+    await client.query("INSERT INTO delpha_sessions(user_id, token_hash, expires_at) VALUES($1,$2,NOW()+INTERVAL '7 days')", [account.id, sha256(token)]);
+    await client.query("COMMIT");
+
+    response.setHeader("Set-Cookie", `${sessionCookie}=${token}; HttpOnly; ${cookieSecure ? "Secure; " : ""}SameSite=Lax; Path=/api; Max-Age=604800`);
+    response.status(201).json({ user: safeUser(account) });
+  } catch (error) {
+    try { await client.query("ROLLBACK"); } catch {}
+    if (error.code === "23505") return response.status(409).json({ error: "Email already exists." });
+    next(error);
+  } finally {
+    client.release();
+  }
+});
 app.get("/api/auth/me", requireSession, (request, response) => response.json({ user: request.authUser }));
 app.post("/api/auth/logout", requireSession, async (request, response, next) => {
   try {

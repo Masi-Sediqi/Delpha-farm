@@ -91,7 +91,7 @@ function stopPolling(name) {
   store.focusHandler = null;
 }
 
-export function useJsonCollection(name) {
+export function useJsonCollection(name, { enabled = true } = {}) {
   const store = getStore(name);
   const [snapshot, setSnapshot] = useState(() => ({ items: store.items, loaded: store.loaded }));
 
@@ -101,13 +101,15 @@ export function useJsonCollection(name) {
     );
     store.subscribers.add(subscriber);
     subscriber(store.items, store.loaded);
-    loadStore(name, { quiet: store.loaded });
-    startPolling(name);
+    if (enabled) {
+      loadStore(name, { quiet: store.loaded });
+      startPolling(name);
+    }
     return () => {
       store.subscribers.delete(subscriber);
       stopPolling(name);
     };
-  }, [name, store]);
+  }, [name, store, enabled]);
 
   useEffect(() => {
     const syncCollection = (event) => {
