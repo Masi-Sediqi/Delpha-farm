@@ -1,0 +1,21 @@
+/* Unified journal page. Overrides the previous two-panel layout. */
+.unified-journal-modal > main { display:block!important; overflow:auto!important; }
+.unified-journal-panel { min-height:100%; overflow:visible!important; padding:18px 22px!important; }
+.unified-journal-panel > header { margin:-18px -22px 12px!important; padding:15px 22px!important; display:flex; justify-content:space-between; }
+.unified-journal-panel .journal-entry-head,
+.unified-journal-panel .journal-entry-row { display:grid; grid-template-columns:minmax(210px,2fr) minmax(200px,2fr) minmax(110px,1fr) minmax(110px,1fr) 36px!important; gap:10px; align-items:center; }
+.unified-journal-panel .journal-entry-row > input { grid-column:auto!important; }
+.unified-journal-panel .journal-entry-row .journal-party-results { z-index:100; }
+.unified-journal-panel .journal-entry-list { overflow:visible; }
+.unified-journal-panel .journal-entry-row { overflow:visible; }
+.journal-page-info { display:flex; flex-direction:column; gap:4px; }
+.journal-page-info strong { font-size:17px; direction:ltr; }
+.journal-page-info small { font-size:10px; color:var(--text-muted,#64748b); }
+@media(max-width:760px) {
+ .unified-journal-panel .journal-entry-head { display:none!important; }
+ .unified-journal-panel .journal-entry-row { grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important; }
+ .unified-journal-panel .journal-entry-row .journal-party-search,
+ .unified-journal-panel .journal-entry-row > input[aria-label="تفصیلات"] { grid-column:1/-1!important; }
+ .unified-journal-panel .journal-remove { grid-column:1/-1; justify-self:end; }
+ .unified-journal-panel > header { flex-wrap:wrap; }
+}

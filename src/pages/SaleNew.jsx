@@ -429,6 +429,7 @@ function SaleNew() {
         // Legacy sale rows were already stored in the invoice currency.
         sourceCurrency: normalizeCurrency(item.sourceCurrency || editingSale.currency || product?.unit || "AFN"),
         sourcePurchasePrice: num(item.sourcePurchasePrice ?? item.purchasePrice ?? product?.purchasePrice),
+        sourcePurchaseCurrency: item.sourcePurchaseCurrency || product?.purchaseCurrency || "",
         sourceSalePrice: num(item.sourceSalePrice ?? item.salePrice ?? product?.salePrice),
         exchangeRate: num(item.exchangeRate) || 1,
         purchasePrice: num(item.purchasePrice ?? product?.purchasePrice),
@@ -528,6 +529,7 @@ function SaleNew() {
         quantity: pieceQuantityToAdd,
         sourceCurrency,
         sourcePurchasePrice: num(product.purchasePrice),
+        sourcePurchaseCurrency: product.purchaseCurrency || (currencies.includes(String(product.unit || "").toUpperCase()) ? product.unit : ""),
         sourceSalePrice: num(product.salePrice),
         exchangeRate: rate,
         purchasePrice: convertCurrency(product.purchasePrice, sourceCurrency, currency),
@@ -552,6 +554,16 @@ function SaleNew() {
     }, 0);
   };
 
+  // Purchase prices are recorded for the purchased package (usually a carton).
+  // Display the original purchase currency independently of the sale bill currency.
+  const pieceCostDisplay = (row) => {
+    const pieces = positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit || row.cartonSize);
+    const recordedCurrency = String(row.sourcePurchaseCurrency || "").trim().toUpperCase();
+    const costCurrency = recordedCurrency ? normalizeCurrency(recordedCurrency) : currency;
+    const packageCost = recordedCurrency ? num(row.sourcePurchasePrice ?? row.purchasePrice) : num(row.purchasePrice);
+    return `${(packageCost / pieces).toFixed(2)} ${costCurrency}`;
+  };
+
   const focusSearchResult = (index) => {
     if (!results.length) return;
     const nextIndex = (index + results.length) % results.length;
@@ -572,6 +584,12 @@ function SaleNew() {
     if (event.key === "Tab" && !event.shiftKey && !results.length) {
       event.preventDefault();
       customerSelectRef.current?.focus();
+      return;
+    }
+    if ((event.key === "ArrowDown" || event.key === "ArrowUp") && results.length) {
+      event.preventDefault();
+      // Keep focus in the search input so the user can continue typing.
+      setActiveResultIndex((index) => (index + (event.key === "ArrowDown" ? 1 : -1) + results.length) % results.length);
       return;
     }
     if (event.key === "Home" && results.length) {
@@ -611,6 +629,11 @@ function SaleNew() {
       } else {
         moveSearchResult(index, 1);
       }
+      return;
+    }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      moveSearchResult(index, event.key === "ArrowDown" ? 1 : -1);
       return;
     }
     if (event.key === "Home") {
@@ -1089,7 +1112,7 @@ function SaleNew() {
               )}
               {!!items.length && (
                 <div className="sale-wholesale-grid-head" role="row">
-                  <span>نام جنس</span><span>سایز کارتن</span><span>قیمت تمام شد</span>
+                  <span>نام جنس</span><span>سایز کارتن</span><span>{language === "en" ? "Cost / piece" : language === "ps" ? "د هرې دانې لګښت" : "نرخ تمام‌شد فی دانه"}</span>
                   <span>قیمت فروش</span><span>تعداد کارتن</span><span>مقدار دانه</span>
                   <span>فیصدی تخفیف</span><span>مجموع</span><span>عملیات</span>
                 </div>
@@ -1101,13 +1124,13 @@ function SaleNew() {
                     <small>{row.manufacturerName || ""}</small><button className="sale-wholesale-edit-product" type="button" title="اصلاح مشخصات جنس" onClick={() => navigate(`/products?edit=${encodeURIComponent(row.productId)}`)}>اصلاح جنس</button>
                   </div>
                   <div className="sale-wholesale-size"><span>{formatQuantity(row.cartonSize || row.unitsPerUnit || 1)}</span></div>
-                  <div className="sale-wholesale-price-display"><span>{num(row.purchasePrice).toFixed(2)}</span></div>
+                  <div className="sale-wholesale-price-display" title={language === "en" ? "Purchase cost per piece, in purchase currency" : "قیمت تمام‌شد فی دانه به اسعار خرید"}><span dir="ltr">{pieceCostDisplay(row)}</span></div>
                   <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">قیمت فروش</span><input aria-label="قیمت فروش" type="number" min="0" step="0.01" value={row.salePrice} onChange={(e) => updateItem(row.lineId, "salePrice", e.target.value)} /></label>
                   <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">تعداد کارتن</span><input aria-label="تعداد کارتن" ref={(node) => { const key = String(row.lineId); if (node) packageQuantityInputRefs.current.set(key, node); else packageQuantityInputRefs.current.delete(key); }} type="number" min="0" max={maxPiecesForLine(row) / positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit)} step="any" value={num(row.quantity) / positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit)} onChange={(e) => { changeLineQuantityUnit(row.lineId, "carton"); updatePieceQuantity(row.lineId, String(num(e.target.value) * positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit))); }} /></label>
                   <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">مقدار دانه</span><input aria-label="مقدار دانه" type="number" min="0" max={maxPiecesForLine(row)} step="any" value={row.quantity} onChange={(e) => updatePieceQuantity(row.lineId, e.target.value)} /></label>
-                  <label className="sale-wholesale-cell sale-wholesale-discount"><span className="sale-wholesale-mobile-label">فیصدی تخفیف</span><input aria-label="فیصدی تخفیف" type="number" min="0" max="100" step="0.01" value={row.discountPercent ?? (lineGross(row) ? Number((100 * lineDiscount(row) / lineGross(row)).toFixed(2)) : 0)} onChange={(e) => updateItem(row.lineId, "discountPercent", e.target.value)} /></label>
+                  <label className="sale-wholesale-cell sale-wholesale-discount"><span className="sale-wholesale-mobile-label">فیصدی تخفیف</span><input aria-label="فیصدی تخفیف" onKeyDown={(event) => { if (event.key === "Tab" && !event.shiftKey) { event.preventDefault(); focusSaleSearch(); } }} type="number" min="0" max="100" step="0.01" value={row.discountPercent ?? (lineGross(row) ? Number((100 * lineDiscount(row) / lineGross(row)).toFixed(2)) : 0)} onChange={(e) => updateItem(row.lineId, "discountPercent", e.target.value)} /></label>
                   <div className="sale-wholesale-total"><strong>{lineTotal(row).toFixed(2)}</strong></div>
-                  <button className="sale-wholesale-remove" type="button" title={t.remove} aria-label={t.remove} onKeyDown={(event) => handleSaleRemoveKeyDown(event, index)} onClick={() => removeItem(row.lineId)}><Trash2 size={17} /></button>
+                  <button className="sale-wholesale-remove" type="button" tabIndex={-1} title={t.remove} aria-label={t.remove} onKeyDown={(event) => handleSaleRemoveKeyDown(event, index)} onClick={() => removeItem(row.lineId)}><Trash2 size={17} /></button>
                 </article>
               ))}
               {!!items.length && saleSearchField}
