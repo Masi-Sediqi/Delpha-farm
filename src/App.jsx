@@ -73,6 +73,7 @@ const GeneralJournal = lazy(() => import("./pages/GeneralJournal"));
 const Banks = lazy(() => import("./pages/Banks"));
 const CashCount = lazy(() => import("./pages/CashCount"));
 const Inventory = lazy(() => import("./pages/Inventory"));
+const InventoryExpiry = lazy(() => import("./pages/InventoryExpiry"));
 const SaleDetail = lazy(() => import("./pages/SaleDetail"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Trash = lazy(() => import("./pages/Trash"));
@@ -780,6 +781,7 @@ function App() {
               <Route path="/receivables/payments/:batchId/print" element={protect("receivables", <PrintReceivablesBatch />, "print")} />
               <Route path="/sale-returns" element={protect("saleReturns", <SaleReturns />)} />
               <Route path="/inventory" element={protect("inventory", <Inventory />)} />
+              <Route path="/inventory/expiry" element={protect("inventory", <InventoryExpiry />)} />
               <Route path="/banks" element={protect("reports", <Banks />)} />
               <Route path="/cash-count" element={protect("reports", <CashCount />)} />
               <Route path="/cash-journal" element={protect("reports", <CashFlow />)} />

@@ -636,6 +636,17 @@ function Products() {
     }, { replace: true });
   }, [products, searchParams, setSearchParams]);
 
+  // Reuse the existing product registration form for requests coming from Inventory.
+  useEffect(() => {
+    if (searchParams.get("new") !== "1") return;
+    openNew();
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.delete("new");
+      return next;
+    }, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   const closeModal = () => {
     setShowModal(false);
     setEditingId(null);

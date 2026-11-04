@@ -46,7 +46,7 @@ app.use(cors({
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   credentials: true,
-  allowedHeaders: ["Content-Type", "X-File-Name", "Authorization", "If-Match", "Cache-Control"],
+  allowedHeaders: ["Content-Type", "X-File-Name", "Authorization", "If-Match", "Cache-Control", "X-Admin-Password"],
 }));
 app.use("/api/import/access", express.raw({ type: "application/octet-stream", limit: "100mb" }));
 app.use(express.json({ limit: "50mb" }));
@@ -538,6 +538,36 @@ const canReadCollection = (user, name) => {
   const actions = moduleName && user?.permissions?.[moduleName];
   return Boolean(actions && ["create", "edit", "delete", "print"].some((action) => actions[action] === true));
 };
+// Destructive operations are re-authorized server-side, including for Admin sessions.
+const protectedDeletionCollections = new Set(["salesRegister", "purchases", "purchaseItems", "products", "trashPurchases"]);
+const deletionAttempts = new Map();
+const removesProtectedRecords = (name, before, after) => {
+  if (!protectedDeletionCollections.has(name) || !Array.isArray(before) || !Array.isArray(after)) return false;
+  const nextIds = new Set(after.map((row) => String(row.id)));
+  return before.some((row) => !nextIds.has(String(row.id)));
+};
+async function verifyAdminDeletion(request, response) {
+  const key = request.ip;
+  const attempt = deletionAttempts.get(key);
+  if (attempt && Date.now() - attempt.since < 15 * 60_000 && attempt.count >= 10) {
+    response.status(429).json({ error: "Too many incorrect admin passwords. Try later." }); return false;
+  }
+  const password = String(request.get("X-Admin-Password") || "");
+  if (!password || password.length > 1024) {
+    response.status(403).json({ error: "Admin password is required for deletion." }); return false;
+  }
+  const admins = await pool.query("SELECT password_hash FROM delpha_users WHERE role='Admin' AND status='Active'");
+  let valid = false;
+  for (const admin of admins.rows) if (await verifyPassword(password, admin.password_hash)) valid = true;
+  if (!valid) {
+    const now = Date.now();
+    if (!attempt || now - attempt.since >= 15 * 60_000) deletionAttempts.set(key, { since: now, count: 1 });
+    else attempt.count += 1;
+    response.status(403).json({ error: "Incorrect admin password." }); return false;
+  }
+  deletionAttempts.delete(key);
+  return true;
+}
 const rowsById = (items) => {
   if (!Array.isArray(items)) return null;
   const map = new Map();
@@ -645,6 +675,13 @@ app.post("/api/collections/atomic-batch", requireAdmin, async (request, response
     // Serialize all batch writers. Existing single-collection writers remain
     // guarded by the revision comparisons in the UPDATE / INSERT below.
     const results = {};
+    let protectedDeletion = false;
+    for (const change of changes) {
+      if (!protectedDeletionCollections.has(change.name)) continue;
+      const previous = await client.query("SELECT items FROM app_collections WHERE name=$1 FOR UPDATE", [change.name]);
+      if (removesProtectedRecords(change.name, previous.rows[0]?.items || [], change.items)) protectedDeletion = true;
+    }
+    if (protectedDeletion && !(await verifyAdminDeletion(request, response))) { await client.query("ROLLBACK"); return; }
     for (const change of [...changes].sort((a,b) => a.name.localeCompare(b.name))) {
       let result;
       if (change.revision === 0) {
@@ -678,6 +715,12 @@ app.put("/api/collections/:name", async (request, response, next) => {
     if (!Array.isArray(request.body?.items)) {
       return response.status(400).json({ error: "items must be an array." });
     }
+    if (request.params.name === "partyCashTransactions") {
+      const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kabul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+      if (request.body.items.some((row) => row && typeof row.date === "string" && row.date.slice(0, 10) > today)) {
+        return response.status(422).json({ error: "Future journal dates are not allowed." });
+      }
+    }
     if (localStorageMode) {
       const name = request.params.name;
       const previous = localState.collections[name];
@@ -703,6 +746,12 @@ app.put("/api/collections/:name", async (request, response, next) => {
       if (!actionAllowedOnChanges(request.authUser, request.permissionModule, serverItems, request.body.items)) {
         return response.status(403).json({ error: "Create, edit or delete permission denied for this operation." });
       }
+    }
+    if (protectedDeletionCollections.has(request.params.name)) {
+      const previous = await pool.query("SELECT items, revision FROM app_collections WHERE name=$1", [request.params.name]);
+      if (previous.rowCount && Number(previous.rows[0].revision) === revision &&
+          removesProtectedRecords(request.params.name, previous.rows[0].items, request.body.items) &&
+          !(await verifyAdminDeletion(request, response))) return;
     }
     // A revision of 0 creates a collection only if it does not exist.
     // Existing collections MUST use UPDATE: the previous INSERT ... SELECT

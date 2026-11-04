@@ -1904,3 +1904,53 @@ body.dark-mode .purchase-supplier-info-panel{
   .purchase-entry-page .purchase-keyboard-row .purchase-expiry-field{grid-column:1/-1 !important}
   .purchase-entry-page .purchase-keyboard-row .purchase-remove{justify-self:end !important}
 }
+
+/* Delpha fix 8: compact purchase entry on one horizontal row (desktop). */
+@media (min-width: 1160px) {
+  .purchase-entry-page .purchase-item-row.purchase-keyboard-row {
+    display: grid !important;
+    grid-template-columns:
+      minmax(190px, 2.4fr) /* medicine */
+      minmax(105px, 1.15fr) /* manufacturer */
+      minmax(68px, .72fr) /* cartons */
+      minmax(78px, .8fr) /* pieces */
+      minmax(80px, .85fr) /* buy */
+      minmax(80px, .85fr) /* sell */
+      minmax(98px, 1fr) /* total */
+      minmax(113px, 1.12fr) /* expiry */
+      30px !important; /* remove */
+    gap: 7px !important;
+    align-items: end !important;
+  }
+  .purchase-entry-page .purchase-item-row.purchase-keyboard-row > * {
+    min-width: 0 !important;
+    grid-column: auto !important;
+    grid-row: auto !important;
+  }
+  .purchase-entry-page .purchase-keyboard-row .purchase-item-name {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    align-self: center !important;
+    padding: 0 !important;
+    border-bottom: 0 !important;
+  }
+  .purchase-entry-page .purchase-keyboard-row .purchase-item-name strong {
+    font-size: 12px !important;
+    line-height: 1.4 !important;
+    overflow-wrap: anywhere !important;
+  }
+  .purchase-entry-page .purchase-item-row.purchase-keyboard-row label input,
+  .purchase-entry-page .purchase-item-row.purchase-keyboard-row label select {
+    height: 36px !important;
+    padding-inline: 5px !important;
+    font-size: 11px !important;
+  }
+  .purchase-entry-page .purchase-item-row.purchase-keyboard-row .purchase-line-total {
+    align-self: end !important;
+    padding-inline: 3px !important;
+  }
+  .purchase-entry-page .purchase-item-row.purchase-keyboard-row .purchase-remove {
+    align-self: end !important;
+    width: 30px !important;
+  }
+}

@@ -1,3 +1,4 @@
+import { containsRemovedRecords, requestAdminDeletionPassword } from "./adminDeletionApproval";
 // Central PostgreSQL-only collection transport. No IndexedDB or LocalStorage writes.
 const apiRoot = import.meta.env.VITE_API_ROOT || "/api";
 const collectionRevisions = new Map();
@@ -46,10 +47,14 @@ export async function writeBrowserCollection(name, items, previousItems = null) 
   const revision = collectionRevisions.get(name);
   if (revision == null) throw new Error(`Collection ${name} was not loaded from the server.`);
 
+  const protectedCollection = ["salesRegister", "purchases", "purchaseItems", "products", "trashPurchases"].includes(name);
+  const requiresPassword = protectedCollection && containsRemovedRecords(previousItems, items);
+  const adminPassword = requiresPassword ? await requestAdminDeletionPassword() : null;
+  if (requiresPassword && !adminPassword) throw new Error("حذف لغو شد. رمز ادمین لازم است.");
   const put = (payload, version) => fetch(`${apiRoot}/collections/${encodeURIComponent(name)}`, {
     method: "PUT", credentials: "include",
     cache: "no-store",
-    headers: { "Content-Type": "application/json", "If-Match": `"${version}"` },
+    headers: { "Content-Type": "application/json", "If-Match": `"${version}"`, ...(adminPassword ? { "X-Admin-Password": adminPassword } : {}) },
     body: JSON.stringify({ items: payload }),
   });
   let payload = items;
@@ -109,9 +114,20 @@ export async function writeAtomicFinanceBatch(changes) {
   if (!entries.every(([name, items]) => Array.isArray(items) && collectionRevisions.has(name))) {
     throw new Error("Please wait until all collections have loaded from PostgreSQL.");
   }
+  let adminPassword = null;
+  const protectedNames = new Set(["salesRegister", "purchases", "purchaseItems", "products", "trashPurchases"]);
+  for (const [name, rows] of entries) {
+    if (!protectedNames.has(name)) continue;
+    const previous = await readBrowserCollection(name, { updateRevision: false });
+    if (containsRemovedRecords(previous, rows)) {
+      adminPassword = await requestAdminDeletionPassword();
+      if (!adminPassword) throw new Error("حذف لغو شد. رمز ادمین لازم است.");
+      break;
+    }
+  }
   const response = await fetch(`${apiRoot}/collections/atomic-batch`, {
     method: "POST", credentials: "include", cache: "no-store",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(adminPassword ? { "X-Admin-Password": adminPassword } : {}) },
     body: JSON.stringify({ changes: entries.map(([name, items]) => ({
       name, items, revision: Number(collectionRevisions.get(name)),
     })) }),

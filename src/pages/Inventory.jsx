@@ -11,7 +11,10 @@ import {
   CalendarClock,
   BarChart3,
   Table2,
+  SlidersHorizontal, X, Plus, Minus, CalendarRange, PackagePlus,
 } from "lucide-react";
+import { notify } from "../utils/notify";
+import { todayDateValue } from "../utils/afghanDate";
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import {
   Area,
@@ -25,12 +28,14 @@ import {
 } from "recharts";
 import {
   getProductBatchBalances,
+  allocateProductBatchesFEFO,
   getProductStock,
   getProductStockTotals,
   stockNumber,
 } from "../utils/stock";
 import { countryNameById, groupNameById } from "../utils/productMasterData";
 import "./Inventory.css";
+import "./InventoryAdjustment.css";
 
 const languageKey = "afghan-power-language";
 const rtlLanguages = new Set(["fa", "ps"]);
@@ -274,7 +279,7 @@ function InventoryAreaTooltip({ active, payload, label, t }) {
 export default function Inventory() {
   const navigate = useNavigate();
   const [products] = useJsonCollection("products");
-  const [stockMovements] = useJsonCollection("stockMovements");
+  const [stockMovements, setStockMovements] = useJsonCollection("stockMovements");
   const [manufacturers] = useJsonCollection("manufacturers");
   const [productGroups] = useJsonCollection("productGroups");
   const [productCountries] = useJsonCollection("countries");
@@ -283,6 +288,52 @@ export default function Inventory() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("products");
   const [viewMode, setViewMode] = useState("record");
+  const [adjustOpen, setAdjustOpen] = useState(false);
+  const newAdjustmentRow = () => ({ id: `${Date.now()}-${Math.random()}`, productId: "", add: "", subtract: "", details: "" });
+  const [adjustRows, setAdjustRows] = useState(() => Array.from({ length: 6 }, newAdjustmentRow));
+  const [adjustSaving, setAdjustSaving] = useState(false);
+  const adjustNumber = useMemo(() => `ADJ${String(new Set(stockMovements.filter((item) => item.referenceType === "adjustment").map((item) => item.referenceNumber || item.referenceId)).size + 1).padStart(5, "0")}`, [stockMovements]);
+  const updateAdjustmentRow = (id, patch) => setAdjustRows((rows) => rows.map((row) => row.id === id ? { ...row, ...patch } : row));
+  const saveAdjustment = async () => {
+    const prepared = adjustRows.filter((row) => row.productId || row.add || row.subtract || row.details.trim());
+    if (!prepared.length) return notify("حداقل یک جنس را برای اصلاح انتخاب کنید.", "warning");
+    const productsMap = new Map(products.map((product) => [String(product.id), product]));
+    const duplicateCheck = new Set();
+    for (const row of prepared) {
+      const plus = Number(row.add || 0), minus = Number(row.subtract || 0);
+      if (!productsMap.has(String(row.productId)) || !Number.isSafeInteger(plus) || !Number.isSafeInteger(minus) || plus < 0 || minus < 0 || (plus > 0) === (minus > 0) || !row.details.trim()) return notify("برای هر ردیف، جنس، تفصیلات و فقط یک مقدار مثبت در + یا - درج کنید.", "warning");
+      if (duplicateCheck.has(String(row.productId))) return notify("هر جنس را تنها یک بار در همین اصلاح ثبت کنید.", "warning");
+      duplicateCheck.add(String(row.productId));
+      if (minus > getProductStock(stockMovements, row.productId, 0)) return notify("مقدار خروج بیشتر از موجودی فعلی جنس است.", "warning");
+      if (minus > 0 && allocateProductBatchesFEFO(stockMovements, row.productId, minus).unallocated > 0) return notify("بچ‌های موجودی برای کسر این مقدار کافی نیستند.", "warning");
+    }
+    const now = new Date().toISOString();
+    const referenceId = `ADJ-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const movements = prepared.flatMap((row, index) => {
+      const plus = Number(row.add || 0), minus = Number(row.subtract || 0);
+      const batches = minus > 0 ? allocateProductBatchesFEFO(stockMovements, row.productId, minus) : null;
+      if (batches?.unallocated > 0) return [];
+      const portions = plus > 0 ? [{ batchNo: "UNBATCHED", quantity: plus }] : batches.allocations;
+      return portions.map((portion, batchIndex) => ({
+        id: `stock-adjustment-${referenceId}-${index + 1}-${batchIndex + 1}`,
+        productId: row.productId, referenceType: "adjustment", movementType: "adjustment",
+        referenceId, referenceNumber: adjustNumber,
+        quantityIn: plus > 0 ? portion.quantity : 0,
+        quantityOut: minus > 0 ? portion.quantity : 0,
+        movementDate: todayDateValue(), note: row.details.trim(), description: row.details.trim(),
+        batchNo: portion.batchNo || "UNBATCHED", expiryDate: portion.expiryDate || "", createdAt: now, updatedAt: now,
+      }));
+    });
+    if (!movements.length) return notify("برای اصلاح منفی موجودی، بچ‌های موجود را بررسی کنید.", "warning");
+    setAdjustSaving(true);
+    try {
+      if (await setStockMovements([...stockMovements, ...movements])) {
+        setAdjustOpen(false);
+        setAdjustRows(Array.from({ length: 6 }, newAdjustmentRow));
+        notify(`${movements.length} ردیف اصلاح موجودی ثبت شد.`, "success");
+      }
+    } finally { setAdjustSaving(false); }
+  };
 
   const t = translations[language] || translations.en;
   const direction = rtlLanguages.has(language) ? "rtl" : "ltr";
@@ -397,6 +448,25 @@ export default function Inventory() {
         </div>
       </header>
 
+      <div className="inventory-adjust-actions">
+        <button type="button" onClick={() => navigate("/inventory/expiry")}><CalendarRange size={17}/> تاریخ انقضا</button>
+        <button type="button" onClick={() => navigate("/products?new=1")}><PackagePlus size={17}/> جنس جدید</button>
+        <button type="button" onClick={() => setAdjustOpen(true)}><SlidersHorizontal size={17}/> اصلاح موجودی</button>
+      </div>
+      {adjustOpen && <div className="inventory-adjust-overlay"><section className="inventory-adjust-dialog" role="dialog" aria-modal="true" aria-label="اصلاح موجودی" dir="rtl">
+        <header><h2>اصلاح موجودی جنس</h2><button type="button" aria-label="بستن" onClick={() => setAdjustOpen(false)}><X size={20}/></button></header>
+        <div className="inventory-adjust-meta"><strong>نمبر ریکارد: {adjustNumber}</strong><span>تاریخ: {todayDateValue()}</span></div>
+        <div className="inventory-adjust-table-wrap"><table className="inventory-adjust-table"><thead><tr><th>نام جنس</th><th>موجود</th><th>افزودن +</th><th>کسر -</th><th>تفصیلات</th><th></th></tr></thead><tbody>{adjustRows.map((row) => <tr key={row.id}>
+          <td><select aria-label="نام جنس" value={row.productId} onChange={(event) => updateAdjustmentRow(row.id, { productId: event.target.value })}><option value="">انتخاب جنس...</option>{products.map((product) => <option value={product.id} key={product.id}>{product.productName || product.name}</option>)}</select></td>
+          <td>{row.productId ? getProductStock(stockMovements, row.productId, 0).toLocaleString("en-US") : "0"}</td>
+          <td><input aria-label="افزودن" type="number" min="0" step="1" value={row.add} onChange={(event) => updateAdjustmentRow(row.id, { add: event.target.value, subtract: event.target.value ? "" : row.subtract })}/></td>
+          <td><input aria-label="کسر" type="number" min="0" step="1" value={row.subtract} onChange={(event) => updateAdjustmentRow(row.id, { subtract: event.target.value, add: event.target.value ? "" : row.add })}/></td>
+          <td><textarea aria-label="تفصیلات" rows="2" maxLength={300} value={row.details} onChange={(event) => updateAdjustmentRow(row.id, { details: event.target.value })}/></td>
+          <td><button type="button" aria-label="حذف ردیف" onClick={() => setAdjustRows((rows) => rows.length === 1 ? [newAdjustmentRow()] : rows.filter((item) => item.id !== row.id))}><X size={15}/></button></td>
+        </tr>)}</tbody></table></div>
+        <button className="inventory-adjust-add-row" type="button" onClick={() => setAdjustRows((rows) => [...rows, newAdjustmentRow()])}><Plus size={16}/> افزودن ردیف</button>
+        <footer><button type="button" onClick={() => setAdjustOpen(false)}>انصراف</button><button type="button" disabled={adjustSaving} onClick={saveAdjustment}>{adjustSaving ? "در حال ثبت..." : "ثبت اصلاح موجودی"}</button></footer>
+      </section></div>}
       <section className="inventory-stats">
         <article><span className="inventory-stat-icon"><Layers3 /></span><div><small>{t.totalProducts}</small><strong>{summary.totalProducts.toLocaleString("en-US")}</strong></div></article>
         <article><span className="inventory-stat-icon is-positive"><PackageCheck /></span><div><small>{t.availableProducts}</small><strong>{summary.availableProducts.toLocaleString("en-US")}</strong></div></article>
