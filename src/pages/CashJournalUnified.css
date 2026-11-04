@@ -19,3 +19,12 @@
  .unified-journal-panel .journal-remove { grid-column:1/-1; justify-self:end; }
  .unified-journal-panel > header { flex-wrap:wrap; }
 }
+
+/* Details is the last editable field: account, debit, credit, details, delete. */
+.unified-journal-panel .journal-entry-head,
+.unified-journal-panel .journal-entry-row {
+  grid-template-columns:minmax(145px,1.5fr) minmax(90px,.9fr) minmax(90px,.9fr) minmax(260px,3.5fr) 36px!important;
+}
+@media(max-width:760px) {
+  .unified-journal-panel .journal-entry-row > textarea {grid-column:1/-1!important;}
+}
