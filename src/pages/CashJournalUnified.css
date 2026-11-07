@@ -28,3 +28,36 @@
 @media(max-width:760px) {
   .unified-journal-panel .journal-entry-row > textarea {grid-column:1/-1!important;}
 }
+
+/* Dual Gregorian / Solar Hijri date controls for manual journal entries. */
+.unified-journal-panel .journal-dual-dates { display:flex; align-items:end; gap:12px; flex-wrap:wrap; }
+.unified-journal-panel .journal-gregorian-date { display:grid; gap:5px; min-width:170px; }
+.unified-journal-panel .journal-gregorian-date input { width:170px; min-width:0; color-scheme:light; border-radius:8px; }
+.unified-journal-panel .journal-afghan-date { border:0; padding:0; margin:0; min-width:0; }
+.unified-journal-panel .journal-afghan-date legend { font-size:10px; font-weight:800; color:var(--text-muted,#64748b); padding:0 0 5px; }
+.unified-journal-panel .journal-afghan-selects { display:flex; gap:5px; align-items:center; }
+.unified-journal-panel .journal-afghan-selects select { min-width:0; border-radius:8px; }
+.unified-journal-panel .journal-afghan-selects select:first-child { width:86px; }
+.unified-journal-panel .journal-afghan-selects select:nth-child(2) { width:100px; }
+.unified-journal-panel .journal-afghan-selects select:last-child { width:62px; }
+@media(max-width:650px) {
+ .unified-journal-panel .journal-side-controls { flex-wrap:wrap; }
+ .unified-journal-panel .journal-dual-dates { width:100%; }
+ .unified-journal-panel .journal-afghan-selects { flex-wrap:wrap; }
+}
+
+/* Journal page-level list and actions */
+.cash-journal-table .journal-summary-cell{max-width:420px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl}
+.journal-table-actions{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.journal-table-actions button{display:inline-flex;align-items:center;gap:4px;padding:6px 9px;border-radius:7px;border:1px solid var(--border-color,#dbe2ea);background:var(--card-bg,#fff);color:var(--text-color,#111827);font-size:12px;cursor:pointer}
+.journal-table-actions button:hover{background:var(--page-bg,#f1f5f9)}
+.journal-view-overlay{display:grid;place-items:center;padding:20px}
+.journal-view-card{width:min(1100px,100%);max-height:92vh;overflow:auto;background:var(--card-bg,#fff);color:var(--text-color,#111827);border:1px solid var(--border-color,#dbe2ea);border-radius:12px;padding:20px;direction:rtl}
+.journal-view-card>header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.journal-view-card h2{margin:0;font-size:20px}
+.journal-view-card>p{color:var(--text-muted,#64748b);font-size:12px}
+.journal-view-scroll{overflow:auto;margin-top:15px}
+.journal-view-scroll table{width:100%;border-collapse:collapse;min-width:650px}
+.journal-view-scroll th,.journal-view-scroll td{border:1px solid var(--border-color,#e2e8f0);padding:10px;text-align:right;vertical-align:top}
+.journal-details-text{white-space:pre-wrap;overflow-wrap:anywhere;min-width:240px}
+@media print{body:has(.journal-view-overlay) > *:not(.journal-view-overlay){display:none!important}.journal-view-overlay{position:static!important;display:block!important;background:white!important;padding:0!important}.journal-view-card{width:100%!important;max-height:none!important;overflow:visible!important;border:0!important;color:black!important}.print-hidden{display:none!important}.journal-view-scroll{overflow:visible!important}.journal-view-scroll table{min-width:0!important}}

@@ -357,3 +357,19 @@ body.dark-mode .payables-action-trigger { background: #202020; border-color: #3a
 
 /* grouped payables payments */
 .payables-header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.payables-batch-btn{height:36px;border:1px solid #111827;border-radius:9px;background:#111827;color:#fff;padding:0 13px;display:inline-flex;align-items:center;gap:7px;font-weight:750;cursor:pointer;white-space:nowrap}.payables-batch-history{margin-top:16px}.payables-history-heading{padding:14px 16px;border-bottom:1px solid var(--border-color,#e5e9ef)}.payables-history-heading h2{font-size:15px;margin:0}.payables-history-heading p{font-size:11px;color:#7d8998;margin:4px 0 0}.payables-history-empty{text-align:center!important;color:#8793a2;padding:30px!important}.payables-batch-highlight{animation:payablesBatchGold 5s ease both}@keyframes payablesBatchGold{0%,75%{background:#fff2b8}100%{background:transparent}}.payables-action-popover .danger{color:#dc2626}.dark-mode .payables-batch-btn{background:#f3f4f6;color:#111827;border-color:#f3f4f6}.dark-mode .payables-batch-highlight{animation-name:payablesBatchGoldDark}@keyframes payablesBatchGoldDark{0%,75%{background:#4b3b12}100%{background:transparent}}@media(max-width:700px){.payables-header{flex-direction:column}.payables-batch-btn{align-self:flex-start}.payables-batch-history{margin-top:12px}}
+
+/* Statement-style controls shared by receivables and payables */
+.payables-toolbar{flex-wrap:wrap;gap:9px}
+.account-filter-label{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;white-space:nowrap}
+.account-filter-label select{height:38px;min-width:118px;max-width:220px;border:1px solid var(--border-color,#d6dfeb);background:var(--card-bg,#fff);color:var(--text-primary,#17233b);border-radius:8px;padding:0 9px}
+.account-filter-toggle{display:inline-flex;align-items:center;gap:6px;font-size:12px;white-space:nowrap}
+.account-report-btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:35px;padding:0 11px;border:1px solid #0e624c;border-radius:8px;background:#075b47;color:white;font-weight:800;font-size:11px;cursor:pointer}
+.account-report-btn:hover{background:#064736}
+.account-report-actions{display:flex;justify-content:center;gap:5px;white-space:nowrap}
+.account-report-actions button{display:inline-flex;align-items:center;justify-content:center;padding:0 7px;min-height:30px;border:1px solid #c8d5e2;border-radius:6px;background:var(--card-bg,#fff);color:var(--text-primary,#182132);font-size:10px;font-weight:800;cursor:pointer}
+.account-report-actions button:hover{border-color:#087a5b;background:rgba(3,138,98,.09)}
+.payables-actions-cell{min-width:205px;width:205px}
+@media(max-width:750px){.account-filter-label{flex:1 1 140px}.account-filter-label select{flex:1;min-width:0}.payables-toolbar{align-items:stretch}}
+
+.account-statement-footer{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:12px;padding:14px 17px;border:1px solid var(--border-color,#dbe4e8);border-radius:12px;background:var(--card-bg,#f6faf8);font-size:12px;color:var(--text-primary,#142536)}
+.account-statement-footer strong{font-weight:900}

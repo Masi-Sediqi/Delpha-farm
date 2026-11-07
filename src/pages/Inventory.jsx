@@ -450,11 +450,13 @@ export default function Inventory() {
 
       <div className="inventory-adjust-actions">
         <button type="button" onClick={() => navigate("/inventory/expiry")}><CalendarRange size={17}/> تاریخ انقضا</button>
-        <button type="button" onClick={() => navigate("/products?new=1")}><PackagePlus size={17}/> جنس جدید</button>
+        <button type="button" onClick={() => navigate("/products")}><Boxes size={17}/> مدیریت محصولات</button>
+         <button type="button" onClick={() => navigate("/products?new=1")}><PackagePlus size={17}/> جنس جدید</button>
         <button type="button" onClick={() => setAdjustOpen(true)}><SlidersHorizontal size={17}/> اصلاح موجودی</button>
       </div>
       {adjustOpen && <div className="inventory-adjust-overlay"><section className="inventory-adjust-dialog" role="dialog" aria-modal="true" aria-label="اصلاح موجودی" dir="rtl">
         <header><h2>اصلاح موجودی جنس</h2><button type="button" aria-label="بستن" onClick={() => setAdjustOpen(false)}><X size={20}/></button></header>
+        <div className="inventory-adjust-scroll" tabIndex={0} aria-label="فهرست اقلام اصلاح موجودی">
         <div className="inventory-adjust-meta"><strong>نمبر ریکارد: {adjustNumber}</strong><span>تاریخ: {todayDateValue()}</span></div>
         <div className="inventory-adjust-table-wrap"><table className="inventory-adjust-table"><thead><tr><th>نام جنس</th><th>موجود</th><th>افزودن +</th><th>کسر -</th><th>تفصیلات</th><th></th></tr></thead><tbody>{adjustRows.map((row) => <tr key={row.id}>
           <td><select aria-label="نام جنس" value={row.productId} onChange={(event) => updateAdjustmentRow(row.id, { productId: event.target.value })}><option value="">انتخاب جنس...</option>{products.map((product) => <option value={product.id} key={product.id}>{product.productName || product.name}</option>)}</select></td>
@@ -465,6 +467,7 @@ export default function Inventory() {
           <td><button type="button" aria-label="حذف ردیف" onClick={() => setAdjustRows((rows) => rows.length === 1 ? [newAdjustmentRow()] : rows.filter((item) => item.id !== row.id))}><X size={15}/></button></td>
         </tr>)}</tbody></table></div>
         <button className="inventory-adjust-add-row" type="button" onClick={() => setAdjustRows((rows) => [...rows, newAdjustmentRow()])}><Plus size={16}/> افزودن ردیف</button>
+        </div>
         <footer><button type="button" onClick={() => setAdjustOpen(false)}>انصراف</button><button type="button" disabled={adjustSaving} onClick={saveAdjustment}>{adjustSaving ? "در حال ثبت..." : "ثبت اصلاح موجودی"}</button></footer>
       </section></div>}
       <section className="inventory-stats">

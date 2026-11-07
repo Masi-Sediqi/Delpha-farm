@@ -848,3 +848,9 @@ body[data-theme="neon"].dark-mode .sales-product-inline-delete{
     grid-template-columns:minmax(0,1fr) 30px 30px 30px;
   }
 }
+
+/* Compact edit uses the same minimal field grid as the new-product entry. */
+.sales-product-edit-compact .sales-product-compact-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:14px 18px}
+.sales-product-edit-compact .sales-product-compact-fields .sales-product-field-wide{grid-column:span 2}
+@media(max-width:900px){.sales-product-edit-compact .sales-product-compact-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:530px){.sales-product-edit-compact .sales-product-compact-fields{grid-template-columns:1fr}.sales-product-edit-compact .sales-product-compact-fields .sales-product-field-wide{grid-column:auto}}

@@ -15,3 +15,58 @@
 .inventory-adjust-dialog{width:min(1150px,100%)}.inventory-adjust-table-wrap{overflow:auto;max-height:53vh;border:1px solid #356c5b;border-radius:8px}.inventory-adjust-table{width:100%;border-collapse:collapse;min-width:730px}.inventory-adjust-table th{background:#0b493a;color:#fff;padding:10px;font-size:13px;position:sticky;top:0}.inventory-adjust-table td{padding:5px;border-bottom:1px solid #326252;text-align:center}.inventory-adjust-table th:first-child{width:32%}.inventory-adjust-table th:nth-child(5){width:32%}.inventory-adjust-table td select,.inventory-adjust-table td input,.inventory-adjust-table td textarea{width:100%;min-width:0;box-sizing:border-box;background:#e8f3eb;color:#162d27;border:1px solid #7ca999;border-radius:5px;padding:9px;font:inherit}.inventory-adjust-table td button{background:transparent;border:0;color:#f99;cursor:pointer}.inventory-adjust-add-row{margin:12px 0;border:1px solid #4c8b78;color:white;background:#21594c;border-radius:8px;padding:9px 15px;display:flex;align-items:center;gap:7px;cursor:pointer}
 /* Inventory quick actions: keep buttons usable on both desktop and mobile. */
 .inventory-adjust-actions { flex-wrap: wrap; gap: 10px; }
+
+/* Inventory adjustment modal: independently scrollable rows and always-visible actions. */
+.inventory-adjust-overlay {
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+}
+.inventory-adjust-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(1150px, 100%);
+  max-height: min(92vh, calc(100dvh - 24px));
+  min-height: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+  padding: 0;
+}
+.inventory-adjust-dialog > header {
+  flex: 0 0 auto;
+  padding: 18px 20px;
+  border-bottom: 1px solid #356c5b;
+}
+.inventory-adjust-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 20px 16px;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #5f9e88 #16483f;
+}
+.inventory-adjust-scroll::-webkit-scrollbar { width: 9px; }
+.inventory-adjust-scroll::-webkit-scrollbar-track { background: #16483f; border-radius: 12px; }
+.inventory-adjust-scroll::-webkit-scrollbar-thumb { background: #5f9e88; border-radius: 12px; }
+.inventory-adjust-table-wrap {
+  max-height: none;
+  overflow-x: auto;
+  overflow-y: visible;
+}
+.inventory-adjust-dialog > footer {
+  flex: 0 0 auto;
+  padding: 14px 20px;
+  border-top: 1px solid #356c5b;
+  background: #0d332d;
+  flex-wrap: wrap;
+}
+.inventory-adjust-dialog > footer button { min-height: 42px; }
+@media (max-width: 650px) {
+  .inventory-adjust-dialog { max-height: calc(100dvh - 24px); }
+  .inventory-adjust-dialog > header { padding: 12px 14px; }
+  .inventory-adjust-scroll { padding: 0 14px 12px; }
+  .inventory-adjust-dialog > footer { padding: 12px 14px; gap: 8px; }
+  .inventory-adjust-dialog > footer button { flex: 1 1 130px; }
+}

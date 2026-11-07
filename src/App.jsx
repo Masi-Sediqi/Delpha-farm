@@ -14,6 +14,7 @@ import {
 } from "react-router-dom";
 import {
   FileBarChart,
+  CalendarDays,
   LayoutDashboard,
   MoreHorizontal,
   ReceiptText,
@@ -107,6 +108,7 @@ const shellLabels = {
     dashboard: "Dashboard",
     suppliers: "Suppliers",
     products: "Products",
+    expiryMenu: "Expiry Dates",
     purchasing: "Purchasing",
     payables: "Payables",
     purchaseReturns: "Purchase Returns",
@@ -130,6 +132,7 @@ const shellLabels = {
     dashboard: "داشبورد",
     suppliers: "تأمین‌کننده‌گان",
     products: "محصولات",
+    expiryMenu: "تاریخ انقضا",
     purchasing: "خریداری",
     payables: "تادیات",
     purchaseReturns: "برگشت خرید",
@@ -153,6 +156,7 @@ const shellLabels = {
     dashboard: "ډشبورد",
     suppliers: "عرضه کوونکي",
     products: "محصولات",
+    expiryMenu: "د ختمېدو نېټې",
     purchasing: "پېرود",
     payables: "تادیات",
     purchaseReturns: "د پېرود بېرته ستنول",
@@ -622,7 +626,7 @@ function App() {
   const menuItems = [
     { to: "/", label: labels.dashboard, moduleKey: "dashboard", icon: LayoutDashboard },
     { to: "/suppliers", label: labels.suppliers, moduleKey: "suppliers", icon: Truck },
-    { to: "/products", label: labels.products, moduleKey: "products", icon: ReceiptText },
+    { to: "/inventory/expiry", label: labels.expiryMenu, moduleKey: "inventory", icon: CalendarDays },
     { to: "/purchasing", label: labels.purchasing, moduleKey: "purchasing", icon: ShoppingCart },
     { to: "/payables", label: labels.payables, moduleKey: "payables", icon: BadgeDollarSign },
     { to: "/customer-registry", label: labels.customerRegistry, moduleKey: "customers", icon: Users },

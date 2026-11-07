@@ -131,6 +131,7 @@ export default function ReceivablesPayables() {
   const [purchases] = useJsonCollection("purchases");
   const [purchaseReturns] = useJsonCollection("purchaseReturns");
   const [supplierPayments] = useJsonCollection("supplierPayments");
+  const [journalCash] = useJsonCollection("partyCashTransactions");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [currency, setCurrency] = useState("AFN");
   const [customerSearch, setCustomerSearch] = useState("");
@@ -154,43 +155,51 @@ export default function ReceivablesPayables() {
     const customerSales = sales.filter((item) => String(item.customerId) === id);
     const returns = saleReturns.filter((item) => String(item.customerId) === id);
     const payments = customerPayments.filter((item) => String(item.customerId) === id);
-    const debit = Math.max(numeric(customer.openingBalance), 0)
+    const journalEntries = journalCash.filter((entry) => entry.partyType === "customer" && String(entry.partyId) === id && normalizeCurrency(entry.currency, "AFN") === normalizeCurrency(customer.currency, "AFN"));
+    const cashPaidOut = journalEntries.filter((entry) => entry.direction === "out").reduce((sum,entry)=>sum+numeric(entry.amount),0);
+    const cashReceived = journalEntries.filter((entry) => entry.direction === "in").reduce((sum,entry)=>sum+numeric(entry.amount),0);
+    const debit = cashPaidOut + Math.max(numeric(customer.openingBalance), 0)
       + customerSales.reduce((sum, item) => sum + numeric(item.totalAmount), 0);
     const credit = Math.max(-numeric(customer.openingBalance), 0)
       + customerSales.reduce((sum, item) => sum + numeric(item.paidAmount), 0)
       + returns.reduce((sum, item) => sum + numeric(item.totalAmount), 0)
-      + payments.reduce((sum, item) => sum + numeric(item.amount), 0);
+      + payments.reduce((sum, item) => sum + numeric(item.amount), 0)
+      + cashReceived;
     return {
       ...customer,
       balance: debit - credit,
       currency: normalizeCurrency(customer.currency, "AFN"),
     };
-  }), [customers, sales, saleReturns, customerPayments]);
+  }), [customers, sales, saleReturns, customerPayments, journalCash]);
 
   const supplierBalances = useMemo(() => suppliers.map((supplier) => {
     const id = String(supplier.id);
     const supplierPurchases = purchases.filter((item) => String(item.supplierId) === id);
     const returns = purchaseReturns.filter((item) => String(item.supplierId) === id);
     const payments = supplierPayments.filter((item) => String(item.supplierId) === id);
-    const debit = Math.max(numeric(supplier.openingBalance), 0)
+    const journalEntries = journalCash.filter((entry) => entry.partyType === "supplier" && String(entry.partyId) === id && normalizeCurrency(entry.currency, "AFN") === normalizeCurrency(supplier.currency, "AFN"));
+    const cashReceived = journalEntries.filter((entry) => entry.direction === "in").reduce((sum,entry)=>sum+numeric(entry.amount),0);
+    const cashPaidOut = journalEntries.filter((entry) => entry.direction === "out").reduce((sum,entry)=>sum+numeric(entry.amount),0);
+    const debit = cashReceived + Math.max(numeric(supplier.openingBalance), 0)
       + supplierPurchases.reduce((sum, item) => sum + numeric(item.totalAmount), 0);
     const credit = Math.max(-numeric(supplier.openingBalance), 0)
       + supplierPurchases.reduce((sum, item) => sum + numeric(item.paidAmount), 0)
       + returns.reduce((sum, item) => sum + numeric(item.totalAmount), 0)
-      + payments.reduce((sum, item) => sum + numeric(item.amount), 0);
+      + payments.reduce((sum, item) => sum + numeric(item.amount), 0)
+      + cashPaidOut;
     return {
       ...supplier,
       balance: debit - credit,
       currency: normalizeCurrency(supplier.currency, "AFN"),
     };
-  }), [suppliers, purchases, purchaseReturns, supplierPayments]);
+  }), [suppliers, purchases, purchaseReturns, supplierPayments, journalCash]);
 
   const currencyCustomers = useMemo(
-    () => customerBalances.filter((item) => item.currency === currency && Math.abs(item.balance) > 0.000001),
+    () => customerBalances.filter((item) => item.currency === currency),
     [customerBalances, currency]
   );
   const currencySuppliers = useMemo(
-    () => supplierBalances.filter((item) => item.currency === currency && Math.abs(item.balance) > 0.000001),
+    () => supplierBalances.filter((item) => item.currency === currency),
     [supplierBalances, currency]
   );
 

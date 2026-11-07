@@ -1,9 +1,8 @@
+import { accountReportRows, printAccountStatement, downloadAccountExcel, downloadAccountPDF } from "../utils/accountStatementExport";
 import { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
-import { CircleDollarSign, CreditCard, MoreHorizontal, Printer, ReceiptText, Search, UserRound, WalletCards } from "lucide-react";
+import { CircleDollarSign, Printer, ReceiptText, Search, UserRound, WalletCards } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useJsonCollection } from "../hooks/useJsonCollection";
-import { confirmAction } from "../utils/confirmDialog";
 import { notify } from "../utils/notify";
 import "./Payables.css";
 
@@ -14,6 +13,7 @@ const normalizeCurrency = (value) => {
   const code = String(value || "AFN").toUpperCase();
   if (code.includes("USD")) return "USD";
   if (code.includes("EUR")) return "EUR";
+  if (code.includes("PKR") || code.includes("PAK")) return "PKR";
   if (code.includes("INR")) return "INR";
   return "AFN";
 };
@@ -22,7 +22,7 @@ const tr = {
   en: {
     title: "Receivables",
     subtitle: "Customers who still owe money for medicines or goods sold to them.",
-    customers: "Customers with balance",
+    customers: "Customer accounts",
     totalSales: "Total sales",
     totalPaid: "Total received",
     totalDue: "Total receivable",
@@ -52,7 +52,7 @@ const tr = {
   fa: {
     title: "طلبات",
     subtitle: "مشتریانی که از فروش دوا یا اجناس هنوز برای ما بدهکار هستند.",
-    customers: "مشتریان بدهکار",
+    customers: "حساب‌های مشتریان",
     totalSales: "مجموع فروش",
     totalPaid: "مجموع دریافت‌شده",
     totalDue: "مجموع طلب",
@@ -82,7 +82,7 @@ const tr = {
   ps: {
     title: "طلبات",
     subtitle: "هغه پېرودونکي چې د پلورل شوو درملو یا توکو پیسې یې لا بشپړې نه دي ورکړې.",
-    customers: "پور لرونکي پېرودونکي",
+    customers: "د پېرودونکو حسابونه",
     totalSales: "ټول خرڅلاو",
     totalPaid: "ترلاسه شوې پیسې",
     totalDue: "ټول طلب",
@@ -117,9 +117,12 @@ export default function Receivables() {
   const [customers] = useJsonCollection("customerRegistry");
   const [sales] = useJsonCollection("salesRegister");
   const [saleReturns] = useJsonCollection("saleReturns");
-  const [customerPayments, setCustomerPayments] = useJsonCollection("customerPayments");
+  const [customerPayments] = useJsonCollection("customerPayments");
+  const [journalCash] = useJsonCollection("partyCashTransactions");
   const [search, setSearch] = useState("");
-  const [actionMenu, setActionMenu] = useState(null);
+  const [selectedCurrency,setSelectedCurrency]=useState("ALL");
+  const [selectedCategory,setSelectedCategory]=useState("ALL");
+  const [showAll,setShowAll]=useState(true);
   const t = tr[language] || tr.en;
   const direction = language === "en" ? "ltr" : "rtl";
 
@@ -133,100 +136,53 @@ export default function Receivables() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!actionMenu) return undefined;
-    const close = () => setActionMenu(null);
-    window.addEventListener("resize", close);
-    window.addEventListener("scroll", close, true);
-    return () => {
-      window.removeEventListener("resize", close);
-      window.removeEventListener("scroll", close, true);
-    };
-  }, [actionMenu]);
-
-  const rows = useMemo(() => customers.map((customer) => {
+  const rows = useMemo(() => customers.flatMap((customer) => {
     const id = String(customer.id);
     const customerSales = sales.filter((sale) => String(sale.customerId) === id);
     const returns = saleReturns.filter((row) => String(row.customerId) === id);
     const payments = customerPayments.filter((row) => String(row.customerId) === id);
-    const totalSold = customerSales.reduce((sum, sale) => sum + Math.max(num(sale.totalAmount), 0), 0);
-    const paidAtSale = customerSales.reduce((sum, sale) => sum + Math.max(num(sale.paidAmount), 0), 0);
-    const laterPaid = payments.reduce((sum, payment) => sum + Math.max(num(payment.amount), 0), 0);
-    const returned = returns.reduce((sum, row) => sum + Math.max(num(row.totalAmount), 0), 0);
-    const openingDebit = Math.max(num(customer.openingBalance), 0);
-    const openingCredit = Math.max(-num(customer.openingBalance), 0);
-    const totalPaid = paidAtSale + laterPaid + returned + openingCredit;
-    const balance = Math.max(openingDebit + totalSold - totalPaid, 0);
-    const unpaid = customerSales
-      .map((sale) => ({
-        ...sale,
-        calculatedRemaining: Math.max(num(sale.remainingAmount ?? (num(sale.totalAmount) - num(sale.paidAmount))), 0),
-      }))
-      .filter((sale) => sale.calculatedRemaining > 0.0001)
-      .sort((a, b) => new Date(a.saleDate || a.createdAt || 0) - new Date(b.saleDate || b.createdAt || 0));
-    return {
-      customer,
-      invoiceCount: customerSales.length,
-      totalSold,
-      totalPaid: paidAtSale + laterPaid,
-      balance,
-      currency: normalizeCurrency(customer.currency || customerSales[0]?.currency),
-      focusSale: unpaid[0] || customerSales[customerSales.length - 1] || null,
-    };
-  }).filter((row) => row.balance > 0.000001), [customers, sales, saleReturns, customerPayments]);
+    const journal = journalCash.filter((item) => item.partyType === 'customer' && String(item.partyId) === id);
+    const baseCurrency = normalizeCurrency(customer.currency);
+    const currencies = new Set([baseCurrency]);
+    [...customerSales,...returns,...payments,...journal].forEach(row=>currencies.add(normalizeCurrency(row.currency || baseCurrency)));
+    return [...currencies].map(currency=>{
+      const inUnit = (row) => normalizeCurrency(row.currency || baseCurrency) === currency;
+      const cs = customerSales.filter(inUnit), cr = returns.filter(inUnit), cp = payments.filter(inUnit), cj=journal.filter(inUnit);
+      const totalSold = cs.reduce((sum, sale) => sum + Math.max(num(sale.totalAmount), 0), 0);
+      const paidAtSale = cs.reduce((sum, sale) => sum + Math.max(num(sale.paidAmount), 0), 0);
+      const laterPaid = cp.reduce((sum, payment) => sum + Math.max(num(payment.amount), 0), 0);
+      const returned = cr.reduce((sum, ret) => sum + Math.max(num(ret.totalAmount), 0), 0);
+      const received = cj.filter(item=>item.direction==='in').reduce((sum,item)=>sum+Math.max(num(item.amount),0),0);
+      const paidOut = cj.filter(item=>item.direction==='out').reduce((sum,item)=>sum+Math.max(num(item.amount),0),0);
+      const opening = currency===baseCurrency ? num(customer.openingBalance) : 0;
+      const debit = totalSold + paidOut + Math.max(opening,0);
+      const credit = paidAtSale + laterPaid + received + returned + Math.max(-opening,0);
+      const balance = Math.max(debit-credit,0);
+      const unpaid = cs.filter(sale=>num(sale.remainingAmount ?? (num(sale.totalAmount)-num(sale.paidAmount)))>0.0001);
+      return {customer, invoiceCount:cs.length, totalSold, totalPaid:paidAtSale+laterPaid+received, balance, currency, focusSale:unpaid[0]||cs[cs.length-1]||null};
+    });
+  }), [customers, sales, saleReturns, customerPayments, journalCash]);
 
-  const totals = rows.reduce((acc, row) => {
-    acc.sales += row.totalSold;
-    acc.paid += row.totalPaid;
-    acc.balance += row.balance;
+  const totalsByCurrency=rows.reduce((acc,row)=>{
+    const current=acc[row.currency]||(acc[row.currency]={sales:0,paid:0,balance:0});
+    current.sales+=row.totalSold;current.paid+=row.totalPaid;current.balance+=row.balance;
     return acc;
-  }, { sales: 0, paid: 0, balance: 0 });
+  },{});
+  const totalText=field=>Object.entries(totalsByCurrency).filter(([,value])=>value[field]>0).map(([currency,value])=>`${currency} ${money(value[field])}`).join(' · ')||'0';
 
-  const filteredRows = rows.filter(({ customer }) => {
+  const categories = [...new Set(rows.map(({customer})=>String(customer.categoryName||customer.category||customer.customerType||'').trim()).filter(Boolean))].sort();
+  const currencyOptions = [...new Set(rows.map(row=>row.currency))].sort();
+  const filteredRows = rows.filter(({ customer, currency, balance }) => {
     const q = search.trim().toLowerCase();
-    if (!q) return true;
-    return `${customer.fullName || ""} ${customer.companyName || ""} ${customer.phone || ""}`.toLowerCase().includes(q);
+    const category = String(customer.categoryName || customer.category || customer.customerType || '').trim();
+    return (showAll || balance > 0.000001) && (selectedCurrency==='ALL'||currency===selectedCurrency) && (selectedCategory==='ALL'||category===selectedCategory) && (!q || `${customer.fullName||''} ${customer.companyName||''} ${customer.phone||''} ${customer.id||''} ${category}`.toLowerCase().includes(q));
   });
 
+  const reportTitle = language==='en'?'Customer receivables':language==='ps'?'طلبات - د پېرودونکو حسابونه':'طلبات (صورت حساب)';
+  const reportRows = (list)=>accountReportRows(list, 'customer');
+  const reportAction = async (action, list) => {try {const data=reportRows(list);const name=`receivables-${new Date().toISOString().slice(0,10)}`;if(action==='excel') await downloadAccountExcel(data,name);else if(action==='pdf') await downloadAccountPDF(data,reportTitle,name);else printAccountStatement(data,reportTitle)}catch(error){console.error(error);notify(language==='en'?'Export failed':'خروجی آماده نشد. لطفاً دوباره تلاش کنید.','error')}};
   const openCustomerLedger = (row, openPayment = false) => {
     navigate(`/customer-detail/${row.customer.id}`, { state: { openPayment } });
-  };
-
-  const openMenu = (event, payload) => {
-    event.stopPropagation();
-    const rect = event.currentTarget.getBoundingClientRect();
-    const width = 150;
-    const height = 156;
-    const gap = 5;
-    const below = window.innerHeight - rect.bottom > height + 12;
-    const top = below ? rect.bottom + gap : Math.max(8, rect.top - height - gap);
-    let left = direction === "rtl" ? rect.right - width : rect.left;
-    left = Math.min(Math.max(8, left), window.innerWidth - width - 8);
-    setActionMenu({ payload, top, left });
-  };
-
-  const markAsReceived = async (row) => {
-    const ok = await confirmAction({
-      title: t.markReceivedTitle,
-      message: t.markReceivedMessage,
-      confirmText: t.confirm,
-      cancelText: t.cancel,
-    });
-    if (!ok) return;
-    const now = new Date();
-    const record = {
-      id: `CPAY-${Date.now()}`,
-      customerId: row.customer.id,
-      customerName: row.customer.fullName || row.customer.companyName || "",
-      date: now.toISOString().slice(0, 10),
-      amount: row.balance,
-      currency: row.currency,
-      description: t.markReceived,
-      reference: `REC-${String(Date.now()).slice(-7)}`,
-      createdAt: now.toISOString(),
-      updatedAt: now.toISOString(),
-    };
-    if (await setCustomerPayments([record, ...customerPayments])) notify(t.receivedSuccess, "success");
   };
 
   return (
@@ -240,24 +196,30 @@ export default function Receivables() {
 
       <section className="payables-stats">
         <article className="payables-stat-card"><span>{t.customers}</span><strong>{rows.length}</strong><span className="payables-stat-icon"><UserRound size={17} /></span></article>
-        <article className="payables-stat-card"><span>{t.totalSales}</span><strong>{money(totals.sales)}</strong><span className="payables-stat-icon"><ReceiptText size={17} /></span></article>
-        <article className="payables-stat-card"><span>{t.totalPaid}</span><strong>{money(totals.paid)}</strong><span className="payables-stat-icon"><CircleDollarSign size={17} /></span></article>
-        <article className="payables-stat-card is-due"><span>{t.totalDue}</span><strong>{money(totals.balance)}</strong><span className="payables-stat-icon"><WalletCards size={17} /></span></article>
+        <article className="payables-stat-card"><span>{t.totalSales}</span><strong>{totalText("sales")}</strong><span className="payables-stat-icon"><ReceiptText size={17} /></span></article>
+        <article className="payables-stat-card"><span>{t.totalPaid}</span><strong>{totalText("paid")}</strong><span className="payables-stat-icon"><CircleDollarSign size={17} /></span></article>
+        <article className="payables-stat-card is-due"><span>{t.totalDue}</span><strong>{totalText("balance")}</strong><span className="payables-stat-icon"><WalletCards size={17} /></span></article>
       </section>
 
       <section className="payables-card">
         <div className="payables-toolbar">
           <label className="payables-search"><Search size={16} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t.search} /></label>
+          <label className="account-filter-label">{t.currency}<select value={selectedCurrency} onChange={e=>setSelectedCurrency(e.target.value)}><option value="ALL">{language==='en'?'All currencies':'همه اسعار'}</option>{currencyOptions.map(c=><option key={c} value={c}>{c}</option>)}</select></label>
+          <label className="account-filter-label">{language==='en'?'Category':'کتگوری'}<select value={selectedCategory} onChange={e=>setSelectedCategory(e.target.value)}><option value="ALL">{language==='en'?'All categories':'همه کتگوری‌ها'}</option>{categories.map(c=><option key={c} value={c}>{c}</option>)}</select></label>
+          <label className="account-filter-toggle"><input type="checkbox" checked={showAll} onChange={e=>setShowAll(e.target.checked)}/>{language==='en'?'Show settled':'نمایش حساب صفر'}</label>
+          <button type="button" className="account-report-btn" onClick={()=>void reportAction('print',filteredRows)}><Printer size={15}/>{t.print}</button>
+          <button type="button" className="account-report-btn" onClick={()=>void reportAction('pdf',filteredRows)}>PDF</button>
+          <button type="button" className="account-report-btn" onClick={()=>void reportAction('excel',filteredRows)}>Excel</button>
         </div>
         <div className="payables-table-wrap">
           <table className="payables-table">
-            <thead><tr><th>{t.customer}</th><th>{t.phone}</th><th>{t.invoices}</th><th>{t.sold}</th><th>{t.paid}</th><th>{t.balance}</th><th>{t.currency}</th><th>{t.actions}</th></tr></thead>
+            <thead><tr><th>{t.customer}</th><th>{t.phone}</th><th>{t.invoices}</th><th>{t.sold}</th><th>{t.paid}</th><th>{t.balance}</th><th>{t.currency}</th><th>{language==='en'?'Account / Print / PDF / Excel':'نمایش / چاپ / PDF / Excel'}</th></tr></thead>
             <tbody>
               {filteredRows.map((row) => {
                 const { customer, invoiceCount, totalSold, totalPaid, balance, currency } = row;
                 const name = customer.fullName || customer.companyName || "—";
                 return (
-                  <tr key={customer.id} className="payables-clickable-row" onClick={() => openCustomerLedger(row)}>
+                  <tr key={`${customer.id}-${currency}`} className="payables-clickable-row" onClick={() => openCustomerLedger(row)}>
                     <td><div className="payables-supplier-cell"><span className="payables-supplier-icon"><UserRound size={15} /></span><div><strong>{name}</strong><small>{customer.companyName && customer.companyName !== name ? customer.companyName : ""}</small></div></div></td>
                     <td className="payables-phone">{customer.phone || "—"}</td>
                     <td>{invoiceCount}</td>
@@ -266,7 +228,7 @@ export default function Receivables() {
                     <td><span className="payables-balance-pill">{money(balance)}</span></td>
                     <td><span className="payables-currency-pill">{currency}</span></td>
                     <td className="payables-actions-cell" onClick={(event) => event.stopPropagation()}>
-                      <button type="button" className="payables-action-trigger" onClick={(event) => openMenu(event, row)} aria-label={t.menu} title={t.menu}><MoreHorizontal size={16} /></button>
+                      <div className="account-report-actions"><button type="button" onClick={()=>openCustomerLedger(row)} title={language==='en'?'View account':'نمایش حساب'}>نمایش</button><button type="button" onClick={()=>void reportAction('print',[row])} title={t.print}><Printer size={15}/></button><button type="button" onClick={()=>void reportAction('pdf',[row])} title="PDF">PDF</button><button type="button" onClick={()=>void reportAction('excel',[row])} title="Excel">XLS</button></div>
                     </td>
                   </tr>
                 );
@@ -276,15 +238,7 @@ export default function Receivables() {
           </table>
         </div>
       </section>
-      {actionMenu && createPortal(
-        <div className="payables-action-popover" style={{ top: actionMenu.top, left: actionMenu.left }}>
-          <button type="button" onClick={() => { const row = actionMenu.payload; setActionMenu(null); openCustomerLedger(row, true); }}><CreditCard size={14} /><span>{t.receive}</span></button>
-          <button type="button" onClick={() => { const row = actionMenu.payload; setActionMenu(null); markAsReceived(row); }}><WalletCards size={14} /><span>{t.markReceived}</span></button>
-          <button type="button" disabled={!actionMenu.payload.focusSale} onClick={() => { const sale = actionMenu.payload.focusSale; setActionMenu(null); if (sale) navigate(`/sale-detail/${sale.id}/print`); }}><Printer size={14} /><span>{t.print}</span></button>
-          <button type="button" disabled={!actionMenu.payload.focusSale} onClick={() => { const sale = actionMenu.payload.focusSale; setActionMenu(null); if (sale) navigate(`/sale-detail/${sale.id}`); }}><ReceiptText size={14} /><span>{t.bill}</span></button>
-        </div>,
-        document.body
-      )}
+      <footer className="account-statement-footer"><span>{language==='en'?'Accounts':'تعداد حساب‌ها'}: <strong>{filteredRows.length}</strong></span><span>{language==='en'?'Outstanding by currency':'مجموع باقی‌مانده به تفکیک اسعار'}: <strong>{Object.entries(filteredRows.reduce((acc,row)=>(acc[row.currency]=(acc[row.currency]||0)+row.balance,acc),{})).map(([cur,total])=>`${cur} ${money(total)}`).join(' · ')||'0'}</strong></span></footer>
     </div>
   );
 }

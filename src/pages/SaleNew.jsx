@@ -360,6 +360,11 @@ function SaleNew() {
   const productPiecesPerUnit = (product) => positiveUnitCount(
     product?.piecesPerUnit ?? product?.unitsPerUnit ?? product?.quantityPerUnit ?? product?.piecesPerBox ?? product?.cartonSize ?? 1
   );
+  // The product catalog records the selling rate per carton/package.
+  // Sale lines always use individual pieces for quantity and price.
+  const productPieceSalePrice = (product) => Number(
+    (num(product?.salePrice) / productPiecesPerUnit(product)).toFixed(2)
+  );
   const editingSale = isEditMode ? sales.find((row) => String(row.id) === String(saleId)) : null;
   const effectiveStockMovements = useMemo(
     () => (isEditMode && editingSale ? replaceReferenceMovements(stockMovements, "sale", editingSale.id, []) : stockMovements),
@@ -427,16 +432,16 @@ function SaleNew() {
         packageQuantity: num(item.packageQuantity ?? item.purchaseQuantity) || (pieceQuantity / unitsPerUnit),
         quantity: pieceQuantity,
         // Legacy sale rows were already stored in the invoice currency.
-        sourceCurrency: normalizeCurrency(item.sourceCurrency || editingSale.currency || product?.unit || "AFN"),
+        sourceCurrency: normalizeCurrency(item.sourceCurrency || editingSale.currency || "AFN"),
         sourcePurchasePrice: num(item.sourcePurchasePrice ?? item.purchasePrice ?? product?.purchasePrice),
-        sourcePurchaseCurrency: item.sourcePurchaseCurrency || product?.purchaseCurrency || "",
-        sourceSalePrice: num(item.sourceSalePrice ?? item.salePrice ?? product?.salePrice),
+        sourcePurchaseCurrency: normalizeCurrency(item.sourcePurchaseCurrency || product?.purchaseCurrency || item.sourceCurrency || editingSale.currency || "AFN"),
+        sourceSalePrice: num(item.sourceSalePrice ?? item.salePrice ?? productPieceSalePrice(product)),
         exchangeRate: num(item.exchangeRate) || 1,
-        purchasePrice: num(item.purchasePrice ?? product?.purchasePrice),
+        purchasePrice: num(item.sourcePurchasePrice ?? item.purchasePrice ?? product?.purchasePrice),
         cartonSize: item.cartonSize ?? product?.cartonSize ?? unitsPerUnit,
         manufacturerName: item.manufacturerName || item.manufacturerCompany || product?.manufacturerName || product?.companyName || "",
         expiryDate: item.expiryDate || product?.expiryDate || "",
-        salePrice: num(item.salePrice ?? product?.salePrice),
+        salePrice: num(item.salePrice ?? productPieceSalePrice(product)),
         discountAmount: num(item.discountAmount ?? item.discount),
         discountPercent: item.discountPercent ?? null,
         currentStock: product ? getStock(product) : num(item.quantity),
@@ -493,7 +498,8 @@ function SaleNew() {
     const stock = getStock(product);
     if (stock <= 0) return;
 
-    const sourceCurrency = normalizeCurrency(product.unit || "AFN");
+    // Sale-price conversion is independent of the recorded purchase cost.
+    const sourceCurrency = normalizeCurrency(product.saleCurrency || product.currency || product.purchaseCurrency || "AFN");
     const rate = currencyRate(sourceCurrency, currency);
     if (!rate) {
       notify(`${t.missingExchangeRate} ${sourceCurrency}`, "warning");
@@ -501,6 +507,12 @@ function SaleNew() {
     }
 
     const productKey = String(product.id);
+    if (items.some((row) => String(row.productId) === productKey)) {
+      const allowDuplicate = window.confirm(
+        `Duplicate product!\n${productDisplayName(product)}\n\nDo you want to add this product again?`
+      );
+      if (!allowDuplicate) return;
+    }
     const unitsPerUnit = productPiecesPerUnit(product);
     const lineId = `sale-line-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     let changed = false;
@@ -529,14 +541,15 @@ function SaleNew() {
         quantity: pieceQuantityToAdd,
         sourceCurrency,
         sourcePurchasePrice: num(product.purchasePrice),
-        sourcePurchaseCurrency: product.purchaseCurrency || (currencies.includes(String(product.unit || "").toUpperCase()) ? product.unit : ""),
-        sourceSalePrice: num(product.salePrice),
+        sourcePurchaseCurrency: normalizeCurrency(product.purchaseCurrency || sourceCurrency),
+        sourceSalePrice: productPieceSalePrice(product),
         exchangeRate: rate,
-        purchasePrice: convertCurrency(product.purchasePrice, sourceCurrency, currency),
+        // The immutable purchase price is stored in the original purchase currency.
+        purchasePrice: num(product.purchasePrice),
         cartonSize: product.cartonSize ?? unitsPerUnit,
         manufacturerName: product.manufacturerName || product.companyName || "",
         expiryDate: product.expiryDate || "",
-        salePrice: convertCurrency(product.salePrice, sourceCurrency, currency),
+        salePrice: convertCurrency(productPieceSalePrice(product), sourceCurrency, currency),
         discountAmount: 0,
         discountPercent: 0,
         currentStock: stock,
@@ -559,8 +572,8 @@ function SaleNew() {
   const pieceCostDisplay = (row) => {
     const pieces = positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit || row.cartonSize);
     const recordedCurrency = String(row.sourcePurchaseCurrency || "").trim().toUpperCase();
-    const costCurrency = recordedCurrency ? normalizeCurrency(recordedCurrency) : currency;
-    const packageCost = recordedCurrency ? num(row.sourcePurchasePrice ?? row.purchasePrice) : num(row.purchasePrice);
+    const costCurrency = recordedCurrency ? normalizeCurrency(recordedCurrency) : normalizeCurrency(row.sourceCurrency || currency);
+    const packageCost = num(row.sourcePurchasePrice ?? row.purchasePrice);
     return `${(packageCost / pieces).toFixed(2)} ${costCurrency}`;
   };
 
@@ -739,7 +752,8 @@ function SaleNew() {
       return {
         ...row,
         exchangeRate: rate,
-        purchasePrice: num(row.sourcePurchasePrice ?? row.purchasePrice) * rate,
+        // Never reprice recorded purchase cost when invoice currency changes.
+        purchasePrice: num(row.sourcePurchasePrice ?? row.purchasePrice),
         salePrice,
         discountAmount: Math.min(num(row.discountAmount), num(row.quantity) * salePrice),
       };
@@ -817,6 +831,29 @@ function SaleNew() {
     if (!customerId) return notify(t.requiredCustomer, "warning");
     if (!items.length) return notify(t.requiredItems, "warning");
     if (paymentStatus === "debt" && num(paidAmount) > grandTotal) return notify(t.invalidPaid, "warning");
+
+    // Compare net selling rate against original package purchase cost only at save.
+    // Exchange rates are used for comparison, never to rewrite the purchase price.
+    const belowCostLines = [];
+    for (const row of items) {
+      if (num(row.quantity) <= 0) continue;
+      const costCurrency = normalizeCurrency(row.sourcePurchaseCurrency || row.sourceCurrency || currency);
+      const rate = currencyRate(costCurrency, currency);
+      if (!rate) {
+        notify(`${t.missingExchangeRate} ${costCurrency}`, "warning");
+        return;
+      }
+      const originalPackageCost = num(row.sourcePurchasePrice ?? row.purchasePrice);
+      const costPerPiece = originalPackageCost / positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit || row.cartonSize);
+      const netSalePerPiece = lineTotal(row) / num(row.quantity);
+      const comparableCost = costPerPiece * rate;
+      if (netSalePerPiece + 0.000001 < comparableCost) {
+        belowCostLines.push(`${row.productName}: cost ${comparableCost.toFixed(2)} ${currency} / piece, sale ${netSalePerPiece.toFixed(2)} ${currency} / piece`);
+      }
+    }
+    if (belowCostLines.length && !window.confirm(
+      `Warning: selling below purchase cost!\n\n${belowCostLines.join("\n")}\n\nDo you want to continue and save this sale?`
+    )) return;
 
     const allocationByLine = new Map();
     const itemsByProduct = new Map();
@@ -966,7 +1003,7 @@ function SaleNew() {
           <div className="purchase-search-results-head"><span>{t.results}</span><small>{results.length}</small></div>
           {results.length ? (
             <>
-            <div className="apg-picker-header" aria-hidden="true"><span>نام جنس</span><span>کمپنی سازنده</span><span>کشور</span><span>قیمت فروش</span></div>
+            <div className="apg-picker-header" aria-hidden="true"><span>نام جنس</span><span>کمپنی سازنده</span><span>کشور</span><span>قیمت فروش فی دانه</span></div>
             <div className="purchase-inline-result-list sale-inline-result-list">
               {results.map((product, index) => {
                 const stock = getStock(product);
@@ -995,7 +1032,7 @@ function SaleNew() {
                     <span className="apg-picker-product"><strong>{productDisplayName(product)}</strong><small>{t.stock}: {formatQuantity(remainingStock)}</small></span>
                     <span className="apg-picker-maker">{product.manufacturerName || product.companyName || product.company || "—"}</span>
                     <span className="apg-picker-country">{countryNameById(productCountries, product.countryId, language, product.madeIn || "—")}</span>
-                    <em className="apg-picker-price">{unavailable ? t.outOfStock : `${convertCurrency(product.salePrice, product.saleCurrency || product.unit || "AFN", currency).toFixed(2)} ${currency}`}</em>
+                    <em className="apg-picker-price">{unavailable ? t.outOfStock : `${convertCurrency(productPieceSalePrice(product), product.saleCurrency || product.unit || "AFN", currency).toFixed(2)} ${currency}`}</em>
                   </button>
                 );
               })}
@@ -1113,7 +1150,7 @@ function SaleNew() {
               {!!items.length && (
                 <div className="sale-wholesale-grid-head" role="row">
                   <span>نام جنس</span><span>سایز کارتن</span><span>{language === "en" ? "Cost / piece" : language === "ps" ? "د هرې دانې لګښت" : "نرخ تمام‌شد فی دانه"}</span>
-                  <span>قیمت فروش</span><span>تعداد کارتن</span><span>مقدار دانه</span>
+                  <span>{language === "en" ? "Sale price / piece" : language === "ps" ? "د هرې دانې د پلور بیه" : "قیمت فروش فی دانه"}</span><span>تعداد کارتن</span><span>مقدار دانه</span>
                   <span>فیصدی تخفیف</span><span>مجموع</span><span>عملیات</span>
                 </div>
               )}
@@ -1121,11 +1158,11 @@ function SaleNew() {
                 <article className="sale-wholesale-line" key={row.lineId}>
                   <div className="sale-wholesale-product" title={row.productName}>
                     <strong>{row.productName}</strong>
-                    <small>{row.manufacturerName || ""}</small><button className="sale-wholesale-edit-product" type="button" title="اصلاح مشخصات جنس" onClick={() => navigate(`/products?edit=${encodeURIComponent(row.productId)}`)}>اصلاح جنس</button>
+                    {row.manufacturerName && <small>{row.manufacturerName}</small>}
                   </div>
                   <div className="sale-wholesale-size"><span>{formatQuantity(row.cartonSize || row.unitsPerUnit || 1)}</span></div>
                   <div className="sale-wholesale-price-display" title={language === "en" ? "Purchase cost per piece, in purchase currency" : "قیمت تمام‌شد فی دانه به اسعار خرید"}><span dir="ltr">{pieceCostDisplay(row)}</span></div>
-                  <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">قیمت فروش</span><input aria-label="قیمت فروش" type="number" min="0" step="0.01" value={row.salePrice} onChange={(e) => updateItem(row.lineId, "salePrice", e.target.value)} /></label>
+                  <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">{language === "en" ? "Sale price / piece" : language === "ps" ? "د هرې دانې د پلور بیه" : "قیمت فروش فی دانه"}</span><input aria-label="قیمت فروش فی دانه" type="number" min="0" step="0.01" value={row.salePrice} onChange={(e) => updateItem(row.lineId, "salePrice", e.target.value)} /></label>
                   <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">تعداد کارتن</span><input aria-label="تعداد کارتن" ref={(node) => { const key = String(row.lineId); if (node) packageQuantityInputRefs.current.set(key, node); else packageQuantityInputRefs.current.delete(key); }} type="number" min="0" max={maxPiecesForLine(row) / positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit)} step="any" value={num(row.quantity) / positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit)} onChange={(e) => { changeLineQuantityUnit(row.lineId, "carton"); updatePieceQuantity(row.lineId, String(num(e.target.value) * positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit))); }} /></label>
                   <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">مقدار دانه</span><input aria-label="مقدار دانه" type="number" min="0" max={maxPiecesForLine(row)} step="any" value={row.quantity} onChange={(e) => updatePieceQuantity(row.lineId, e.target.value)} /></label>
                   <label className="sale-wholesale-cell sale-wholesale-discount"><span className="sale-wholesale-mobile-label">فیصدی تخفیف</span><input aria-label="فیصدی تخفیف" onKeyDown={(event) => { if (event.key === "Tab" && !event.shiftKey) { event.preventDefault(); focusSaleSearch(); } }} type="number" min="0" max="100" step="0.01" value={row.discountPercent ?? (lineGross(row) ? Number((100 * lineDiscount(row) / lineGross(row)).toFixed(2)) : 0)} onChange={(e) => updateItem(row.lineId, "discountPercent", e.target.value)} /></label>
