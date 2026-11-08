@@ -28,3 +28,20 @@
 @media(max-width:760px) {
   .unified-journal-panel .journal-entry-row > textarea {grid-column:1/-1!important;}
 }
+
+.journal-actions-cell { width:52px; text-align:center!important; }
+.cash-journal-page .journal-actions-trigger { display:inline-flex; align-items:center; justify-content:center; width:36px; height:32px; padding:0; border:1px solid var(--border-color,#dbe2ea); border-radius:7px; background:var(--card-bg,#fff); color:var(--text-color,#111827); cursor:pointer; }
+.journal-actions-trigger:hover,.journal-actions-trigger[aria-expanded="true"] { background:var(--hover-bg,#f1f5f9); }
+.journal-actions-menu { position:fixed; z-index:2147483001; width:164px; padding:5px; box-sizing:border-box; border:1px solid var(--border-color,#dbe2ea); border-radius:9px; background:var(--card-bg,#fff); color:var(--text-color,#111827); box-shadow:0 8px 28px #0f172a26; }
+.journal-actions-menu button { display:flex; align-items:center; gap:9px; width:100%; min-height:42px; padding:8px 10px; border:0; border-radius:5px; background:transparent; color:inherit; font:inherit; font-size:13px; text-align:start; cursor:pointer; }
+.journal-actions-menu button:hover,.journal-actions-menu button:focus-visible { background:var(--hover-bg,#f1f5f9); outline:2px solid var(--border-color,#cbd5e1); outline-offset:-2px; }
+.cash-journal-modal [hidden] { display:none!important; }
+.cash-journal-print-sheet { display:none; }
+@media print {
+  body:has(> .cash-journal-print-sheet) > :not(.cash-journal-print-sheet) { display:none!important; }
+  .cash-journal-print-sheet { display:block!important; color:#000; background:#fff; padding:12mm; font:12px sans-serif; }
+  .cash-journal-print-sheet h1 { font-size:20px; }
+  .cash-journal-print-sheet table { width:100%; border-collapse:collapse; }
+  .cash-journal-print-sheet th,.cash-journal-print-sheet td { padding:8px; border:1px solid #999; text-align:right; }
+  .cash-journal-print-sheet tr { break-inside:avoid; }
+}

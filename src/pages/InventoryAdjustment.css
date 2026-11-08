@@ -15,3 +15,30 @@
 .inventory-adjust-dialog{width:min(1150px,100%)}.inventory-adjust-table-wrap{overflow:auto;max-height:53vh;border:1px solid #356c5b;border-radius:8px}.inventory-adjust-table{width:100%;border-collapse:collapse;min-width:730px}.inventory-adjust-table th{background:#0b493a;color:#fff;padding:10px;font-size:13px;position:sticky;top:0}.inventory-adjust-table td{padding:5px;border-bottom:1px solid #326252;text-align:center}.inventory-adjust-table th:first-child{width:32%}.inventory-adjust-table th:nth-child(5){width:32%}.inventory-adjust-table td select,.inventory-adjust-table td input,.inventory-adjust-table td textarea{width:100%;min-width:0;box-sizing:border-box;background:#e8f3eb;color:#162d27;border:1px solid #7ca999;border-radius:5px;padding:9px;font:inherit}.inventory-adjust-table td button{background:transparent;border:0;color:#f99;cursor:pointer}.inventory-adjust-add-row{margin:12px 0;border:1px solid #4c8b78;color:white;background:#21594c;border-radius:8px;padding:9px 15px;display:flex;align-items:center;gap:7px;cursor:pointer}
 /* Inventory quick actions: keep buttons usable on both desktop and mobile. */
 .inventory-adjust-actions { flex-wrap: wrap; gap: 10px; }
+
+/* Bound the whole inventory form to the viewport, including its action buttons. */
+.inventory-adjust-overlay {
+  box-sizing:border-box;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+}
+.inventory-adjust-overlay .inventory-adjust-dialog {
+  box-sizing:border-box;
+  max-height:calc(100dvh - 32px) !important;
+  min-height:0;
+  overflow-y:scroll !important;
+  scrollbar-width:auto;
+  scrollbar-gutter:stable;
+  overscroll-behavior:contain;
+}
+.inventory-adjust-dialog > footer {
+  position:sticky;
+  bottom:-22px;
+  z-index:3;
+  background:#0d332d;
+  padding:14px 0;
+  flex-wrap:wrap;
+}
+.inventory-adjust-dialog::-webkit-scrollbar { width:12px; }
+.inventory-adjust-dialog::-webkit-scrollbar-thumb { background:#7ca999; border:3px solid #0d332d; border-radius:8px; }
+@media(max-width:650px) { .inventory-adjust-dialog > footer { bottom:-14px; } }

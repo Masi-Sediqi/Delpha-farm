@@ -1,3 +1,4 @@
+import { partyAccountRows } from "../utils/partyAccounts";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { CircleDollarSign, CreditCard, MoreHorizontal, Printer, ReceiptText, Search, UserRound, WalletCards } from "lucide-react";
@@ -8,20 +9,11 @@ import { notify } from "../utils/notify";
 import "./Payables.css";
 
 const languageKey = "afghan-power-language";
-const num = (value) => Number(value || 0);
 const money = (value) => Math.max(Number(value || 0), 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
-const normalizeCurrency = (value) => {
-  const code = String(value || "AFN").toUpperCase();
-  if (code.includes("USD")) return "USD";
-  if (code.includes("EUR")) return "EUR";
-  if (code.includes("INR")) return "INR";
-  return "AFN";
-};
-
 const tr = {
   en: {
     title: "Receivables",
-    subtitle: "Customers who still owe money for medicines or goods sold to them.",
+    subtitle: "Customer accounts linked to sales, collections and cash journal entries.",
     customers: "Customers with balance",
     totalSales: "Total sales",
     totalPaid: "Total received",
@@ -51,7 +43,7 @@ const tr = {
   },
   fa: {
     title: "طلبات",
-    subtitle: "مشتریانی که از فروش دوا یا اجناس هنوز برای ما بدهکار هستند.",
+    subtitle: "حساب مشتریان، فروشات، دریافت‌ها و گردش روزنامچه",
     customers: "مشتریان بدهکار",
     totalSales: "مجموع فروش",
     totalPaid: "مجموع دریافت‌شده",
@@ -81,7 +73,7 @@ const tr = {
   },
   ps: {
     title: "طلبات",
-    subtitle: "هغه پېرودونکي چې د پلورل شوو درملو یا توکو پیسې یې لا بشپړې نه دي ورکړې.",
+    subtitle: "د پېرودونکو حسابونه، خرڅلاو، ترلاسه شوې پیسې او د نغدي روزنامچې راکړه ورکړه.",
     customers: "پور لرونکي پېرودونکي",
     totalSales: "ټول خرڅلاو",
     totalPaid: "ترلاسه شوې پیسې",
@@ -118,6 +110,7 @@ export default function Receivables() {
   const [sales] = useJsonCollection("salesRegister");
   const [saleReturns] = useJsonCollection("saleReturns");
   const [customerPayments, setCustomerPayments] = useJsonCollection("customerPayments");
+  const [partyCashTransactions] = useJsonCollection("partyCashTransactions");
   const [search, setSearch] = useState("");
   const [actionMenu, setActionMenu] = useState(null);
   const t = tr[language] || tr.en;
@@ -144,43 +137,8 @@ export default function Receivables() {
     };
   }, [actionMenu]);
 
-  const rows = useMemo(() => customers.map((customer) => {
-    const id = String(customer.id);
-    const customerSales = sales.filter((sale) => String(sale.customerId) === id);
-    const returns = saleReturns.filter((row) => String(row.customerId) === id);
-    const payments = customerPayments.filter((row) => String(row.customerId) === id);
-    const totalSold = customerSales.reduce((sum, sale) => sum + Math.max(num(sale.totalAmount), 0), 0);
-    const paidAtSale = customerSales.reduce((sum, sale) => sum + Math.max(num(sale.paidAmount), 0), 0);
-    const laterPaid = payments.reduce((sum, payment) => sum + Math.max(num(payment.amount), 0), 0);
-    const returned = returns.reduce((sum, row) => sum + Math.max(num(row.totalAmount), 0), 0);
-    const openingDebit = Math.max(num(customer.openingBalance), 0);
-    const openingCredit = Math.max(-num(customer.openingBalance), 0);
-    const totalPaid = paidAtSale + laterPaid + returned + openingCredit;
-    const balance = Math.max(openingDebit + totalSold - totalPaid, 0);
-    const unpaid = customerSales
-      .map((sale) => ({
-        ...sale,
-        calculatedRemaining: Math.max(num(sale.remainingAmount ?? (num(sale.totalAmount) - num(sale.paidAmount))), 0),
-      }))
-      .filter((sale) => sale.calculatedRemaining > 0.0001)
-      .sort((a, b) => new Date(a.saleDate || a.createdAt || 0) - new Date(b.saleDate || b.createdAt || 0));
-    return {
-      customer,
-      invoiceCount: customerSales.length,
-      totalSold,
-      totalPaid: paidAtSale + laterPaid,
-      balance,
-      currency: normalizeCurrency(customer.currency || customerSales[0]?.currency),
-      focusSale: unpaid[0] || customerSales[customerSales.length - 1] || null,
-    };
-  }).filter((row) => row.balance > 0.000001), [customers, sales, saleReturns, customerPayments]);
-
-  const totals = rows.reduce((acc, row) => {
-    acc.sales += row.totalSold;
-    acc.paid += row.totalPaid;
-    acc.balance += row.balance;
-    return acc;
-  }, { sales: 0, paid: 0, balance: 0 });
+  const rows = useMemo(() => partyAccountRows({type:"customer",parties:customers,invoices:sales,returns:saleReturns,payments:customerPayments,journal:partyCashTransactions}).map(row=>({customer:row.party,invoiceCount:row.invoices.length,totalSold:row.total,totalPaid:row.paid,balance:row.balance,currency:row.currency,focusSale:row.focusInvoice})), [customers,sales,saleReturns,customerPayments,partyCashTransactions]);
+  const totalText = field => [...new Set(rows.map(row=>row.currency))].map(code=>`${rows.filter(row=>row.currency===code).reduce((sum,row)=>sum+(field==="balance"?Math.max(row[field],0):row[field]),0).toLocaleString(undefined,{maximumFractionDigits:2})} ${code}`).join(" · ") || "—";
 
   const filteredRows = rows.filter(({ customer }) => {
     const q = search.trim().toLowerCase();
@@ -189,7 +147,7 @@ export default function Receivables() {
   });
 
   const openCustomerLedger = (row, openPayment = false) => {
-    navigate(`/customer-detail/${row.customer.id}`, { state: { openPayment } });
+    navigate(`/customer-detail/${row.customer.id}`, { state: { openPayment, paymentCurrency: row.currency } });
   };
 
   const openMenu = (event, payload) => {
@@ -206,6 +164,7 @@ export default function Receivables() {
   };
 
   const markAsReceived = async (row) => {
+    if (row.balance <= 0) return;
     const ok = await confirmAction({
       title: t.markReceivedTitle,
       message: t.markReceivedMessage,
@@ -239,10 +198,10 @@ export default function Receivables() {
       </header>
 
       <section className="payables-stats">
-        <article className="payables-stat-card"><span>{t.customers}</span><strong>{rows.length}</strong><span className="payables-stat-icon"><UserRound size={17} /></span></article>
-        <article className="payables-stat-card"><span>{t.totalSales}</span><strong>{money(totals.sales)}</strong><span className="payables-stat-icon"><ReceiptText size={17} /></span></article>
-        <article className="payables-stat-card"><span>{t.totalPaid}</span><strong>{money(totals.paid)}</strong><span className="payables-stat-icon"><CircleDollarSign size={17} /></span></article>
-        <article className="payables-stat-card is-due"><span>{t.totalDue}</span><strong>{money(totals.balance)}</strong><span className="payables-stat-icon"><WalletCards size={17} /></span></article>
+        <article className="payables-stat-card"><span>{t.customers}</span><strong>{rows.filter(row=>row.balance>0).length}</strong><span className="payables-stat-icon"><UserRound size={17} /></span></article>
+        <article className="payables-stat-card"><span>{t.totalSales}</span><strong>{totalText("totalSold")}</strong><span className="payables-stat-icon"><ReceiptText size={17} /></span></article>
+        <article className="payables-stat-card"><span>{t.totalPaid}</span><strong>{totalText("totalPaid")}</strong><span className="payables-stat-icon"><CircleDollarSign size={17} /></span></article>
+        <article className="payables-stat-card is-due"><span>{t.totalDue}</span><strong>{totalText("balance")}</strong><span className="payables-stat-icon"><WalletCards size={17} /></span></article>
       </section>
 
       <section className="payables-card">
@@ -257,13 +216,13 @@ export default function Receivables() {
                 const { customer, invoiceCount, totalSold, totalPaid, balance, currency } = row;
                 const name = customer.fullName || customer.companyName || "—";
                 return (
-                  <tr key={customer.id} className="payables-clickable-row" onClick={() => openCustomerLedger(row)}>
+                  <tr key={`${customer.id}-${currency}`} className="payables-clickable-row" onClick={() => openCustomerLedger(row)}>
                     <td><div className="payables-supplier-cell"><span className="payables-supplier-icon"><UserRound size={15} /></span><div><strong>{name}</strong><small>{customer.companyName && customer.companyName !== name ? customer.companyName : ""}</small></div></div></td>
                     <td className="payables-phone">{customer.phone || "—"}</td>
                     <td>{invoiceCount}</td>
                     <td>{money(totalSold)}</td>
                     <td>{money(totalPaid)}</td>
-                    <td><span className="payables-balance-pill">{money(balance)}</span></td>
+                    <td><span className="payables-balance-pill">{Number(balance).toLocaleString(undefined,{maximumFractionDigits:2})}</span></td>
                     <td><span className="payables-currency-pill">{currency}</span></td>
                     <td className="payables-actions-cell" onClick={(event) => event.stopPropagation()}>
                       <button type="button" className="payables-action-trigger" onClick={(event) => openMenu(event, row)} aria-label={t.menu} title={t.menu}><MoreHorizontal size={16} /></button>
@@ -279,7 +238,7 @@ export default function Receivables() {
       {actionMenu && createPortal(
         <div className="payables-action-popover" style={{ top: actionMenu.top, left: actionMenu.left }}>
           <button type="button" onClick={() => { const row = actionMenu.payload; setActionMenu(null); openCustomerLedger(row, true); }}><CreditCard size={14} /><span>{t.receive}</span></button>
-          <button type="button" onClick={() => { const row = actionMenu.payload; setActionMenu(null); markAsReceived(row); }}><WalletCards size={14} /><span>{t.markReceived}</span></button>
+          <button type="button" disabled={actionMenu.payload.balance<=0} onClick={() => { const row = actionMenu.payload; setActionMenu(null); markAsReceived(row); }}><WalletCards size={14} /><span>{t.markReceived}</span></button>
           <button type="button" disabled={!actionMenu.payload.focusSale} onClick={() => { const sale = actionMenu.payload.focusSale; setActionMenu(null); if (sale) navigate(`/sale-detail/${sale.id}/print`); }}><Printer size={14} /><span>{t.print}</span></button>
           <button type="button" disabled={!actionMenu.payload.focusSale} onClick={() => { const sale = actionMenu.payload.focusSale; setActionMenu(null); if (sale) navigate(`/sale-detail/${sale.id}`); }}><ReceiptText size={14} /><span>{t.bill}</span></button>
         </div>,

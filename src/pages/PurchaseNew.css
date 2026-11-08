@@ -1912,7 +1912,6 @@ body.dark-mode .purchase-supplier-info-panel{
     grid-template-columns:
       minmax(190px, 2.4fr) /* medicine */
       minmax(105px, 1.15fr) /* manufacturer */
-      minmax(68px, .72fr) /* cartons */
       minmax(78px, .8fr) /* pieces */
       minmax(80px, .85fr) /* buy */
       minmax(80px, .85fr) /* sell */

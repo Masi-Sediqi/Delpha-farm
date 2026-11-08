@@ -1,8 +1,8 @@
+import { partyAccountRows } from "../utils/partyAccounts";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowRight,
-  BadgeDollarSign,
   Building2,
   CircleDollarSign,
   Search,
@@ -16,17 +16,8 @@ import "./ReceivablesPayables.css";
 
 const languageKey = "afghan-power-language";
 const rtlLanguages = new Set(["fa", "ps"]);
-const currencies = ["AFN", "USD", "PKR", "EUR"];
+const currencies = ["AFN", "USD", "INR", "EUR"];
 const numeric = (value) => Number(value || 0) || 0;
-const normalizeCurrency = (value, fallback = "AFN") => {
-  const code = String(value || fallback).trim().toUpperCase();
-  if (code === "AFGHANI" || code === "AFN") return "AFN";
-  if (code === "DOLLAR" || code === "USD") return "USD";
-  if (code === "PAKISTANI" || code === "PAKISTANI RUPEE" || code === "PKR") return "PKR";
-  if (code === "EURO" || code === "EUR") return "EUR";
-  return fallback;
-};
-
 const translations = {
   en: {
     title: "Receivables & Payables",
@@ -131,6 +122,7 @@ export default function ReceivablesPayables() {
   const [purchases] = useJsonCollection("purchases");
   const [purchaseReturns] = useJsonCollection("purchaseReturns");
   const [supplierPayments] = useJsonCollection("supplierPayments");
+  const [partyCashTransactions] = useJsonCollection("partyCashTransactions");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [currency, setCurrency] = useState("AFN");
   const [customerSearch, setCustomerSearch] = useState("");
@@ -149,41 +141,8 @@ export default function ReceivablesPayables() {
     };
   }, []);
 
-  const customerBalances = useMemo(() => customers.map((customer) => {
-    const id = String(customer.id);
-    const customerSales = sales.filter((item) => String(item.customerId) === id);
-    const returns = saleReturns.filter((item) => String(item.customerId) === id);
-    const payments = customerPayments.filter((item) => String(item.customerId) === id);
-    const debit = Math.max(numeric(customer.openingBalance), 0)
-      + customerSales.reduce((sum, item) => sum + numeric(item.totalAmount), 0);
-    const credit = Math.max(-numeric(customer.openingBalance), 0)
-      + customerSales.reduce((sum, item) => sum + numeric(item.paidAmount), 0)
-      + returns.reduce((sum, item) => sum + numeric(item.totalAmount), 0)
-      + payments.reduce((sum, item) => sum + numeric(item.amount), 0);
-    return {
-      ...customer,
-      balance: debit - credit,
-      currency: normalizeCurrency(customer.currency, "AFN"),
-    };
-  }), [customers, sales, saleReturns, customerPayments]);
-
-  const supplierBalances = useMemo(() => suppliers.map((supplier) => {
-    const id = String(supplier.id);
-    const supplierPurchases = purchases.filter((item) => String(item.supplierId) === id);
-    const returns = purchaseReturns.filter((item) => String(item.supplierId) === id);
-    const payments = supplierPayments.filter((item) => String(item.supplierId) === id);
-    const debit = Math.max(numeric(supplier.openingBalance), 0)
-      + supplierPurchases.reduce((sum, item) => sum + numeric(item.totalAmount), 0);
-    const credit = Math.max(-numeric(supplier.openingBalance), 0)
-      + supplierPurchases.reduce((sum, item) => sum + numeric(item.paidAmount), 0)
-      + returns.reduce((sum, item) => sum + numeric(item.totalAmount), 0)
-      + payments.reduce((sum, item) => sum + numeric(item.amount), 0);
-    return {
-      ...supplier,
-      balance: debit - credit,
-      currency: normalizeCurrency(supplier.currency, "AFN"),
-    };
-  }), [suppliers, purchases, purchaseReturns, supplierPayments]);
+  const customerBalances = useMemo(() => partyAccountRows({type:"customer",parties:customers,invoices:sales,returns:saleReturns,payments:customerPayments,journal:partyCashTransactions}).map(row=>({...row.party,balance:row.balance,currency:row.currency})), [customers,sales,saleReturns,customerPayments,partyCashTransactions]);
+  const supplierBalances = useMemo(() => partyAccountRows({type:"supplier",parties:suppliers,invoices:purchases,returns:purchaseReturns,payments:supplierPayments,journal:partyCashTransactions}).map(row=>({...row.party,balance:row.balance,currency:row.currency})), [suppliers,purchases,purchaseReturns,supplierPayments,partyCashTransactions]);
 
   const currencyCustomers = useMemo(
     () => customerBalances.filter((item) => item.currency === currency && Math.abs(item.balance) > 0.000001),

@@ -1,3 +1,5 @@
+import { accountCurrency } from "../utils/partyAccounts";
+import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -15,7 +17,7 @@ import "./GeneralJournal.css";
 
 const languageKey = "afghan-power-language";
 const rtlLanguages = new Set(["fa", "ps"]);
-const currencies = ["AFN", "USD", "PKR", "EUR"];
+const currencies = ["AFN", "USD", "INR", "EUR"];
 
 const tr = {
   en: {
@@ -204,7 +206,7 @@ const tr = {
 };
 
 const numeric = (value) => Math.max(Number(value || 0), 0);
-const normalizeCurrency = (value) => currencies.includes(String(value || "").toUpperCase()) ? String(value).toUpperCase() : "AFN";
+const normalizeCurrency = (value) => currencies.includes(accountCurrency(value)) ? accountCurrency(value) : "AFN";
 const today = () => new Date().toISOString().slice(0, 10);
 
 function line(id, journalId, date, reference, source, currency, account, debit, credit, description, automatic = true) {
@@ -223,6 +225,7 @@ export default function GeneralJournal() {
   const [purchaseReturns] = useJsonCollection("purchaseReturns");
   const [expenses] = useJsonCollection("expenses");
   const [expenseAccounts] = useJsonCollection("expenseAccounts");
+  const [partyCashTransactions] = useJsonCollection("partyCashTransactions");
   const [manualCash] = useJsonCollection("cashTransactions");
   const [bankAccounts] = useJsonCollection("bankAccounts");
   const [bankTransactions] = useJsonCollection("bankTransactions");
@@ -393,8 +396,20 @@ export default function GeneralJournal() {
       }
     });
 
+    partyCashTransactions.forEach(item => {
+      const amount = Math.abs(numeric(item.amount));
+      if (!amount) return;
+      const cashIn = item.direction === "in";
+      const name = item.partyType === "customer" ? `${t.customer}: ${customerName(item.partyId)}` : item.partyType === "supplier" ? `${t.supplier}: ${supplierName(item.partyId)}` : item.accountName || item.partyName || "—";
+      const date = item.date || String(item.createdAt || "").slice(0,10);
+      const ref = item.pageNumber || item.reference || item.id;
+      const source = item.partyType === "customer" ? "customer-payment" : item.partyType === "supplier" ? "supplier-payment" : "cash";
+      rows.push(line(`party-cash-${item.id}`, item.id, date, ref, source, item.currency, t.cash, cashIn ? amount : 0, cashIn ? 0 : amount, item.description));
+      rows.push({...line(`party-account-${item.id}`, item.id, date, ref, source, item.currency, name, cashIn ? 0 : amount, cashIn ? amount : 0, item.description), partyType:item.partyType, partyId:item.partyId});
+    });
+
     return rows;
-  }, [sales, purchases, customers, suppliers, customerPayments, supplierPayments, saleReturns, purchaseReturns, expenses, expenseAccounts, bankAccounts, bankTransactions, manualCash, t]);
+  }, [sales, purchases, customers, suppliers, customerPayments, supplierPayments, saleReturns, purchaseReturns, expenses, expenseAccounts, bankAccounts, bankTransactions, manualCash, partyCashTransactions, t]);
 
   const manualLines = useMemo(() => manualEntries.flatMap((entry) => {
     const amount = numeric(entry.amount);
@@ -505,7 +520,7 @@ export default function GeneralJournal() {
               <thead><tr><th>{t.date}</th><th>{t.reference}</th><th>{t.source}</th><th>{t.currency}</th><th>{t.account}</th><th>{t.debit}</th><th>{t.credit}</th><th>{t.description}</th><th /></tr></thead>
               <tbody>
                 {filteredLines.length ? filteredLines.map((row) => <tr key={row.id}>
-                  <td>{row.date || "—"}</td><td>{row.reference}</td><td><span className={`general-journal-source source-${row.source}`}>{sourceLabel(row.source)}</span></td><td>{row.currency}</td><td className="general-journal-account">{row.account}</td><td className="journal-debit">{row.debit ? row.debit.toFixed(2) : "—"}</td><td className="journal-credit">{row.credit ? row.credit.toFixed(2) : "—"}</td><td>{row.description || "—"}</td><td>{!row.automatic && <button className="general-journal-delete" onClick={() => deleteManual(row.journalId)} title="Delete"><Trash2 size={15} /></button>}</td>
+                  <td>{row.date || "—"}</td><td>{row.reference}</td><td><span className={`general-journal-source source-${row.source}`}>{sourceLabel(row.source)}</span></td><td>{row.currency}</td><td className="general-journal-account">{row.partyId && ["customer","supplier"].includes(row.partyType) ? <Link to={`/${row.partyType}-detail/${encodeURIComponent(row.partyId)}`}>{row.account}</Link> : row.account}</td><td className="journal-debit">{row.debit ? row.debit.toFixed(2) : "—"}</td><td className="journal-credit">{row.credit ? row.credit.toFixed(2) : "—"}</td><td>{row.description || "—"}</td><td>{!row.automatic && <button className="general-journal-delete" onClick={() => deleteManual(row.journalId)} title="Delete"><Trash2 size={15} /></button>}</td>
                 </tr>) : <tr><td colSpan="9" className="general-journal-empty">{t.noEntries}</td></tr>}
               </tbody>
             </table>
@@ -515,7 +530,7 @@ export default function GeneralJournal() {
             <table>
               <thead><tr><th>{t.ledgerAccount}</th><th>{t.currency}</th><th>{t.debit}</th><th>{t.credit}</th><th>{t.balance}</th></tr></thead>
               <tbody>
-                {ledgers.length ? ledgers.map((row) => <tr key={`${row.currency}-${row.account}`}><td className="general-journal-account">{row.account}</td><td>{row.currency}</td><td className="journal-debit">{row.debit.toFixed(2)}</td><td className="journal-credit">{row.credit.toFixed(2)}</td><td><strong className={row.balance >= 0 ? "ledger-debit-balance" : "ledger-credit-balance"}>{Math.abs(row.balance).toFixed(2)} <small>{row.balance >= 0 ? t.debitBalance : t.creditBalance}</small></strong></td></tr>) : <tr><td colSpan="5" className="general-journal-empty">{t.noEntries}</td></tr>}
+                {ledgers.length ? ledgers.map((row) => <tr key={`${row.currency}-${row.account}`}><td className="general-journal-account">{row.partyId && ["customer","supplier"].includes(row.partyType) ? <Link to={`/${row.partyType}-detail/${encodeURIComponent(row.partyId)}`}>{row.account}</Link> : row.account}</td><td>{row.currency}</td><td className="journal-debit">{row.debit.toFixed(2)}</td><td className="journal-credit">{row.credit.toFixed(2)}</td><td><strong className={row.balance >= 0 ? "ledger-debit-balance" : "ledger-credit-balance"}>{Math.abs(row.balance).toFixed(2)} <small>{row.balance >= 0 ? t.debitBalance : t.creditBalance}</small></strong></td></tr>) : <tr><td colSpan="5" className="general-journal-empty">{t.noEntries}</td></tr>}
               </tbody>
             </table>
           </div>

@@ -1,3 +1,4 @@
+import { partyAccountRows, accountCurrency } from "../utils/partyAccounts";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -122,6 +123,7 @@ export default function ReceivablesBatch() {
   const [sales] = useJsonCollection("salesRegister");
   const [saleReturns] = useJsonCollection("saleReturns");
   const [customerPayments, setCustomerPayments] = useJsonCollection("customerPayments");
+  const [partyCashTransactions] = useJsonCollection("partyCashTransactions");
   const [batches, setBatches, , batchesLoaded] = useJsonCollection("customerPaymentBatches");
 
   const [date, setDate] = useState(today());
@@ -169,26 +171,9 @@ export default function ReceivablesBatch() {
   }, [isEdit, batchesLoaded, editLoaded, batches, batchId, navigate]);
 
   const balanceMap = useMemo(() => {
-    const map = new Map();
-    customers.forEach((customer) => {
-      const id = String(customer.id);
-      const totalSold = sales
-        .filter((row) => String(row.customerId) === id)
-        .reduce((sum, row) => sum + num(row.totalAmount), 0);
-      const paidAtSale = sales
-        .filter((row) => String(row.customerId) === id)
-        .reduce((sum, row) => sum + num(row.paidAmount), 0);
-      const returned = saleReturns
-        .filter((row) => String(row.customerId) === id)
-        .reduce((sum, row) => sum + num(row.totalAmount), 0);
-      const paidLater = customerPayments
-        .filter((row) => String(row.customerId) === id && (!isEdit || String(row.batchId || "") !== String(batchId)))
-        .reduce((sum, row) => sum + num(row.amount), 0);
-
-      map.set(id, num(customer.openingBalance) + totalSold - paidAtSale - returned - paidLater);
-    });
-    return map;
-  }, [customers, sales, saleReturns, customerPayments, isEdit, batchId]);
+    const rows = partyAccountRows({type:"customer",parties:customers,invoices:sales,returns:saleReturns,payments:customerPayments.filter(row=>!isEdit || String(row.batchId || "")!==String(batchId)),journal:partyCashTransactions});
+    return new Map(customers.map(party=>[String(party.id), rows.find(row=>String(row.party.id)===String(party.id) && row.currency===accountCurrency(customerCurrency(party)))?.balance || 0]));
+  }, [customers,sales,saleReturns,customerPayments,partyCashTransactions,isEdit,batchId]);
 
   const selectedCustomers = useMemo(
     () => selectedIds

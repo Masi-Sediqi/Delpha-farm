@@ -610,7 +610,7 @@ export default function CustomerDetail() {
 
   const openPaymentModal = () => {
     setEditingPaymentId(null);
-    setPaymentForm({ date: today(), amount: "", currency: String(preferredPaymentCurrency).toLowerCase(), description: "" });
+    setPaymentForm({ date: today(), amount: "", currency: String(normalizeCurrency(location.state?.paymentCurrency || preferredPaymentCurrency)).toLowerCase(), description: "" });
     setShowPayment(true);
   };
 

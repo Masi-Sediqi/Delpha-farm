@@ -1,3 +1,7 @@
+import { confirmAction } from "../utils/confirmDialog";
+import { assessSaleLoss, capturePurchaseComparisonRates, correctLossPrice } from "../utils/saleLossWarning";
+import { productPurchaseCostSnapshot, salePurchaseCostSnapshot } from "../utils/salePurchaseCost";
+import { productPricePerPiece } from "../utils/piecePricing";
 import { writeAtomicFinanceBatch } from "../utils/browserStorage";
 import CustomersRegistry from "./CustomersRegistry";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -90,7 +94,7 @@ const text = {
     emptyText: "Search above and select medicines to add them to this sale.",
     qty: "Quantity by main unit",
     actualQty: "Quantity by piece",
-    salePrice: "Sale price",
+    salePrice: "Sale price / piece",
     purchasePrice: "Purchase price",
     cartonSize: "Carton / unit size",
     costPrice: "Cost price",
@@ -160,7 +164,7 @@ const text = {
     emptyText: "از جستجوی بالا چندین دوا را پیدا کرده و به این فروش اضافه کنید.",
     qty: "مقدار به واحد اصلی",
     actualQty: "مقدار به دانه",
-    salePrice: "قیمت فروش",
+    salePrice: "قیمت فروش فی دانه",
     purchasePrice: "قیمت خرید",
     cartonSize: "سایز کارتن / واحد",
     costPrice: "قیمت تمام شد",
@@ -230,7 +234,7 @@ const text = {
     emptyText: "له پورته لټون څخه څو درمل پیدا او دې خرڅلاو ته یې اضافه کړئ.",
     qty: "په اصلي واحد مقدار",
     actualQty: "په دانه مقدار",
-    salePrice: "د پلور بیه",
+    salePrice: "د هرې دانې د پلور بیه",
     purchasePrice: "د پېرود بیه",
     cartonSize: "د کارتن / واحد سایز",
     costPrice: "تمام شوی قیمت",
@@ -295,6 +299,10 @@ function SaleNew() {
   const [items, setItems] = useState([]);
   const [editInitialized, setEditInitialized] = useState(false);
   const searchInputRef = useRef(null);
+  const approvedLosses = useRef(new Set());
+  const saleSaveInProgress = useRef(false);
+  const [savingSale, setSavingSale] = useState(false);
+  const pendingLossWarning = useRef(null);
   const resultButtonRefs = useRef(new Map());
   const customerSelectRef = useRef(null);
   const packageQuantityInputRefs = useRef(new Map());
@@ -416,6 +424,7 @@ function SaleNew() {
       const product = products.find((row) => String(row.id) === String(item.productId));
       const unitsPerUnit = positiveUnitCount(item.unitsPerUnit ?? productPiecesPerUnit(product));
       const pieceQuantity = num(item.quantity);
+      const purchaseCost = salePurchaseCostSnapshot(item, editingSale.currency, product);
       return {
         lineId: item.lineId || `sale-line-${editingSale.id || "edit"}-${itemIndex}-${item.productId}`,
         productId: item.productId,
@@ -428,11 +437,10 @@ function SaleNew() {
         quantity: pieceQuantity,
         // Legacy sale rows were already stored in the invoice currency.
         sourceCurrency: normalizeCurrency(item.sourceCurrency || editingSale.currency || product?.unit || "AFN"),
-        sourcePurchasePrice: num(item.sourcePurchasePrice ?? item.purchasePrice ?? product?.purchasePrice),
-        sourcePurchaseCurrency: item.sourcePurchaseCurrency || product?.purchaseCurrency || "",
+        ...purchaseCost,
+        purchaseComparisonRates: item.purchaseComparisonRates || capturePurchaseComparisonRates(purchaseCost.purchaseCurrency, currencies, currencyRate),
         sourceSalePrice: num(item.sourceSalePrice ?? item.salePrice ?? product?.salePrice),
         exchangeRate: num(item.exchangeRate) || 1,
-        purchasePrice: num(item.purchasePrice ?? product?.purchasePrice),
         cartonSize: item.cartonSize ?? product?.cartonSize ?? unitsPerUnit,
         manufacturerName: item.manufacturerName || item.manufacturerCompany || product?.manufacturerName || product?.companyName || "",
         expiryDate: item.expiryDate || product?.expiryDate || "",
@@ -502,6 +510,7 @@ function SaleNew() {
 
     const productKey = String(product.id);
     const unitsPerUnit = productPiecesPerUnit(product);
+    const purchaseCost = productPurchaseCostSnapshot(product);
     const lineId = `sale-line-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     let changed = false;
 
@@ -528,15 +537,14 @@ function SaleNew() {
         packageQuantity: Number((pieceQuantityToAdd / unitsPerUnit).toFixed(4)),
         quantity: pieceQuantityToAdd,
         sourceCurrency,
-        sourcePurchasePrice: num(product.purchasePrice),
-        sourcePurchaseCurrency: product.purchaseCurrency || (currencies.includes(String(product.unit || "").toUpperCase()) ? product.unit : ""),
-        sourceSalePrice: num(product.salePrice),
+        ...purchaseCost,
+        purchaseComparisonRates: capturePurchaseComparisonRates(purchaseCost.purchaseCurrency, currencies, currencyRate),
+        sourceSalePrice: productPricePerPiece(product, "salePrice"),
         exchangeRate: rate,
-        purchasePrice: convertCurrency(product.purchasePrice, sourceCurrency, currency),
         cartonSize: product.cartonSize ?? unitsPerUnit,
         manufacturerName: product.manufacturerName || product.companyName || "",
         expiryDate: product.expiryDate || "",
-        salePrice: convertCurrency(product.salePrice, sourceCurrency, currency),
+        salePrice: convertCurrency(productPricePerPiece(product, "salePrice"), sourceCurrency, currency),
         discountAmount: 0,
         discountPercent: 0,
         currentStock: stock,
@@ -554,15 +562,7 @@ function SaleNew() {
     }, 0);
   };
 
-  // Purchase prices are recorded for the purchased package (usually a carton).
-  // Display the original purchase currency independently of the sale bill currency.
-  const pieceCostDisplay = (row) => {
-    const pieces = positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit || row.cartonSize);
-    const recordedCurrency = String(row.sourcePurchaseCurrency || "").trim().toUpperCase();
-    const costCurrency = recordedCurrency ? normalizeCurrency(recordedCurrency) : currency;
-    const packageCost = recordedCurrency ? num(row.sourcePurchasePrice ?? row.purchasePrice) : num(row.purchasePrice);
-    return `${(packageCost / pieces).toFixed(2)} ${costCurrency}`;
-  };
+  const pieceCostDisplay = (row) => `${num(row.purchasePrice).toFixed(2)} ${row.purchaseCurrency}`;
 
   const focusSearchResult = (index) => {
     if (!results.length) return;
@@ -739,7 +739,7 @@ function SaleNew() {
       return {
         ...row,
         exchangeRate: rate,
-        purchasePrice: num(row.sourcePurchasePrice ?? row.purchasePrice) * rate,
+        purchaseComparisonRates: { ...row.purchaseComparisonRates, [normalized]: row.purchaseComparisonRates?.[normalized] || currencyRate(row.purchaseCurrency, normalized) },
         salePrice,
         discountAmount: Math.min(num(row.discountAmount), num(row.quantity) * salePrice),
       };
@@ -812,12 +812,45 @@ function SaleNew() {
     if (paymentStatus === "paid") setPaidAmount(String(grandTotal || ""));
   }, [paymentStatus, grandTotal]);
 
+  const warnIfSellingAtLoss = async (row) => {
+    if (pendingLossWarning.current) { await pendingLossWarning.current; return false; }
+    const loss = assessSaleLoss(row, currency);
+    if (!loss) return true;
+    if (loss.missingRate) {
+      notify(`${t.missingExchangeRate} ${row.purchaseCurrency} / ${currency}`, "warning");
+      return false;
+    }
+    if (approvedLosses.current.has(loss.signature)) return true;
+    const message = language === "en"
+      ? `Sale price is below purchase cost for ${row.productName}. Purchase cost per piece = ${num(row.purchasePrice).toFixed(2)} ${row.purchaseCurrency}. Correct the sale price?`
+      : language === "ps"
+        ? `د ${row.productName} د پلور بیه له تمام شوي قیمت څخه ټیټه ده. د هرې دانې قیمت = ${num(row.purchasePrice).toFixed(2)} ${row.purchaseCurrency}. اصلاح شي؟`
+        : `قیمت فروش کمتر از قیمت تمام‌شده است. جنس: ${row.productName}. قیمت تمام‌شده فی دانه = ${num(row.purchasePrice).toFixed(2)} ${row.purchaseCurrency}. اصلاح شود؟`;
+    const request = confirmAction({title: language === "en" ? "Attention!" : language === "ps" ? "پاملرنه!" : "توجه!", message,
+      confirmText: language === "en" ? "Yes" : language === "ps" ? "هو" : "بلی",
+      cancelText: language === "en" ? "No" : language === "ps" ? "نه" : "نخیر", tone:"warning"});
+    pendingLossWarning.current = request;
+    try {
+      const correct = await request;
+      if (!correct) { approvedLosses.current.add(loss.signature); return true; }
+      const correction = correctLossPrice(row, loss);
+      const reverseRate = currencyRate(currency, row.sourceCurrency || currency);
+      setItems(current=>current.map(item=>String(item.lineId)===String(row.lineId) ? {...item,...correction,sourceSalePrice:reverseRate ? correction.salePrice*reverseRate : correction.salePrice} : item));
+      return false;
+    } finally { pendingLossWarning.current = null; }
+  };
+
   const saveSale = async () => {
+    if (saleSaveInProgress.current) return;
+    saleSaveInProgress.current = true;
+    setSavingSale(true);
+    try {
     if (isEditMode && !editingSale) return notify(t.notFound, "warning");
     if (!customerId) return notify(t.requiredCustomer, "warning");
     if (!items.length) return notify(t.requiredItems, "warning");
     if (paymentStatus === "debt" && num(paidAmount) > grandTotal) return notify(t.invalidPaid, "warning");
 
+    if (pendingLossWarning.current) { await pendingLossWarning.current; return; }
     const allocationByLine = new Map();
     const itemsByProduct = new Map();
     for (const item of items) {
@@ -830,6 +863,10 @@ function SaleNew() {
       const key = String(item.productId);
       if (!itemsByProduct.has(key)) itemsByProduct.set(key, []);
       itemsByProduct.get(key).push(item);
+    }
+
+    for (const item of items) {
+      if (!await warnIfSellingAtLoss(item)) return;
     }
 
     for (const [productKey, productLines] of itemsByProduct.entries()) {
@@ -942,6 +979,7 @@ function SaleNew() {
     }
     notify(isEditMode ? t.updated : t.saved, "success");
     navigate("/sales-register");
+    } finally { saleSaveInProgress.current = false; setSavingSale(false); }
   };
 
   const saleSearchField = (
@@ -995,7 +1033,7 @@ function SaleNew() {
                     <span className="apg-picker-product"><strong>{productDisplayName(product)}</strong><small>{t.stock}: {formatQuantity(remainingStock)}</small></span>
                     <span className="apg-picker-maker">{product.manufacturerName || product.companyName || product.company || "—"}</span>
                     <span className="apg-picker-country">{countryNameById(productCountries, product.countryId, language, product.madeIn || "—")}</span>
-                    <em className="apg-picker-price">{unavailable ? t.outOfStock : `${convertCurrency(product.salePrice, product.saleCurrency || product.unit || "AFN", currency).toFixed(2)} ${currency}`}</em>
+                    <em className="apg-picker-price">{unavailable ? t.outOfStock : `${convertCurrency(productPricePerPiece(product, "salePrice"), product.saleCurrency || product.unit || "AFN", currency).toFixed(2)} ${currency}`}</em>
                   </button>
                 );
               })}
@@ -1018,7 +1056,7 @@ function SaleNew() {
           <h1>{isEditMode ? t.editTitle : t.title}</h1>
           <p>{isEditMode ? t.editSubtitle : t.subtitle}</p>
         </div>
-        <button className="purchase-save-top" type="button" onClick={saveSale}><Check size={17} />{isEditMode ? t.update : t.save}</button>
+        <button className="purchase-save-top" type="button" disabled={savingSale} onClick={saveSale}><Check size={17} />{isEditMode ? t.update : t.save}</button>
       </header>
 
       <div className="purchase-entry-layout sale-wholesale-layout">
@@ -1113,7 +1151,7 @@ function SaleNew() {
               {!!items.length && (
                 <div className="sale-wholesale-grid-head" role="row">
                   <span>نام جنس</span><span>سایز کارتن</span><span>{language === "en" ? "Cost / piece" : language === "ps" ? "د هرې دانې لګښت" : "نرخ تمام‌شد فی دانه"}</span>
-                  <span>قیمت فروش</span><span>تعداد کارتن</span><span>مقدار دانه</span>
+                  <span>{t.salePrice}</span><span>تعداد کارتن</span><span>مقدار دانه</span>
                   <span>فیصدی تخفیف</span><span>مجموع</span><span>عملیات</span>
                 </div>
               )}
@@ -1121,14 +1159,14 @@ function SaleNew() {
                 <article className="sale-wholesale-line" key={row.lineId}>
                   <div className="sale-wholesale-product" title={row.productName}>
                     <strong>{row.productName}</strong>
-                    <small>{row.manufacturerName || ""}</small><button className="sale-wholesale-edit-product" type="button" title="اصلاح مشخصات جنس" onClick={() => navigate(`/products?edit=${encodeURIComponent(row.productId)}`)}>اصلاح جنس</button>
+                    <small>{row.manufacturerName || ""}</small>
                   </div>
                   <div className="sale-wholesale-size"><span>{formatQuantity(row.cartonSize || row.unitsPerUnit || 1)}</span></div>
-                  <div className="sale-wholesale-price-display" title={language === "en" ? "Purchase cost per piece, in purchase currency" : "قیمت تمام‌شد فی دانه به اسعار خرید"}><span dir="ltr">{pieceCostDisplay(row)}</span></div>
-                  <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">قیمت فروش</span><input aria-label="قیمت فروش" type="number" min="0" step="0.01" value={row.salePrice} onChange={(e) => updateItem(row.lineId, "salePrice", e.target.value)} /></label>
+                  <div className="sale-wholesale-price-display" title={language === "en" ? "Fixed purchase cost per piece, in original purchase currency" : "قیمت تمام‌شد ثابت فی دانه به اسعار اصلی خرید"}><output dir="ltr" aria-label={t.purchasePrice}>{pieceCostDisplay(row)}</output></div>
+                  <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">{t.salePrice}</span><input aria-label={t.salePrice} type="number" min="0" step="0.01" value={row.salePrice} onBlur={event => { if (!event.relatedTarget?.closest(".purchase-save-top,.purchase-save-mobile")) warnIfSellingAtLoss(row); }} onChange={(e) => updateItem(row.lineId, "salePrice", e.target.value)} /></label>
                   <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">تعداد کارتن</span><input aria-label="تعداد کارتن" ref={(node) => { const key = String(row.lineId); if (node) packageQuantityInputRefs.current.set(key, node); else packageQuantityInputRefs.current.delete(key); }} type="number" min="0" max={maxPiecesForLine(row) / positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit)} step="any" value={num(row.quantity) / positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit)} onChange={(e) => { changeLineQuantityUnit(row.lineId, "carton"); updatePieceQuantity(row.lineId, String(num(e.target.value) * positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit))); }} /></label>
                   <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">مقدار دانه</span><input aria-label="مقدار دانه" type="number" min="0" max={maxPiecesForLine(row)} step="any" value={row.quantity} onChange={(e) => updatePieceQuantity(row.lineId, e.target.value)} /></label>
-                  <label className="sale-wholesale-cell sale-wholesale-discount"><span className="sale-wholesale-mobile-label">فیصدی تخفیف</span><input aria-label="فیصدی تخفیف" onKeyDown={(event) => { if (event.key === "Tab" && !event.shiftKey) { event.preventDefault(); focusSaleSearch(); } }} type="number" min="0" max="100" step="0.01" value={row.discountPercent ?? (lineGross(row) ? Number((100 * lineDiscount(row) / lineGross(row)).toFixed(2)) : 0)} onChange={(e) => updateItem(row.lineId, "discountPercent", e.target.value)} /></label>
+                  <label className="sale-wholesale-cell sale-wholesale-discount"><span className="sale-wholesale-mobile-label">فیصدی تخفیف</span><input aria-label="فیصدی تخفیف" onKeyDown={(event) => { if (event.key === "Tab" && !event.shiftKey) { event.preventDefault(); focusSaleSearch(); } }} type="number" min="0" max="100" step="0.01" onBlur={event => { if (!event.relatedTarget?.closest(".purchase-save-top,.purchase-save-mobile")) warnIfSellingAtLoss(row); }} value={row.discountPercent ?? (lineGross(row) ? Number((100 * lineDiscount(row) / lineGross(row)).toFixed(2)) : 0)} onChange={(e) => updateItem(row.lineId, "discountPercent", e.target.value)} /></label>
                   <div className="sale-wholesale-total"><strong>{lineTotal(row).toFixed(2)}</strong></div>
                   <button className="sale-wholesale-remove" type="button" tabIndex={-1} title={t.remove} aria-label={t.remove} onKeyDown={(event) => handleSaleRemoveKeyDown(event, index)} onClick={() => removeItem(row.lineId)}><Trash2 size={17} /></button>
                 </article>
@@ -1158,7 +1196,7 @@ function SaleNew() {
             <div className="purchase-payment-record"><span>{t.paid}</span><strong>{paymentStatus === "paid" ? t.paidFull : `${paid.toFixed(2)} ${currency}`}</strong></div>
           </section>
 
-          <button className="purchase-save-mobile" type="button" onClick={saveSale}><Check size={17} />{isEditMode ? t.update : t.save}</button>
+          <button className="purchase-save-mobile" type="button" disabled={savingSale} onClick={saveSale}><Check size={17} />{isEditMode ? t.update : t.save}</button>
         </aside>
       </div>
     </div>

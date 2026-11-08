@@ -6,7 +6,9 @@ import { useJsonCollection } from "../hooks/useJsonCollection";
 import { confirmAction } from "../utils/confirmDialog";
 import { notify } from "../utils/notify";
 import { countryNameById, groupNameById, makeMasterId, normalizeMasterName } from "../utils/productMasterData";
-import { replaceReferenceMovements, stockMovementId } from "../utils/stock";
+import { productPricePerPiece } from "../utils/piecePricing";
+import { writeAtomicFinanceBatch } from "../utils/browserStorage";
+import { updateProductDetails, preserveOpeningPieces } from "../utils/productDetails";
 import "./Products.css";
 
 const languageKey = "afghan-power-language";
@@ -420,42 +422,6 @@ const productUnitOptions = [
   { value: "sachet", labelKey: "unitSachet" },
 ];
 
-const productFormOptions = [
-  { value: "tablet", labelKey: "formTablet" },
-  { value: "capsule", labelKey: "formCapsule" },
-  { value: "syrup", labelKey: "formSyrup" },
-  { value: "suspension", labelKey: "formSuspension" },
-  { value: "injection", labelKey: "formInjection" },
-  { value: "ampoule", labelKey: "formAmpoule" },
-  { value: "vial", labelKey: "formVial" },
-  { value: "cream", labelKey: "formCream" },
-  { value: "ointment", labelKey: "formOintment" },
-  { value: "gel", labelKey: "formGel" },
-  { value: "drops", labelKey: "formDrops" },
-  { value: "eye-drops", labelKey: "formEyeDrops" },
-  { value: "ear-drops", labelKey: "formEarDrops" },
-  { value: "nasal-spray", labelKey: "formNasalSpray" },
-  { value: "inhaler", labelKey: "formInhaler" },
-  { value: "powder", labelKey: "formPowder" },
-  { value: "sachet", labelKey: "formSachet" },
-  { value: "suppository", labelKey: "formSuppository" },
-  { value: "lozenge", labelKey: "formLozenge" },
-  { value: "solution", labelKey: "formSolution" },
-  { value: "lotion", labelKey: "formLotion" },
-  { value: "soap", labelKey: "formSoap" },
-  { value: "shampoo", labelKey: "formShampoo" },
-  { value: "oral-solution", labelKey: "formOralSolution" },
-];
-
-const unitsWithoutSize = new Set(["bottle", "piece", "dozen", "tube", "sachet"]);
-const fixedUnitMultipliers = { dozen: 12 };
-
-const expiryAlertOptions = [
-  { value: "180", labelKey: "sixMonths" },
-  { value: "90", labelKey: "threeMonths" },
-  { value: "7", labelKey: "oneWeek" },
-];
-
 const emptyForm = {
   productName: "",
   productNameEn: "",
@@ -483,12 +449,11 @@ function Products() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useJsonCollection("products");
-  const [stockMovements, setStockMovements] = useJsonCollection("stockMovements");
-  const [productGroups, setProductGroups] = useJsonCollection("productGroups");
+  const [stockMovements, , , stockLoaded] = useJsonCollection("stockMovements");
+  const [productGroups] = useJsonCollection("productGroups");
   const [suppliers] = useJsonCollection("suppliers");
   const [legacyCompanies] = useJsonCollection("companies");
   const [productCountries, setProductCountries] = useJsonCollection("countries");
-  const [customProductForms, setCustomProductForms] = useJsonCollection("productForms");
   const [manufacturerCompanies, setManufacturerCompanies] = useJsonCollection("manufacturerCompanies");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [search, setSearch] = useState("");
@@ -496,26 +461,10 @@ function Products() {
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState(emptyForm);
   const [batchForms, setBatchForms] = useState(() => Array.from({ length: 10 }, () => ({ ...emptyForm })));
-  const [addingGroup, setAddingGroup] = useState(false);
-  const [newGroup, setNewGroup] = useState("");
-  const [addingCountry, setAddingCountry] = useState(false);
-  const [newCountry, setNewCountry] = useState("");
-  const [addingProductForm, setAddingProductForm] = useState(false);
-  const [newProductForm, setNewProductForm] = useState("");
-  const [managingManufacturer, setManagingManufacturer] = useState(false);
-  const [editingManufacturerId, setEditingManufacturerId] = useState("");
-  const [manufacturerDraft, setManufacturerDraft] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
 
   const t = translations[language] || translations.en;
   const direction = language === "en" ? "ltr" : "rtl";
-  const selectedUnit = productUnitOptions.find((option) => option.value === (formData.productUnit || "piece"));
-  const selectedUnitLabel = selectedUnit ? t[selectedUnit.labelKey] : t.unitPiece;
-  const showUnitSize = !unitsWithoutSize.has(formData.productUnit || "piece");
-  const unitMultiplier = showUnitSize ? Math.max(0, Number(formData.cartonSize || 0)) : (fixedUnitMultipliers[formData.productUnit] || 1);
-  const totalPieces = Math.max(0, Number(formData.quantity || 0)) * unitMultiplier;
-  const formatTemplate = (template, values) => Object.entries(values).reduce((text, [key, value]) => text.replaceAll(`{${key}}`, String(value)), template || "");
-
   const availableSuppliers = useMemo(() => suppliers.filter((item) => item?.supplierName || item?.companyName || item?.name), [suppliers]);
   const manufacturerOptions = useMemo(() => {
     const byName = new Map();
@@ -549,7 +498,6 @@ function Products() {
     return () => document.body.classList.remove("sales-product-modal-open");
   }, [showModal]);
 
-  const groups = useMemo(() => productGroups.filter((item) => item?.name), [productGroups]);
   const allCountries = useMemo(() => productCountries.filter((item) => item?.name || item?.en), [productCountries]);
   const defaultGroupId = productGroups.find((item) => normalizeMasterName(item.name) === "a")?.id || productGroups[0]?.id || "";
   const defaultCountryId = productCountries.find((item) => normalizeMasterName(item.name || item.en) === "afghanistan")?.id || productCountries[0]?.id || "";
@@ -584,15 +532,6 @@ function Products() {
     setFormData({ ...emptyForm, groupId: defaultGroupId, countryId: defaultCountryId });
     setBatchForms(Array.from({ length: 10 }, () => ({ ...emptyForm, countryId: defaultCountryId })));
     setFieldErrors({});
-    setAddingGroup(false);
-    setNewGroup("");
-    setAddingCountry(false);
-    setNewCountry("");
-    setAddingProductForm(false);
-    setNewProductForm("");
-    setManagingManufacturer(false);
-    setEditingManufacturerId("");
-    setManufacturerDraft("");
     setShowModal(true);
   };
 
@@ -608,18 +547,12 @@ function Products() {
       countryId: product.countryId || legacyCountry?.id || defaultCountryId,
       supplierId: product.supplierId || product.manufacturerId || product.companyId || "",
       manufacturerName: product.manufacturerName || product.companyName || "",
-      saleCurrency: currencyOptions.includes(product.saleCurrency) ? product.saleCurrency : (product.unit || "afn"),
-      alertBeforeExpiryDays: String(product.alertBeforeExpiryDays || "180"),
+      saleCurrency: String(product.saleCurrency || product.unit || "afn").toLowerCase(),
+      unit: String(product.purchaseCurrency || product.unit || "afn").toLowerCase(),
+      purchasePrice: productPricePerPiece(product, "purchasePrice"),
+      salePrice: productPricePerPiece(product, "salePrice"),
+      priceUnit: "piece",
     });
-    setAddingGroup(false);
-    setNewGroup("");
-    setAddingCountry(false);
-    setNewCountry("");
-    setAddingProductForm(false);
-    setNewProductForm("");
-    setManagingManufacturer(false);
-    setEditingManufacturerId("");
-    setManufacturerDraft("");
     setShowModal(true);
   };
 
@@ -651,15 +584,6 @@ function Products() {
     setShowModal(false);
     setEditingId(null);
     setFieldErrors({});
-    setAddingGroup(false);
-    setNewGroup("");
-    setAddingCountry(false);
-    setNewCountry("");
-    setAddingProductForm(false);
-    setNewProductForm("");
-    setManagingManufacturer(false);
-    setEditingManufacturerId("");
-    setManufacturerDraft("");
   };
 
   const normalizedProductName = (value) => String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase();
@@ -688,15 +612,11 @@ function Products() {
       delete next[errorKey];
       return next;
     });
-    setFormData((previous) => {
-      if (name === "productUnit") {
-        return { ...previous, productUnit: value, cartonSize: unitsWithoutSize.has(value) ? "" : previous.cartonSize };
-      }
-      return { ...previous, [name]: value };
-    });
+    setFormData((previous) => ({ ...previous, [name]: value }));
   };
 
   const updateBatchForm = (index, event) => {
+    if (editingId) { handleChange(event); return; }
     const { name, value } = event.target;
     setBatchForms((current) => current.map((item, itemIndex) =>
       itemIndex === index ? { ...item, [name]: value } : item
@@ -726,221 +646,20 @@ function Products() {
     const name = String(rawName || "").trim().replace(/\s+/g, " ");
     if (!name) return;
 
-    if (type === "productForm") {
-      const existingDefault = productFormOptions.find((entry) => normalizeMasterName(t[entry.labelKey]) === normalizeMasterName(name));
-      const existingCustom = customProductForms.find((entry) => normalizeMasterName(entry.name) === normalizeMasterName(name));
-      let value = existingDefault?.value || (existingCustom ? `custom:${existingCustom.id}` : "");
-      if (!value) {
-        const row = { id: makeMasterId("product-form", name), name, createdAt: new Date().toISOString() };
-        if (!await setCustomProductForms([...customProductForms, row])) return;
-        value = `custom:${row.id}`;
-      }
-      setBatchForms((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, productForm: value } : item));
-      return;
-    }
-
     if (type === "country") {
       const existing = productCountries.find((entry) => normalizeMasterName(entry.name || entry.en) === normalizeMasterName(name));
       const row = existing || { id: makeMasterId("country", name), name, en: name, fa: name, ps: name, createdAt: new Date().toISOString() };
       if (!existing && !await setProductCountries([...productCountries, row])) return;
-      setBatchForms((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, countryId: row.id } : item));
+      if (editingId) setFormData(current => ({ ...current, countryId: row.id }));
+      else setBatchForms((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, countryId: row.id } : item));
       return;
     }
 
     const existing = manufacturerCompanies.find((entry) => normalizeMasterName(entry.name) === normalizeMasterName(name));
     const row = existing || { id: makeMasterId("manufacturer", name), name, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
     if (!existing && !await setManufacturerCompanies([...manufacturerCompanies, row])) return;
-    setBatchForms((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, manufacturerName: row.name } : item));
-  };
-
-  const saveInlineGroup = async () => {
-    const name = newGroup.trim();
-    if (!name) {
-      setFieldErrors((current) => ({ ...current, group: t.groupRequired }));
-      return;
-    }
-    const existing = productGroups.find((item) => normalizeMasterName(item.name) === normalizeMasterName(name));
-    if (existing) {
-      setFormData((previous) => ({ ...previous, groupId: existing.id }));
-    } else {
-      const row = { id: makeMasterId("group", name), name, createdAt: new Date().toISOString() };
-      const saved = await setProductGroups([...productGroups, row]);
-      if (!saved) return;
-      setFormData((previous) => ({ ...previous, groupId: row.id }));
-    }
-    setAddingGroup(false);
-    setNewGroup("");
-    setFieldErrors((current) => {
-      const next = { ...current };
-      delete next.group;
-      return next;
-    });
-  };
-
-  const saveInlineCountry = async () => {
-    const name = newCountry.trim();
-    if (!name) {
-      setFieldErrors((current) => ({ ...current, country: t.countryRequired }));
-      return;
-    }
-    const existing = productCountries.find((item) => normalizeMasterName(item.name || item.en) === normalizeMasterName(name));
-    if (existing) {
-      setFormData((previous) => ({ ...previous, countryId: existing.id }));
-    } else {
-      const row = { id: makeMasterId("country", name), name, en: name, fa: name, ps: name, createdAt: new Date().toISOString() };
-      const saved = await setProductCountries([...productCountries, row]);
-      if (!saved) return;
-      setFormData((previous) => ({ ...previous, countryId: row.id }));
-    }
-    setAddingCountry(false);
-    setNewCountry("");
-    setFieldErrors((current) => {
-      const next = { ...current };
-      delete next.country;
-      return next;
-    });
-  };
-
-  const saveInlineProductForm = async () => {
-    const name = newProductForm.trim();
-    if (!name) {
-      setFieldErrors((current) => ({ ...current, productForm: t.productFormRequired }));
-      return;
-    }
-    const existingDefault = productFormOptions.find((item) => normalizeMasterName(t[item.labelKey]) === normalizeMasterName(name));
-    const existingCustom = customProductForms.find((item) => normalizeMasterName(item.name) === normalizeMasterName(name));
-    if (existingDefault) {
-      setFormData((previous) => ({ ...previous, productForm: existingDefault.value }));
-    } else if (existingCustom) {
-      setFormData((previous) => ({ ...previous, productForm: `custom:${existingCustom.id}` }));
-    } else {
-      const row = { id: makeMasterId("product-form", name), name, createdAt: new Date().toISOString() };
-      const saved = await setCustomProductForms([...customProductForms, row]);
-      if (!saved) return;
-      setFormData((previous) => ({ ...previous, productForm: `custom:${row.id}` }));
-    }
-    setAddingProductForm(false);
-    setNewProductForm("");
-    setFieldErrors((current) => {
-      const next = { ...current };
-      delete next.productForm;
-      return next;
-    });
-  };
-
-  const beginAddManufacturer = () => {
-    setEditingManufacturerId("");
-    setManufacturerDraft("");
-    setManagingManufacturer(true);
-    setFieldErrors((current) => {
-      const next = { ...current };
-      delete next.manufacturerName;
-      return next;
-    });
-  };
-
-  const beginEditManufacturer = () => {
-    const selected = manufacturerCompanies.find(
-      (item) => normalizeMasterName(item?.name) === normalizeMasterName(formData.manufacturerName)
-    );
-    if (!selected) return;
-    setEditingManufacturerId(selected.id);
-    setManufacturerDraft(selected.name || "");
-    setManagingManufacturer(true);
-  };
-
-  const cancelManufacturerManager = () => {
-    setManagingManufacturer(false);
-    setEditingManufacturerId("");
-    setManufacturerDraft("");
-    setFieldErrors((current) => {
-      const next = { ...current };
-      delete next.manufacturerName;
-      return next;
-    });
-  };
-
-  const saveManufacturerCompany = async () => {
-    const name = manufacturerDraft.trim().replace(/\s+/g, " ");
-    if (!name) {
-      setFieldErrors((current) => ({ ...current, manufacturerName: t.manufacturerCompanyRequired }));
-      return;
-    }
-
-    const duplicate = manufacturerCompanies.find(
-      (item) =>
-        String(item?.id) !== String(editingManufacturerId || "") &&
-        normalizeMasterName(item?.name) === normalizeMasterName(name)
-    );
-    if (duplicate) {
-      setFieldErrors((current) => ({ ...current, manufacturerName: t.manufacturerCompanyExists }));
-      return;
-    }
-
-    const now = new Date().toISOString();
-    if (editingManufacturerId) {
-      const previous = manufacturerCompanies.find((item) => String(item.id) === String(editingManufacturerId));
-      if (!previous) return;
-      const saved = await setManufacturerCompanies(
-        manufacturerCompanies.map((item) =>
-          String(item.id) === String(editingManufacturerId)
-            ? { ...item, name, updatedAt: now }
-            : item
-        )
-      );
-      if (!saved) return;
-
-      const oldName = previous.name;
-      if (normalizeMasterName(formData.manufacturerName) === normalizeMasterName(oldName)) {
-        setFormData((current) => ({ ...current, manufacturerName: name }));
-      }
-      const linkedProducts = products.map((item) =>
-        normalizeMasterName(item?.manufacturerName || item?.companyName) === normalizeMasterName(oldName)
-          ? { ...item, manufacturerName: name, companyName: name, updatedAt: now }
-          : item
-      );
-      await setProducts(linkedProducts);
-      notify(t.manufacturerCompanyUpdated);
-    } else {
-      const existingLegacy = manufacturerOptions.find(
-        (item) => normalizeMasterName(item?.name) === normalizeMasterName(name)
-      );
-      if (existingLegacy?.source === "master") {
-        setFormData((current) => ({ ...current, manufacturerName: existingLegacy.name }));
-      } else {
-        const row = { id: makeMasterId("manufacturer", name), name, createdAt: now, updatedAt: now };
-        const saved = await setManufacturerCompanies([...manufacturerCompanies, row]);
-        if (!saved) return;
-        setFormData((current) => ({ ...current, manufacturerName: name }));
-        notify(t.manufacturerCompanySaved);
-      }
-    }
-
-    cancelManufacturerManager();
-  };
-
-  const deleteManufacturerCompany = async () => {
-    const selected = manufacturerCompanies.find(
-      (item) => normalizeMasterName(item?.name) === normalizeMasterName(formData.manufacturerName)
-    );
-    if (!selected) return;
-
-    const confirmed = await confirmAction({
-      title: t.confirmDeleteManufacturer,
-      message: selected.name,
-      confirmText: t.delete,
-      cancelText: t.cancel,
-    });
-    if (!confirmed) return;
-
-    const saved = await setManufacturerCompanies(
-      manufacturerCompanies.filter((item) => String(item.id) !== String(selected.id))
-    );
-    if (!saved) return;
-
-    setFormData((current) => ({ ...current, manufacturerName: "" }));
-    cancelManufacturerManager();
-    notify(t.manufacturerCompanyDeleted);
+    if (editingId) setFormData(current => ({ ...current, manufacturerName: row.name }));
+    else setBatchForms((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, manufacturerName: row.name } : item));
   };
 
   const handleSubmit = async (event) => {
@@ -972,6 +691,7 @@ function Products() {
         supplierName: supplierNameById(item.supplierId, ""),
         unit: item.unit || "afn",
         productUnit: "piece",
+        priceUnit: "piece",
         cartonSize: String(item.cartonSize || "").trim(),
         expiryDate: "",
         alertBeforeExpiryDays: 180,
@@ -995,119 +715,27 @@ function Products() {
       return;
     }
 
-    let selectedGroupId = formData.groupId;
-    let selectedCountryId = formData.countryId;
-
-    if (addingGroup) {
-      const name = newGroup.trim();
-      if (!name) {
-        setFieldErrors({ group: t.groupRequired });
-        return;
-      }
-      const existing = productGroups.find((item) => normalizeMasterName(item.name) === normalizeMasterName(name));
-      if (existing) selectedGroupId = existing.id;
-      else {
-        const row = { id: makeMasterId("group", name), name, createdAt: new Date().toISOString() };
-        const saved = await setProductGroups([...productGroups, row]);
-        if (!saved) return;
-        selectedGroupId = row.id;
-      }
-    }
-
-    if (addingCountry) {
-      const name = newCountry.trim();
-      if (!name) {
-        setFieldErrors({ country: t.countryRequired });
-        return;
-      }
-      const existing = productCountries.find((item) => normalizeMasterName(item.name || item.en) === normalizeMasterName(name));
-      if (existing) selectedCountryId = existing.id;
-      else {
-        const row = { id: makeMasterId("country", name), name, en: name, fa: name, ps: name, createdAt: new Date().toISOString() };
-        const saved = await setProductCountries([...productCountries, row]);
-        if (!saved) return;
-        selectedCountryId = row.id;
-      }
-    }
-
-    const nextErrors = {};
-    if (!formData.productName.trim()) nextErrors.productName = t.requiredProductName;
-    else if (isDuplicateProductName(formData.productName)) nextErrors.productName = t.duplicateProductName;
-    if (Object.keys(nextErrors).length) {
-      setFieldErrors(nextErrors);
+    if (!formData.productName.trim()) {
+      setFieldErrors({ productName: t.requiredProductName });
       return;
     }
+    if (isDuplicateProductName(formData.productName)) {
+      setFieldErrors({ productName: t.duplicateProductName });
+      return;
+    }
+    const existing = products.find(item => String(item.id) === String(editingId));
+    if (!existing) return;
+    const record = updateProductDetails(existing, formData, new Date().toISOString());
+    if (!stockLoaded) return;
+    try {
+      await writeAtomicFinanceBatch({
+        products: products.map(item => String(item.id) === String(editingId) ? record : item),
+        stockMovements: preserveOpeningPieces(stockMovements, existing),
+      });
+      notify(t.saved);
+      closeModal();
+    } catch (error) { notify(error.message, "error"); }
 
-
-    const productId = editingId || `sale-product-${Date.now()}`;
-    const now = new Date().toISOString();
-    const openingQuantity = Number(formData.quantity || 0);
-    const { group: _legacyGroup, madeIn: _legacyMadeIn, companyId: _legacyCompanyId, company: _legacyCompany, manufacturerId: _legacyManufacturerId, ...cleanFormData } = formData;
-    const record = {
-      ...cleanFormData,
-      id: productId,
-      productName: formData.productName.trim(),
-      manufacturerName: String(formData.manufacturerName || "").trim(),
-      saleCurrency: currencyOptions.includes(formData.saleCurrency) ? formData.saleCurrency : (formData.unit || "afn"),
-      groupId: selectedGroupId,
-      supplierId: formData.supplierId,
-      supplierName: supplierNameById(formData.supplierId, ""),
-      countryId: selectedCountryId,
-      unit: formData.unit || "afn",
-      productUnit: formData.productUnit || "piece",
-      expiryDate: formData.expiryDate || "",
-      alertBeforeExpiryDays: Number(formData.alertBeforeExpiryDays || 180),
-      lowStockThreshold: Number(formData.lowStockThreshold || 0),
-      quantity: openingQuantity,
-      currentStock: openingQuantity,
-      stock: openingQuantity,
-      piecesPerUnit: unitMultiplier,
-      totalPieceQuantity: openingQuantity * unitMultiplier,
-      cartonSize: formData.cartonSize.trim(),
-      discount: Number(formData.discount || 0),
-      salePrice: Number(formData.salePrice || 0),
-      purchasePrice: Number(formData.purchasePrice || 0),
-      description: formData.description.trim(),
-      updatedAt: now,
-      createdAt: editingId
-        ? products.find((item) => String(item.id) === String(editingId))?.createdAt || now
-        : now,
-    };
-
-
-    const nextProducts = editingId
-      ? products.map((item) => (String(item.id) === String(editingId) ? record : item))
-      : [record, ...products];
-
-    const saved = await setProducts(nextProducts);
-    if (!saved) return;
-
-    const openingMovements = openingQuantity > 0
-      ? [{
-        id: stockMovementId("opening", productId, productId),
-        productId,
-        movementType: "opening",
-        referenceType: "opening",
-        referenceId: productId,
-        referenceNumber: record.productName,
-        // Stock movements are kept in the base piece unit; the form quantity is in main units.
-        quantityIn: openingQuantity * unitMultiplier,
-        quantityOut: 0,
-        purchaseQuantity: openingQuantity,
-        purchaseUnit: record.productUnit,
-        unitsPerUnit: unitMultiplier,
-        stockUnit: "piece",
-        unitCost: Number(formData.purchasePrice || 0),
-        batchNo: "OPENING",
-        expiryDate: formData.expiryDate || "",
-        movementDate: now.slice(0, 10),
-        createdAt: now,
-        updatedAt: now,
-      }]
-      : [];
-    await setStockMovements(replaceReferenceMovements(stockMovements, "opening", productId, openingMovements));
-
-    closeModal();
   };
 
   const deleteProduct = async (product) => {
@@ -1209,300 +837,18 @@ function Products() {
               <button type="button" className="sales-product-modal-close" onClick={closeModal} aria-label={t.cancel}><X size={20} /></button>
             </div>
 
-            {editingId ? (<form onSubmit={handleSubmit} className="sales-product-form">
-              <div className="sales-product-form-grid">
-                <label className={`sales-product-field sales-product-field-wide ${fieldErrors.productName ? "has-error" : ""}`}>
-                  <span>{t.productName} *</span>
-                  <input name="productName" value={formData.productName} onChange={handleChange} placeholder={t.productPlaceholder} autoFocus aria-invalid={Boolean(fieldErrors.productName)} aria-describedby={fieldErrors.productName ? "product-name-error" : undefined} />
-                  {fieldErrors.productName && <span id="product-name-error" className="sales-product-field-error" role="alert">{fieldErrors.productName}</span>}
-                </label>
-
-                <label className="sales-product-field sales-product-field-wide">
-                  <span>{language === "fa" ? "نام انگلیسی جنس" : "English product name"}</span>
-                  <input name="productNameEn" dir="ltr" value={formData.productNameEn || ""} onChange={handleChange} placeholder="English product name" />
-                </label>
-
-                <div className={`sales-product-field ${fieldErrors.group ? "has-error" : ""}`}>
-                  <span>{t.group} *</span>
-                  <div className={`sales-product-inline-manager ${addingGroup ? "is-editing" : ""}`}>
-                    {addingGroup ? (
-                      <>
-                        <input
-                          value={newGroup}
-                          onChange={(e) => setNewGroup(e.target.value)}
-                          placeholder={t.newGroupPlaceholder}
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              saveInlineGroup();
-                            }
-                            if (e.key === "Escape") {
-                              setAddingGroup(false);
-                              setNewGroup("");
-                            }
-                          }}
-                        />
-                        <button type="button" className="sales-product-inline-save" onClick={saveInlineGroup} title={t.addNewGroup} aria-label={t.addNewGroup}>
-                          <Plus size={14} />
-                        </button>
-                        <button type="button" className="sales-product-inline-cancel" onClick={() => { setAddingGroup(false); setNewGroup(""); }} title={t.cancel} aria-label={t.cancel}>
-                          <X size={14} />
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <select name="groupId" value={formData.groupId} onChange={handleChange} aria-invalid={Boolean(fieldErrors.group)} aria-describedby={fieldErrors.group ? "group-error" : undefined}>
-                          <option value="" disabled>{t.selectGroup}</option>
-                          {groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
-                        </select>
-                        <button type="button" className="sales-product-inline-add" onClick={() => setAddingGroup(true)} title={t.addNewGroup} aria-label={t.addNewGroup}><Plus size={14} /></button>
-                      </>
-                    )}
-                  </div>
-                  {fieldErrors.group && <span id="group-error" className="sales-product-field-error" role="alert">{fieldErrors.group}</span>}
-                </div>
-
-                <label className="sales-product-field">
-                  <span>{t.productUnit}</span>
-                  <select name="productUnit" value={formData.productUnit || "piece"} onChange={handleChange}>
-                    {productUnitOptions.map((option) => <option key={option.value} value={option.value}>{t[option.labelKey]}</option>)}
-                  </select>
-                </label>
-
-                {showUnitSize && (
-                  <label className="sales-product-field">
-                    <span>{formatTemplate(t.unitSize, { unit: selectedUnitLabel })}</span>
-                    <input type="number" min="1" step="1" name="cartonSize" value={formData.cartonSize} onChange={handleChange} placeholder={t.cartonPlaceholder} />
-                    <small className="sales-product-field-help">{formatTemplate(t.unitSizeHint, { unit: selectedUnitLabel })}</small>
-                  </label>
-                )}
-
-                <div className={`sales-product-field ${fieldErrors.productForm ? "has-error" : ""}`}>
-                  <span>{t.productForm}</span>
-                  <div className={`sales-product-inline-manager ${addingProductForm ? "is-editing" : ""}`}>
-                    {addingProductForm ? (
-                      <>
-                        <input
-                          value={newProductForm}
-                          onChange={(e) => setNewProductForm(e.target.value)}
-                          placeholder={t.newProductFormPlaceholder}
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") { e.preventDefault(); saveInlineProductForm(); }
-                            if (e.key === "Escape") { setAddingProductForm(false); setNewProductForm(""); }
-                          }}
-                        />
-                        <button type="button" className="sales-product-inline-save" onClick={saveInlineProductForm} title={t.addProductForm} aria-label={t.addProductForm}><Plus size={14} /></button>
-                        <button type="button" className="sales-product-inline-cancel" onClick={() => { setAddingProductForm(false); setNewProductForm(""); }} title={t.cancel} aria-label={t.cancel}><X size={14} /></button>
-                      </>
-                    ) : (
-                      <>
-                        <select name="productForm" value={formData.productForm || ""} onChange={handleChange}>
-                          <option value="">{t.selectProductForm}</option>
-                          {productFormOptions.map((option) => <option key={option.value} value={option.value}>{t[option.labelKey]}</option>)}
-                          {customProductForms.filter((item) => item?.name).map((item) => <option key={item.id} value={`custom:${item.id}`}>{item.name}</option>)}
-                        </select>
-                        <button type="button" className="sales-product-inline-add" onClick={() => setAddingProductForm(true)} title={t.addProductForm} aria-label={t.addProductForm}><Plus size={14} /></button>
-                      </>
-                    )}
-                  </div>
-                  {fieldErrors.productForm && <span className="sales-product-field-error" role="alert">{fieldErrors.productForm}</span>}
-                </div>
-
-
-                <div className={`sales-product-field ${fieldErrors.country ? "has-error" : ""}`}>
-                  <span>{t.madeIn}</span>
-                  <div className={`sales-product-inline-manager ${addingCountry ? "is-editing" : ""}`}>
-                    {addingCountry ? (
-                      <>
-                        <input
-                          value={newCountry}
-                          onChange={(e) => setNewCountry(e.target.value)}
-                          placeholder={t.newCountryPlaceholder}
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              saveInlineCountry();
-                            }
-                            if (e.key === "Escape") {
-                              setAddingCountry(false);
-                              setNewCountry("");
-                            }
-                          }}
-                        />
-                        <button type="button" className="sales-product-inline-save" onClick={saveInlineCountry} title={t.addNewCountry} aria-label={t.addNewCountry}>
-                          <Plus size={14} />
-                        </button>
-                        <button type="button" className="sales-product-inline-cancel" onClick={() => { setAddingCountry(false); setNewCountry(""); }} title={t.cancel} aria-label={t.cancel}>
-                          <X size={14} />
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <select name="countryId" value={formData.countryId} onChange={handleChange}>
-                          <option value="" disabled>{t.selectCountry}</option>
-                          {allCountries.map((country) => <option key={country.id} value={country.id}>{country[language] || country.en || country.name}</option>)}
-                        </select>
-                        <button type="button" className="sales-product-inline-add" onClick={() => setAddingCountry(true)} title={t.addNewCountry} aria-label={t.addNewCountry}><Plus size={14} /></button>
-                      </>
-                    )}
-                  </div>
-                  {fieldErrors.country && <span className="sales-product-field-error" role="alert">{fieldErrors.country}</span>}
-                </div>
-
-                <div className={`sales-product-field ${fieldErrors.manufacturerName ? "has-error" : ""}`}>
-                  <span>{t.manufacturerCompany}</span>
-                  <div className={`sales-product-inline-manager sales-product-manufacturer-manager ${managingManufacturer ? "is-editing" : ""}`}>
-                    {managingManufacturer ? (
-                      <>
-                        <input
-                          value={manufacturerDraft}
-                          onChange={(event) => {
-                            setManufacturerDraft(event.target.value);
-                            setFieldErrors((current) => {
-                              const next = { ...current };
-                              delete next.manufacturerName;
-                              return next;
-                            });
-                          }}
-                          placeholder={t.manufacturerCompanyPlaceholder}
-                          autoFocus
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter") {
-                              event.preventDefault();
-                              saveManufacturerCompany();
-                            }
-                            if (event.key === "Escape") cancelManufacturerManager();
-                          }}
-                        />
-                        <button
-                          type="button"
-                          className="sales-product-inline-save"
-                          onClick={saveManufacturerCompany}
-                          title={editingManufacturerId ? t.editManufacturerCompany : t.addManufacturerCompany}
-                          aria-label={editingManufacturerId ? t.editManufacturerCompany : t.addManufacturerCompany}
-                        >
-                          {editingManufacturerId ? <Edit3 size={13} /> : <Plus size={14} />}
-                        </button>
-                        <button type="button" className="sales-product-inline-cancel" onClick={cancelManufacturerManager} title={t.cancel} aria-label={t.cancel}>
-                          <X size={14} />
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <select
-                          name="manufacturerName"
-                          value={formData.manufacturerName || ""}
-                          onChange={handleChange}
-                        >
-                          <option value="">{t.selectManufacturerCompany}</option>
-                          {manufacturerOptions.map((item) => (
-                            <option key={item.id} value={item.name}>{item.name}</option>
-                          ))}
-                        </select>
-                        <button type="button" className="sales-product-inline-add" onClick={beginAddManufacturer} title={t.addManufacturerCompany} aria-label={t.addManufacturerCompany}>
-                          <Plus size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          className="sales-product-inline-edit"
-                          onClick={beginEditManufacturer}
-                          disabled={!manufacturerCompanies.some((item) => normalizeMasterName(item?.name) === normalizeMasterName(formData.manufacturerName))}
-                          title={t.editManufacturerCompany}
-                          aria-label={t.editManufacturerCompany}
-                        >
-                          <Edit3 size={13} />
-                        </button>
-                        <button
-                          type="button"
-                          className="sales-product-inline-delete"
-                          onClick={deleteManufacturerCompany}
-                          disabled={!manufacturerCompanies.some((item) => normalizeMasterName(item?.name) === normalizeMasterName(formData.manufacturerName))}
-                          title={t.deleteManufacturerCompany}
-                          aria-label={t.deleteManufacturerCompany}
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                  {fieldErrors.manufacturerName && <span className="sales-product-field-error" role="alert">{fieldErrors.manufacturerName}</span>}
-                </div>
-
-                <label className="sales-product-field">
-                  <span>{t.currency}</span>
-                  <select name="unit" value={formData.unit || "afn"} onChange={handleChange}>
-                    {currencyOptions.map((currency) => <option key={currency} value={currency}>{t[currency]}</option>)}
-                  </select>
-                </label>
-
-                <label className="sales-product-field">
-                  <span>{formatTemplate(t.purchasePricePerUnit, { unit: selectedUnitLabel })}</span>
-                  <input type="number" min="0" step="0.01" name="purchasePrice" value={formData.purchasePrice} onChange={handleChange} placeholder={t.pricePlaceholder} />
-                </label>
-
-                <label className="sales-product-field">
-                  <span>{t.currency}</span>
-                  <select name="saleCurrency" value={formData.saleCurrency || "afn"} onChange={handleChange}>
-                    {currencyOptions.map((currency) => <option key={currency} value={currency}>{t[currency]}</option>)}
-                  </select>
-                </label>
-
-                <label className="sales-product-field">
-                  <span>{formatTemplate(t.salePricePerUnit, { unit: selectedUnitLabel })}</span>
-                  <input type="number" min="0" step="0.01" name="salePrice" value={formData.salePrice} onChange={handleChange} placeholder={t.pricePlaceholder} />
-                </label>
-
-                <label className="sales-product-field">
-                  <span>{t.expiryDate}</span>
-                  <input type="date" name="expiryDate" value={formData.expiryDate || ""} onChange={handleChange} />
-                </label>
-
-                <label className="sales-product-field">
-                  <span>{t.alertBefore}</span>
-                  <select name="alertBeforeExpiryDays" value={String(formData.alertBeforeExpiryDays || "180")} onChange={handleChange}>
-                    {expiryAlertOptions.map((option) => <option key={option.value} value={option.value}>{t[option.labelKey]}</option>)}
-                  </select>
-                </label>
-
-                <label className="sales-product-field">
-                  <span>{t.lowStock}</span>
-                  <input type="number" min="0" step="1" name="lowStockThreshold" value={formData.lowStockThreshold} onChange={handleChange} placeholder="0" />
-                </label>
-
-                <label className="sales-product-field">
-                  <span>{formatTemplate(t.quantityOfUnit, { unit: selectedUnitLabel })}</span>
-                  <input type="number" min="0" step="1" name="quantity" value={formData.quantity} onChange={handleChange} placeholder="0" />
-                  {Number(formData.quantity || 0) > 0 && (
-                    <small className="sales-product-quantity-total">{formatTemplate(t.totalPieces, { count: totalPieces.toLocaleString("en-US") })}</small>
-                  )}
-                </label>
-
-                <label className="sales-product-field sales-product-field-wide">
-                  <span>{t.description}</span>
-                  <textarea name="description" value={formData.description} onChange={handleChange} placeholder={t.descriptionPlaceholder} rows="4" />
-                </label>
-              </div>
-
-              <div className="sales-product-modal-footer">
-                <button type="button" className="sales-product-cancel-btn" onClick={closeModal}>{t.cancel}</button>
-                <button type="submit" className="sales-product-save-btn">{editingId ? t.update : t.save}</button>
-              </div>
-            </form>) : (
               <form onSubmit={handleSubmit} className="sales-product-form sales-product-batch-form">
-                {fieldErrors.batch && <div className="sales-product-batch-error" role="alert">{fieldErrors.batch}</div>}
+                {(fieldErrors.batch || fieldErrors.productName) && <div id="product-form-error" className="sales-product-batch-error" role="alert">{fieldErrors.batch || fieldErrors.productName}</div>}
                 <div className="sales-product-batch-grid">
-                  {batchForms.map((item, index) => (
+                  {(editingId ? [formData] : batchForms).map((item, index) => (
                     <section className="sales-product-batch-card" key={index}>
-                      <header>
+                      {!editingId && <header>
                         <button type="button" tabIndex={-1} onClick={() => removeBatchForm(index)} aria-label={t.delete} title={t.delete}><Trash2 size={15} /></button>
-                      </header>
+                      </header>}
                       <div className="sales-product-batch-fields">
                         <label className="sales-product-field sales-product-field-wide">
                           <span>{t.productName} *</span>
-                          <input name="productName" value={item.productName} onChange={(event) => updateBatchForm(index, event)} placeholder={t.productPlaceholder} autoFocus={index === 0} />
+                          <input name="productName" value={item.productName} onChange={(event) => updateBatchForm(index, event)} placeholder={t.productPlaceholder} autoFocus={index === 0} aria-invalid={Boolean(fieldErrors.productName || fieldErrors.batch)} aria-describedby={fieldErrors.productName || fieldErrors.batch ? "product-form-error" : undefined} />
                         </label>
                         <label className="sales-product-field">
                           <span>{t.cartonSize}</span>
@@ -1530,7 +876,7 @@ function Products() {
                         </label>
                         <label className="sales-product-field">
                           <span>{t.purchasePrice}</span>
-                          <input type="number" min="0" step="0.01" name="purchasePrice" value={item.purchasePrice} onChange={(event) => updateBatchForm(index, event)} placeholder={t.pricePlaceholder} />
+                          <input type="number" min="0" step="any" name="purchasePrice" value={item.purchasePrice} onChange={(event) => updateBatchForm(index, event)} placeholder={t.pricePlaceholder} />
                         </label>
                         <label className="sales-product-field">
                           <span>{t.currency}</span>
@@ -1540,19 +886,18 @@ function Products() {
                         </label>
                         <label className="sales-product-field">
                           <span>{t.salePrice}</span>
-                          <input type="number" min="0" step="0.01" name="salePrice" value={item.salePrice} onChange={(event) => updateBatchForm(index, event)} placeholder={t.pricePlaceholder} />
+                          <input type="number" min="0" step="any" name="salePrice" value={item.salePrice} onChange={(event) => updateBatchForm(index, event)} placeholder={t.pricePlaceholder} />
                         </label>
                       </div>
                     </section>
                   ))}
                 </div>
-                <button type="button" className="sales-product-add-row" onClick={addBatchForm}><CopyPlus size={17} />{t.addAnother}</button>
+                {!editingId && <button type="button" className="sales-product-add-row" onClick={addBatchForm}><CopyPlus size={17} />{t.addAnother}</button>}
                 <div className="sales-product-modal-footer">
                   <button type="button" className="sales-product-cancel-btn" onClick={closeModal}>{t.cancel}</button>
-                  <button type="submit" className="sales-product-save-btn">{t.saveAll}</button>
+                  <button type="submit" disabled={Boolean(editingId) && !stockLoaded} className="sales-product-save-btn">{editingId ? t.update : t.saveAll}</button>
                 </div>
               </form>
-            )}
           </section>
         </div>
       ), document.body)}

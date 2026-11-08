@@ -1,3 +1,4 @@
+import { productPricePerPiece, purchasePieceQuantity } from "../utils/piecePricing";
 import { writeAtomicFinanceBatch } from "../utils/browserStorage";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -71,8 +72,8 @@ const text = {
     unitsPerUnit: "Pieces in unit",
     actualQty: "Quantity by piece",
     actualQtyText: "{qty} {unit}",
-    unitPrice: "Purchase price",
-    salePrice: "Sale price",
+    unitPrice: "Purchase price / piece",
+    salePrice: "Sale price / piece",
     addMedicine: "Add",
     expiryDate: "Expiry date (Gregorian)",
     total: "Total",
@@ -135,8 +136,8 @@ const text = {
     unitsPerUnit: "تعداد دانه در واحد",
     actualQty: "مقدار به دانه",
     actualQtyText: "{qty} {unit}",
-    unitPrice: "قیمت خرید",
-    salePrice: "قیمت فروش",
+    unitPrice: "قیمت خرید فی دانه",
+    salePrice: "قیمت فروش فی دانه",
     addMedicine: "اضافه",
     expiryDate: "تاریخ انقضا (میلادی)",
     total: "جمله",
@@ -199,8 +200,8 @@ const text = {
     unitsPerUnit: "په واحد کې دانې",
     actualQty: "په دانه مقدار",
     actualQtyText: "{qty} {unit}",
-    unitPrice: "د پېرود بیه",
-    salePrice: "د پلور بیه",
+    unitPrice: "د هرې دانې د پېرود بیه",
+    salePrice: "د هرې دانې د پلور بیه",
     addMedicine: "اضافه",
     expiryDate: "د ختمېدو نېټه (میلادي)",
     total: "ټول",
@@ -305,7 +306,7 @@ function PurchaseNew() {
     setSystemBillNumber(nextSequentialPurchaseBill(purchases));
   }, [purchasesLoaded, isEditing, purchases]);
   const supplierBalanceCurrency = (supplier) => String(supplier?.currency || currency || "AFN").toUpperCase();
-  const receivedQuantity = (row) => num(row.receivedQuantity ?? (num(row.quantity) * positiveUnitCount(row.unitsPerUnit)));
+  const receivedQuantity = (row) => num(row.receivedQuantity ?? row.quantity);
   const unitLabels = {
     en: { carton: "Carton", box: "Box", pack: "Pack", bottle: "Bottle", strip: "Strip", piece: "Piece", dozen: "Dozen", tube: "Tube", sachet: "Sachet" },
     fa: { carton: "کارتن", box: "بکس", pack: "بسته", bottle: "بوتل", strip: "ورق", piece: "دانه", dozen: "درجن", tube: "تیوب", sachet: "پاکت" },
@@ -437,8 +438,7 @@ function PurchaseNew() {
       const productId = row.productId || row.product_id || row.idProduct;
       const product = products.find((item) => String(item.id) === String(productId));
       const unitsPerUnit = positiveUnitCount(row.unitsPerUnit ?? row.quantityPerUnit ?? row.piecesPerUnit ?? row.piecesPerBox ?? productPiecesPerUnit(product));
-      const packageQuantity = num(row.quantity ?? row.purchaseQuantity ?? row.packQuantity ?? row.qty);
-      const pieceQuantity = num(row.receivedQuantity ?? row.totalQuantity ?? row.quantityIn) || (packageQuantity * unitsPerUnit);
+      const pieceQuantity = purchasePieceQuantity(row, unitsPerUnit);
       return {
         ...row,
         id: row.id || `purchase-item-${purchaseId}-${index + 1}`,
@@ -448,12 +448,15 @@ function PurchaseNew() {
         group: row.group || groupNameById(productGroups, product?.groupId, product?.group || ""),
         unit: row.unit || product?.productUnit || "piece",
         baseUnit: row.baseUnit || row.stockUnit || "piece",
-        purchaseUnit: row.purchaseUnit || row.packageUnit || row.buyUnit || product?.productUnit || product?.purchaseUnit || product?.packageUnit || "piece",
-        unitsPerUnit,
+        purchaseUnit: "piece",
+        cartonUnitsPerUnit: row.cartonUnitsPerUnit || unitsPerUnit,
+        unitsPerUnit: 1,
+        quantityUnit: "piece",
+        priceUnit: "piece",
         receivedQuantity: pieceQuantity,
-        quantity: packageQuantity || (pieceQuantity / unitsPerUnit),
-        purchasePrice: num(row.purchasePrice ?? row.unitCost ?? row.buyPrice ?? product?.purchasePrice),
-        salePrice: num(row.salePrice ?? row.sellPrice ?? product?.salePrice),
+        quantity: pieceQuantity,
+        purchasePrice: num(row.purchasePrice ?? row.unitCost ?? row.buyPrice ?? productPricePerPiece(product, "purchasePrice")),
+        salePrice: num(row.salePrice ?? row.sellPrice ?? productPricePerPiece(product, "salePrice")),
         saleCurrency: (row.saleCurrency || purchase.saleCurrency || product?.saleCurrency || "AFN").toUpperCase(),
         currentStock: row.currentStock ?? (product ? getStock(product) : 0),
         manufacturerId: row.manufacturerId || row.companyId || manufacturerIdForProduct(product),
@@ -527,13 +530,15 @@ function PurchaseNew() {
       group: groupNameById(productGroups, product.groupId, product.group || ""),
       unit: product.productUnit || "piece",
       baseUnit: "piece",
-      purchaseUnit: "carton",
+      purchaseUnit: "piece",
+      quantityUnit: "piece",
+      priceUnit: "piece",
       cartonUnitsPerUnit: piecesPerUnit,
-      unitsPerUnit: piecesPerUnit,
-      receivedQuantity: piecesPerUnit,
+      unitsPerUnit: 1,
+      receivedQuantity: 1,
       quantity: 1,
-      purchasePrice: num(product.purchasePrice),
-      salePrice: num(product.salePrice),
+      purchasePrice: productPricePerPiece(product, "purchasePrice"),
+      salePrice: productPricePerPiece(product, "salePrice"),
       saleCurrency: (product.saleCurrency || saleCurrency).toUpperCase(),
       currentStock: getStock(product),
       manufacturerId: manufacturerIdForProduct(product),
@@ -652,34 +657,11 @@ function PurchaseNew() {
     setItems((current) => current.map((row) => String(row.lineId) === String(lineId) ? { ...row, ...fields } : row));
   };
 
-  const changeLineQuantityUnit = (lineId, nextUnit) => {
-    setItems((current) => current.map((row) => {
-      if (String(row.lineId) !== String(lineId)) return row;
-      const product = products.find((candidate) => String(candidate.id) === String(row.productId));
-      const cartonFactor = positiveUnitCount(row.cartonUnitsPerUnit || productPiecesPerUnit(product));
-      const unitsPerUnit = nextUnit === "piece" ? 1 : cartonFactor;
-      const pieces = num(row.receivedQuantity ?? receivedQuantity(row));
-      return { ...row, purchaseUnit: nextUnit, cartonUnitsPerUnit: cartonFactor, unitsPerUnit,
-        quantity: Number((pieces / unitsPerUnit).toFixed(4)), receivedQuantity: pieces };
-    }));
-  };
-
-  const updatePackageQuantity = (lineId, value) => {
-    setItems((current) => current.map((row) => {
-      if (String(row.lineId) !== String(lineId)) return row;
-      const quantity = cleanNumberInput(value);
-      const receivedQuantityValue = num(quantity) * positiveUnitCount(row.unitsPerUnit);
-      return { ...row, quantity, receivedQuantity: receivedQuantityValue };
-    }));
-  };
-
   const updatePieceQuantity = (lineId, value) => {
     setItems((current) => current.map((row) => {
       if (String(row.lineId) !== String(lineId)) return row;
       const pieces = cleanNumberInput(value);
-      const unitsPerUnit = positiveUnitCount(row.unitsPerUnit);
-      const packageQuantity = pieces === "" ? "" : Number((num(pieces) / unitsPerUnit).toFixed(4));
-      return { ...row, receivedQuantity: pieces, quantity: packageQuantity };
+      return { ...row, receivedQuantity: pieces, quantity: pieces };
     }));
   };
 
@@ -765,6 +747,9 @@ function PurchaseNew() {
       lineTotal: lineTotal(row),
       purchaseCurrency: currency,
       saleCurrency,
+      quantity: receivedQuantity(row),
+      quantityUnit: "piece",
+      priceUnit: "piece",
       receivedQuantity: receivedQuantity(row),
       baseUnit: row.baseUnit || row.unit || "piece",
       purchaseUnit: row.purchaseUnit || row.unit || "piece",
@@ -785,7 +770,10 @@ function PurchaseNew() {
       quantityIn: receivedQuantity(row),
       quantityOut: 0,
       quantity: receivedQuantity(row),
-      purchaseQuantity: num(row.quantity),
+      purchaseQuantity: receivedQuantity(row),
+      quantityUnit: "piece",
+      stockUnit: "piece",
+      priceUnit: "piece",
       purchaseUnit: row.purchaseUnit || row.unit || "piece",
       baseUnit: row.baseUnit || row.unit || "piece",
       unitsPerUnit: positiveUnitCount(row.unitsPerUnit),
@@ -809,12 +797,13 @@ function PurchaseNew() {
       if (!row) return product;
       return {
         ...product,
+        priceUnit: "piece",
         purchasePrice: num(row.purchasePrice),
         salePrice: num(row.salePrice ?? product.salePrice),
         purchaseCurrency: currency.toLowerCase(),
         saleCurrency: saleCurrency.toLowerCase(),
         purchaseUnit: row.purchaseUnit || product.purchaseUnit || product.unit || "piece",
-        unitsPerUnit: positiveUnitCount(row.unitsPerUnit),
+        unitsPerUnit: positiveUnitCount(row.cartonUnitsPerUnit || productPiecesPerUnit(product)),
         updatedAt: now,
       };
     });
@@ -985,27 +974,10 @@ function PurchaseNew() {
                     </select>
                   </label>
                   <label>
-                    <span className="apg-quantity-caption">{t.qty}</span>
-                    <input
-                      ref={(node) => {
-                        const key = String(row.lineId);
-                        if (node) quantityInputRefs.current.set(key, node);
-                        else quantityInputRefs.current.delete(key);
-                      }}
-                      type="text"
-                      inputMode="decimal"
-                      dir="ltr"
-                      min="0"
-                      step="any"
-                      value={row.quantity}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => updatePackageQuantity(row.lineId, e.target.value)}
-                    />
-                  </label>
-                  <label>
                     <span>{t.actualQty}</span>
                     <input
                       className="purchase-piece-quantity"
+                      ref={(node) => { if (node) quantityInputRefs.current.set(String(row.lineId), node); else quantityInputRefs.current.delete(String(row.lineId)); }}
                       type="text"
                       inputMode="decimal"
                       dir="ltr"
@@ -1100,7 +1072,7 @@ function PurchaseNew() {
                             <span className="apg-picker-product"><strong>{productDisplayName(product)}</strong><small>{unitLabel(product.productUnit || "piece")} · 1 = {productPiecesPerUnit(product)} {unitLabel("piece")}</small></span>
                             <span className="apg-picker-maker">{product.manufacturerName || product.companyName || product.company || "—"}</span>
                             <span className="apg-picker-country">{countryNameById(productCountries, product.countryId, language, product.madeIn || "—")}</span>
-                            <em className="apg-picker-price">{money(product.purchasePrice)} {product.purchaseCurrency || currency}</em>
+                            <em className="apg-picker-price">{money(productPricePerPiece(product, "purchasePrice"))} {product.purchaseCurrency || currency}</em>
                           </button>
                         ))}
                       </div>

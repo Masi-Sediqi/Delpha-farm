@@ -650,7 +650,7 @@ export default function SalesRegister() {
                 <tr key={sale.id} className="sales-register-clickable-row" onClick={() => navigate(`/sale-detail/${sale.id}`)} title={t.clickRecord}>
                   <td><strong>{manualBillNumber(sale)}</strong></td>
                   <td><strong>{systemBillNumber(sale)}</strong></td>
-                  <td>{sale.customerName || customerName(sale.customerId)}</td>
+                  <td>{sale.customerId ? <a href={`/customer-detail/${encodeURIComponent(sale.customerId)}`} onClick={event=>{event.preventDefault();event.stopPropagation();navigate(`/customer-detail/${encodeURIComponent(sale.customerId)}`)}}>{sale.customerName || customerName(sale.customerId)}</a> : sale.customerName || "—"}</td>
                   <td>{sale.items?.length || 0}</td>
                   <td>{money(sale.totalAmount)}</td>
                   <td className="sales-register-discount">{money(saleDiscount(sale))}</td>
@@ -710,7 +710,7 @@ export default function SalesRegister() {
                   {dailySales.map((sale) => (
                     <tr key={sale.id}>
                       <td><strong>{sale.invoiceNumber}</strong></td>
-                      <td>{sale.customerName || customerName(sale.customerId)}</td>
+                      <td>{sale.customerId ? <a href={`/customer-detail/${encodeURIComponent(sale.customerId)}`} onClick={event=>{event.preventDefault();event.stopPropagation();navigate(`/customer-detail/${encodeURIComponent(sale.customerId)}`)}}>{sale.customerName || customerName(sale.customerId)}</a> : sale.customerName || "—"}</td>
                       <td>{sale.items?.length || 0}</td>
                       <td>{money(sale.totalAmount)}</td>
                       <td className="sales-register-discount">{money(saleDiscount(sale))}</td>

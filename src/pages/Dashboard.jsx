@@ -1,3 +1,4 @@
+import { dashboardPurchaseCost } from "../utils/salePurchaseCost";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -282,8 +283,8 @@ const addCurrencyAmount = (target, currency, amount) => {
 };
 const currencyRows = (values = {}) => {
   const rows = currencyOrder
-    .map((code) => ({ code, value: Number(values?.[code] || 0) }))
-    .filter((row) => Math.abs(row.value) > 0.000001);
+    .map((code) => ({ code, value: values?.[code] === null ? null : Number(values?.[code] || 0) }))
+    .filter((row) => row.value === null || Math.abs(row.value) > 0.000001);
   return rows.length ? rows : [{ code: "AFN", value: 0 }];
 };
 const recordCurrency = (record, fallback = "AFN") => normalizeCurrency(record?.currency || record?.unit || fallback);
@@ -292,7 +293,7 @@ function CurrencyStack({ values }) {
   return (
     <span className="ph-currency-stack" dir="ltr">
       {currencyRows(values).map(({ code, value }) => (
-        <span key={code}><b>{money(value)}</b><small>{code}</small></span>
+        <span key={code}><b>{value === null ? "—" : money(value)}</b><small>{code}</small></span>
       ))}
     </span>
   );
@@ -362,6 +363,7 @@ export default function Dashboard({ currentUser }) {
   const [supplierPayments] = useJsonCollection("supplierPayments");
   const [partyCashTransactions] = useJsonCollection("partyCashTransactions");
   const [expenses] = useJsonCollection("expenses");
+  const [settings] = useJsonCollection("settings");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [chartPeriod, setChartPeriod] = useState("today");
   const [chartCurrency, setChartCurrency] = useState("AFN");
@@ -427,21 +429,28 @@ export default function Dashboard({ currentUser }) {
       addCurrencyAmount(totals, item.currency || linkedSale?.currency || "AFN", item.totalAmount || 0);
       return totals;
     }, {});
+    const exchangeRates = settings?.[0]?.exchangeRates || {};
+    const missingCostCurrencies = new Set();
     const costOfGoodsByCurrency = periodSales.reduce((totals, sale) => {
+      const code = recordCurrency(sale);
       const cost = (sale.items || []).reduce((sum, item) => {
-        const unitsPerUnit = Math.max(Number(item.unitsPerUnit || 1), 1);
-        const packageQuantity = item.packageQuantity ?? item.purchaseQuantity ?? (Number(item.quantity || 0) / unitsPerUnit);
-        return sum + Number(item.purchasePrice || item.costPrice || 0) * Number(packageQuantity || 0);
+        const price = dashboardPurchaseCost(item, code, exchangeRates);
+        if (price === null) { missingCostCurrencies.add(code); return sum; }
+        return sum + price * Number(item.quantity || 0);
       }, 0);
-      addCurrencyAmount(totals, recordCurrency(sale), cost);
+      addCurrencyAmount(totals, code, cost);
       return totals;
     }, {});
+    const periodReturnIds = new Set(periodSaleReturns.map(row => String(row.id)));
     const returnedCostByCurrency = saleReturnItems.reduce((totals, returnedItem) => {
-      const linkedSale = sales.find((sale) => String(sale.id) === String(returnedItem.saleId));
-      const soldItem = linkedSale?.items?.find((item) => String(item.productId) === String(returnedItem.productId));
-      const unitsPerUnit = Math.max(Number(soldItem?.unitsPerUnit || 1), 1);
-      const costPerPiece = Number(soldItem?.purchasePrice || soldItem?.costPrice || 0) / unitsPerUnit;
-      addCurrencyAmount(totals, recordCurrency(linkedSale), costPerPiece * Number(returnedItem.quantity || 0));
+      if (!periodReturnIds.has(String(returnedItem.returnId || returnedItem.saleReturnId))) return totals;
+      const linkedReturn = periodSaleReturns.find(row => String(row.id) === String(returnedItem.returnId || returnedItem.saleReturnId));
+      const linkedSale = sales.find(sale => String(sale.id) === String(returnedItem.saleId || linkedReturn?.saleId));
+      const soldItem = linkedSale?.items?.find(item => String(item.productId) === String(returnedItem.productId));
+      const code = recordCurrency(linkedSale);
+      const price = dashboardPurchaseCost(soldItem || {}, code, exchangeRates);
+      if (price === null) { missingCostCurrencies.add(code); return totals; }
+      addCurrencyAmount(totals, code, price * Number(returnedItem.quantity || 0));
       return totals;
     }, {});
     const financialCodes = new Set([
@@ -460,8 +469,8 @@ export default function Dashboard({ currentUser }) {
       const netCost = Number(costOfGoodsByCurrency[code] || 0) - Number(returnedCostByCurrency[code] || 0);
       const result = netRevenue - netCost - Number(expensesByCurrency[code] || 0);
       netRevenueByCurrency[code] = netRevenue;
-      estimatedProfitByCurrency[code] = Math.max(result, 0);
-      estimatedLossByCurrency[code] = Math.max(-result, 0);
+      estimatedProfitByCurrency[code] = missingCostCurrencies.has(code) ? null : Math.max(result, 0);
+      estimatedLossByCurrency[code] = missingCostCurrencies.has(code) ? null : Math.max(-result, 0);
     });
 
     const supplierBalances = new Map();
@@ -594,7 +603,7 @@ export default function Dashboard({ currentUser }) {
       customersToday: countCreated(customers, todayValue),
       stockNetToday: netMovement(todayValue),
     };
-  }, [products, stockMovements, suppliers, customers, sales, purchases, saleReturns, saleReturnItems, purchaseReturns, customerPayments, supplierPayments, partyCashTransactions, expenses, selectedDates]);
+  }, [products, stockMovements, suppliers, customers, sales, purchases, saleReturns, saleReturnItems, purchaseReturns, customerPayments, supplierPayments, partyCashTransactions, expenses, settings, selectedDates]);
 
   const overviewSections = [
     {

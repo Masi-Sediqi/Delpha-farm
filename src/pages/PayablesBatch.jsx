@@ -1,3 +1,4 @@
+import { partyAccountRows, accountCurrency } from "../utils/partyAccounts";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -122,6 +123,7 @@ export default function PayablesBatch() {
   const [purchases] = useJsonCollection("purchases");
   const [purchaseReturns] = useJsonCollection("purchaseReturns");
   const [supplierPayments, setSupplierPayments] = useJsonCollection("supplierPayments");
+  const [partyCashTransactions] = useJsonCollection("partyCashTransactions");
   const [batches, setBatches, , batchesLoaded] = useJsonCollection("supplierPaymentBatches");
 
   const [date, setDate] = useState(today());
@@ -169,26 +171,9 @@ export default function PayablesBatch() {
   }, [isEdit, batchesLoaded, editLoaded, batches, batchId, navigate]);
 
   const balanceMap = useMemo(() => {
-    const map = new Map();
-    suppliers.forEach((supplier) => {
-      const id = String(supplier.id);
-      const totalPurchased = purchases
-        .filter((row) => String(row.supplierId) === id)
-        .reduce((sum, row) => sum + num(row.totalAmount), 0);
-      const paidAtPurchase = purchases
-        .filter((row) => String(row.supplierId) === id)
-        .reduce((sum, row) => sum + num(row.paidAmount), 0);
-      const returned = purchaseReturns
-        .filter((row) => String(row.supplierId) === id)
-        .reduce((sum, row) => sum + num(row.totalAmount), 0);
-      const paidLater = supplierPayments
-        .filter((row) => String(row.supplierId) === id && (!isEdit || String(row.batchId || "") !== String(batchId)))
-        .reduce((sum, row) => sum + num(row.amount), 0);
-
-      map.set(id, num(supplier.openingBalance) + totalPurchased - paidAtPurchase - returned - paidLater);
-    });
-    return map;
-  }, [suppliers, purchases, purchaseReturns, supplierPayments, isEdit, batchId]);
+    const rows = partyAccountRows({type:"supplier",parties:suppliers,invoices:purchases,returns:purchaseReturns,payments:supplierPayments.filter(row=>!isEdit || String(row.batchId || "")!==String(batchId)),journal:partyCashTransactions});
+    return new Map(suppliers.map(party=>[String(party.id), rows.find(row=>String(row.party.id)===String(party.id) && row.currency===accountCurrency(supplierCurrency(party)))?.balance || 0]));
+  }, [suppliers,purchases,purchaseReturns,supplierPayments,partyCashTransactions,isEdit,batchId]);
 
   const selectedSuppliers = useMemo(
     () => selectedIds
