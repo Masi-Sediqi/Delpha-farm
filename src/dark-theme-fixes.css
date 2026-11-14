@@ -63,4 +63,13 @@ body[data-theme="simple-dark"].dark-mode :is(.customer-table,.suppliers-table) :
 body[data-theme="simple-dark"].dark-mode .inventory-page .inventory-batch-badge {
  background:#30353c!important; color:#ededee!important; -webkit-text-fill-color:#ededee!important; border-color:#626b78!important;
 }
+
+body[data-theme="simple-dark"].dark-mode .ph-activity-row .ph-activity-icon {
+ background:#303c37!important; color:#c5e5d6!important; border:1px solid #516a5d;
+}
+body[data-theme="simple-dark"].dark-mode .ph-activity-row .ph-activity-icon svg { color:#c5e5d6!important; stroke:currentColor!important; }
+body[data-theme="simple-dark"].dark-mode .recharts-default-tooltip {
+ background:#22252a!important; border-color:#626b78!important; color:#ededee!important; box-shadow:0 8px 20px #0005;
+}
+body[data-theme="simple-dark"].dark-mode .recharts-default-tooltip :is(p,li,span) { color:#ededee!important; -webkit-text-fill-color:#ededee!important; }
 }

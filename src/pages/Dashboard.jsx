@@ -1,3 +1,4 @@
+import { exchangeRate } from "../utils/exchangeRates";
 import { formatAfghanDate } from "../utils/afghanDate";
 import ShamsiDateInput from "../components/ShamsiDateInput";
 import { dashboardPurchaseCost } from "../utils/salePurchaseCost";
@@ -796,7 +797,7 @@ export default function Dashboard({ currentUser }) {
               <CartesianGrid strokeDasharray="3 3" stroke="#e7edf5" />
               <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#506480" }} interval={1} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: "#506480" }} axisLine={false} tickLine={false} width={42} />
-              <Tooltip formatter={(value, name) => [`${money(value)} ${chartCurrency}`, name]} contentStyle={{ borderRadius: 10, border: "1px solid #dfe5ec" }} />
+              <Tooltip formatter={(value, name) => [`${money(value)} ${chartCurrency}`, name]} contentStyle={{ borderRadius: 10, border: "1px solid var(--border-color, #dfe5ec)", background: "var(--card-bg, #fff)", color: "var(--text-primary, #172033)" }} labelStyle={{ color: "var(--text-primary, #172033)" }} itemStyle={{ color: "var(--text-primary, #172033)" }} />
               <Legend iconType="circle" wrapperStyle={{ fontSize: 12, paddingTop: 12 }} />
               <Line type="monotone" dataKey="purchases" name={t.totalPurchasesValue} stroke="#f59e0b" strokeWidth={2.2} dot={false} />
               <Line type="monotone" dataKey="sales" name={t.totalSalesValue} stroke="#10b981" strokeWidth={2.2} dot={false} />
@@ -831,6 +832,17 @@ export default function Dashboard({ currentUser }) {
             <span>{t.newPurchase}</span>
           </button>
         </div>
+        <section className="ph-exchange-rates" aria-label={language === "en" ? "Exchange rates" : "نرخ اسعار"}>
+          <h3>{language === "en" ? "Exchange rates" : language === "ps" ? "د اسعارو نرخونه" : "نرخ اسعار"}</h3>
+          {["USD", "EUR", "INR"].filter(code => Number(settings?.[0]?.exchangeRates?.[code]) > 0).map(code => (
+            <div className="ph-exchange-rate" key={code}>
+              <strong>{code}</strong>
+              <div><span dir="ltr">1 {code} = {Number(settings[0].exchangeRates[code]).toLocaleString("en-US", { maximumFractionDigits: 6 })} AFN</span>
+                <small dir="ltr">1 AFN = {exchangeRate(settings[0].exchangeRates, "AFN", code).toLocaleString("en-US", { maximumFractionDigits: 8 })} {code}</small></div>
+            </div>
+          ))}
+          {!["USD", "EUR", "INR"].some(code => Number(settings?.[0]?.exchangeRates?.[code]) > 0) && <p>{language === "en" ? "No exchange rates configured." : "هنوز نرخ اسعار ثبت نشده است."}</p>}
+        </section>
       </div>
 
       <div className="ph-recent-card">
