@@ -63,7 +63,7 @@ export default function Purchasing(){
   const toggleActionMenu=(event,p)=>{
     event.stopPropagation();
     const rect=event.currentTarget.getBoundingClientRect();
-    const menuWidth=Math.min(148,Math.max(window.innerWidth-20,1));
+    const menuWidth=Math.min(180,Math.max(window.innerWidth-20,1));
     const menuHeight=164;
     const gap=4;
     const viewportW=window.innerWidth;

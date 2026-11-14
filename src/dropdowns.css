@@ -1,0 +1,27 @@
+/* Shared menu spacing and control sizes throughout the application. */
+@media screen {
+ body :is(.payables-action-popover,.purchase-action-popover-fixed,.sales-register-action-popover,.journal-actions-menu,[class$="-action-menu"]) {
+  box-sizing:border-box!important; width:min(180px,calc(100vw - 16px))!important; min-width:0!important;
+  padding:6px!important; gap:2px!important; display:flex!important; flex-direction:column!important;
+  max-height:calc(100dvh - 24px)!important; overflow-x:hidden!important; overflow-y:auto!important;
+  border:1px solid var(--border-color,#dce2ea)!important; border-radius:10px!important;
+  background:var(--card-bg,#fff)!important; color:var(--text-primary,#172033)!important;
+  box-shadow:0 8px 24px rgba(15,23,42,.15)!important; scrollbar-width:thin;
+ }
+ body :is(.payables-action-popover,.purchase-action-popover-fixed,.sales-register-action-popover,.journal-actions-menu,[class$="-action-menu"]) .account-report-actions { display:contents!important; }
+ body :is(.payables-action-popover,.purchase-action-popover-fixed,.sales-register-action-popover,.journal-actions-menu,[class$="-action-menu"]) :is(button,a) {
+  box-sizing:border-box!important; display:flex!important; flex-direction:row!important; align-items:center!important; justify-content:flex-start!important;
+  width:100%!important; min-width:0!important; height:38px!important; min-height:38px!important; flex:0 0 38px!important;
+  margin:0!important; padding:0 10px!important; gap:9px!important; border:0!important; border-radius:6px!important;
+  background:transparent!important; color:inherit!important; font:inherit; font-size:13px!important; line-height:1.4!important;
+  text-align:start!important; white-space:nowrap!important; cursor:pointer;
+ }
+ body :is(.payables-action-popover,.purchase-action-popover-fixed,.sales-register-action-popover,.journal-actions-menu,[class$="-action-menu"]) :is(button,a):hover:not(:disabled) { background:var(--hover-bg,#f1f5f9)!important; }
+ body :is(.payables-action-popover,.purchase-action-popover-fixed,.sales-register-action-popover,.journal-actions-menu,[class$="-action-menu"]) button:disabled { opacity:.45!important; cursor:not-allowed; }
+ body :is(.payables-action-popover,.purchase-action-popover-fixed,.sales-register-action-popover,.journal-actions-menu,[class$="-action-menu"]) .danger { color:#dc2626!important; }
+ body :is(.payables-action-popover,.purchase-action-popover-fixed,.sales-register-action-popover,.journal-actions-menu,[class$="-action-menu"]) svg { width:16px!important; height:16px!important; flex:0 0 16px!important; color:currentColor; }
+ body :is(.payables-action-popover,.purchase-action-popover-fixed,.sales-register-action-popover,.journal-actions-menu,[class$="-action-menu"]) span { min-width:0!important; overflow:hidden!important; text-overflow:ellipsis!important; }
+ body select:not([multiple]):not([size]),body .supplier-search-trigger { box-sizing:border-box; min-height:42px; border-radius:8px; font-size:13px; }
+ body .supplier-search-dropdown { box-sizing:border-box; padding:6px; border-radius:10px; }
+ body .supplier-search-select .supplier-search-results button { box-sizing:border-box; min-height:38px; padding:8px 10px; border-radius:6px; font-size:13px; line-height:1.4; }
+}

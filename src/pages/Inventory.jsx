@@ -1,3 +1,4 @@
+import PartySearchSelect from "../components/PartySearchSelect";
 import { createPortal } from "react-dom";
 import { formatAfghanDate } from "../utils/afghanDate";
 import { useMemo, useState, useEffect } from "react";
@@ -303,7 +304,7 @@ export default function Inventory() {
     dialog?.querySelector("button")?.focus();
     const trapFocus = (event) => {
       if (event.key !== "Tab") return;
-      const controls = [...dialog.querySelectorAll('button:not(:disabled), select:not(:disabled), input:not(:disabled), textarea:not(:disabled), [tabindex="0"]')];
+      const controls = [...document.querySelectorAll('.inventory-adjust-dialog button:not(:disabled), .inventory-adjust-dialog select:not(:disabled), .inventory-adjust-dialog input:not(:disabled), .inventory-adjust-dialog textarea:not(:disabled), [data-entry-picker-popup] button:not(:disabled), [data-entry-picker-popup] input')];
       const first = controls[0], last = controls.at(-1);
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
@@ -488,7 +489,7 @@ export default function Inventory() {
         <header><h2>اصلاح موجودی جنس</h2><button type="button" aria-label="بستن" onClick={() => setAdjustOpen(false)}><X size={20}/></button></header>
         <div className="inventory-adjust-meta"><strong>نمبر ریکارد: {adjustNumber}</strong><span>تاریخ: {formatAfghanDate(todayDateValue())}</span></div>
         <div className="inventory-adjust-table-wrap"><table className="inventory-adjust-table"><thead><tr><th>نام جنس</th><th>موجود</th><th>افزودن +</th><th>کسر -</th><th>تفصیلات</th><th></th></tr></thead><tbody>{adjustRows.map((row) => <tr key={row.id}>
-          <td><select aria-label="نام جنس" value={row.productId} onChange={(event) => updateAdjustmentRow(row.id, { productId: event.target.value })}><option value="">انتخاب جنس...</option>{products.map((product) => <option value={product.id} key={product.id}>{product.productName || product.name}</option>)}</select></td>
+          <td><PartySearchSelect records={products} partyType="product" portal language={language} placeholder="انتخاب جنس..." value={row.productId} onChange={(id) => updateAdjustmentRow(row.id, { productId: id })}/></td>
           <td>{row.productId ? getProductStock(stockMovements, row.productId, 0).toLocaleString("en-US") : "0"}</td>
           <td><input aria-label="افزودن" type="number" min="0" step="1" value={row.add} onChange={(event) => updateAdjustmentRow(row.id, { add: event.target.value, subtract: event.target.value ? "" : row.subtract })}/></td>
           <td><input aria-label="کسر" type="number" min="0" step="1" value={row.subtract} onChange={(event) => updateAdjustmentRow(row.id, { subtract: event.target.value, add: event.target.value ? "" : row.add })}/></td>

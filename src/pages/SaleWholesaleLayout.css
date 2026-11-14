@@ -35,3 +35,34 @@
 .sale-wholesale-page .sale-wholesale-grid-head > span { color:#fff !important; -webkit-text-fill-color:#fff !important; }
 
 .sale-wholesale-line .sale-wholesale-stock input[readonly] { background:var(--card-bg,#f1f5f9); color:var(--text-primary,#334155); cursor:default; }
+
+/* Invoice metadata occupies a complete, aligned row above the item grid. */
+body .purchase-entry-page.sale-wholesale-page .sale-section-title-with-meta {
+ display:grid !important; grid-template-columns:minmax(0,1fr) auto !important;
+ grid-template-areas:"heading count" "meta meta"; align-items:center !important; gap:16px 12px !important;
+}
+body .purchase-entry-page.sale-wholesale-page .sale-section-title-with-meta > .purchase-section-heading { grid-area:heading; }
+body .purchase-entry-page.sale-wholesale-page .sale-section-title-with-meta > .purchase-items-count { grid-area:count; justify-self:end; position:static !important; }
+body .purchase-entry-page.sale-wholesale-page .sale-section-title-with-meta .purchase-top-meta.sale-top-meta {
+ grid-area:meta; display:grid !important; grid-template-columns:minmax(280px,2fr) minmax(160px,1fr) minmax(120px,.7fr) minmax(180px,1fr) !important;
+ width:100% !important; max-width:none !important; margin:0 !important; gap:14px !important; align-items:end !important;
+}
+body .purchase-entry-page.sale-wholesale-page .sale-top-meta > :is(.sale-top-meta-customer,.purchase-top-field) {
+ grid-column:auto !important; width:100% !important; min-width:0 !important; max-width:none !important; margin:0 !important;
+}
+body .purchase-entry-page.sale-wholesale-page .sale-top-meta .purchase-top-field { display:flex !important; flex-direction:column; align-items:stretch !important; gap:7px !important; }
+body .purchase-entry-page.sale-wholesale-page .sale-top-meta .sale-top-meta-customer .purchase-select-with-add.sale-customer-select-wrap {
+ display:grid !important; grid-template-columns:minmax(0,1fr) 40px !important; gap:8px !important; width:100% !important; min-width:0 !important;
+}
+body .purchase-entry-page.sale-wholesale-page .sale-top-meta .sale-top-meta-customer .purchase-select-with-add.sale-customer-select-wrap.has-info { grid-template-columns:minmax(0,1fr) 36px 40px !important; }
+body .purchase-entry-page.sale-wholesale-page .sale-top-meta .supplier-search-select { min-width:0 !important; width:100% !important; }
+body .purchase-entry-page.sale-wholesale-page .sale-top-meta :is(.supplier-search-trigger,input,select,.shamsi-date-trigger) { width:100% !important; height:42px !important; min-height:42px !important; box-sizing:border-box; }
+body .purchase-entry-page.sale-wholesale-page .sale-top-meta .supplier-search-trigger { max-width:none !important; justify-content:space-between !important; text-align:start !important; }
+body .purchase-entry-page.sale-wholesale-page .sale-top-meta .purchase-inline-supplier-add { width:40px !important; height:42px !important; min-height:42px !important; }
+body .purchase-entry-page.sale-wholesale-page .sale-top-meta .sale-customer-info-toggle { width:36px !important; min-width:36px !important; max-width:36px !important; height:42px !important; min-height:42px !important; max-height:42px !important; }
+@media(max-width:1100px) {
+ body .purchase-entry-page.sale-wholesale-page .sale-section-title-with-meta .purchase-top-meta.sale-top-meta { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+}
+@media(max-width:600px) {
+ body .purchase-entry-page.sale-wholesale-page .sale-section-title-with-meta .purchase-top-meta.sale-top-meta { grid-template-columns:minmax(0,1fr) !important; gap:12px !important; }
+}

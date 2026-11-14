@@ -15,6 +15,7 @@ import {
 import { useJsonCollection } from "../hooks/useJsonCollection";
 
 import { notify } from "../utils/notify";
+import "./Settings.css";
 
 const defaultSystemName = "APG";
 const defaultSystemSubtitle = "Pharmacy & Medicine Management System";

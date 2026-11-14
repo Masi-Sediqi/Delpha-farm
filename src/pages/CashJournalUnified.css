@@ -50,3 +50,9 @@
 
 .journal-sales-receivables { margin-top:24px; }
 .journal-sales-receivables h2 { margin:0 0 12px; font-size:18px; }
+
+.cash-journal-page .journal-description-cell { max-width:480px !important; min-width:0 !important; }
+.cash-journal-page .journal-description-cell .journal-description-preview {
+ display:block !important; width:clamp(160px,30vw,480px); max-width:100% !important;
+ overflow:hidden !important; text-overflow:ellipsis !important; white-space:nowrap !important;
+}

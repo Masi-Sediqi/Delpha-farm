@@ -156,8 +156,8 @@ export default function Receivables() {
   const openMenu = (event, payload) => {
     event.stopPropagation();
     const rect = event.currentTarget.getBoundingClientRect();
-    const width = 150;
-    const height = 156;
+    const width = 180;
+    const height = 292;
     const gap = 5;
     const below = window.innerHeight - rect.bottom > height + 12;
     const top = below ? rect.bottom + gap : Math.max(8, rect.top - height - gap);

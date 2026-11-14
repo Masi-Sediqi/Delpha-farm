@@ -36,4 +36,31 @@ body[data-theme="simple-dark"] :is(.expiry-status.healthy,.supplier-status.activ
 body[data-theme="simple-dark"] :is([class$="-overlay"],[class$="-backdrop"],.sales-product-modal-layer) {background:rgba(0,0,0,.55)!important;backdrop-filter:blur(5px);}
 body[data-theme="simple-dark"] :is(button,input,select,textarea,a):focus-visible {outline:2px solid #94cbb4!important;outline-offset:2px;}
 body[data-theme="simple-dark"] .app::before,body[data-theme="simple-dark"] .app::after {display:none!important;}
+
+/* Small status chips and icon tiles need their own foreground, not inherited table text. */
+body[data-theme="simple-dark"].dark-mode :is(.customer-search-box,.suppliers-search,.sales-register-search,.purchasing-search,.payables-search) {
+ background:#22252a!important; color:#cbd2dc!important; border-color:#515864!important;
+}
+body[data-theme="simple-dark"].dark-mode :is(.customer-search-box,.suppliers-search,.sales-register-search,.purchasing-search,.payables-search) input {
+ background:transparent!important; color:#ededee!important; border:0!important;
+}
+body[data-theme="simple-dark"].dark-mode :is(.customer-search-box,.suppliers-search,.sales-register-search,.purchasing-search,.payables-search) svg {
+ color:#cbd2dc!important; stroke:currentColor!important; background:transparent!important; flex-shrink:0;
+}
+body[data-theme="simple-dark"].dark-mode :is(.customer-avatar,.supplier-avatar) {
+ background:#303c37!important; color:#c5e5d6!important; border:1px solid #516a5d;
+}
+body[data-theme="simple-dark"].dark-mode :is(.customer-avatar,.supplier-avatar) svg {
+ color:#c5e5d6!important; stroke:currentColor!important; -webkit-text-fill-color:currentColor!important;
+}
+body[data-theme="simple-dark"].dark-mode :is(.customer-table,.suppliers-table) :is(.customer-status.active,.supplier-status.active) {
+ background:#294d41!important; color:#c4f1d7!important; -webkit-text-fill-color:#c4f1d7!important; border:1px solid #508168;
+}
+body[data-theme="simple-dark"].dark-mode :is(.customer-table,.suppliers-table) :is(.customer-status.inactive,.supplier-status.inactive) {
+ background:#4a3037!important; color:#ffd1d8!important; -webkit-text-fill-color:#ffd1d8!important; border:1px solid #82545e;
+}
+
+body[data-theme="simple-dark"].dark-mode .inventory-page .inventory-batch-badge {
+ background:#30353c!important; color:#ededee!important; -webkit-text-fill-color:#ededee!important; border-color:#626b78!important;
+}
 }

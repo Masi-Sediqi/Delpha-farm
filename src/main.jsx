@@ -14,6 +14,7 @@ import { installFormDismissGuard } from "./formDismissGuard";
 import "./App.css";
 import "./dark-theme-fixes.css";
 import "./hidden-scrollbars.css";
+import "./dropdowns.css";
 
 installFormDismissGuard();
 

@@ -8,3 +8,9 @@
 .supplier-search-select .supplier-search-results button.is-active,.supplier-search-select .supplier-search-results button:hover { background:var(--hover-bg,#eef2ff); }
 .supplier-search-results small { color:var(--text-secondary,#64748b); }
 .supplier-search-results p { padding:8px; color:var(--text-secondary,#64748b); }
+
+.supplier-search-portal { box-sizing:border-box; }
+.supplier-search-portal .supplier-search-dropdown { position:static; box-sizing:border-box; max-height:inherit; display:flex; flex-direction:column; }
+.supplier-search-portal .supplier-search-results { min-height:0; overflow:auto; }
+.supplier-search-portal .supplier-search-results button { min-height:40px; }
+.inventory-adjust-table .supplier-search-trigger { min-height:42px; background:#e8f3eb; color:#162d27; border-color:#7ca999; }

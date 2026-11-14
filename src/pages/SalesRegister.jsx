@@ -329,8 +329,8 @@ export default function SalesRegister() {
     }
 
     const rect = event.currentTarget.getBoundingClientRect();
-    const menuWidth = Math.min(148, Math.max(window.innerWidth - 20, 1));
-    const menuHeight = 164;
+    const menuWidth = Math.min(180, Math.max(window.innerWidth - 20, 1));
+    const menuHeight = 212;
     const edge = 10;
     const openBelow = window.innerHeight - rect.bottom >= menuHeight + 8;
     const top = openBelow ? rect.bottom + 6 : Math.max(edge, rect.top - menuHeight - 6);
