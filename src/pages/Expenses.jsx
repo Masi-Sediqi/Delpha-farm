@@ -1,3 +1,4 @@
+import { formatAfghanDate } from "../utils/afghanDate";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -252,7 +253,7 @@ export default function Expenses() {
             <tbody>
               {filteredExpenses.length === 0 ? <tr><td colSpan="5" className="expenses-empty">{t.noExpenses}</td></tr> : filteredExpenses.map((expense) => (
                 <tr key={expense.id}>
-                  <td>{String(expense.date || expense.createdAt || "—").slice(0, 10)}</td>
+                  <td>{formatAfghanDate(String(expense.date || expense.createdAt || "—").slice(0, 10))}</td>
                   <td><span className="expenses-category-badge"><Tag size={13} />{expenseCategoryText(expense)}</span></td>
                   <td className="expenses-description">{expense.description || "—"}</td>
                   <td className="expenses-money">{numeric(expense.amount).toLocaleString()} <small>{expense.currency}</small></td>

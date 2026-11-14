@@ -432,7 +432,7 @@ app.post("/api/auth/logout", requireSession, async (request, response, next) => 
   } catch(error) { next(error); }
 });
 // Authoritative PostgreSQL-backed user administration. Never store passwords in JSON collections.
-const permissionModules = new Set(["dashboard", "suppliers", "products", "purchasing", "payables", "purchaseReturns", "customers", "sales", "receivables", "saleReturns", "inventory", "expenses", "accounts", "reports", "trash", "settings"]);
+const permissionModules = new Set(["dashboard", "suppliers", "products", "purchasing", "payables", "customers", "sales", "receivables", "saleReturns", "inventory", "expenses", "accounts", "reports", "trash", "settings"]);
 const permissionActions = new Set(["create", "edit", "delete", "print"]);
 function validatedPermissions(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)) return null;
@@ -514,7 +514,7 @@ const collectionPermissions = Object.freeze({
   stockMovements: "inventory", inventory: "inventory",
   supplierPayments: "payables", supplierPaymentBatches: "payables",
   customerPayments: "receivables", customerPaymentBatches: "receivables",
-  purchaseReturns: "purchaseReturns", purchaseReturnItems: "purchaseReturns",
+  purchaseReturns: "purchasing", purchaseReturnItems: "purchasing",
   saleReturns: "saleReturns", saleReturnItems: "saleReturns",
   expenses: "expenses", expenseReasons: "expenses", expenseAccounts: "expenses",
   expenseCategories: "expenses", cashTransactions: "reports",
@@ -650,7 +650,7 @@ app.get("/api/collections/:name", async (request, response, next) => {
 // authorization and stock validation are implemented for ordinary users.
 app.post("/api/collections/atomic-batch", requireAdmin, async (request, response, next) => {
   const changes = request.body?.changes;
-  const permitted = new Set(["salesRegister", "purchases", "purchaseItems", "stockMovements", "products", "saleReturns", "saleReturnItems", "purchaseReturns", "purchaseReturnItems", "trashPurchases"]);
+  const permitted = new Set(["salesRegister", "purchases", "purchaseItems", "stockMovements", "products", "saleReturns", "saleReturnItems", "partyCashTransactions", "trashPurchases"]);
   if (!Array.isArray(changes) || changes.length < 2 || changes.length > 4 ||
       changes.some((change) => !change || typeof change !== "object" ||
         !permitted.has(change.name) || !Array.isArray(change.items) ||
@@ -665,8 +665,8 @@ app.post("/api/collections/atomic-batch", requireAdmin, async (request, response
   const validShape =
     sameNames(["salesRegister", "stockMovements"]) ||
     sameNames(["purchases", "purchaseItems", "stockMovements", "products"]) ||
-    sameNames(["purchaseReturns", "purchaseReturnItems", "stockMovements"]) ||
     sameNames(["saleReturns", "saleReturnItems", "stockMovements"]) ||
+    sameNames(["saleReturns", "saleReturnItems", "stockMovements", "partyCashTransactions"]) ||
     sameNames(["trashPurchases", "purchases", "purchaseItems", "stockMovements"]);
   if (!validShape) return response.status(400).json({ error: "Incomplete or unsupported atomic batch." });
   const client = await pool.connect();
@@ -712,6 +712,10 @@ app.post("/api/collections/atomic-batch", requireAdmin, async (request, response
 
 app.put("/api/collections/:name", async (request, response, next) => {
   try {
+    // The removed purchase-return module remains readable for historical balances.
+    if (["purchaseReturns", "purchaseReturnItems"].includes(request.params.name)) {
+      return response.status(410).json({ error: "Purchase returns have been removed." });
+    }
     if (!Array.isArray(request.body?.items)) {
       return response.status(400).json({ error: "items must be an array." });
     }

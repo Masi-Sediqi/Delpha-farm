@@ -6,7 +6,6 @@ export const PERMISSION_MODULES = [
   { key: "products", labels: { en: "Products", fa: "محصولات", ps: "محصولات" } },
   { key: "purchasing", labels: { en: "Purchasing", fa: "خریداری", ps: "پېرود" } },
   { key: "payables", labels: { en: "Payables", fa: "تادیات", ps: "تادیات" } },
-  { key: "purchaseReturns", labels: { en: "Purchase Returns", fa: "برگشت خرید", ps: "د پېرود بېرته ستنول" } },
   { key: "customers", labels: { en: "Customers", fa: "مشتریان", ps: "پېرودونکي" } },
   { key: "sales", labels: { en: "Sales", fa: "فروشات", ps: "خرڅلاو" } },
   { key: "receivables", labels: { en: "Receivables", fa: "طلبات", ps: "طلبات" } },
@@ -52,7 +51,6 @@ export function moduleKeyForPath(pathname = "") {
   if (pathname.startsWith("/product")) return "products";
   if (pathname.startsWith("/purchasing")) return "purchasing";
   if (pathname.startsWith("/payables")) return "payables";
-  if (pathname.startsWith("/purchase-returns")) return "purchaseReturns";
   if (pathname.startsWith("/customer")) return "customers";
   if (pathname.startsWith("/sales") || pathname.startsWith("/sale-detail")) return "sales";
   if (pathname.startsWith("/receivables")) return "receivables";

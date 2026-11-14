@@ -326,6 +326,13 @@ body.dark-mode .customer-payment-action-menu button:hover {
   cursor: pointer;
 }
 
+@media screen {
+
+  .customer-package-actions button {
+  font-size: 13px;
+  }
+}
+
 .customer-package-actions button:hover {
   background: #3730a3;
   color: #ffffff;
@@ -493,6 +500,13 @@ body.dark-mode .customer-payment-action-menu button:hover {
   font-weight: 900;
 }
 
+@media screen {
+
+  .customer-buyback-section-title span {
+  font-size: 13px;
+  }
+}
+
 .customer-buyback-device {
   display: grid !important;
   grid-template-columns: auto minmax(0, 1fr) 180px;
@@ -532,11 +546,25 @@ body.dark-mode .customer-payment-action-menu button:hover {
   font-size: 11px;
 }
 
+@media screen {
+
+  .customer-buyback-device span {
+  font-size: 13px;
+  }
+}
+
 .customer-buyback-price-field {
   display: grid !important;
   gap: 5px !important;
   color: #64748b !important;
   font-size: 10px !important;
+}
+
+@media screen {
+
+  .customer-buyback-price-field {
+  font-size: 12px !important;
+  }
 }
 
 .customer-buyback-price-field input {
@@ -632,6 +660,13 @@ body.dark-mode .customer-payment-action-menu button:hover {
   border-radius: 8px;
   font-size: 11px;
   font-weight: 800;
+}
+
+@media screen {
+
+  .ledger-type {
+  font-size: 13px;
+  }
 }
 
 .ledger-type.purchase {
@@ -959,6 +994,13 @@ body.dark-mode .customer-payment-action-menu button:hover {
   font-weight: 800;
 }
 
+@media screen {
+
+  .customer-disconnect-section-header > span {
+  font-size: 13px;
+  }
+}
+
 .customer-disconnect-table-wrap {
   width: 100%;
   overflow-x: auto;
@@ -987,6 +1029,13 @@ body.dark-mode .customer-payment-action-menu button:hover {
   color: #52627a;
   font-size: 11px;
   font-weight: 800;
+}
+
+@media screen {
+
+  .customer-disconnect-table-wrap th {
+  font-size: 13px;
+  }
 }
 
 .customer-disconnect-table-wrap td {
@@ -1093,6 +1142,13 @@ body.dark-mode .customer-payment-action-menu button:hover {
 .customer-disconnect-device-name span {
   color: #64748b;
   font-size: 11px;
+}
+
+@media screen {
+
+  .customer-disconnect-device-name span {
+  font-size: 13px;
+  }
 }
 
 .customer-disconnect-empty {

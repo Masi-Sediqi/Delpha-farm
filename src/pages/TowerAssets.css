@@ -112,6 +112,13 @@
   font-size: 11px;
 }
 
+@media screen {
+
+  .tower-category-mini-list p {
+  font-size: 13px;
+  }
+}
+
 .tower-category-mini-list b {
   color: #111827;
   font-weight: 900;
@@ -150,6 +157,13 @@
   padding: 5px 10px;
   font-size: 11px;
   font-weight: 900;
+}
+
+@media screen {
+
+  .tower-page-kicker {
+  font-size: 13px;
+  }
 }
 
 .tower-insight-hero h1 {
@@ -360,6 +374,13 @@
   font-weight: 900;
 }
 
+@media screen {
+
+  .tower-table-status {
+  font-size: 13px;
+  }
+}
+
 .tower-table-card {
   background: #ffffff;
   border: 1px solid #eeeae2;
@@ -500,6 +521,13 @@
   font-weight: 700;
   background: #e5e7eb;
   color: #374151;
+}
+
+@media screen {
+
+  .tower-badge {
+  font-size: 13px;
+  }
 }
 
 .tower-badge.installed {
@@ -1553,6 +1581,13 @@ body.dark-mode .tower-detail-assets-table td {
   padding: 0 10px;
   font-size: 11px;
   font-weight: 800;
+}
+
+@media screen {
+
+  .tower-tracking-badge {
+  font-size: 13px;
+  }
 }
 
 .tower-tracking-badge.single {

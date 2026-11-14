@@ -1,3 +1,4 @@
+import { formatAfghanDate } from "../utils/afghanDate";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Printer } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -202,7 +203,7 @@ export default function PrintPurchase() {
           </div>
           <div>
             <span>{t.date}</span>
-            <strong>{purchase.purchaseDate || purchase.createdAt || "—"}</strong>
+            <strong>{formatAfghanDate(purchase.purchaseDate || purchase.createdAt || "—")}</strong>
           </div>
           <div>
             <span>{t.currency}</span>

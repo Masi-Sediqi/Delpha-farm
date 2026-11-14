@@ -1,7 +1,10 @@
+import { exchangeRate } from "../utils/exchangeRates";
+import { useEntryNavigationLock } from "../hooks/useEntryNavigationLock";
+import PartySearchSelect from "../components/PartySearchSelect";
 import { confirmAction } from "../utils/confirmDialog";
 import { assessSaleLoss, capturePurchaseComparisonRates, correctLossPrice } from "../utils/saleLossWarning";
 import { productPurchaseCostSnapshot, salePurchaseCostSnapshot } from "../utils/salePurchaseCost";
-import { productPricePerPiece } from "../utils/piecePricing";
+import { productPricePerPiece, pieceLineAmount } from "../utils/piecePricing";
 import { writeAtomicFinanceBatch } from "../utils/browserStorage";
 import CustomersRegistry from "./CustomersRegistry";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -297,6 +300,7 @@ function SaleNew() {
   const [searchFocused, setSearchFocused] = useState(false);
   const [activeResultIndex, setActiveResultIndex] = useState(0);
   const [items, setItems] = useState([]);
+  const releaseNavigationLock = useEntryNavigationLock(items.length > 0);
   const [editInitialized, setEditInitialized] = useState(false);
   const searchInputRef = useRef(null);
   const approvedLosses = useRef(new Set());
@@ -314,15 +318,7 @@ function SaleNew() {
     const code = String(value || "AFN").trim().toUpperCase();
     return code === "PKR" ? "INR" : code;
   };
-  const rateToAfn = (code) => {
-    const normalized = normalizeCurrency(code);
-    return normalized === "AFN" ? 1 : Number(exchangeRates[normalized] || 0);
-  };
-  const currencyRate = (from, to) => {
-    const sourceRate = rateToAfn(from);
-    const targetRate = rateToAfn(to);
-    return sourceRate > 0 && targetRate > 0 ? sourceRate / targetRate : 0;
-  };
+  const currencyRate = (from, to) => exchangeRate(exchangeRates, from, to);
   const convertCurrency = (amount, from, to) => num(amount) * currencyRate(from, to);
   const selectedCustomer = useMemo(
     () => customers.find((row) => String(row.id) === String(customerId)) || null,
@@ -439,12 +435,13 @@ function SaleNew() {
         sourceCurrency: normalizeCurrency(item.sourceCurrency || editingSale.currency || product?.unit || "AFN"),
         ...purchaseCost,
         purchaseComparisonRates: item.purchaseComparisonRates || capturePurchaseComparisonRates(purchaseCost.purchaseCurrency, currencies, currencyRate),
-        sourceSalePrice: num(item.sourceSalePrice ?? item.salePrice ?? product?.salePrice),
+        sourceSalePrice: num(item.sourceSalePrice ?? item.salePrice ?? productPricePerPiece(product, "salePrice")),
         exchangeRate: num(item.exchangeRate) || 1,
         cartonSize: item.cartonSize ?? product?.cartonSize ?? unitsPerUnit,
         manufacturerName: item.manufacturerName || item.manufacturerCompany || product?.manufacturerName || product?.companyName || "",
         expiryDate: item.expiryDate || product?.expiryDate || "",
-        salePrice: num(item.salePrice ?? product?.salePrice),
+        salePrice: num(item.salePrice ?? productPricePerPiece(product, "salePrice")),
+        priceUnit: "piece",
         discountAmount: num(item.discountAmount ?? item.discount),
         discountPercent: item.discountPercent ?? null,
         currentStock: product ? getStock(product) : num(item.quantity),
@@ -501,7 +498,7 @@ function SaleNew() {
     const stock = getStock(product);
     if (stock <= 0) return;
 
-    const sourceCurrency = normalizeCurrency(product.unit || "AFN");
+    const sourceCurrency = normalizeCurrency(product.saleCurrency || product.unit || "AFN");
     const rate = currencyRate(sourceCurrency, currency);
     if (!rate) {
       notify(`${t.missingExchangeRate} ${sourceCurrency}`, "warning");
@@ -522,7 +519,7 @@ function SaleNew() {
 
       if (remainingStock <= 0) return current;
 
-      const pieceQuantityToAdd = Math.min(unitsPerUnit, remainingStock);
+      const pieceQuantityToAdd = Math.min(1, remainingStock);
       changed = true;
 
       return [...current, {
@@ -531,10 +528,11 @@ function SaleNew() {
         productName: productDisplayName(product),
         group: groupNameById(productGroups, product.groupId, product.group || ""),
         unit: product.unit || "piece",
-        purchaseUnit: "carton",
+        purchaseUnit: "piece",
+        priceUnit: "piece",
         cartonUnitsPerUnit: unitsPerUnit,
-        unitsPerUnit,
-        packageQuantity: Number((pieceQuantityToAdd / unitsPerUnit).toFixed(4)),
+        unitsPerUnit: 1,
+        packageQuantity: pieceQuantityToAdd,
         quantity: pieceQuantityToAdd,
         sourceCurrency,
         ...purchaseCost,
@@ -562,7 +560,10 @@ function SaleNew() {
     }, 0);
   };
 
-  const pieceCostDisplay = (row) => `${num(row.purchasePrice).toFixed(2)} ${row.purchaseCurrency}`;
+  const pieceCostDisplay = (row) => {
+    const rate = currencyRate(row.purchaseCurrency, currency);
+    return rate ? `${(num(row.purchasePrice) * rate).toFixed(2)} ${currency}` : `${num(row.purchasePrice).toFixed(2)} ${row.purchaseCurrency}`;
+  };
 
   const focusSearchResult = (index) => {
     if (!results.length) return;
@@ -741,7 +742,9 @@ function SaleNew() {
         exchangeRate: rate,
         purchaseComparisonRates: { ...row.purchaseComparisonRates, [normalized]: row.purchaseComparisonRates?.[normalized] || currencyRate(row.purchaseCurrency, normalized) },
         salePrice,
-        discountAmount: Math.min(num(row.discountAmount), num(row.quantity) * salePrice),
+        discountAmount: row.discountPercent != null
+          ? num(row.quantity) * salePrice * Math.min(100, Math.max(0, num(row.discountPercent))) / 100
+          : Math.min(num(row.discountAmount) * currencyRate(currency, normalized), num(row.quantity) * salePrice),
       };
     }));
     setCurrency(normalized);
@@ -799,7 +802,7 @@ function SaleNew() {
     return Number.isInteger(number) ? String(number) : number.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
   };
   const pieceQuantity = (row) => num(row.quantity);
-  const lineGross = (row) => Math.max(pieceQuantity(row) * num(row.salePrice), 0);
+  const lineGross = (row) => pieceLineAmount(pieceQuantity(row), row.salePrice);
   const lineDiscount = (row) => Math.min(num(row.discountAmount), lineGross(row));
   const lineTotal = (row) => Math.max(lineGross(row) - lineDiscount(row), 0);
   const subtotal = items.reduce((sum, row) => sum + lineGross(row), 0);
@@ -930,6 +933,8 @@ function SaleNew() {
       itemCount: items.length,
       items: items.map((row) => ({
         ...row,
+        priceUnit: "piece",
+        quantityUnit: "piece",
         packageQuantity: num(row.packageQuantity),
         unitsPerUnit: positiveUnitCount(row.unitsPerUnit),
         purchaseUnit: row.purchaseUnit || row.unit || "piece",
@@ -977,6 +982,7 @@ function SaleNew() {
       notify(error.message || "Unable to save sale transaction.", "error");
       return;
     }
+    releaseNavigationLock();
     notify(isEditMode ? t.updated : t.saved, "success");
     navigate("/sales-register");
     } finally { saleSaveInProgress.current = false; setSavingSale(false); }
@@ -1004,7 +1010,7 @@ function SaleNew() {
           <div className="purchase-search-results-head"><span>{t.results}</span><small>{results.length}</small></div>
           {results.length ? (
             <>
-            <div className="apg-picker-header" aria-hidden="true"><span>نام جنس</span><span>کمپنی سازنده</span><span>کشور</span><span>قیمت فروش</span></div>
+            <div className="apg-picker-header" aria-hidden="true"><span>نام جنس</span><span>کمپنی سازنده</span><span>کشور</span><span>{t.salePrice}</span></div>
             <div className="purchase-inline-result-list sale-inline-result-list">
               {results.map((product, index) => {
                 const stock = getStock(product);
@@ -1073,17 +1079,18 @@ function SaleNew() {
                   <label className="purchase-field purchase-top-field">
                     <span><UserRound size={13} />{t.customer}</span>
                     <div className={`purchase-select-with-add sale-customer-select-wrap ${customerId ? "has-info" : ""}`}>
-                          <select
-                            ref={customerSelectRef}
+                          <PartySearchSelect
+                            triggerRef={customerSelectRef}
+                            records={customers}
+                            partyType="customer"
+                            language={language}
                             value={customerId}
-                            onChange={(e) => {
-                              setCustomerId(e.target.value);
+                            placeholder={t.selectCustomer}
+                            onChange={(id) => {
+                              setCustomerId(id);
                               setCustomerInfoOpen(false);
                             }}
-                          >
-                            <option value="">{t.selectCustomer}</option>
-                            {customers.filter((row) => row.status !== "inactive").map((row) => <option value={row.id} key={row.id}>{row.fullName || row.companyName || "—"}</option>)}
-                          </select>
+                          />
                           {customerId && (
                             <button
                               className={`sale-customer-info-toggle ${customerInfoOpen ? "active" : ""}`}
@@ -1152,7 +1159,7 @@ function SaleNew() {
                 <div className="sale-wholesale-grid-head" role="row">
                   <span>نام جنس</span><span>سایز کارتن</span><span>{language === "en" ? "Cost / piece" : language === "ps" ? "د هرې دانې لګښت" : "نرخ تمام‌شد فی دانه"}</span>
                   <span>{t.salePrice}</span><span>تعداد کارتن</span><span>مقدار دانه</span>
-                  <span>فیصدی تخفیف</span><span>مجموع</span><span>عملیات</span>
+                  <span>{t.discount}</span><span>مجموع</span><span>{t.stock}</span><span>عملیات</span>
                 </div>
               )}
               {items.map((row, index) => (
@@ -1162,12 +1169,13 @@ function SaleNew() {
                     <small>{row.manufacturerName || ""}</small>
                   </div>
                   <div className="sale-wholesale-size"><span>{formatQuantity(row.cartonSize || row.unitsPerUnit || 1)}</span></div>
-                  <div className="sale-wholesale-price-display" title={language === "en" ? "Fixed purchase cost per piece, in original purchase currency" : "قیمت تمام‌شد ثابت فی دانه به اسعار اصلی خرید"}><output dir="ltr" aria-label={t.purchasePrice}>{pieceCostDisplay(row)}</output></div>
+                  <div className="sale-wholesale-price-display" title={language === "en" ? "Purchase cost per piece in selected currency" : "قیمت تمام‌شد فی دانه به اسعار انتخاب‌شده"}><output dir="ltr" aria-label={t.purchasePrice}>{pieceCostDisplay(row)}</output></div>
                   <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">{t.salePrice}</span><input aria-label={t.salePrice} type="number" min="0" step="0.01" value={row.salePrice} onBlur={event => { if (!event.relatedTarget?.closest(".purchase-save-top,.purchase-save-mobile")) warnIfSellingAtLoss(row); }} onChange={(e) => updateItem(row.lineId, "salePrice", e.target.value)} /></label>
                   <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">تعداد کارتن</span><input aria-label="تعداد کارتن" ref={(node) => { const key = String(row.lineId); if (node) packageQuantityInputRefs.current.set(key, node); else packageQuantityInputRefs.current.delete(key); }} type="number" min="0" max={maxPiecesForLine(row) / positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit)} step="any" value={num(row.quantity) / positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit)} onChange={(e) => { changeLineQuantityUnit(row.lineId, "carton"); updatePieceQuantity(row.lineId, String(num(e.target.value) * positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit))); }} /></label>
                   <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">مقدار دانه</span><input aria-label="مقدار دانه" type="number" min="0" max={maxPiecesForLine(row)} step="any" value={row.quantity} onChange={(e) => updatePieceQuantity(row.lineId, e.target.value)} /></label>
-                  <label className="sale-wholesale-cell sale-wholesale-discount"><span className="sale-wholesale-mobile-label">فیصدی تخفیف</span><input aria-label="فیصدی تخفیف" onKeyDown={(event) => { if (event.key === "Tab" && !event.shiftKey) { event.preventDefault(); focusSaleSearch(); } }} type="number" min="0" max="100" step="0.01" onBlur={event => { if (!event.relatedTarget?.closest(".purchase-save-top,.purchase-save-mobile")) warnIfSellingAtLoss(row); }} value={row.discountPercent ?? (lineGross(row) ? Number((100 * lineDiscount(row) / lineGross(row)).toFixed(2)) : 0)} onChange={(e) => updateItem(row.lineId, "discountPercent", e.target.value)} /></label>
+                  <label className="sale-wholesale-cell sale-wholesale-discount"><span className="sale-wholesale-mobile-label">{t.discount}</span><input aria-label={t.discount} onKeyDown={(event) => { if (event.key === "Tab" && !event.shiftKey) { event.preventDefault(); focusSaleSearch(); } }} type="number" min="0" max="100" step="0.01" onBlur={event => { if (!event.relatedTarget?.closest(".purchase-save-top,.purchase-save-mobile")) warnIfSellingAtLoss(row); }} value={row.discountPercent ?? (lineGross(row) ? Number((100 * lineDiscount(row) / lineGross(row)).toFixed(2)) : 0)} onChange={(e) => updateItem(row.lineId, "discountPercent", e.target.value)} /></label>
                   <div className="sale-wholesale-total"><strong>{lineTotal(row).toFixed(2)}</strong></div>
+                  <label className="sale-wholesale-cell sale-wholesale-stock"><span className="sale-wholesale-mobile-label">{t.stock}</span><input aria-label={t.stock} type="text" readOnly value={formatQuantity(maxPiecesForLine(row))} tabIndex={-1} /></label>
                   <button className="sale-wholesale-remove" type="button" tabIndex={-1} title={t.remove} aria-label={t.remove} onKeyDown={(event) => handleSaleRemoveKeyDown(event, index)} onClick={() => removeItem(row.lineId)}><Trash2 size={17} /></button>
                 </article>
               ))}

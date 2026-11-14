@@ -37,6 +37,13 @@
   font-weight: 900;
 }
 
+@media screen {
+
+  .asset-detail-header > div:first-child > span {
+  font-size: 13px;
+  }
+}
+
 .asset-detail-header h1 {
   margin: 0 0 6px;
   color: #111827;
@@ -296,6 +303,13 @@
   font-weight: 800;
 }
 
+@media screen {
+
+  .asset-insight-summary span {
+  font-size: 13px;
+  }
+}
+
 .asset-insight-summary strong {
   color: #111827;
   font-size: 20px;
@@ -346,6 +360,13 @@
   color: #64748b;
   font-size: 11px;
   font-weight: 900;
+}
+
+@media screen {
+
+  .asset-insight-table-wrap th {
+  font-size: 13px;
+  }
 }
 
 .asset-insight-table-wrap td {
@@ -413,6 +434,13 @@
   color: #64748b;
   font-size: 11px;
   font-weight: 800;
+}
+
+@media screen {
+
+  .asset-detail-table-card th {
+  font-size: 13px;
+  }
 }
 
 .asset-detail-table-card td {
@@ -558,6 +586,13 @@
   font-size: 11px;
 }
 
+@media screen {
+
+  .asset-repair-result-content {
+  font-size: 13px;
+  }
+}
+
 .asset-repair-result-content strong {
   color: #92400e;
   font-weight: 900;
@@ -604,6 +639,14 @@
   font-weight: 850;
   line-height: 1;
   white-space: nowrap;
+}
+
+@media screen {
+
+  .asset-result-inline-btn,
+.asset-result-inline-badge {
+  font-size: 13px;
+  }
 }
 
 .asset-result-inline-btn {
@@ -769,6 +812,13 @@
   color: #475569;
   font-size: 11px;
   font-weight: 850;
+}
+
+@media screen {
+
+  .asset-movement-badge {
+  font-size: 13px;
+  }
 }
 
 .asset-movement-badge.purchase {
@@ -967,6 +1017,13 @@
   font-weight: 800;
 }
 
+@media screen {
+
+  .asset-balance-image-field > div {
+  font-size: 12px;
+  }
+}
+
 .asset-balance-image-field img {
   width: 100%;
   height: 100%;
@@ -988,6 +1045,13 @@
   font-size: 11px;
   font-weight: 800;
   cursor: pointer;
+}
+
+@media screen {
+
+  .asset-balance-image-field button {
+  font-size: 13px;
+  }
 }
 
 .asset-waste-picker {
@@ -1077,6 +1141,14 @@
   font-weight: 700;
 }
 
+@media screen {
+
+  .asset-waste-unit span,
+.asset-waste-unit em {
+  font-size: 13px;
+  }
+}
+
 .asset-waste-unit b {
   color: #9f1239;
   font-size: 12px;
@@ -1155,6 +1227,14 @@
   font-weight: 800;
 }
 
+@media screen {
+
+  .asset-movement-detail-grid span,
+.asset-movement-units span {
+  font-size: 13px;
+  }
+}
+
 .asset-movement-detail-grid strong,
 .asset-movement-units strong {
   display: block;
@@ -1194,6 +1274,13 @@
   color: #64748b;
   font-size: 11px;
   font-weight: 750;
+}
+
+@media screen {
+
+  .asset-movement-units small {
+  font-size: 13px;
+  }
 }
 
 .asset-movement-units button {
@@ -1288,6 +1375,13 @@
   line-height: 1.5;
 }
 
+@media screen {
+
+  .asset-edit-unit-section-header p {
+  font-size: 13px;
+  }
+}
+
 .asset-edit-unit-section-header > span {
   flex: 0 0 auto;
   display: inline-flex;
@@ -1299,6 +1393,13 @@
   color: #4338ca;
   font-size: 11px;
   font-weight: 900;
+}
+
+@media screen {
+
+  .asset-edit-unit-section-header > span {
+  font-size: 13px;
+  }
 }
 
 .asset-edit-unit-table-wrap {
@@ -1331,6 +1432,14 @@
   text-overflow: ellipsis;
 }
 
+@media screen {
+
+  .asset-edit-unit-table th,
+.asset-edit-unit-table td {
+  font-size: 13px;
+  }
+}
+
 .asset-edit-unit-table th {
   position: sticky;
   top: 0;
@@ -1341,6 +1450,13 @@
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+}
+
+@media screen {
+
+  .asset-edit-unit-table th {
+  font-size: 12px;
+  }
 }
 
 .asset-edit-unit-table th:first-child,
@@ -1392,6 +1508,13 @@
   font-weight: 900;
 }
 
+@media screen {
+
+  .asset-edit-unit-status {
+  font-size: 12px;
+  }
+}
+
 .asset-edit-unit-status.current {
   background: #e0e7ff;
   color: #4338ca;
@@ -1413,6 +1536,14 @@
   font-size: 11px;
   font-style: normal;
   font-weight: 750;
+}
+
+@media screen {
+
+  .asset-edit-unit span,
+.asset-edit-unit em {
+  font-size: 13px;
+  }
 }
 
 .asset-detail-form-grid input,
@@ -1874,6 +2005,12 @@ body.dark-mode
   font-size: 11px;
   font-weight: 700;
 }
+@media screen {
+
+  .asset-detail-stock-hint {
+  font-size: 13px;
+  }
+}
 
 .asset-detail-value-hint {
   display: block;
@@ -2012,6 +2149,13 @@ body.dark-mode .asset-edit-unit-status.available {
   line-height: 1.5;
 }
 
+@media screen {
+
+  .asset-delete-movement-modal .asset-detail-modal-header p {
+  font-size: 13px;
+  }
+}
+
 .asset-delete-movement-modal .asset-detail-modal-close {
   width: 34px;
   height: 34px;
@@ -2035,6 +2179,13 @@ body.dark-mode .asset-edit-unit-status.available {
   line-height: 1.5;
 }
 
+@media screen {
+
+  .asset-delete-movement-modal .asset-delete-warning span {
+  font-size: 13px;
+  }
+}
+
 .asset-delete-movement-modal .asset-detail-modal-actions {
   gap: 8px;
   padding-top: 14px;
@@ -2049,6 +2200,15 @@ body.dark-mode .asset-edit-unit-status.available {
   padding: 0 14px;
   border-radius: 10px;
   font-size: 11px;
+}
+
+@media screen {
+
+  .asset-delete-movement-modal
+  .asset-detail-modal-actions
+  button {
+  font-size: 13px;
+  }
 }@media (max-width: 600px) {
   .asset-delete-movement-modal {
     width: 100%;
@@ -2183,11 +2343,25 @@ body.dark-mode .asset-detail-table-card .asset-route-arrow span {
   font-size: 11px !important;
 }
 
+@media screen {
+
+  .asset-transfer-row-amounts input {
+  font-size: 13px !important;
+  }
+}
+
 .asset-transfer-row-amounts b {
   margin-top: 1px;
   font-size: 11px;
   line-height: 1.1;
   text-align: right;
+}
+
+@media screen {
+
+  .asset-transfer-row-amounts b {
+  font-size: 13px;
+  }
 }
 /* =========================================
    Purchase Edit Modal
@@ -2301,6 +2475,13 @@ body.dark-mode .asset-detail-table-card .asset-route-arrow span {
   cursor: pointer;
 }
 
+@media screen {
+
+  .asset-edit-image-preview button {
+  font-size: 13px;
+  }
+}
+
 .asset-edit-image-preview button:hover {
   background: #fecaca;
 }
@@ -2339,6 +2520,13 @@ body.dark-mode .asset-detail-table-card .asset-route-arrow span {
   line-height: 1.5;
 }
 
+@media screen {
+
+  .asset-edit-unit-section-header p {
+  font-size: 13px;
+  }
+}
+
 .asset-edit-unit-section-header > span {
   flex: 0 0 auto;
   display: inline-flex;
@@ -2351,6 +2539,13 @@ body.dark-mode .asset-detail-table-card .asset-route-arrow span {
   color: #4338ca;
   font-size: 11px;
   font-weight: 900;
+}
+
+@media screen {
+
+  .asset-edit-unit-section-header > span {
+  font-size: 13px;
+  }
 }
 
 .asset-purchase-identity-card {
@@ -2387,6 +2582,13 @@ body.dark-mode .asset-detail-table-card .asset-route-arrow span {
   font-weight: 900;
 }
 
+@media screen {
+
+  .asset-purchase-identity-card-header span {
+  font-size: 12px;
+  }
+}
+
 .asset-purchase-identity-card
   .asset-detail-form-grid {
   grid-template-columns:
@@ -2399,6 +2601,14 @@ body.dark-mode .asset-detail-table-card .asset-route-arrow span {
   input[type="file"] {
   padding: 8px;
   font-size: 11px;
+}
+
+@media screen {
+
+  .asset-purchase-identity-card
+  input[type="file"] {
+  font-size: 13px;
+  }
 }
 
 /* Modal footer */
@@ -2577,6 +2787,13 @@ body.dark-mode
   font-size: 11px;
   font-weight: 850;
   white-space: nowrap;
+}
+
+@media screen {
+
+  .asset-movement-legend-item {
+  font-size: 13px;
+  }
 }
 
 .asset-movement-legend-item i {

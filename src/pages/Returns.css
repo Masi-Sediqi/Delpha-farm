@@ -10,3 +10,9 @@
 body.returns-modal-open{overflow:hidden}body.returns-modal-open .sidebar,body.returns-modal-open .app-header,body.returns-modal-open header{pointer-events:none;user-select:none}
 @media(max-width:760px){.returns-page{padding:14px}.returns-head,.returns-card-head{align-items:stretch;flex-direction:column}.returns-search{max-width:none}.returns-overlay{padding:5px}.returns-modal{width:100%;max-height:calc(100vh - 10px);border-radius:12px}.returns-grid{grid-template-columns:1fr}.returns-wide{grid-column:auto}.returns-line{grid-template-columns:1fr 1fr}.returns-line strong{grid-column:1/-1}.returns-footer button{flex:1}}
 @media(max-width:480px){.returns-line{grid-template-columns:1fr}.returns-footer{gap:7px}.returns-primary,.returns-secondary{padding-inline:10px}}
+
+.sale-return-line select { width:100%; min-height:39px; padding:8px; color:inherit; background:var(--input-bg,#fff); border:1px solid var(--border-color,#dbe2ea); border-radius:8px; }
+.sale-return-line strong small { display:block; margin-top:6px; font-weight:400; }
+.sale-return-line output { grid-column:1/-1; font-weight:700; }
+.returns-modal-head { flex-shrink:0; }
+.returns-body { min-height:0; }

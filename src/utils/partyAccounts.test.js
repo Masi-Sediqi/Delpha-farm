@@ -2,6 +2,37 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { partyAccountRows } from "./partyAccounts.js";
 
+test("payables show only outstanding supplier balances after purchases and settlement", () => {
+ const input = {
+  type: "supplier",
+  parties: [{ id: "partial" }, { id: "paid" }, { id: "unused" }],
+  invoices: [
+   { supplierId: "partial", totalAmount: 1000, paidAmount: 400 },
+   { supplierId: "paid", totalAmount: 500, paidAmount: 500 },
+  ],
+ };
+ const outstanding = () => partyAccountRows(input).filter(row => row.balance > 0);
+ assert.deepEqual(outstanding().map(row => [row.party.id, row.balance]), [["partial", 600]]);
+ input.payments = [{ supplierId: "partial", amount: 600 }];
+ assert.equal(outstanding().length, 0);
+});
+
+test("a partially paid sale is immediately receivable and settles through the journal without duplicate debt", () => {
+ const input = {
+  type: "customer",
+  parties: [{ id: "customer", fullName: "Customer", currency: "AFN" }],
+  invoices: [{ id: "sale", customerId: "customer", currency: "AFN", totalAmount: 1000, paidAmount: 300, remainingAmount: 700 }],
+ };
+ let row = partyAccountRows(input)[0];
+ assert.equal(row.balance, 700);
+ assert.equal(row.paid, 300);
+ assert.equal(row.focusInvoice.id, "sale");
+ input.journal = [{ partyType: "customer", partyId: "customer", currency: "AFN", direction: "in", amount: 700 }];
+ row = partyAccountRows(input)[0];
+ assert.equal(row.balance, 0);
+ assert.equal(partyAccountRows(input).filter(item => item.balance > 0 && item.invoices.length > 0).length, 0);
+});
+
 test("purchase, supplier payment, return and journal share one supplier balance", () => {
  const rows = partyAccountRows({type:"supplier",parties:[{id:"s",openingBalance:100}],invoices:[{id:"p",supplierId:"s",totalAmount:1000,paidAmount:200}],payments:[{supplierId:"s",amount:100}],returns:[{supplierId:"s",purchaseId:"p",totalAmount:50}],journal:[{partyType:"supplier",partyId:"s",direction:"out",amount:300},{partyType:"supplier",partyId:"s",direction:"in",amount:20},{partyType:"customer",partyId:"s",direction:"in",amount:9999}]});
  assert.equal(rows.length,1); assert.equal(rows[0].balance,470); assert.equal(rows[0].focusInvoice.id,"p");

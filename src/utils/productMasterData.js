@@ -17,6 +17,16 @@ export const defaultProductCountries = [
 
 export const normalizeMasterName = (value) => String(value || "").trim().toLowerCase();
 
+export function isProductMasterInUse(type, option, products) {
+  if (!option) return false;
+  const names = new Set([option.name, option.en, option.fa, option.ps].filter(Boolean).map(normalizeMasterName));
+  return products.some((product) => type === "country"
+    ? (Boolean(product.countryId) && String(product.countryId) === String(option.id))
+      || names.has(normalizeMasterName(product.madeIn || product.countryName))
+    : [product.manufacturerId, product.manufacturerCompanyId, product.companyId].some((id) => id != null && String(id) === String(option.id))
+      || [product.manufacturerName, product.companyName].some((name) => Boolean(name) && names.has(normalizeMasterName(name))));
+}
+
 export const groupNameById = (groups, id, fallback = "") => {
   const row = (groups || []).find((item) => String(item.id) === String(id));
   return row?.name || row?.title || fallback || "";

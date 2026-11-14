@@ -1,5 +1,6 @@
-import { countryNameById, groupNameById } from "./productMasterData";
-const normalize = (value) => String(value ?? "").toLowerCase().trim();
+import { formatAfghanDate } from "./afghanDate.js";
+import { countryNameById, groupNameById } from "./productMasterData.js";
+const normalize = (value) => String(value ?? "").normalize("NFKC").toLowerCase().replace(/[يى]/g, "ی").replace(/ك/g, "ک").replace(/[\u064B-\u065F\u0670]/g, "").replace(/[۰-۹]/g, digit => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit))).replace(/[٠-٩]/g, digit => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit))).trim();
 const compact = (value) => normalize(value).replace(/[^\p{L}\p{N}]+/gu, "");
 
 export const money = (value) => Number(value || 0).toLocaleString("en-US", { maximumFractionDigits: 2 });
@@ -33,12 +34,12 @@ const row = ({ type, title, subtitle, path, record, details = [] }) => ({
   subtitle: subtitle || "",
   path,
   record,
-  details: [`Date: ${String(dateOf(record) || "-").slice(0, 10) || "-"}`, ...details],
+  details: [`Date: ${formatAfghanDate(dateOf(record))}`, ...details],
 });
 
 export function buildSystemSearchResults(data, query, options = {}) {
   const keyword = String(query || "").trim();
-  if (keyword.length < 2) return [];
+  if (keyword.length < 1) return [];
 
   const {
     products = [],
@@ -66,7 +67,7 @@ export function buildSystemSearchResults(data, query, options = {}) {
       type: "Product",
       title: item.productName || item.name || "Product",
       subtitle: [group, country].filter(Boolean).join(" · "),
-      path: `/product-detail/${item.id}`,
+      path: "/products",
       record: item,
       details: [
         `Group: ${group}`,
@@ -82,7 +83,7 @@ export function buildSystemSearchResults(data, query, options = {}) {
       type: "Supplier",
       title: item.supplierName || item.companyName || item.name || "Supplier",
       subtitle: item.contactPerson || item.phone || "",
-      path: `/supplier-detail/${item.id}`,
+      path: "/suppliers",
       record: item,
       details: [`Phone: ${item.phone || item.contactNumber || "-"}`, `Currency: ${item.currency || "AFN"}`],
     }));
@@ -93,7 +94,7 @@ export function buildSystemSearchResults(data, query, options = {}) {
       type: "Customer",
       title: item.fullName || item.customerName || item.companyName || item.name || "Customer",
       subtitle: item.phone || item.email || "",
-      path: `/customer-detail/${item.id}`,
+      path: "/customer-registry",
       record: item,
       details: [`Phone: ${item.phone || "-"}`, `Email: ${item.email || "-"}`],
     }));
@@ -115,7 +116,7 @@ export function buildSystemSearchResults(data, query, options = {}) {
       type: "Sale",
       title: item.invoiceNumber || item.billNumber || "Sale",
       subtitle: item.customerName || "",
-      path: item.id ? `/sale-detail/${item.id}` : "/sales-register",
+      path: "/sales-register",
       record: item,
       details: [`Customer: ${item.customerName || "-"}`, `Total: ${money(item.totalAmount || item.grandTotal || item.total || 0)} ${item.currency || "AFN"}`],
     }));
@@ -144,4 +145,11 @@ export function buildSystemSearchResults(data, query, options = {}) {
   });
 
   return results.slice(0, limit);
+}
+
+export function searchResultNavigation(result) {
+  const kind = result.type === "Payment"
+    ? (result.record.customerId ? "customer-payment" : "supplier-payment")
+    : result.type.toLowerCase();
+  return { state: { searchTarget: { kind, id: String(result.record.id), token: `${Date.now()}-${Math.random()}` } } };
 }

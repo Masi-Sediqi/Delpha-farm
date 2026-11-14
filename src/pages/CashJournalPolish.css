@@ -43,6 +43,11 @@
   padding:7px 8px 0;
   font-size:9px;
 }
+@media screen{
+  .journal-entry-head{
+  font-size:12px;
+  }
+}
 .journal-entry-list{
   gap:6px;
   align-content:start;
@@ -70,10 +75,20 @@
   font-size:8px;
   line-height:1.2;
 }
+@media screen{
+  .journal-auto-text{
+  font-size:12px;
+  }
+}
 .journal-add-row{
   height:34px;
   border-radius:6px;
   font-size:11px;
+}
+@media screen{
+  .journal-add-row{
+  font-size:13px;
+  }
 }
 .journal-party-results{
   top:39px;

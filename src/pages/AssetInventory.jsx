@@ -2,8 +2,6 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import { notify } from "../utils/notify";
-import TablePagination from "../components/TablePagination";
-import { useTablePagination } from "../hooks/useTablePagination";
 import {
   buildAssetInventoryInsights,
   sumAssetRows,
@@ -142,7 +140,6 @@ const [categoryMenu, setCategoryMenu] = useState(null);
       );
     });
 
-  const assetPagination = useTablePagination(filteredAssets, search);
 
   const money = (value) => Number(value || 0).toLocaleString("en-US");
 
@@ -762,7 +759,7 @@ const syncLinkedAssetName = async (previousAsset, nextAsset) => {
             </thead>
 
             <tbody>
-              {assetPagination.pageItems.map((asset) => {
+              {filteredAssets.map((asset) => {
                 const index = asset.originalIndex;
 
                 return (
@@ -798,7 +795,7 @@ const syncLinkedAssetName = async (previousAsset, nextAsset) => {
                     <td>{asset.serialNumber || "-"}</td>
                     <td>{asset.quantity ?? 0}</td>
                     <td>
-                  
+
   <div className="asset-action-cell">
     <button
       type="button"
@@ -870,14 +867,7 @@ const syncLinkedAssetName = async (previousAsset, nextAsset) => {
           </table>
         </div>
 
-        <TablePagination
-          page={assetPagination.page}
-          totalPages={assetPagination.totalPages}
-          setPage={assetPagination.setPage}
-          totalItems={filteredAssets.length}
-          pageSize={assetPagination.pageSize}
-          setPageSize={assetPagination.setPageSize}
-        />
+
       </div>
 
       {showModal && (
@@ -1062,7 +1052,7 @@ const syncLinkedAssetName = async (previousAsset, nextAsset) => {
                   />
                 </div>
 
-                
+
 
                 <div className="asset-form-group">
   <label>Identity Tracking</label>

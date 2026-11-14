@@ -1,3 +1,4 @@
+import { formatAfghanDate } from "../utils/afghanDate";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Printer } from "lucide-react";
@@ -79,7 +80,7 @@ export default function PrintReceivablesBatch() {
       <article className="pb-print-paper">
         <header>
           <div className="brand"><strong>APG</strong><span>Pharmacy & Medicine Management System</span></div>
-          <div className="heading"><h1>{t.title}</h1><p>{t.ref}: <b>{batch.reference}</b> &nbsp; • &nbsp; {t.date}: <b>{batch.date}</b></p></div>
+          <div className="heading"><h1>{t.title}</h1><p>{t.ref}: <b>{batch.reference}</b> &nbsp; • &nbsp; {t.date}: <b>{formatAfghanDate(batch.date)}</b></p></div>
         </header>
         <div className="pb-print-meta">
           <div><span>{t.count}</span><b>{batch.payments?.length || 0}</b></div>

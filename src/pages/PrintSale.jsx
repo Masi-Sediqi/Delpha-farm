@@ -1,3 +1,4 @@
+import { formatAfghanDate } from "../utils/afghanDate";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Printer } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -106,7 +107,7 @@ export default function PrintSale() {
         <section className="sale-invoice-meta">
           <div><span>{t.invoiceNo}</span><strong>{sale.invoiceNumber || sale.id || "—"}</strong></div>
           <div><span>{t.customer}</span><strong>{customerName}</strong></div>
-          <div><span>{t.date}</span><strong>{sale.saleDate || sale.createdAt || "—"}</strong></div>
+          <div><span>{t.date}</span><strong>{formatAfghanDate(sale.saleDate || sale.createdAt || "—")}</strong></div>
           <div><span>{t.currency}</span><strong>{currency}</strong></div>
           <div><span>{t.paymentStatus}</span><strong>{remaining > 0 ? t.debt : t.paid}</strong></div>
         </section>

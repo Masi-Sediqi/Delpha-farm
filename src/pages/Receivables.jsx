@@ -137,7 +137,7 @@ export default function Receivables() {
     };
   }, [actionMenu]);
 
-  const rows = useMemo(() => partyAccountRows({type:"customer",parties:customers,invoices:sales,returns:saleReturns,payments:customerPayments,journal:partyCashTransactions}).map(row=>({customer:row.party,invoiceCount:row.invoices.length,totalSold:row.total,totalPaid:row.paid,balance:row.balance,currency:row.currency,focusSale:row.focusInvoice})), [customers,sales,saleReturns,customerPayments,partyCashTransactions]);
+  const rows = useMemo(() => partyAccountRows({type:"customer",parties:customers,invoices:sales,returns:saleReturns,payments:customerPayments,journal:partyCashTransactions}).filter(row=>row.balance>0).map(row=>({customer:row.party,invoiceCount:row.invoices.length,totalSold:row.total,totalPaid:row.paid,balance:row.balance,currency:row.currency,focusSale:row.focusInvoice})), [customers,sales,saleReturns,customerPayments,partyCashTransactions]);
   const totalText = field => [...new Set(rows.map(row=>row.currency))].map(code=>`${rows.filter(row=>row.currency===code).reduce((sum,row)=>sum+(field==="balance"?Math.max(row[field],0):row[field]),0).toLocaleString(undefined,{maximumFractionDigits:2})} ${code}`).join(" · ") || "—";
 
   const filteredRows = rows.filter(({ customer }) => {

@@ -1,11 +1,12 @@
+import { useSearchResultReset } from "../hooks/useSearchResultReset";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { createPortal } from "react-dom";
-import { CopyPlus, Edit3, PackagePlus, Plus, Search, Trash2, X } from "lucide-react";
+import { CopyPlus, Edit3, PackagePlus, Plus, Minus, Search, Trash2, X } from "lucide-react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import { confirmAction } from "../utils/confirmDialog";
 import { notify } from "../utils/notify";
-import { countryNameById, groupNameById, makeMasterId, normalizeMasterName } from "../utils/productMasterData";
+import { countryNameById, groupNameById, makeMasterId, normalizeMasterName, isProductMasterInUse } from "../utils/productMasterData";
 import { productPricePerPiece } from "../utils/piecePricing";
 import { writeAtomicFinanceBatch } from "../utils/browserStorage";
 import { updateProductDetails, preserveOpeningPieces } from "../utils/productDetails";
@@ -16,6 +17,10 @@ const languageKey = "afghan-power-language";
 const translations = {
   en: {
     title: "Products",
+    deleteCountry: "Delete selected country",
+    deleteManufacturer: "Delete selected company",
+    masterInUse: "This country or company is used by a product and cannot be deleted.",
+    masterDeleted: "Deleted successfully.",
     subtitle: "Register and manage products.",
     addProduct: "Add Product",
     totalProducts: "Total Products",
@@ -146,6 +151,10 @@ const translations = {
     eur: "Euro (EUR)",
   },
   fa: {
+    deleteCountry: "حذف کشور انتخاب‌شده",
+    deleteManufacturer: "حذف کمپنی انتخاب‌شده",
+    masterInUse: "این کشور یا کمپنی در اجناس استفاده شده و قابل حذف نیست.",
+    masterDeleted: "با موفقیت حذف شد.",
     title: "محصولات",
     subtitle: "محصولات را ثبت و مدیریت کنید.",
     addProduct: "درج جنس جدید",
@@ -277,6 +286,10 @@ const translations = {
     eur: "یورو (EUR)",
   },
   ps: {
+    deleteCountry: "ټاکل شوی هېواد حذف کړئ",
+    deleteManufacturer: "ټاکل شوې کمپنی حذف کړئ",
+    masterInUse: "دا هېواد یا کمپنی په توکو کې کارول شوې او حذف کېدای نشي.",
+    masterDeleted: "په بریالیتوب حذف شو.",
     title: "محصولات",
     subtitle: "د خرڅلاو توکي ثبت او اداره کړئ.",
     addProduct: "نوی توکی ثبتول",
@@ -448,7 +461,7 @@ const emptyForm = {
 function Products() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [products, setProducts] = useJsonCollection("products");
+  const [products, setProducts, , productsLoaded] = useJsonCollection("products");
   const [stockMovements, , , stockLoaded] = useJsonCollection("stockMovements");
   const [productGroups] = useJsonCollection("productGroups");
   const [suppliers] = useJsonCollection("suppliers");
@@ -457,6 +470,7 @@ function Products() {
   const [manufacturerCompanies, setManufacturerCompanies] = useJsonCollection("manufacturerCompanies");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [search, setSearch] = useState("");
+  useSearchResultReset(setSearch);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState(emptyForm);
@@ -662,6 +676,27 @@ function Products() {
     else setBatchForms((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, manufacturerName: row.name } : item));
   };
 
+  const deleteMasterOption = async (type, item) => {
+    const option = type === "country"
+      ? productCountries.find((entry) => String(entry.id) === String(item.countryId))
+      : manufacturerCompanies.find((entry) => normalizeMasterName(entry.name) === normalizeMasterName(item.manufacturerName));
+    if (!option || !productsLoaded) return;
+    if (isProductMasterInUse(type, option, products)) {
+      notify(t.masterInUse, "warning");
+      return;
+    }
+    const saved = type === "country"
+      ? await setProductCountries(productCountries.filter((entry) => String(entry.id) !== String(option.id)))
+      : await setManufacturerCompanies(manufacturerCompanies.filter((entry) => String(entry.id) !== String(option.id)));
+    if (!saved) return;
+    const clearOption = (row) => type === "country"
+      ? (String(row.countryId) === String(option.id) ? { ...row, countryId: "" } : row)
+      : (normalizeMasterName(row.manufacturerName) === normalizeMasterName(option.name) ? { ...row, manufacturerName: "" } : row);
+    setFormData(clearOption);
+    setBatchForms((rows) => rows.map(clearOption));
+    notify(t.masterDeleted, "success", { silent: true });
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setFieldErrors({});
@@ -787,7 +822,6 @@ function Products() {
             <thead>
               <tr>
                 <th>{t.productName}</th>
-                <th>{language === "fa" ? "نام انگلیسی" : "English Name"}</th>
                 <th>{t.group}</th>
                 <th>{t.cartonSize}</th>
                 <th>{t.productUnit}</th>
@@ -800,11 +834,10 @@ function Products() {
             </thead>
             <tbody>
               {filteredProducts.map((product) => (
-                <tr key={product.id} className="sales-product-clickable-row" role="button" tabIndex={0} onClick={() => navigate(`/product-detail/${product.id}`)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") navigate(`/product-detail/${product.id}`); }}>
+                <tr data-search-kind="product" data-search-id={product.id} key={product.id} className="sales-product-clickable-row" role="button" tabIndex={0} onClick={() => navigate(`/product-detail/${product.id}`)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") navigate(`/product-detail/${product.id}`); }}>
                   <td className="sales-product-name-cell">
                     <div><strong>{product.productName}</strong>{product.description && <small>{product.description}</small>}</div>
                   </td>
-                  <td>{product.productNameEn || "—"}</td>
                   <td><span className="sales-product-group-badge">{groupLabel(product)}</span></td>
                   <td>{product.cartonSize || "—"}</td>
                   <td>{t[productUnitOptions.find((option) => option.value === (product.productUnit || "piece"))?.labelKey] || product.productUnit || t.unitPiece}</td>
@@ -842,9 +875,9 @@ function Products() {
                 <div className="sales-product-batch-grid">
                   {(editingId ? [formData] : batchForms).map((item, index) => (
                     <section className="sales-product-batch-card" key={index}>
-                      {!editingId && <header>
-                        <button type="button" tabIndex={-1} onClick={() => removeBatchForm(index)} aria-label={t.delete} title={t.delete}><Trash2 size={15} /></button>
-                      </header>}
+                      <header>
+                        {editingId ? <strong>{t.editTitle}</strong> : <button type="button" tabIndex={-1} onClick={() => removeBatchForm(index)} aria-label={t.delete} title={t.delete}><Trash2 size={15} /></button>}
+                      </header>
                       <div className="sales-product-batch-fields">
                         <label className="sales-product-field sales-product-field-wide">
                           <span>{t.productName} *</span>
@@ -859,14 +892,14 @@ function Products() {
                           <span className="sales-product-batch-select"><select name="countryId" value={item.countryId || ""} onChange={(event) => updateBatchForm(index, event)}>
                               <option value="">{t.selectCountry}</option>
                               {allCountries.map((country) => <option key={country.id} value={country.id}>{country[language] || country.en || country.name}</option>)}
-                            </select><button type="button" onClick={() => addBatchMasterOption("country", index)} title={t.addNewCountry} aria-label={t.addNewCountry}><Plus size={14} /></button></span>
+                            </select><button type="button" onClick={() => addBatchMasterOption("country", index)} title={t.addNewCountry} aria-label={t.addNewCountry}><Plus size={14} /></button><button type="button" className="sales-product-master-delete" disabled={!productsLoaded || !item.countryId} onClick={() => deleteMasterOption("country", item)} title={t.deleteCountry} aria-label={t.deleteCountry}><Minus size={14} /></button></span>
                         </label>
                         <label className="sales-product-field">
                           <span>{t.manufacturerCompany}</span>
                           <span className="sales-product-batch-select"><select name="manufacturerName" value={item.manufacturerName || ""} onChange={(event) => updateBatchForm(index, event)}>
                               <option value="">{t.selectManufacturerCompany}</option>
                               {manufacturerOptions.map((entry) => <option key={entry.id} value={entry.name}>{entry.name}</option>)}
-                            </select><button type="button" onClick={() => addBatchMasterOption("manufacturer", index)} title={t.addManufacturerCompany} aria-label={t.addManufacturerCompany}><Plus size={14} /></button></span>
+                            </select><button type="button" onClick={() => addBatchMasterOption("manufacturer", index)} title={t.addManufacturerCompany} aria-label={t.addManufacturerCompany}><Plus size={14} /></button><button type="button" className="sales-product-master-delete" disabled={!productsLoaded || !manufacturerCompanies.some((entry) => normalizeMasterName(entry.name) === normalizeMasterName(item.manufacturerName))} onClick={() => deleteMasterOption("manufacturer", item)} title={t.deleteManufacturer} aria-label={t.deleteManufacturer}><Minus size={14} /></button></span>
                         </label>
                         <label className="sales-product-field">
                           <span>{t.currency}</span>

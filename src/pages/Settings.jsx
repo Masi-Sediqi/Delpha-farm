@@ -1,55 +1,25 @@
-import PageLoader from "../components/PageLoader";
-import { mergeBrowserCollections } from "../utils/browserStorage";
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { exchangeCurrencies, exchangeRate, updateExchangePair } from "../utils/exchangeRates";
+
+import { useEffect,  useState } from "react";
+
 import {
   Banknote,
   Building2,
-  Database,
-  Download,
-  Edit3,
-  LockKeyhole,
+
   Image,
-  Copy,
-  MessageCircle,
-  Network,
-  Printer,
+
   Save,
   Trash2,
-  Upload,
-  UserPlus,
-  Volume2,
-  Play,
-  Users,
-  X,
+
 } from "lucide-react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
-import { downloadBackup, loadBackupCollectionNames } from "../utils/backup";
-import { writeBrowserCollection } from "../utils/browserStorage";
-import { IS_DEMO, APP_MODE } from "../config/appConfig";
+
 import { notify } from "../utils/notify";
-import { confirmAction } from "../utils/confirmDialog";
-import { apiUrl } from "../utils/api";
-import { PERMISSION_ACTIONS, PERMISSION_MODULES, canViewModule, createEmptyPermissions, createFullPermissions, hasPermission } from "../utils/permissions";
-import "./Settings.css";
 
 const defaultSystemName = "APG";
 const defaultSystemSubtitle = "Pharmacy & Medicine Management System";
 const languageStorageKey = "afghan-power-language";
-const notificationSoundStorageKey = "afghan-power-notification-sound";
-const notificationSoundEnabledKey = "afghan-power-notification-sound-enabled";
-const notificationSounds = [
-  "bell.mp4",
-  "blip.mov",
-  "chime.mov",
-  "click.mp4",
-  "ding.mp4",
-  "ping.mp4",
-  "pop.mov",
-  "sparkle.mp4",
-  "water-drop.mp4",
-  "whoosh.mp4",
-];
+
 const settingsLabels = {
   en: {
     company: "Company",
@@ -98,19 +68,8 @@ function applyCompanyThemeIdentity(companyName = "") {
   document.body.dataset.companyName = source;
 }
 
-function Settings({ accounts = [], setAccounts, currentUser }) {
+function Settings() {
   const [settings, setSettings] = useJsonCollection("settings");
-  const [serverAccounts, setServerAccounts] = useState([]);
-  const isCentralUsers = !IS_DEMO;
-  const refreshServerUsers = async () => {
-    const response = await fetch("/api/admin/users", { credentials: "include", cache: "no-store" });
-    if (!response.ok) throw new Error(`Cannot load users: HTTP ${response.status}`);
-    setServerAccounts(await response.json());
-  };
-  useEffect(() => {
-    if (isCentralUsers && currentUser?.role === "Admin") refreshServerUsers().catch((error) => notify(error.message, "error"));
-  }, [isCentralUsers, currentUser?.id]);
-  const visibleAccounts = isCentralUsers ? serverAccounts : accounts;
   const current = settings[0] || {};
 
   const fontChoices = [
@@ -137,36 +96,29 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
   const [companyPhone, setCompanyPhone] = useState("");
   const [currency, setCurrency] = useState("AFN");
   const [exchangeRates, setExchangeRates] = useState({ USD: "", EUR: "", INR: "" });
+  const [rateFrom, setRateFrom] = useState("EUR");
+  const [rateTo, setRateTo] = useState("USD");
+  const [pairValue, setPairValue] = useState("");
+  const rateText = (value) => Number(value).toLocaleString("en-US", { maximumFractionDigits: 8 });
+  const applyPair = () => {
+    try {
+      setExchangeRates(updateExchangePair(exchangeRates, rateFrom, rateTo, pairValue));
+      setPairValue("");
+    } catch (error) {
+      notify(error.message === "missing-base-rate"
+        ? (language === "en" ? "First enter the AFN rate for either selected currency." : "ابتدا نرخ یکی از دو ارز انتخاب‌شده را در مقابل افغانی وارد کنید.")
+        : (language === "en" ? "Enter a positive rate and select two different currencies." : "دو ارز متفاوت و نرخ بزرگ‌تر از صفر انتخاب کنید."), "warning");
+    }
+  };
   const [currencyDecimals, setCurrencyDecimals] = useState({
     AFN: 2,
     USD: 2,
     EUR: 2,
     PKR: 2,
   });
-  const [securityPassword, setSecurityPassword] = useState("");
   const [logo, setLogo] = useState("");
-  const [autoBackupMode, setAutoBackupMode] = useState("off");
-  const [autoBackupCustomDays, setAutoBackupCustomDays] = useState("7");
-  const [appDataBusy, setAppDataBusy] = useState(false);
-  const [isImportRunning, setIsImportRunning] = useState(false);
-  const importAbortRef = useRef(null);
-  const cancelImport = () => {
-    importAbortRef.current?.abort();
-    setIsImportRunning(false);
-    setAppDataBusy(false);
-  };
-  const [clearConfirm, setClearConfirm] = useState("");
-  const [showUserModal, setShowUserModal] = useState(false);
-  const [editingUserId, setEditingUserId] = useState(null);
-  const [userForm, setUserForm] = useState({ fullName: "", email: "", password: "", confirmPassword: "", permissions: createEmptyPermissions() });
   const [language, setLanguage] = useState(
     () => localStorage.getItem(languageStorageKey) || "en"
-  );
-  const [notificationSound, setNotificationSound] = useState(
-    () => localStorage.getItem(notificationSoundStorageKey) || "chime.mov"
-  );
-  const [notificationSoundEnabled, setNotificationSoundEnabled] = useState(
-    () => localStorage.getItem(notificationSoundEnabledKey) !== "false"
   );
   const t = settingsLabels[language] || settingsLabels.en;
 
@@ -191,21 +143,10 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
       decimalPlaces: "Decimal places", preview: "Preview", saveDecimals: "Save Decimal Settings",
       exchangeRateTitle: "Exchange Rates Against Afghani", exchangeRateDescription: "Enter how many Afghanis equal one unit of each foreign currency.",
       usdRate: "US Dollar", eurRate: "Euro", inrRate: "Indian Rupee", oneUnit: "1 {code} =", afnUnit: "AFN", saveExchangeRates: "Save Exchange Rates",
-      usersTab: "Users", usersTitle: "Users", usersDescription: "Create and manage the accounts that can sign in to this system.", addUser: "Add User", editUser: "Edit User", userName: "Name", email: "Email", password: "Password", confirmPassword: "Confirm Password", actions: "Actions", edit: "Edit", delete: "Delete", noUsers: "No user accounts found.", saveUser: "Save User", updateUser: "Update User", cancel: "Cancel", createUserHint: "Enter the user's account information.", editUserHint: "Update the account information. Leave password empty to keep the current password.", passwordOptional: "Leave empty to keep current password", activeAccount: "Current account", close: "Close",
-      networkTab: "Network", networkTitle: "Network Access", networkDescription: "Open this address on devices connected to the same Wi-Fi network.", networkIp: "Network IP", networkAddress: "Shared address", copyAddress: "Copy address", shareWhatsApp: "Share on WhatsApp", addressCopied: "Network address copied.", networkNotice: "The host computer must stay on and the app server must be running.",
-      permissionsTitle: "Module permissions", module: "Module", createPermission: "Create", editPermission: "Edit", deletePermission: "Delete", printPermission: "Print", allPermission: "All",
-      themeTab: "Theme Settings", printingTab: "Printing", securityTab: "Security", backupTab: "Backup", notificationSoundTab: "Notification Sound", notificationSoundTitle: "Notification Sound", notificationSoundDescription: "Choose the sound played whenever the system shows a notification.", soundEnabled: "Notification sound", soundOn: "On", soundOff: "Off", testSound: "Test", selectedSound: "Selected", saveSound: "Save Sound Settings", soundSaved: "Notification sound settings saved.",
+
       companyDescription: "Company information used across receipts, reports, login and print layouts.", subTitle: "Sub Title", companyAddressPlaceholder: "Kabul, Afghanistan", removeLogo: "Remove Logo", saveSettings: "Save Settings", logoPreviewAlt: "System logo preview", companyAddressFallback: "Company address",
-      masterPrintMode: "Master Print Mode (Gold + Black HD)", masterPrintDescription: "Premium polished configuration for reports and receipts.", proPrintMode: "Pro Print Mode (Unified HD)", proPrintDescription: "Optimised black quality printing with Dari and Pashto RTL support.", footerNotesBox: "Footer Notes Box", footerNotesDescription: "Add address, phone, warranty or custom footer details.", footerNotesEn: "Footer Notes Box (EN)", footerNotesDari: "Footer Notes (Dari)", footerNotesPashto: "Footer Notes (Pashto)", footerPlaceholderEn: "Address, phone number, warranty note, return policy...", footerPlaceholderDari: "آدرس، شماره تماس، شرایط ضمانت...", footerPlaceholderPashto: "آدرس، د تماس شمېره، د ضمانت شرایط...", printConfiguration: "Print Configuration", defaultPaperSize: "Default Paper Size", billingPaperSize: "Billing Paper Size", defaultOrientation: "Default Orientation", pageDensity: "Page Density", thermal80: "Thermal 80mm", portrait: "Portrait", landscape: "Landscape", normal: "Normal", compact: "Compact", savePrinting: "Save Printing",
-      securityTitle: "Security", securityDescription: "Set a password for protected settings and sensitive system actions.", setPassword: "Set Password", enterPassword: "Enter password", savePassword: "Save Password",
-      themeTitle: "Theme Settings", themeDescription: "Select one of the available interface themes. Each theme uses the company name as its visual signature.", themes: {
-        minimalism: ["Minimalism", "Clean, focused, distraction-free"],
-        "clay-minimalism": ["Graphite Mist", "Layered gray gradients with charcoal navigation"],
-        "black-white": ["Midnight Blue", "Deep navy surfaces with luminous blue accents"],
-        aurora: ["Aurora Flow", "Premium dark glass with company-colored aurora light"],
-      },
-      appDataTitle: "App Data", appDataDescription: "Export a backup, import a backup, or clear all saved app data.", demoEnvironment: "Demo Environment", productionEnvironment: "Production Environment", demoEnvironmentDescription: "Demo data is isolated from the customer production environment.", productionEnvironmentDescription: "Production data is isolated from the demo environment.", exportData: "Export Data", importData: "Import Data", automaticallyBackup: "Automatically Backup", automaticallyBackupDescription: "The system checks this schedule while the app is open and reports when a backup is created.", backupSchedule: "Backup Schedule", off: "Off", daily: "Daily", weekly: "Weekly", monthly: "Monthly", custom: "Custom", customIntervalDays: "Custom Interval (Days)", saveBackupSetting: "Save Backup Setting", clearDemoData: "Clear Demo Data", clearDemoInstruction: "Type CLEAR, then press Clear Demo Data.",
-      themeUpdated: "Theme updated successfully.", invalidLogo: "Please select an image file for the logo.", settingsSaved: "System settings saved successfully.", exportSuccess: "App data exported successfully.", exportError: "Unable to export app data.", invalidBackup: "This file does not contain valid app data.", importTitle: "Import App Data", importConfirm: "Import will replace {count} data table(s). Continue?", accessImportConfirm: "Import and merge the Access data? A backup of current data will be created first.", importSuccess: "App data imported successfully. Refresh the app to see all changes.", accessImportSuccess: "Access data imported successfully: {count} records were processed.", importError: "Unable to import app data. Please select a valid JSON, ACCDB, or ACCDE file.", clearDisabled: "Clear Data is disabled in Production mode.", clearTypeConfirm: "Type CLEAR to confirm data clearing.", clearAllTitle: "Clear All App Data", clearAllMessage: "This will clear all saved app data, including settings. This cannot be undone. Continue?", clearData: "Clear Data", clearSuccess: "App data cleared successfully. Refresh the app to start clean.", clearError: "Unable to clear app data.",
+
+       invalidLogo: "Please select an image file for the logo.", settingsSaved: "System settings saved successfully.",
     },
     fa: {
       pageTitle: "تنظیمات",
@@ -217,21 +158,10 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
       decimalPlaces: "خانه اعشاری", preview: "نمونه نمایش", saveDecimals: "ذخیره تنظیمات اعشار",
       exchangeRateTitle: "نرخ اسعار در مقابل افغانی", exchangeRateDescription: "مشخص کنید یک واحد از هر اسعار خارجی چند افغانی می‌شود.",
       usdRate: "دالر امریکایی", eurRate: "یورو", inrRate: "کلدار هندی", oneUnit: "1 {code} =", afnUnit: "افغانی", saveExchangeRates: "ذخیره نرخ اسعار",
-      usersTab: "کاربران", usersTitle: "کاربران", usersDescription: "اکانت‌هایی را که اجازه ورود به سیستم دارند ایجاد و مدیریت کنید.", addUser: "افزودن کاربر", editUser: "ویرایش کاربر", userName: "نام", email: "ایمیل", password: "پسورد", confirmPassword: "تکرار پسورد", actions: "عملیات", edit: "ویرایش", delete: "حذف", noUsers: "هیچ اکانت کاربری موجود نیست.", saveUser: "ذخیره کاربر", updateUser: "ذخیره تغییرات", cancel: "لغو", createUserHint: "معلومات اکانت کاربر را وارد کنید.", editUserHint: "معلومات اکانت را ویرایش کنید. برای حفظ پسورد فعلی، فیلد پسورد را خالی بگذارید.", passwordOptional: "برای حفظ پسورد فعلی خالی بگذارید", activeAccount: "اکانت فعلی", close: "بستن",
-      networkTab: "شبکه", networkTitle: "دسترسی از طریق شبکه", networkDescription: "این آدرس را در دستگاه‌های متصل به همین شبکه وای‌فای باز کنید.", networkIp: "IP شبکه", networkAddress: "آدرس اشتراک", copyAddress: "کپی آدرس", shareWhatsApp: "اشتراک در واتساپ", addressCopied: "آدرس شبکه کپی شد.", networkNotice: "کمپیوتر اصلی باید روشن باشد و سرور برنامه در حال اجرا بماند.",
-      permissionsTitle: "صلاحیت‌های بخش‌ها", module: "بخش", createPermission: "ثبت", editPermission: "ایدیت", deletePermission: "حذف", printPermission: "چاپ", allPermission: "همه",
-      themeTab: "تنظیمات پوسته", printingTab: "چاپ", securityTab: "امنیت", backupTab: "بکاپ", notificationSoundTab: "صدای هشدار", notificationSoundTitle: "صدای هشدار", notificationSoundDescription: "صدایی را انتخاب کنید که هنگام نمایش هر هشدار سیستم پخش شود.", soundEnabled: "صدای هشدار", soundOn: "روشن", soundOff: "خاموش", testSound: "تست", selectedSound: "انتخاب شده", saveSound: "ذخیره تنظیمات صدا", soundSaved: "تنظیمات صدای هشدار ذخیره شد.",
+
       companyDescription: "معلومات کمپنی که در رسیدها، گزارش‌ها، صفحه ورود و قالب‌های چاپ استفاده می‌شود.", subTitle: "عنوان فرعی", companyAddressPlaceholder: "کابل، افغانستان", removeLogo: "حذف لوگو", saveSettings: "ذخیره تنظیمات", logoPreviewAlt: "پیش‌نمایش لوگوی سیستم", companyAddressFallback: "آدرس کمپنی",
-      masterPrintMode: "حالت چاپ اصلی (طلایی + سیاه HD)", masterPrintDescription: "تنظیم حرفه‌ای و باکیفیت برای گزارش‌ها و رسیدها.", proPrintMode: "حالت چاپ حرفه‌ای (Unified HD)", proPrintDescription: "چاپ سیاه با کیفیت بهینه همراه با پشتیبانی راست‌به‌چپ دری و پشتو.", footerNotesBox: "بخش یادداشت پایانی", footerNotesDescription: "آدرس، شماره تماس، ضمانت یا توضیحات دلخواه فوتر را اضافه کنید.", footerNotesEn: "یادداشت فوتر (انگلیسی)", footerNotesDari: "یادداشت فوتر (دری)", footerNotesPashto: "یادداشت فوتر (پشتو)", footerPlaceholderEn: "آدرس، شماره تماس، یادداشت ضمانت، شرایط بازگشت...", footerPlaceholderDari: "آدرس، شماره تماس، شرایط ضمانت...", footerPlaceholderPashto: "آدرس، د تماس شمېره، د ضمانت شرایط...", printConfiguration: "تنظیمات چاپ", defaultPaperSize: "اندازه پیش‌فرض کاغذ", billingPaperSize: "اندازه کاغذ بل", defaultOrientation: "جهت پیش‌فرض", pageDensity: "تراکم صفحه", thermal80: "حرارتی 80 میلی‌متر", portrait: "عمودی", landscape: "افقی", normal: "عادی", compact: "فشرده", savePrinting: "ذخیره تنظیمات چاپ",
-      securityTitle: "امنیت", securityDescription: "برای تنظیمات محافظت‌شده و عملیات حساس سیستم پسورد تعیین کنید.", setPassword: "تعیین پسورد", enterPassword: "پسورد را وارد کنید", savePassword: "ذخیره پسورد",
-      themeTitle: "تنظیمات پوسته", themeDescription: "یکی از پوسته‌های موجود را انتخاب کنید. هر پوسته از نام کمپنی به‌عنوان امضای بصری استفاده می‌کند.", themes: {
-        minimalism: ["مینیمال", "ساده، متمرکز و بدون عناصر اضافی"],
-        "clay-minimalism": ["مه گرافیتی", "گرادیانت‌های خاکستری لایه‌ای با ناوبری زغالی"],
-        "black-white": ["آبی نیمه‌شب", "سطوح سرمه‌ای عمیق با جلوه‌های آبی روشن"],
-        aurora: ["جریان شفق", "شیشه تیره حرفه‌ای با نور شفق هماهنگ با رنگ کمپنی"],
-      },
-      appDataTitle: "دیتای برنامه", appDataDescription: "از اطلاعات بکاپ بگیرید، بکاپ را وارد کنید یا تمام دیتای ذخیره‌شده برنامه را پاک کنید.", demoEnvironment: "محیط دمو", productionEnvironment: "محیط اصلی", demoEnvironmentDescription: "دیتای دمو از محیط اصلی مشتری جدا نگهداری می‌شود.", productionEnvironmentDescription: "دیتای اصلی از محیط دمو جدا نگهداری می‌شود.", exportData: "خروجی گرفتن از دیتا", importData: "وارد کردن دیتا", automaticallyBackup: "بکاپ خودکار", automaticallyBackupDescription: "سیستم هنگام باز بودن برنامه این زمان‌بندی را بررسی می‌کند و پس از ایجاد بکاپ اطلاع می‌دهد.", backupSchedule: "زمان‌بندی بکاپ", off: "خاموش", daily: "روزانه", weekly: "هفتگی", monthly: "ماهانه", custom: "دلخواه", customIntervalDays: "فاصله دلخواه (روز)", saveBackupSetting: "ذخیره تنظیمات بکاپ", clearDemoData: "پاک کردن دیتای دمو", clearDemoInstruction: "عبارت CLEAR را بنویسید، سپس روی پاک کردن دیتای دمو کلیک کنید.",
-      themeUpdated: "پوسته با موفقیت تغییر کرد.", invalidLogo: "لطفاً یک فایل تصویری برای لوگو انتخاب کنید.", settingsSaved: "تنظیمات سیستم با موفقیت ذخیره شد.", exportSuccess: "دیتای برنامه با موفقیت خروجی گرفته شد.", exportError: "خروجی گرفتن از دیتای برنامه انجام نشد.", invalidBackup: "این فایل دیتای معتبر برنامه را ندارد.", importTitle: "وارد کردن دیتای برنامه", importConfirm: "با وارد کردن بکاپ، {count} جدول داده جایگزین می‌شود. ادامه می‌دهید؟", accessImportConfirm: "اطلاعات فایل Access با اطلاعات فعلی یکجا شود؟ پیش از انتقال یک بک‌اپ از اطلاعات فعلی ساخته می‌شود.", importSuccess: "دیتای برنامه با موفقیت وارد شد. برای مشاهده همه تغییرات برنامه را تازه‌سازی کنید.", accessImportSuccess: "دیتای Access موفقانه انتقال شد؛ {count} رکورد پردازش گردید.", importError: "انتقال دیتا انجام نشد. لطفاً فایل معتبر JSON، ACCDB یا ACCDE انتخاب کنید.", clearDisabled: "پاک کردن دیتا در حالت اصلی غیرفعال است.", clearTypeConfirm: "برای تأیید پاک کردن دیتا، CLEAR را وارد کنید.", clearAllTitle: "پاک کردن تمام دیتای برنامه", clearAllMessage: "تمام دیتای ذخیره‌شده برنامه، شامل تنظیمات، پاک می‌شود و قابل بازگشت نیست. ادامه می‌دهید؟", clearData: "پاک کردن دیتا", clearSuccess: "دیتای برنامه با موفقیت پاک شد. برای شروع دوباره برنامه را تازه‌سازی کنید.", clearError: "پاک کردن دیتای برنامه انجام نشد.",
+
+       invalidLogo: "لطفاً یک فایل تصویری برای لوگو انتخاب کنید.", settingsSaved: "تنظیمات سیستم با موفقیت ذخیره شد.",
     },
     ps: {
       pageTitle: "تنظیمات",
@@ -243,32 +173,13 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
       decimalPlaces: "اعشاري خانې", preview: "بېلګه", saveDecimals: "د اعشاریو تنظیمات خوندي کړئ",
       exchangeRateTitle: "د افغانیو په مقابل کې د اسعارو نرخ", exchangeRateDescription: "وټاکئ چې د هرې بهرنۍ پیسې یو واحد څو افغانۍ کېږي.",
       usdRate: "امریکایي ډالر", eurRate: "یورو", inrRate: "هندي روپۍ", oneUnit: "1 {code} =", afnUnit: "افغانۍ", saveExchangeRates: "د اسعارو نرخونه خوندي کړئ",
-      usersTab: "کاروونکي", usersTitle: "کاروونکي", usersDescription: "هغه حسابونه جوړ او اداره کړئ چې دې سیسټم ته ننوتلی شي.", addUser: "کاروونکی اضافه کړئ", editUser: "کاروونکی سمول", userName: "نوم", email: "برېښنالیک", password: "پټنوم", confirmPassword: "پټنوم بیا ولیکئ", actions: "کړنې", edit: "سمول", delete: "حذف", noUsers: "هیڅ کارن حساب نشته.", saveUser: "کاروونکی خوندي کړئ", updateUser: "بدلونونه خوندي کړئ", cancel: "لغوه", createUserHint: "د کاروونکي د حساب معلومات ولیکئ.", editUserHint: "د حساب معلومات بدل کړئ. د اوسني پټنوم ساتلو لپاره د پټنوم برخه تشه پرېږدئ.", passwordOptional: "د اوسني پټنوم ساتلو لپاره تش پرېږدئ", activeAccount: "اوسنی حساب", close: "بندول",
-      networkTab: "شبکه", networkTitle: "د شبکې لاسرسی", networkDescription: "دا پته په هغو وسیلو کې خلاصه کړئ چې له همدې وای فای شبکې سره وصل وي.", networkIp: "د شبکې IP", networkAddress: "شریکه پته", copyAddress: "پته کاپي کړئ", shareWhatsApp: "په واټساپ کې شریکول", addressCopied: "د شبکې پته کاپي شوه.", networkNotice: "اصلي کمپیوټر باید روښانه وي او د پروګرام سرور روان پاتې شي.",
-      permissionsTitle: "د برخو صلاحیتونه", module: "برخه", createPermission: "ثبت", editPermission: "سمون", deletePermission: "حذف", printPermission: "چاپ", allPermission: "ټول",
-      themeTab: "د بڼې تنظیمات", printingTab: "چاپ", securityTab: "امنیت", backupTab: "بیک اپ", notificationSoundTab: "د خبرتیا غږ", notificationSoundTitle: "د خبرتیا غږ", notificationSoundDescription: "هغه غږ وټاکئ چې د سیسټم د هرې خبرتیا پر مهال غږول کېږي.", soundEnabled: "د خبرتیا غږ", soundOn: "چالان", soundOff: "بند", testSound: "ازموینه", selectedSound: "ټاکل شوی", saveSound: "د غږ تنظیمات ذخیره کړئ", soundSaved: "د خبرتیا د غږ تنظیمات ذخیره شول.",
+
       companyDescription: "د شرکت هغه معلومات چې په رسیدونو، راپورونو، ننوتلو او چاپي بڼو کې کارېږي.", subTitle: "فرعي سرلیک", companyAddressPlaceholder: "کابل، افغانستان", removeLogo: "لوګو لرې کړئ", saveSettings: "تنظیمات خوندي کړئ", logoPreviewAlt: "د سیسټم لوګو مخکتنه", companyAddressFallback: "د شرکت پته",
-      masterPrintMode: "اصلي چاپ حالت (طلایي + تور HD)", masterPrintDescription: "د راپورونو او رسیدونو لپاره مسلکي او لوړ کیفیت تنظیم.", proPrintMode: "مسلکي چاپ حالت (Unified HD)", proPrintDescription: "له دري او پښتو RTL ملاتړ سره د لوړ کیفیت تور چاپ لپاره غوره شوی.", footerNotesBox: "د پای یادښتونو برخه", footerNotesDescription: "پته، د اړیکې شمېره، تضمین یا د فوتر ځانګړي معلومات اضافه کړئ.", footerNotesEn: "د فوتر یادښت (انګلیسي)", footerNotesDari: "د فوتر یادښت (دري)", footerNotesPashto: "د فوتر یادښت (پښتو)", footerPlaceholderEn: "پته، د اړیکې شمېره، د تضمین یادښت، د بېرته ستنولو تګلاره...", footerPlaceholderDari: "آدرس، شماره تماس، شرایط ضمانت...", footerPlaceholderPashto: "پته، د اړیکې شمېره، د تضمین شرایط...", printConfiguration: "د چاپ تنظیمات", defaultPaperSize: "د کاغذ اصلي اندازه", billingPaperSize: "د بل کاغذ اندازه", defaultOrientation: "اصلي جهت", pageDensity: "د پاڼې تراکم", thermal80: "حرارتي 80 ملي متر", portrait: "عمودي", landscape: "افقي", normal: "عادي", compact: "متراکم", savePrinting: "د چاپ تنظیمات خوندي کړئ",
-      securityTitle: "امنیت", securityDescription: "د خوندي تنظیماتو او حساسو سیسټمي کړنو لپاره پټنوم وټاکئ.", setPassword: "پټنوم وټاکئ", enterPassword: "پټنوم ولیکئ", savePassword: "پټنوم خوندي کړئ",
-      themeTitle: "د بڼې تنظیمات", themeDescription: "له شته بڼو څخه یوه وټاکئ. هره بڼه د شرکت نوم د خپل لیدیز پېژند په توګه کاروي.", themes: {
-        minimalism: ["مینیمال", "پاکه، متمرکزه او له اضافي ګډوډۍ پرته بڼه"],
-        "clay-minimalism": ["ګرافایټي مه", "پوړیز خړ تدریجونه له تیاره ناوبري سره"],
-        "black-white": ["د نیمې شپې شین", "ژور تیاره شین سطحې له روښانه شینو اغېزو سره"],
-        aurora: ["د شفق جریان", "مسلکي تیاره ښیښه له د شرکت رنګ سره همغږې شفق رڼا"],
-      },
-      appDataTitle: "د اپ معلومات", appDataDescription: "بیک اپ صادر کړئ، بیک اپ وارد کړئ یا د اپ ټول خوندي معلومات پاک کړئ.", demoEnvironment: "ډیمو چاپېریال", productionEnvironment: "اصلي چاپېریال", demoEnvironmentDescription: "د ډیمو معلومات د پیرودونکي له اصلي چاپېریال څخه جلا ساتل کېږي.", productionEnvironmentDescription: "اصلي معلومات د ډیمو له چاپېریال څخه جلا ساتل کېږي.", exportData: "معلومات صادر کړئ", importData: "معلومات وارد کړئ", automaticallyBackup: "اتومات بیک اپ", automaticallyBackupDescription: "سیسټم د اپ د خلاصېدو پر مهال دا مهالویش ګوري او د بیک اپ له جوړېدو وروسته خبر ورکوي.", backupSchedule: "د بیک اپ مهالویش", off: "بند", daily: "ورځنی", weekly: "اوونیز", monthly: "میاشتنی", custom: "ځانګړی", customIntervalDays: "ځانګړی واټن (ورځې)", saveBackupSetting: "د بیک اپ تنظیم خوندي کړئ", clearDemoData: "د ډیمو معلومات پاک کړئ", clearDemoInstruction: "CLEAR ولیکئ، بیا د ډیمو معلومات پاک کړئ تڼۍ کېکاږئ.",
-      themeUpdated: "بڼه په بریالیتوب بدله شوه.", invalidLogo: "مهرباني وکړئ د لوګو لپاره انځوریز فایل وټاکئ.", settingsSaved: "د سیسټم تنظیمات په بریالیتوب خوندي شول.", exportSuccess: "د اپ معلومات په بریالیتوب صادر شول.", exportError: "د اپ معلومات صادر نه شول.", invalidBackup: "دا فایل د اپ معتبر معلومات نه لري.", importTitle: "د اپ معلومات واردول", importConfirm: "واردول به {count} ډیټا جدولونه بدل کړي. دوام ورکړئ؟", accessImportConfirm: "د Access ډیټابیس معلومات PostgreSQL ته یوځای شي؟ لومړی به د بېرته راګرځولو کاپي جوړه شي.", importSuccess: "د اپ معلومات په بریالیتوب وارد شول. د ټولو بدلونونو د لیدلو لپاره اپ تازه کړئ.", accessImportSuccess: "د Access معلومات بریالي انتقال شول؛ {count} ریکارډونه وڅېړل شول.", importError: "معلومات وارد نه شول. معتبر JSON، ACCDB یا ACCDE فایل وټاکئ.", clearDisabled: "په اصلي حالت کې د معلوماتو پاکول غیرفعال دي.", clearTypeConfirm: "د معلوماتو پاکول د تایید لپاره CLEAR ولیکئ.", clearAllTitle: "د اپ ټول معلومات پاکول", clearAllMessage: "د اپ ټول خوندي معلومات، د تنظیماتو په ګډون، پاکېږي او بېرته نه راګرځي. دوام ورکړئ؟", clearData: "معلومات پاک کړئ", clearSuccess: "د اپ معلومات په بریالیتوب پاک شول. د نوي پیل لپاره اپ تازه کړئ.", clearError: "د اپ معلومات پاک نه شول.",
+
+       invalidLogo: "مهرباني وکړئ د لوګو لپاره انځوریز فایل وټاکئ.", settingsSaved: "د سیسټم تنظیمات په بریالیتوب خوندي شول.",
     },
   };
   const st = settingsText[language] || settingsText.en;
-  const currentHost = window.location.hostname;
-  const networkIp = (!["localhost", "127.0.0.1", "::1"].includes(currentHost) && currentHost)
-    || globalThis.__APP_NETWORK_IP__
-    || currentHost;
-  const networkPort = window.location.port || "5173";
-  const networkProtocol = window.location.protocol === "https:" ? "https:" : "http:";
-  const networkAddress = `${networkProtocol}//${networkIp}${networkPort ? `:${networkPort}` : ""}/`;
-
   useEffect(() => {
     setCompanyName(current.companyName || defaultSystemName);
     setSystemSubtitle(current.systemSubtitle || defaultSystemSubtitle);
@@ -276,9 +187,9 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
     setCompanyPhone(current.companyPhone || "");
     setCurrency(current.currency || "AFN");
     setExchangeRates({
-      USD: current.exchangeRates?.USD ?? "",
-      EUR: current.exchangeRates?.EUR ?? "",
-      INR: current.exchangeRates?.INR ?? "",
+      USD: Number(current.exchangeRates?.USD) > 0 ? current.exchangeRates.USD : "",
+      EUR: Number(current.exchangeRates?.EUR) > 0 ? current.exchangeRates.EUR : "",
+      INR: Number(current.exchangeRates?.INR) > 0 ? current.exchangeRates.INR : "",
     });
     setCurrencyDecimals({
       AFN: Number.isInteger(Number(current.currencyDecimals?.AFN)) ? Number(current.currencyDecimals.AFN) : 2,
@@ -286,166 +197,22 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
       EUR: Number.isInteger(Number(current.currencyDecimals?.EUR)) ? Number(current.currencyDecimals.EUR) : 2,
       PKR: Number.isInteger(Number(current.currencyDecimals?.PKR)) ? Number(current.currencyDecimals.PKR) : 2,
     });
-    setSecurityPassword(current.securityPassword || "");
+
     setLogo(current.logo || "");
-    setAutoBackupMode(current.autoBackupMode || "off");
-    setAutoBackupCustomDays(String(current.autoBackupCustomDays || "7"));
-    const savedSound = current.notificationSound || localStorage.getItem(notificationSoundStorageKey) || "chime.mov";
-    const savedSoundEnabled = current.notificationSoundEnabled ?? (localStorage.getItem(notificationSoundEnabledKey) !== "false");
-    setNotificationSound(savedSound);
-    setNotificationSoundEnabled(Boolean(savedSoundEnabled));
-    localStorage.setItem(notificationSoundStorageKey, savedSound);
-    localStorage.setItem(notificationSoundEnabledKey, String(Boolean(savedSoundEnabled)));
+
   }, [
-    current.autoBackupCustomDays,
-    current.autoBackupMode,
+
     current.companyName,
     current.companyAddress,
     current.companyPhone,
     current.currency,
     current.exchangeRates,
     current.currencyDecimals,
-    current.securityPassword,
+
     current.systemSubtitle,
     current.logo,
-    current.notificationSound,
-    current.notificationSoundEnabled,
+
   ]);
-
-  useEffect(() => {
-    document.body.classList.toggle("settings-user-modal-open", showUserModal);
-    return () => document.body.classList.remove("settings-user-modal-open");
-  }, [showUserModal]);
-
-  const openAddUser = () => {
-    setEditingUserId(null);
-    const firstAdministrator = !isCentralUsers && visibleAccounts.length === 0 && currentUser?.isDefaultAdmin;
-    setUserForm({
-      fullName: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-      permissions: firstAdministrator ? createFullPermissions() : createEmptyPermissions(),
-    });
-    setShowUserModal(true);
-  };
-
-  const openEditUser = (account) => {
-    setEditingUserId(account.id);
-    setUserForm({
-      fullName: account.fullName || "",
-      email: account.email || account.username || "",
-      password: "",
-      confirmPassword: "",
-      permissions: account.permissions || createEmptyPermissions(),
-    });
-    setShowUserModal(true);
-  };
-
-  const closeUserModal = () => {
-    setShowUserModal(false);
-    setEditingUserId(null);
-    setUserForm({ fullName: "", email: "", password: "", confirmPassword: "", permissions: createEmptyPermissions() });
-  };
-
-  const updateUserPermission = (moduleKey, action, checked) => {
-    setUserForm((value) => ({
-      ...value,
-      permissions: {
-        ...value.permissions,
-        [moduleKey]: action === "all"
-          ? PERMISSION_ACTIONS.reduce((actions, key) => ({ ...actions, [key]: checked }), {})
-          : { ...(value.permissions?.[moduleKey] || {}), [action]: checked },
-      },
-    }));
-  };
-
-  const saveUserAccount = async (event) => {
-    event.preventDefault();
-    if (!isCentralUsers && !setAccounts) return;
-    const fullName = userForm.fullName.trim();
-    const email = userForm.email.trim().toLowerCase();
-    if (!fullName || !email) {
-      notify(language === "fa" ? "نام و ایمیل الزامی است." : language === "ps" ? "نوم او برېښنالیک اړین دي." : "Name and email are required.", "error");
-      return;
-    }
-    const duplicate = visibleAccounts.some((account) => String(account.id) !== String(editingUserId) && String(account.email || account.username || "").toLowerCase() === email);
-    if (duplicate) {
-      notify(language === "fa" ? "این ایمیل قبلاً استفاده شده است." : language === "ps" ? "دا برېښنالیک مخکې کارول شوی دی." : "This email is already in use.", "error");
-      return;
-    }
-    if (!editingUserId && !userForm.password) {
-      notify(language === "fa" ? "پسورد را وارد کنید." : language === "ps" ? "پټنوم ولیکئ." : "Please enter a password.", "error");
-      return;
-    }
-    if (userForm.password && userForm.password.length < 12) {
-      notify(language === "fa" ? "پسورد باید حداقل ۱۲ نویسه داشته باشد." : language === "ps" ? "پټنوم باید لږ تر لږه ۱۲ توري ولري." : "Password must be at least 12 characters.", "error");
-      return;
-    }
-    if (userForm.password !== userForm.confirmPassword) {
-      notify(language === "fa" ? "تکرار پسورد مطابقت ندارد." : language === "ps" ? "د پټنوم تکرار سمون نه خوري." : "Password confirmation does not match.", "error");
-      return;
-    }
-    const existing = visibleAccounts.find((account) => String(account.id) === String(editingUserId));
-    const isFirstAdministrator = !isCentralUsers && !existing && visibleAccounts.length === 0 && currentUser?.isDefaultAdmin;
-    const payload = {
-      ...(existing || {}),
-      fullName,
-      email,
-      username: email,
-      role: isFirstAdministrator ? "Admin" : (existing?.role || "User"),
-      status: existing?.status || "Active",
-      permissions: isFirstAdministrator ? createFullPermissions() : userForm.permissions,
-      updatedAt: new Date().toISOString(),
-      ...(userForm.password ? { password: userForm.password } : {}),
-    };
-    if (isCentralUsers) {
-      try {
-        const response = await fetch(editingUserId ? `/api/admin/users/${encodeURIComponent(editingUserId)}` : "/api/admin/users", {
-          method: editingUserId ? "PATCH" : "POST", credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fullName, email, password: userForm.password || undefined, permissions: userForm.permissions }),
-        });
-        if (!response.ok) { const error = await response.json().catch(() => ({})); throw new Error(error.error || `HTTP ${response.status}`); }
-        await refreshServerUsers();
-        notify(editingUserId ? "User updated." : "User created.", "success");
-        closeUserModal();
-      } catch (error) { notify(error.message, "error"); }
-      return;
-    }
-    const next = editingUserId
-      ? accounts.map((account) => String(account.id) === String(editingUserId) ? payload : account)
-      : [...accounts, { id: Date.now(), ...payload, createdAt: new Date().toISOString() }];
-    const saved = await setAccounts(next);
-    if (!saved) return;
-    notify(language === "fa" ? (editingUserId ? "کاربر ویرایش شد." : "کاربر اضافه شد.") : language === "ps" ? (editingUserId ? "کاروونکی سم شو." : "کاروونکی اضافه شو.") : (editingUserId ? "User updated." : "User added."), "success", { silent: true });
-    closeUserModal();
-  };
-
-  const deleteUserAccount = async (account) => {
-    if (!isCentralUsers && !setAccounts) return;
-    if (String(account.id) === String(currentUser?.id)) {
-      notify(language === "fa" ? "اکانت فعلی را نمی‌توانید حذف کنید." : language === "ps" ? "اوسنی حساب نشئ حذف کولی." : "You cannot delete the current account.", "error");
-      return;
-    }
-    const ok = await confirmAction({
-      title: st.delete,
-      message: `${st.delete}: ${account.fullName || account.email}?`,
-      confirmText: st.delete,
-    });
-    if (!ok) return;
-    if (isCentralUsers) {
-      try {
-        const response = await fetch(`/api/admin/users/${encodeURIComponent(account.id)}`, { method: "DELETE", credentials: "include" });
-        if (!response.ok) { const error = await response.json().catch(() => ({})); throw new Error(error.error || `HTTP ${response.status}`); }
-        await refreshServerUsers(); notify("User deleted.", "success");
-      } catch (error) { notify(error.message, "error"); }
-      return;
-    }
-    const saved = await setAccounts(accounts.filter((item) => String(item.id) !== String(account.id)));
-    if (!saved) return;
-    notify(language === "fa" ? "کاربر حذف شد." : language === "ps" ? "کاروونکی حذف شو." : "User deleted.");
-  };
 
   const handleLogoChange = (event) => {
     const file = event.target.files?.[0];
@@ -464,6 +231,19 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
   const save = async (event) => {
     event.preventDefault();
 
+    let ratesToSave = exchangeRates;
+    if (activeTab === "currency" && pairValue.trim()) {
+      try {
+        ratesToSave = updateExchangePair(exchangeRates, rateFrom, rateTo, pairValue);
+      } catch {
+        notify(language === "en" ? "Enter a valid rate; first set the AFN rate for either currency." : "نرخ معتبر وارد کنید؛ ابتدا نرخ یکی از دو ارز را در مقابل افغانی مشخص کنید.", "warning");
+        return;
+      }
+    }
+    if (Object.values(ratesToSave).some((value) => value !== "" && (!Number.isFinite(Number(value)) || Number(value) <= 0))) {
+      notify(language === "en" ? "Exchange rates must be greater than zero." : "نرخ اسعار باید بزرگ‌تر از صفر باشد.", "warning");
+      return;
+    }
     const nextSettings = [
       {
         ...current,
@@ -473,196 +253,30 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
         companyPhone: companyPhone.trim(),
         currency,
         exchangeRates: {
-          USD: Number(exchangeRates.USD || 0),
-          EUR: Number(exchangeRates.EUR || 0),
-          INR: Number(exchangeRates.INR || 0),
+          USD: Number(ratesToSave.USD || 0),
+          EUR: Number(ratesToSave.EUR || 0),
+          INR: Number(ratesToSave.INR || 0),
         },
         currencyDecimals,
-        securityPassword,
+
         logo,
-        autoBackupMode,
-        autoBackupCustomDays: Math.max(Number(autoBackupCustomDays || 7), 1),
-        notificationSound,
-        notificationSoundEnabled,
+
         updatedAt: new Date().toISOString(),
       },
     ];
 
     const saved = await setSettings(nextSettings);
     if (!saved) return;
+    if (activeTab === "currency") setPairValue("");
 
-    localStorage.setItem(notificationSoundStorageKey, notificationSound);
-    localStorage.setItem(notificationSoundEnabledKey, String(notificationSoundEnabled));
-    window.dispatchEvent(new Event("notification-sound-updated"));
     applyCompanyThemeIdentity(nextSettings[0].companyName);
     window.dispatchEvent(new Event("company-settings-updated"));
     notify(st.settingsSaved, "success", { silent: true });
   };
 
-  const loadCollectionNames = async () => {
-    return loadBackupCollectionNames();
-  };
-
-  const exportData = async () => {
-    try {
-      setAppDataBusy(true);
-      await downloadBackup("manual");
-      notify(st.exportSuccess);
-    } catch (error) {
-      console.error("Unable to export app data:", error);
-      notify(st.exportError, "error");
-    } finally {
-      setAppDataBusy(false);
-    }
-  };
-
-  const importData = async (event) => {
-    const controller = new AbortController();
-    importAbortRef.current = controller;
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-
-    try {
-      setAppDataBusy(true);
-      setIsImportRunning(true);
-      // Paint the busy overlay before parsing or processing a large backup.
-      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      const extension = file.name.split(".").pop()?.toLowerCase();
-      if (extension === "accdb" || extension === "accde") {
-        const accessEndpoint = apiUrl("import/access");
-        const makeAccessRequest = (preview) => fetch(`${accessEndpoint}${preview ? "?preview=true" : ""}`, {
-          method: "POST", credentials: "include",
-          headers: { "Content-Type": "application/octet-stream", "X-File-Name": encodeURIComponent(file.name) },
-          body: file, signal: controller.signal,
-        });
-        let response;
-        try {
-          response = await makeAccessRequest(true);
-          const review = await response.json().catch(() => ({}));
-          if (!response.ok) throw new Error(review.error || `Import preview failed: HTTP ${response.status}`);
-          const totals = Object.values(review.report || {}).reduce((a, r) => ({ added: a.added + (r.added || 0), conflicts: a.conflicts + (r.conflicts || 0) }), { added: 0, conflicts: 0 });
-          if (totals.conflicts) throw new Error(`Import blocked: ${totals.conflicts} existing records have conflicting IDs. No data changed.`);
-          const ok = await confirmAction({ title: st.importTitle,
-            message: `${totals.added} new records will be added to PostgreSQL. Existing records will be preserved. Continue?`,
-            confirmText: st.importData });
-          if (!ok || controller.signal.aborted) return;
-          response = await makeAccessRequest(false);
-        } catch (networkError) {
-          if (controller.signal.aborted || networkError?.name === "AbortError") throw networkError;
-          throw networkError;
-        }
-        if (controller.signal.aborted) return;
-        const result = await response.json().catch(() => ({}));
-        if (controller.signal.aborted) return;
-        if (!response.ok) throw new Error(result.error || `Backend returned ${response.status}.`);
-        const importedCount = Object.values(result.report || {}).reduce((sum, item) => sum + Number(item.added || 0), 0);
-        notify(st.accessImportSuccess.replace("{count}", String(importedCount)));
-        await new Promise((resolve) => window.setTimeout(resolve, 1200));
-        window.location.reload();
-        return;
-      }
-      const text = await file.text();
-      if (controller.signal.aborted) return;
-      const parsed = JSON.parse(text);
-      if (!parsed || typeof parsed.collections !== "object" || Array.isArray(parsed.collections)) {
-        throw new Error(st.invalidBackup);
-      }
-      const endpoint = apiUrl("import/json");
-      const send = async (preview) => {
-        const response = await fetch(`${endpoint}${preview ? "?preview=true" : ""}`, {
-          method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(parsed), signal: controller.signal,
-        });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || (data.conflict ? "Import has conflicting record IDs; no records were changed." : `Import failed: HTTP ${response.status}`));
-        return data;
-      };
-      const review = await send(true);
-      const totals = Object.values(review.report || {}).reduce((a, r) => ({ added: a.added + (r.added || 0), conflicts: a.conflicts + (r.conflicts || 0) }), { added: 0, conflicts: 0 });
-      if (totals.conflicts) throw new Error(`Import blocked: ${totals.conflicts} ID conflicts. No data changed.`);
-      const ok = await confirmAction({ title: st.importTitle,
-        message: `${totals.added} new records will be added to PostgreSQL. No existing records will be replaced. Continue?`, confirmText: st.importData });
-      if (!ok || controller.signal.aborted) return;
-      await send(false);
-      notify(st.importSuccess);
-    } catch (error) {
-      if (controller.signal.aborted || error?.name === "AbortError") return;
-      console.error("Unable to import app data:", error);
-      notify(`${st.importError}${error.message ? ` (${error.message})` : ""}`, "error");
-    } finally {
-      if (importAbortRef.current === controller) importAbortRef.current = null;
-      setIsImportRunning(false);
-      setAppDataBusy(false);
-    }
-  };
-
-  const clearData = async () => {
-    if (!IS_DEMO) {
-      notify(st.clearDisabled, "error");
-      return;
-    }
-
-    if (clearConfirm.trim().toUpperCase() !== "CLEAR") {
-      notify(st.clearTypeConfirm, "error");
-      return;
-    }
-
-    const ok = await confirmAction({
-      title: st.clearAllTitle,
-      message: st.clearAllMessage,
-      confirmText: st.clearData,
-    });
-    if (!ok) return;
-
-    try {
-      setAppDataBusy(true);
-      const collections = await loadCollectionNames();
-      await Promise.all(collections.map((name) => writeBrowserCollection(name, [])));
-      setClearConfirm("");
-      notify(st.clearSuccess);
-    } catch (error) {
-      console.error("Unable to clear app data:", error);
-      notify(st.clearError, "error");
-    } finally {
-      setAppDataBusy(false);
-    }
-  };
-
-  const testNotificationSound = (soundName) => {
-    try {
-      const audio = new Audio(`/sounds/${encodeURIComponent(soundName)}`);
-      audio.volume = 0.9;
-      audio.play().catch(() => {});
-    } catch (error) {
-      console.warn("Unable to test notification sound:", error);
-    }
-  };
-
-  const copyNetworkAddress = async () => {
-    try {
-      await navigator.clipboard.writeText(networkAddress);
-    } catch {
-      const input = document.createElement("textarea");
-      input.value = networkAddress;
-      input.style.position = "fixed";
-      input.style.opacity = "0";
-      document.body.appendChild(input);
-      input.select();
-      document.execCommand("copy");
-      input.remove();
-    }
-    notify(st.addressCopied, "success", { silent: true });
-  };
-
-  const shareNetworkAddress = () => {
-    const message = `${st.networkTitle}\n${networkAddress}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
-  };
-
   return (
     <div className="settings-page">
-      {appDataBusy && createPortal(<PageLoader onCancel={isImportRunning ? cancelImport : undefined} />, document.body)}
+
       <div className="settings-header">
         <h1>{st.pageTitle}</h1>
         <p>{st.pageDescription}</p>
@@ -693,81 +307,15 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
           <Banknote size={16} />
           {st.decimalsTab}
         </button>
-        <button type="button" className={activeTab === "theme" ? "active" : ""} onClick={() => setActiveTab("theme")}>{st.themeTab}</button>
+
         <button type="button" className={activeTab === "typography" ? "active" : ""} onClick={() => setActiveTab("typography")}>
           {language === 'fa' ? 'فونت و اندازه' : language === 'ps' ? 'فونټ او اندازه' : 'Font & Size'}
         </button>
-        <button
-          type="button"
-          className={activeTab === "printing" ? "active" : ""}
-          onClick={() => setActiveTab("printing")}
-        >
-          <Printer size={16} />
-          {st.printingTab}
-        </button>
-        <button
-          type="button"
-          className={activeTab === "notification-sound" ? "active" : ""}
-          onClick={() => setActiveTab("notification-sound")}
-        >
-          <Volume2 size={16} />
-          {st.notificationSoundTab}
-        </button>
-        <button
-          type="button"
-          className={activeTab === "security" ? "active" : ""}
-          onClick={() => setActiveTab("security")}
-        >
-          <LockKeyhole size={16} />
-          {st.securityTab}
-        </button>
-        <button
-          type="button"
-          className={activeTab === "app-data" ? "active" : ""}
-          onClick={() => setActiveTab("app-data")}
-        >
-          <Database size={16} />
-          {st.backupTab}
-        </button>
-        {canViewModule(currentUser, "accounts") && <button
-          type="button"
-          className={activeTab === "users" ? "active" : ""}
-          onClick={() => setActiveTab("users")}
-        >
-          <Users size={16} />
-          {st.usersTab}
-        </button>}
-        <button
-          type="button"
-          className={activeTab === "network" ? "active" : ""}
-          onClick={() => setActiveTab("network")}
-        >
-          <Network size={16} />
-          {st.networkTab}
-        </button>
+
       </div>
 
       <div className="settings-shell-card">
-      {activeTab === "theme" && (
-        <section className="settings-shell-card delpha-green-theme-settings">
-          <h2>{st.themeTitle}</h2>
-          <p>{st.themeDescription}</p>
-          <div className="delpha-theme-grid">
-            {[
-              ["minimalism", language === "fa" ? "روشن" : "Light", "#f8fafc", "#0f172a"],
-              ["black-white", language === "fa" ? "تاریک" : "Dark", "#101b38", "#e9f4ff"],
-              ["soft-green", language === "fa" ? "سبز ملایم واتساپ" : "WhatsApp Soft Green", "#c3dec3", "#075b47"],
-            ].map(([value, label, background, foreground]) => (
-              <button key={value} type="button" className="delpha-theme-choice"
-                aria-pressed={(localStorage.getItem("afghan-power-theme") || "minimalism") === value}
-                onClick={() => { localStorage.setItem("afghan-power-theme", value); window.dispatchEvent(new Event("app-theme-updated")); setActiveTab("identity"); window.requestAnimationFrame(() => setActiveTab("theme")); }}>
-                <span className="delpha-theme-swatch" style={{ background, color: foreground }}>{label}</span>
-                <strong>{label}</strong>
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
+
       {activeTab === "identity" && (
         <form className="settings-card settings-card-flat" onSubmit={save}>
           <div className="settings-preview tab-visible">
@@ -886,7 +434,7 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
                     <input
                       type="number"
                       min="0"
-                      step="0.0001"
+                      step="any"
                       inputMode="decimal"
                       value={exchangeRates[item.key]}
                       onChange={(event) =>
@@ -899,10 +447,21 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
                     />
                     <b>{st.afnUnit}</b>
                   </div>
+                  <output className="settings-inverse-rate" dir="ltr">{Number(exchangeRates[item.key]) > 0 ? `1 AFN = ${rateText(exchangeRate(exchangeRates, "AFN", item.key))} ${item.key}` : "—"}</output>
                 </label>
               ))}
             </div>
 
+            <section className="settings-pair-rate">
+              <h3>{language === "en" ? "Exchange rate between currencies" : "نرخ تبدیل بین اسعار"}</h3>
+              <div className="settings-pair-controls">
+                <label>{language === "en" ? "From" : "از"}<select value={rateFrom} onChange={(e) => { setRateFrom(e.target.value); setPairValue(""); }}>{exchangeCurrencies.map((code) => <option key={code}>{code}</option>)}</select></label>
+                <label>{language === "en" ? "To" : "به"}<select value={rateTo} onChange={(e) => { setRateTo(e.target.value); setPairValue(""); }}>{exchangeCurrencies.map((code) => <option key={code}>{code}</option>)}</select></label>
+                <label>{language === "en" ? "Rate for 1 unit" : "معادل یک واحد"}<input type="number" step="any" min="0" value={pairValue} placeholder={exchangeRate(exchangeRates, rateFrom, rateTo) ? rateText(exchangeRate(exchangeRates, rateFrom, rateTo)) : "—"} onChange={(e) => setPairValue(e.target.value)} /></label>
+                <button type="button" className="settings-save" onClick={applyPair}>{language === "en" ? "Apply rate" : "اعمال نرخ"}</button>
+              </div>
+              <output dir="ltr">{exchangeRate(exchangeRates, rateFrom, rateTo) ? `1 ${rateFrom} = ${rateText(exchangeRate(exchangeRates, rateFrom, rateTo))} ${rateTo} · 1 ${rateTo} = ${rateText(exchangeRate(exchangeRates, rateTo, rateFrom))} ${rateFrom}` : "—"}</output>
+            </section>
             <div className="settings-exchange-note">
               <Banknote size={18} />
               <span>{st.exchangeRateDescription}</span>
@@ -972,376 +531,9 @@ function Settings({ accounts = [], setAccounts, currentUser }) {
           <button type="button" onClick={() => {setUiFont('system');setUiFontSize(100);}}>{language === 'fa' ? 'بازگشت به پیش‌فرض' : language === 'ps' ? 'اصلي حالت ته ستنېدل' : 'Reset to defaults'}</button>
         </section>
       )}
-      {activeTab === "printing" && (
-        <form className="settings-print-card" onSubmit={save}>
-          <section className="settings-panel">
-            <div className="settings-print-toggle">
-              <div>
-                <strong>{st.masterPrintMode}</strong>
-                <span>{st.masterPrintDescription}</span>
-              </div>
-              <input type="checkbox" />
-            </div>
-            <div className="settings-print-toggle">
-              <div>
-                <strong>{st.proPrintMode}</strong>
-                <span>{st.proPrintDescription}</span>
-              </div>
-              <input type="checkbox" />
-            </div>
 
-            <div className="settings-section-title">
-              <h3>{st.footerNotesBox}</h3>
-              <p>{st.footerNotesDescription}</p>
-            </div>
-
-            <div className="settings-print-notes">
-              <label>
-                {st.footerNotesEn}
-                <textarea placeholder={st.footerPlaceholderEn} />
-              </label>
-              <label>
-                {st.footerNotesDari}
-                <textarea dir="rtl" placeholder={st.footerPlaceholderDari} />
-              </label>
-              <label>
-                {st.footerNotesPashto}
-                <textarea dir="rtl" placeholder={st.footerPlaceholderPashto} />
-              </label>
-            </div>
-
-            <div className="settings-section-title">
-              <h3>{st.printConfiguration}</h3>
-            </div>
-
-            <div className="settings-form-grid">
-              <label>{st.defaultPaperSize}<select defaultValue="A4"><option>A4 (210x297mm)</option><option>{st.thermal80}</option></select></label>
-              <label>{st.billingPaperSize}<select defaultValue="Thermal 80mm"><option value="Thermal 80mm">{st.thermal80}</option><option>A5</option></select></label>
-              <label>{st.defaultOrientation}<select defaultValue="Portrait"><option value="Portrait">{st.portrait}</option><option value="Landscape">{st.landscape}</option></select></label>
-              <label>{st.pageDensity}<select defaultValue="Normal"><option value="Normal">{st.normal}</option><option value="Compact">{st.compact}</option></select></label>
-            </div>
-
-            <button type="submit" className="settings-save">
-              <Save size={16} />
-              {st.savePrinting}
-            </button>
-          </section>
-        </form>
-      )}
-
-      {activeTab === "notification-sound" && (
-        <form className="settings-card settings-card-single settings-full-width-card" onSubmit={save}>
-          <section className="settings-panel settings-full-width-panel settings-sound-panel">
-            <div className="settings-section-title">
-              <h3>{st.notificationSoundTitle}</h3>
-              <p>{st.notificationSoundDescription}</p>
-            </div>
-
-            <div className="settings-sound-master">
-              <div>
-                <Volume2 size={19} />
-                <span>
-                  <strong>{st.soundEnabled}</strong>
-                  <small>{notificationSoundEnabled ? st.soundOn : st.soundOff}</small>
-                </span>
-              </div>
-              <button
-                type="button"
-                className={notificationSoundEnabled ? "active" : ""}
-                onClick={() => setNotificationSoundEnabled((value) => !value)}
-                aria-pressed={notificationSoundEnabled}
-              >
-                <span />
-              </button>
-            </div>
-
-            <div className="settings-sound-grid">
-              {notificationSounds.map((soundName) => {
-                const selected = notificationSound === soundName;
-                const label = soundName.replace(/\.(mp4|mov)$/i, "").replace(/[-_]/g, " ");
-                return (
-                  <article className={`settings-sound-card ${selected ? "selected" : ""}`} key={soundName}>
-                    <button
-                      type="button"
-                      className="settings-sound-select"
-                      onClick={() => setNotificationSound(soundName)}
-                    >
-                      <span className="settings-sound-icon"><Volume2 size={18} /></span>
-                      <span className="settings-sound-name">
-                        <strong>{label}</strong>
-                        <small>{soundName}</small>
-                      </span>
-                      {selected && <span className="settings-sound-selected">{st.selectedSound}</span>}
-                    </button>
-                    <button
-                      type="button"
-                      className="settings-sound-test"
-                      onClick={() => testNotificationSound(soundName)}
-                    >
-                      <Play size={14} />
-                      {st.testSound}
-                    </button>
-                  </article>
-                );
-              })}
-            </div>
-
-            <button type="submit" className="settings-save settings-save-full">
-              <Save size={16} />
-              {st.saveSound}
-            </button>
-          </section>
-        </form>
-      )}
-
-      {activeTab === "security" && (
-        <form className="settings-card settings-card-single" onSubmit={save}>
-          <section className="settings-panel">
-            <div className="settings-section-title">
-              <h3>{st.securityTitle}</h3>
-              <p>{st.securityDescription}</p>
-            </div>
-
-            <label>
-              {st.setPassword}
-              <input
-                type="password"
-                value={securityPassword}
-                onChange={(event) => setSecurityPassword(event.target.value)}
-                placeholder={st.enterPassword}
-              />
-            </label>
-
-            <button type="submit" className="settings-save">
-              <Save size={16} />
-              {st.savePassword}
-            </button>
-          </section>
-        </form>
-      )}
-
-      {activeTab === "users" && (
-        <div className="settings-data-card settings-users-card" dir={language === "en" ? "ltr" : "rtl"}>
-          <section className="settings-panel settings-users-panel">
-            <div className="settings-users-head">
-              <div className="settings-section-title">
-                <h3>{st.usersTitle}</h3>
-                <p>{st.usersDescription}</p>
-              </div>
-              {hasPermission(currentUser, "accounts", "create") && <button type="button" className="settings-add-user" onClick={openAddUser}>
-                <UserPlus size={17} />
-                {st.addUser}
-              </button>}
-            </div>
-
-            <div className="settings-users-table-wrap">
-              <table className="settings-users-table">
-                <thead>
-                  <tr>
-                    <th>{st.userName}</th>
-                    <th>{st.email}</th>
-                    <th>{st.actions}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleAccounts.map((account) => (
-                    <tr key={account.id}>
-                      <td>
-                        <div className="settings-user-name">
-                          <span>{(account.fullName || account.email || "U").slice(0, 1).toUpperCase()}</span>
-                          <div><strong>{account.fullName || account.email}</strong>{String(account.id) === String(currentUser?.id) && <small>{st.activeAccount}</small>}</div>
-                        </div>
-                      </td>
-                      <td>{account.email || account.username || "—"}</td>
-                      <td>
-                        <div className="settings-user-actions">
-                          {hasPermission(currentUser, "accounts", "edit") && <button type="button" onClick={() => openEditUser(account)}><Edit3 size={14} />{st.edit}</button>}
-                          {hasPermission(currentUser, "accounts", "delete") && <button type="button" className="danger" onClick={() => deleteUserAccount(account)} disabled={String(account.id) === String(currentUser?.id)}><Trash2 size={14} />{st.delete}</button>}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {visibleAccounts.length === 0 && <tr><td colSpan="3" className="settings-users-empty">{st.noUsers}</td></tr>}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </div>
-      )}
-
-      {activeTab === "app-data" && (
-        <div className="settings-data-card">
-          <section className="settings-panel">
-            <div className="settings-section-title">
-              <h3>{st.appDataTitle}</h3>
-              <p>{st.appDataDescription}</p>
-            </div>
-
-            <div className={`settings-environment-status ${IS_DEMO ? "is-demo" : "is-production"}`}>
-              <strong>{IS_DEMO ? st.demoEnvironment : st.productionEnvironment}</strong>
-              <span>{IS_DEMO ? st.demoEnvironmentDescription : st.productionEnvironmentDescription}</span>
-              <code>{APP_MODE}</code>
-            </div>
-
-            <div className="settings-data-actions">
-              <button type="button" onClick={exportData} disabled={appDataBusy}>
-                <Download size={16} />
-                {st.exportData}
-              </button>
-
-              <label className={appDataBusy ? "disabled" : ""}>
-                <Upload size={16} />
-                {st.importData}
-                <input
-                  type="file"
-                  accept="application/json,.json,.accdb,.accde,application/msaccess,application/x-msaccess"
-                  onChange={importData}
-                  disabled={appDataBusy}
-                />
-              </label>
-            </div>
-
-            <div className="settings-auto-backup">
-              <div className="settings-auto-backup-title">
-                <Database size={18} />
-                <div>
-                  <strong>{st.automaticallyBackup}</strong>
-                  <span>{st.automaticallyBackupDescription}</span>
-                </div>
-              </div>
-
-              <label>
-                {st.backupSchedule}
-                <select
-                  value={autoBackupMode}
-                  onChange={(event) => setAutoBackupMode(event.target.value)}
-                >
-                  <option value="off">{st.off}</option>
-                  <option value="daily">{st.daily}</option>
-                  <option value="weekly">{st.weekly}</option>
-                  <option value="monthly">{st.monthly}</option>
-                  <option value="custom">{st.custom}</option>
-                </select>
-              </label>
-
-              {autoBackupMode === "custom" && (
-                <label>
-                  {st.customIntervalDays}
-                  <input
-                    type="number"
-                    min="1"
-                    value={autoBackupCustomDays}
-                    onChange={(event) => setAutoBackupCustomDays(event.target.value)}
-                  />
-                </label>
-              )}
-
-              <button type="button" onClick={save} disabled={appDataBusy}>
-                <Save size={16} />
-                {st.saveBackupSetting}
-              </button>
-            </div>
-
-            {IS_DEMO && (
-              <div className="settings-clear-zone">
-                <div>
-                  <Database size={18} />
-                  <strong>{st.clearDemoData}</strong>
-                  <span>{st.clearDemoInstruction}</span>
-                </div>
-
-                <input
-                  value={clearConfirm}
-                  onChange={(event) => setClearConfirm(event.target.value)}
-                  placeholder="CLEAR"
-                  disabled={appDataBusy}
-                />
-
-                <button type="button" onClick={clearData} disabled={appDataBusy}>
-                  <Trash2 size={16} />
-                  {st.clearDemoData}
-                </button>
-              </div>
-            )}
-          </section>
-        </div>
-      )}
-
-      {activeTab === "network" && (
-        <div className="settings-network-card">
-          <section className="settings-panel settings-network-panel">
-            <div className="settings-section-title">
-              <h3>{st.networkTitle}</h3>
-              <p>{st.networkDescription}</p>
-            </div>
-
-            <div className="settings-network-details">
-              <div>
-                <span>{st.networkIp}</span>
-                <strong dir="ltr">{networkIp}</strong>
-              </div>
-              <div>
-                <span>{st.networkAddress}</span>
-                <a href={networkAddress} target="_blank" rel="noreferrer" dir="ltr">{networkAddress}</a>
-              </div>
-            </div>
-
-            <div className="settings-network-actions">
-              <button type="button" onClick={copyNetworkAddress}><Copy size={17} />{st.copyAddress}</button>
-              <button type="button" className="whatsapp" onClick={shareNetworkAddress}><MessageCircle size={17} />{st.shareWhatsApp}</button>
-            </div>
-
-            <p className="settings-network-notice"><Network size={16} />{st.networkNotice}</p>
-          </section>
-        </div>
-      )}
       </div>
 
-      {showUserModal && createPortal(
-        <div className="settings-user-modal-backdrop" role="presentation">
-          <div className="settings-user-modal" role="dialog" aria-modal="true" dir={language === "en" ? "ltr" : "rtl"} onClick={(event) => event.stopPropagation()}>
-            <div className="settings-user-modal-head">
-              <div>
-                <h3>{editingUserId ? st.editUser : st.addUser}</h3>
-                <p>{editingUserId ? st.editUserHint : st.createUserHint}</p>
-              </div>
-              <button type="button" onClick={closeUserModal} aria-label={st.close}><X size={18} /></button>
-            </div>
-            <form className="settings-user-form" onSubmit={saveUserAccount}>
-              <div className="settings-user-form-grid">
-                <label><span>{st.userName} *</span><input value={userForm.fullName} onChange={(e) => setUserForm((v) => ({...v, fullName:e.target.value}))} autoFocus /></label>
-                <label><span>{st.email} *</span><input type="email" value={userForm.email} onChange={(e) => setUserForm((v) => ({...v, email:e.target.value}))} /></label>
-                <label><span>{st.password}{!editingUserId ? " *" : ""}</span><input type="password" value={userForm.password} placeholder={editingUserId ? st.passwordOptional : ""} onChange={(e) => setUserForm((v) => ({...v, password:e.target.value}))} autoComplete="new-password" /></label>
-                <label><span>{st.confirmPassword}{!editingUserId ? " *" : ""}</span><input type="password" value={userForm.confirmPassword} onChange={(e) => setUserForm((v) => ({...v, confirmPassword:e.target.value}))} autoComplete="new-password" /></label>
-              </div>
-              <div className="settings-permission-panel">
-                <h4>{st.permissionsTitle}</h4>
-                <div className="settings-permission-table-wrap">
-                  <table>
-                    <thead><tr><th>{st.module}</th><th>{st.createPermission}</th><th>{st.editPermission}</th><th>{st.deletePermission}</th><th>{st.printPermission}</th><th>{st.allPermission}</th></tr></thead>
-                    <tbody>
-                      {PERMISSION_MODULES.map((module) => {
-                        const row = userForm.permissions?.[module.key] || {};
-                        const allChecked = PERMISSION_ACTIONS.every((action) => Boolean(row[action]));
-                        return <tr key={module.key}>
-                          <td>{module.labels[language] || module.labels.en}</td>
-                          {PERMISSION_ACTIONS.map((action) => <td key={action}><input type="checkbox" checked={Boolean(row[action])} onChange={(event) => updateUserPermission(module.key, action, event.target.checked)} /></td>)}
-                          <td><input type="checkbox" checked={allChecked} onChange={(event) => updateUserPermission(module.key, "all", event.target.checked)} /></td>
-                        </tr>;
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-              <div className="settings-user-modal-footer">
-                <button type="button" className="secondary" onClick={closeUserModal}>{st.cancel}</button>
-                <button type="submit" className="primary"><Save size={16} />{editingUserId ? st.updateUser : st.saveUser}</button>
-              </div>
-            </form>
-          </div>
-        </div>,
-        document.body
-      )}
     </div>
   );
 }

@@ -36,6 +36,13 @@
   margin-bottom: 8px;
 }
 
+@media screen {
+
+  .customer-issue-kicker {
+  font-size: 13px;
+  }
+}
+
 .customer-issue-header h1 {
   margin: 0 0 5px;
   font-size: 28px;
@@ -223,6 +230,13 @@
   color: #64748b;
   font-size: 11px;
   font-weight: 900;
+}
+
+@media screen {
+
+  .customer-current-table-wrap th {
+  font-size: 13px;
+  }
 }
 
 .customer-issue-card {
@@ -598,6 +612,13 @@
   cursor: pointer;
 }
 
+@media screen {
+
+  .customer-issue-selector-actions button {
+  font-size: 13px;
+  }
+}
+
 .customer-issue-selector-actions button:last-child {
   background: #f1f0eb;
   color: #475569;
@@ -701,6 +722,13 @@
   font-weight: 800;
 }
 
+@media screen {
+
+  .customer-issue-quantity-inline small {
+  font-size: 13px;
+  }
+}
+
 .customer-issue-quantity-inline input {
   width: 100%;
   height: 34px;
@@ -745,6 +773,13 @@
   font-weight: 900;
 }
 
+@media screen {
+
+  .customer-issue-selected-heading > span {
+  font-size: 13px;
+  }
+}
+
 .customer-issue-selected-list {
   display: grid;
   gap: 10px;
@@ -772,6 +807,15 @@
   margin-bottom: 5px;
 }
 
+@media screen {
+
+  .customer-issue-selected-item span,
+.customer-issue-detail-grid span,
+.customer-issue-edit-summary span {
+  font-size: 13px;
+  }
+}
+
 .customer-issue-selected-item strong,
 .customer-issue-detail-grid strong,
 .customer-issue-edit-summary strong {
@@ -791,6 +835,13 @@
   font-size: 11px;
   font-weight: 850;
   cursor: pointer;
+}
+
+@media screen {
+
+  .customer-issue-selected-item > button {
+  font-size: 13px;
+  }
 }
 
 .customer-issue-detail-grid {
@@ -1082,6 +1133,11 @@ body.dark-mode .customer-issue-history-filters input:focus {
   font-weight: 800;
   cursor: pointer;
   white-space: nowrap;
+}@media screen {
+
+  .customer-issue-full-detail-btn {
+  font-size: 13px;
+  }
 }
 
 .customer-issue-full-detail-btn:hover {
@@ -1130,6 +1186,13 @@ body.dark-mode .customer-issue-history-filters input:focus {
   letter-spacing: 0.5px;
 }
 
+@media screen {
+
+  .customer-asset-detail-header > div > span {
+  font-size: 13px;
+  }
+}
+
 .customer-asset-detail-header h3 {
   margin: 0 0 5px;
   color: #111827;
@@ -1175,6 +1238,13 @@ body.dark-mode .customer-issue-history-filters input:focus {
   color: #64748b;
   font-size: 11px;
   font-weight: 700;
+}
+
+@media screen {
+
+  .customer-asset-detail-grid span {
+  font-size: 13px;
+  }
 }
 
 .customer-asset-detail-grid strong {
@@ -1287,6 +1357,13 @@ body.dark-mode .customer-asset-detail-header > button {
   font-weight: 900;
 }
 
+@media screen {
+
+  .customer-issue-status-badge {
+  font-size: 13px;
+  }
+}
+
 .customer-issue-status-badge.deposit {
   background: #fef3c7;
   color: #b45309;
@@ -1307,6 +1384,13 @@ body.dark-mode .customer-asset-detail-header > button {
   font-size: 11px;
   font-weight: 900;
   white-space: nowrap;
+}
+
+@media screen {
+
+  .customer-issue-money-badge {
+  font-size: 13px;
+  }
 }
 
 .customer-issue-money-list {
@@ -1363,6 +1447,13 @@ body.dark-mode .customer-asset-detail-header > button {
   font-size: 11px;
   font-weight: 850;
   white-space: nowrap;
+}
+
+@media screen {
+
+  .customer-issue-legend-item {
+  font-size: 13px;
+  }
 }
 
 .customer-issue-legend-item i {
@@ -1568,6 +1659,13 @@ body.dark-mode
   font-weight: 900;
 }
 
+@media screen {
+
+  .customer-issue-buyback-section-title span {
+  font-size: 13px;
+  }
+}
+
 .customer-issue-buyback-device-list {
   display: grid;
   gap: 9px;
@@ -1614,11 +1712,25 @@ body.dark-mode
   font-size: 11px;
 }
 
+@media screen {
+
+  .customer-issue-buyback-device span {
+  font-size: 13px;
+  }
+}
+
 .customer-issue-buyback-price {
   color: #64748b !important;
   font-size: 10px !important;
   min-width: 0;
   width: 100%;
+}
+
+@media screen {
+
+  .customer-issue-buyback-price {
+  font-size: 12px !important;
+  }
 }
 
 .customer-issue-buyback-price input {
@@ -1641,6 +1753,13 @@ body.dark-mode
   font-size: 11px;
   font-weight: 850;
   cursor: pointer;
+}
+
+@media screen {
+
+  .customer-issue-buyback-row-actions button {
+  font-size: 13px;
+  }
 }
 
 .customer-issue-buyback-row-actions button.danger {

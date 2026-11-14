@@ -1,4 +1,8 @@
 // Product prices follow the recorded price unit; older products use their main unit.
+export function pieceLineAmount(pieceQuantity, pricePerPiece) {
+  return Math.max(Number(pieceQuantity) || 0, 0) * Math.max(Number(pricePerPiece) || 0, 0);
+}
+
 export function productPricePerPiece(product, field) {
   const price = Math.max(Number(product?.[field] || 0), 0);
   const unit = product?.priceUnit || product?.productUnit || "piece";

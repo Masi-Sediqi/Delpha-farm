@@ -286,6 +286,13 @@
   font-weight: 600;
 }
 
+@media screen {
+
+  .help-center-support-list small {
+  font-size: 12px;
+  }
+}
+
 .help-center-support-list strong {
   display: block;
   overflow: hidden;

@@ -95,6 +95,13 @@
   font-weight: 500;
 }
 
+@media screen {
+
+  .repair-thin-lines small {
+  font-size: 13px;
+  }
+}
+
 .repair-detail-card {
   margin-bottom: 20px;
 }
@@ -178,6 +185,14 @@
   padding: 0 10px;
   font-size: 11px;
   font-weight: 900;
+}
+
+@media screen {
+
+  .repair-pill,
+.repair-status {
+  font-size: 13px;
+  }
 }
 
 .repair-pill {

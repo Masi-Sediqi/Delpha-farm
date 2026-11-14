@@ -91,6 +91,13 @@
   color: #4b5563;
 }
 
+@media screen {
+
+  .purchase-system-name span {
+  font-size: 13px;
+  }
+}
+
 .purchase-system-logo {
   grid-area: logo;
   direction: ltr;
@@ -136,6 +143,13 @@
   font-size: 11px;
   color: #4b5563;
   white-space: nowrap;
+}
+
+@media screen {
+
+  .purchase-invoice-meta span {
+  font-size: 13px;
+  }
 }
 
 .purchase-invoice-meta strong {
@@ -208,6 +222,13 @@
   font-size: 9px;
 }
 
+@media screen {
+
+  .item-description small {
+  font-size: 12px;
+  }
+}
+
 .purchase-paper-table .blank-row td {
   height: 28px;
   padding: 0;
@@ -269,6 +290,13 @@
   margin: 7px 0 0;
   font-size: 11px;
   line-height: 1.8;
+}
+
+@media screen {
+
+  .purchase-paper-notes p {
+  font-size: 13px;
+  }
 }
 
 .purchase-paper-signatures {

@@ -146,6 +146,13 @@
   font-weight: 900;
 }
 
+@media screen {
+
+  .asset-page-kicker {
+  font-size: 13px;
+  }
+}
+
 .asset-insight-hero h1 {
   margin: 10px 0 6px;
   color: #111827;
@@ -252,6 +259,13 @@
   padding: 0 10px;
   font-size: 11px;
   font-weight: 900;
+}
+
+@media screen {
+
+  .asset-table-status {
+  font-size: 13px;
+  }
 }
 
 .asset-insight-card {
@@ -548,6 +562,13 @@
   font-weight: 800;
 }
 
+@media screen {
+
+  .asset-tracking-badge {
+  font-size: 13px;
+  }
+}
+
 .asset-tracking-badge.single {
   background: #e0f2fe;
   color: #0369a1;
@@ -573,6 +594,13 @@
   font-weight: 600;
   background: #e5e7eb;
   color: #374151;
+}
+
+@media screen {
+
+  .asset-badge {
+  font-size: 13px;
+  }
 }
 
 .asset-badge.stock {
@@ -869,6 +897,13 @@
   font-size: 11px;
   font-weight: 800;
   cursor: pointer;
+}
+
+@media screen {
+
+  .asset-custom-category-chip button {
+  font-size: 13px;
+  }
 }
 
 .asset-custom-category-chip button.danger {
@@ -1464,6 +1499,13 @@ body.dark-mode .asset-category-back {
   font-size: 11px;
   font-weight: 800;
   white-space: nowrap;
+}
+
+@media screen {
+
+  .asset-location-badge {
+  font-size: 13px;
+  }
 }
 
 /* Main Stock */

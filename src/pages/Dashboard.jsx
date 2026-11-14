@@ -1,3 +1,5 @@
+import { formatAfghanDate } from "../utils/afghanDate";
+import ShamsiDateInput from "../components/ShamsiDateInput";
 import { dashboardPurchaseCost } from "../utils/salePurchaseCost";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -301,7 +303,7 @@ function CurrencyStack({ values }) {
 const dateOnly = (value) => String(value || "").slice(0, 10);
 const localIsoDate = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 const today = () => localIsoDate(new Date());
-const chartDateLabel = (date) => date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+const chartDateLabel = (date) => formatAfghanDate(date);
 const datesBetween = (startValue, endValue) => {
   const start = new Date(`${dateOnly(startValue)}T00:00:00`);
   const end = new Date(`${dateOnly(endValue)}T00:00:00`);
@@ -727,8 +729,8 @@ export default function Dashboard({ currentUser }) {
             </select>
             {chartPeriod === "custom" && (
               <div className="ph-custom-period-fields">
-                <label><span>{t.from}</span><input type="date" value={customFrom} max={customTo} onChange={(event) => setCustomFrom(event.target.value)} /></label>
-                <label><span>{t.to}</span><input type="date" value={customTo} min={customFrom} onChange={(event) => setCustomTo(event.target.value)} /></label>
+                <label><span>{t.from}</span><ShamsiDateInput  value={customFrom} max={customTo} onChange={(event) => setCustomFrom(event.target.value)} /></label>
+                <label><span>{t.to}</span><ShamsiDateInput  value={customTo} min={customFrom} onChange={(event) => setCustomTo(event.target.value)} /></label>
               </div>
             )}
           </div>

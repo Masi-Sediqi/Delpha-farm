@@ -63,6 +63,13 @@
   font-weight: 600;
 }
 
+@media screen {
+
+  .developer-hero > span {
+  font-size: 13px;
+  }
+}
+
 
 /* =========================================================
    MAIN SECTIONS
@@ -169,6 +176,13 @@
   line-height: 1.5;
 }
 
+@media screen {
+
+  .developer-feature-card p {
+  font-size: 12px;
+  }
+}
+
 
 /* =========================================================
    DEVELOPER PROFILE
@@ -210,6 +224,13 @@
   font-size: 11px;
 }
 
+@media screen {
+
+  .developer-location {
+  font-size: 13px;
+  }
+}
+
 .developer-profile-content > p {
   max-width: 760px;
   margin: 11px 0 12px;
@@ -235,6 +256,13 @@
   color: #475569;
   font-size: 9px;
   font-weight: 700;
+}
+
+@media screen {
+
+  .developer-skills span {
+  font-size: 12px;
+  }
 }
 
 
@@ -282,6 +310,13 @@
   color: #8491a5;
   font-size: 10px;
   text-align: center;
+}
+
+@media screen {
+
+  .developer-footer {
+  font-size: 12px;
+  }
 }
 
 

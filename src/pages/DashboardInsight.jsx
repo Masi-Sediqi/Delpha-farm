@@ -1,3 +1,4 @@
+import { formatAfghanDate } from "../utils/afghanDate";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
@@ -152,7 +153,7 @@ function DashboardInsight() {
               ? "Complete asset list for the selected record."
               : dashboardInsightDescriptions[insightType] || "Dashboard records"}
             {(activeDateRange.from || activeDateRange.to) &&
-              ` (${activeDateRange.from || "Start"} to ${activeDateRange.to || "Today"})`}
+              ` (${formatAfghanDate(activeDateRange.from, { fallback: "Start" })} to ${formatAfghanDate(activeDateRange.to, { fallback: "Today" })})`}
           </p>
         </div>
 

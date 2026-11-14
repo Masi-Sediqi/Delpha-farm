@@ -1,3 +1,4 @@
+import { useSearchResultReset } from "../hooks/useSearchResultReset";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
@@ -267,6 +268,7 @@ export default function SalesRegister() {
   const [customers] = useJsonCollection("customerRegistry");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [search, setSearch] = useState("");
+  useSearchResultReset(setSearch);
   const [productSearch, setProductSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [products] = useJsonCollection("products", { enabled: showModal });
@@ -647,7 +649,7 @@ export default function SalesRegister() {
             <thead><tr><th>{t.invoiceNo}</th><th>{t.systemBillNo}</th><th>{t.customer}</th><th>{t.items}</th><th>{t.total}</th><th>{t.discount}</th><th>{t.paid}</th><th>{t.due}</th><th>{t.paymentType}</th><th>{t.date}</th><th>{t.actions}</th></tr></thead>
             <tbody>
               {filteredSales.map((sale) => (
-                <tr key={sale.id} className="sales-register-clickable-row" onClick={() => navigate(`/sale-detail/${sale.id}`)} title={t.clickRecord}>
+                <tr data-search-kind="sale" data-search-id={sale.id} key={sale.id} className="sales-register-clickable-row" onClick={() => navigate(`/sale-detail/${sale.id}`)} title={t.clickRecord}>
                   <td><strong>{manualBillNumber(sale)}</strong></td>
                   <td><strong>{systemBillNumber(sale)}</strong></td>
                   <td>{sale.customerId ? <a href={`/customer-detail/${encodeURIComponent(sale.customerId)}`} onClick={event=>{event.preventDefault();event.stopPropagation();navigate(`/customer-detail/${encodeURIComponent(sale.customerId)}`)}}>{sale.customerName || customerName(sale.customerId)}</a> : sale.customerName || "—"}</td>

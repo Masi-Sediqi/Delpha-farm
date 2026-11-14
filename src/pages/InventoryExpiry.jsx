@@ -1,3 +1,4 @@
+import { formatAfghanDate } from "../utils/afghanDate";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, CalendarDays, FileText, Search, Printer } from "lucide-react";
@@ -91,11 +92,11 @@ export default function InventoryExpiry() {
       <label>{t.range} <select value={months} onChange={(event) => setMonths(event.target.value)}><option value="all">{t.all}</option>{[3, 6, 9, 12, 15, 18, 21, 24].map((n) => <option key={n} value={n}>{n} {t.months}</option>)}</select></label>
     </div>
     <div className="expiry-count"><FileText size={16}/> {t.total}: <strong>{visibleRows.length.toLocaleString("en-US")}</strong></div>
-    <div className="expiry-table-scroll"><table className="expiry-table"><thead><tr><th>#</th><th>{t.medicine}</th><th>{t.english}</th><th>{t.manufacturer}</th><th>{t.madeIn}</th><th>{t.batch}</th><th>{t.purchase}</th><th>{t.expiry}</th><th>{t.days}</th><th>{t.remainingMonths}</th><th>{t.qty}</th><th>{t.status}</th></tr></thead><tbody>
+    <div className="expiry-table-scroll"><table className="expiry-table"><thead><tr><th>#</th><th>{t.medicine}</th><th>{t.manufacturer}</th><th>{t.madeIn}</th><th>{t.batch}</th><th>{t.purchase}</th><th>{t.expiry}</th><th>{t.days}</th><th>{t.remainingMonths}</th><th>{t.qty}</th><th>{t.status}</th></tr></thead><tbody>
       {visibleRows.map((row, index) => <tr key={`${row.productId}-${row.batchNo}-${index}`} onClick={() => navigate(`/product-detail/${row.productId}`)}>
-        <td>{index + 1}</td><td className="expiry-medicine">{row.productName}</td><td>{row.englishName || "—"}</td><td>{row.company || "—"}</td><td>{row.country || "—"}</td><td>{row.batchNo}</td><td>{row.purchaseDate || "—"}</td><td>{row.expiryDate || "—"}</td><td>{row.days ?? "—"}</td><td>{row.days === null ? "—" : (row.days / 30.44).toFixed(1)}</td><td>{row.available.toLocaleString("en-US")}</td><td><span className={`expiry-status ${row.status}`}>{t[row.status]}</span></td>
+        <td>{index + 1}</td><td className="expiry-medicine">{row.productName}</td><td>{row.company || "—"}</td><td>{row.country || "—"}</td><td>{row.batchNo}</td><td>{formatAfghanDate(row.purchaseDate || "—")}</td><td>{formatAfghanDate(row.expiryDate || "—")}</td><td>{row.days ?? "—"}</td><td>{row.days === null ? "—" : (row.days / 30.44).toFixed(1)}</td><td>{row.available.toLocaleString("en-US")}</td><td><span className={`expiry-status ${row.status}`}>{t[row.status]}</span></td>
       </tr>)}
-      {!visibleRows.length && <tr><td className="expiry-no-results" colSpan={12}>{t.none}</td></tr>}
+      {!visibleRows.length && <tr><td className="expiry-no-results" colSpan={11}>{t.none}</td></tr>}
     </tbody></table></div>
   </main>;
 }

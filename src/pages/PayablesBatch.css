@@ -7,6 +7,8 @@
 .payables-batch-heading-icon{width:40px;height:40px;border-radius:11px;background:#111827;color:#fff;display:grid;place-items:center;flex:0 0 auto}
 .payables-batch-header h1{font-size:23px;line-height:1.2;margin:0 0 5px;font-weight:900}
 .payables-batch-header p{margin:0;color:#7b8794;font-size:11px;line-height:1.7}
+@media screen{
+.payables-batch-header p{font-size:13px}}
 .payables-batch-loading{padding:60px;text-align:center;color:#8a96a5}
 
 .payables-payment-card{background:var(--surface,#fff);border:1px solid var(--border-color,#dfe6ee);border-radius:13px;overflow:visible}
@@ -14,6 +16,8 @@
 .payables-payment-title{display:flex;align-items:center;gap:8px;font-size:13px}
 .payables-payment-date{display:flex;align-items:center;gap:9px;min-width:260px}
 .payables-payment-date>span{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:800;white-space:nowrap}
+@media screen{
+.payables-payment-date>span{font-size:12px}}
 .payables-payment-date .shamsi-date-input{width:165px}
 .payables-payment-date input{height:38px!important;border-radius:8px!important}
 .payables-payment-rows{padding:10px 12px 0}
@@ -28,27 +32,39 @@
 .payables-payment-supplier strong,.payables-payment-supplier small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .payables-payment-supplier strong{font-size:13px}
 .payables-payment-supplier small{font-size:10px;color:#8592a2;margin-top:3px}
+@media screen{
+.payables-payment-supplier small{font-size:12px}}
 .payables-payment-balance{padding:7px 9px;border-radius:8px;background:#f7f9fb;min-width:0}
 .payables-payment-balance span,.payables-payment-balance small{display:block;font-size:9px;color:#7b8794}
+@media screen{
+.payables-payment-balance span,.payables-payment-balance small{font-size:12px}}
 .payables-payment-balance strong{display:block;font-size:12px;margin:2px 0}
 .payables-payment-balance.owe{background:#fff7ed}
 .payables-payment-balance.receivable{background:#effcf5}
 .payables-payment-balance.settled{background:#f5f7fa}
 .payables-payment-amount{display:flex;flex-direction:column;gap:5px;min-width:0}
 .payables-payment-amount>span{font-size:10px;font-weight:800}
+@media screen{
+.payables-payment-amount>span{font-size:12px}}
 .payables-payment-amount-input{height:40px;border:1px solid #d8e1ea;border-radius:8px;background:var(--input-bg,#fff);display:flex;align-items:center;overflow:hidden}
 .payables-payment-amount-input:focus-within{border-color:#4f7cff;box-shadow:0 0 0 3px rgba(79,124,255,.10)}
 .payables-payment-amount-input input{height:100%;min-width:0;flex:1;border:0;outline:0;background:transparent;color:inherit;padding:0 10px;font:inherit;font-size:12px;font-weight:800}
 .payables-payment-amount-input b{height:100%;display:flex;align-items:center;padding:0 10px;background:#f6f8fa;border-inline-start:1px solid #e5eaf0;color:#596579;font-size:10px}
+@media screen{
+.payables-payment-amount-input b{font-size:12px}}
 .payables-payment-remove{width:34px;height:34px;border:1px solid #fecaca;background:#fff;color:#ef4444;border-radius:9px;display:grid;place-items:center;cursor:pointer}
 .payables-payment-remove:hover{background:#fff1f2}
 .payables-payment-empty{margin:0 0 10px;padding:28px 16px;text-align:center;color:#98a2b3;border:1px dashed #d7e0e8;border-radius:10px;font-size:11px}
+@media screen{
+.payables-payment-empty{font-size:13px}}
 
 .payables-payment-search-area{padding:10px 12px 13px;position:relative;z-index:2}
 .payables-payment-search{height:42px;border:1px solid #cfd9e4;border-radius:9px;display:flex;align-items:center;gap:8px;padding:0 12px;color:#8090a2;background:var(--input-bg,#fff)}
 .payables-payment-search:focus-within{border-color:#4f7cff;box-shadow:0 0 0 3px rgba(79,124,255,.10)}
 .payables-payment-search input{border:0;outline:0;background:transparent;color:inherit;width:100%;font:inherit;font-size:12px}
 .payables-payment-search-hint{display:block;margin:6px 2px 0;color:#98a2b3;font-size:9px}
+@media screen{
+.payables-payment-search-hint{font-size:12px}}
 .payables-payment-search-results{position:relative;z-index:2;left:auto;right:auto;top:auto;width:100%;margin-top:8px;background:var(--surface,#fff);border:1px solid #dbe3eb;border-radius:10px;box-shadow:0 10px 26px rgba(15,23,42,.10);overflow:hidden;max-height:310px;overflow-y:auto}
 .payables-payment-search-results button{width:100%;border:0;border-bottom:1px solid #edf1f5;background:transparent;color:inherit;display:grid;grid-template-columns:34px minmax(150px,1fr) 150px auto;align-items:center;gap:10px;padding:9px 11px;text-align:start;cursor:pointer;font:inherit}
 .payables-payment-search-results button:last-child{border-bottom:0}
@@ -57,14 +73,26 @@
 .payables-payment-search-results .result-main{min-width:0}
 .payables-payment-search-results .result-main strong,.payables-payment-search-results .result-main small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .payables-payment-search-results .result-main strong{font-size:11px}
+@media screen{
+.payables-payment-search-results .result-main strong{font-size:13px}}
 .payables-payment-search-results .result-main small{font-size:9px;color:#8a96a5;margin-top:2px}
+@media screen{
+.payables-payment-search-results .result-main small{font-size:12px}}
 .payables-payment-search-results .result-balance{font-size:10px;font-weight:800;color:#596579}
+@media screen{
+.payables-payment-search-results .result-balance{font-size:12px}}
 .payables-payment-search-results .result-add{display:flex;align-items:center;gap:4px;font-size:9px;font-weight:800;color:#2563eb}
+@media screen{
+.payables-payment-search-results .result-add{font-size:12px}}
 .payables-payment-no-result{padding:22px;text-align:center;color:#98a2b3;font-size:11px}
+@media screen{
+.payables-payment-no-result{font-size:13px}}
 
 .payables-payment-footer-card{position:relative;z-index:1;margin-top:12px;background:var(--surface,#fff);border:1px solid var(--border-color,#dfe6ee);border-radius:13px;padding:12px;display:grid;grid-template-columns:minmax(220px,1fr) minmax(200px,300px);gap:12px;align-items:center}
 .payables-payment-total{min-height:56px;border:1px solid #dfe6ee;border-radius:10px;padding:9px 13px;display:flex;align-items:center;justify-content:space-between;gap:15px;background:#f8fafc}
 .payables-payment-total span{font-size:11px;font-weight:800;color:#667085}
+@media screen{
+.payables-payment-total span{font-size:13px}}
 .payables-payment-total strong{font-size:18px;font-weight:900;direction:ltr;text-align:end}
 .payables-batch-save.final{height:56px;width:100%;font-size:12px;border-radius:10px}
 .payables-batch-page[dir="rtl"] input{text-align:right}

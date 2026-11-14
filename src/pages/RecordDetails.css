@@ -36,6 +36,8 @@
 .seat-card strong { font-size: 13px; }
 .seat-card span { font-size: 12px; line-height: 1.5; }
 .seat-card small { color: #64748b; font-size: 11px; }
+@media screen {
+ .seat-card small { font-size: 13px; } }
 .seat-card.occupied { background: #dbeafe; border-color: #bfdbfe; }
 .seat-card.free { background: #ecfdf5; border-color: #bbf7d0; }
 .seat-management-empty {
@@ -53,6 +55,8 @@
 .record-table-wrap th { white-space: nowrap; }
 .record-table-wrap td { white-space: nowrap; }
 .record-type { display: inline-flex; height: 25px; align-items: center; padding: 0 10px; border-radius: 8px; font-size: 11px; font-weight: 700; }
+@media screen {
+ .record-type { font-size: 13px; } }
 .record-type.travel { background: #dbeafe; color: #1d4ed8; }
 .record-type.repair { background: #fef3c7; color: #b45309; }
 .record-type.expense { background: #fee2e2; color: #b91c1c; }

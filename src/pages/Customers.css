@@ -108,6 +108,13 @@
   font-size: 11px;
 }
 
+@media screen {
+
+  .customer-category-mini-list p {
+  font-size: 13px;
+  }
+}
+
 .customer-category-mini-list b {
   color: #111827;
   font-weight: 900;
@@ -146,6 +153,13 @@
   padding: 5px 10px;
   font-size: 11px;
   font-weight: 900;
+}
+
+@media screen {
+
+  .customer-page-kicker {
+  font-size: 13px;
+  }
 }
 
 .customer-insight-hero h1 {
@@ -350,6 +364,13 @@
   font-weight: 900;
 }
 
+@media screen {
+
+  .customer-table-status {
+  font-size: 13px;
+  }
+}
+
 .customer-table-card {
   border-radius: 18px;
   overflow: visible;
@@ -454,6 +475,13 @@
   font-weight: 700;
   background: #e5e7eb;
   color: #374151;
+}
+
+@media screen {
+
+  .customer-badge {
+  font-size: 13px;
+  }
 }
 
 .customer-badge.active {
@@ -937,6 +965,13 @@ body.dark-mode .customer-insight-row.suspended span {
   font-weight: 800;
 }
 
+@media screen {
+
+  .customer-balance {
+  font-size: 13px;
+  }
+}
+
 .customer-balance.customer-owes {
   background: #fee2e2;
   color: #dc2626;
@@ -973,6 +1008,13 @@ body.dark-mode .customer-insight-row.suspended span {
   color: #64748b;
   font-size: 11px;
   margin-bottom: 5px;
+}
+
+@media screen {
+
+  .customer-selected-device span {
+  font-size: 13px;
+  }
 }
 
 .customer-selected-device strong {

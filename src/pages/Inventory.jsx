@@ -1,3 +1,5 @@
+import { createPortal } from "react-dom";
+import { formatAfghanDate } from "../utils/afghanDate";
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -11,7 +13,7 @@ import {
   CalendarClock,
   BarChart3,
   Table2,
-  SlidersHorizontal, X, Plus, Minus, CalendarRange, PackagePlus,
+  SlidersHorizontal, X, Plus, Minus, PackagePlus,
 } from "lucide-react";
 import { notify } from "../utils/notify";
 import { todayDateValue } from "../utils/afghanDate";
@@ -289,6 +291,31 @@ export default function Inventory() {
   const [activeTab, setActiveTab] = useState("products");
   const [viewMode, setViewMode] = useState("record");
   const [adjustOpen, setAdjustOpen] = useState(false);
+  useEffect(() => {
+    if (!adjustOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const previousFocus = document.activeElement;
+    const root = document.getElementById("root");
+    const previousInert = root?.inert;
+    document.body.style.overflow = "hidden";
+    if (root) root.inert = true;
+    const dialog = document.querySelector(".inventory-adjust-dialog");
+    dialog?.querySelector("button")?.focus();
+    const trapFocus = (event) => {
+      if (event.key !== "Tab") return;
+      const controls = [...dialog.querySelectorAll('button:not(:disabled), select:not(:disabled), input:not(:disabled), textarea:not(:disabled), [tabindex="0"]')];
+      const first = controls[0], last = controls.at(-1);
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener("keydown", trapFocus);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      if (root) root.inert = previousInert;
+      document.removeEventListener("keydown", trapFocus);
+      previousFocus?.focus?.();
+    };
+  }, [adjustOpen]);
   const newAdjustmentRow = () => ({ id: `${Date.now()}-${Math.random()}`, productId: "", add: "", subtract: "", details: "" });
   const [adjustRows, setAdjustRows] = useState(() => Array.from({ length: 6 }, newAdjustmentRow));
   const [adjustSaving, setAdjustSaving] = useState(false);
@@ -448,14 +475,17 @@ export default function Inventory() {
         </div>
       </header>
 
+      <div className="inventory-report-actions">
+        <button type="button" onClick={() => navigate("/reports?inventoryFlow=sales")}>راپور رفت</button>
+        <button type="button" onClick={() => navigate("/reports?inventoryFlow=purchases")}>راپور آمد</button>
+      </div>
       <div className="inventory-adjust-actions">
-        <button type="button" onClick={() => navigate("/inventory/expiry")}><CalendarRange size={17}/> تاریخ انقضا</button>
         <button type="button" onClick={() => navigate("/products?new=1")}><PackagePlus size={17}/> جنس جدید</button>
         <button type="button" onClick={() => setAdjustOpen(true)}><SlidersHorizontal size={17}/> اصلاح موجودی</button>
       </div>
-      {adjustOpen && <div className="inventory-adjust-overlay"><section className="inventory-adjust-dialog" role="dialog" aria-modal="true" aria-label="اصلاح موجودی" dir="rtl">
+      {adjustOpen && createPortal(<div className="inventory-adjust-overlay"><section className="inventory-adjust-dialog" role="dialog" aria-modal="true" aria-label="اصلاح موجودی" dir="rtl">
         <header><h2>اصلاح موجودی جنس</h2><button type="button" aria-label="بستن" onClick={() => setAdjustOpen(false)}><X size={20}/></button></header>
-        <div className="inventory-adjust-meta"><strong>نمبر ریکارد: {adjustNumber}</strong><span>تاریخ: {todayDateValue()}</span></div>
+        <div className="inventory-adjust-meta"><strong>نمبر ریکارد: {adjustNumber}</strong><span>تاریخ: {formatAfghanDate(todayDateValue())}</span></div>
         <div className="inventory-adjust-table-wrap"><table className="inventory-adjust-table"><thead><tr><th>نام جنس</th><th>موجود</th><th>افزودن +</th><th>کسر -</th><th>تفصیلات</th><th></th></tr></thead><tbody>{adjustRows.map((row) => <tr key={row.id}>
           <td><select aria-label="نام جنس" value={row.productId} onChange={(event) => updateAdjustmentRow(row.id, { productId: event.target.value })}><option value="">انتخاب جنس...</option>{products.map((product) => <option value={product.id} key={product.id}>{product.productName || product.name}</option>)}</select></td>
           <td>{row.productId ? getProductStock(stockMovements, row.productId, 0).toLocaleString("en-US") : "0"}</td>
@@ -466,7 +496,7 @@ export default function Inventory() {
         </tr>)}</tbody></table></div>
         <button className="inventory-adjust-add-row" type="button" onClick={() => setAdjustRows((rows) => [...rows, newAdjustmentRow()])}><Plus size={16}/> افزودن ردیف</button>
         <footer><button type="button" onClick={() => setAdjustOpen(false)}>انصراف</button><button type="button" disabled={adjustSaving} onClick={saveAdjustment}>{adjustSaving ? "در حال ثبت..." : "ثبت اصلاح موجودی"}</button></footer>
-      </section></div>}
+      </section></div>, document.body)}
       <section className="inventory-stats">
         <article><span className="inventory-stat-icon"><Layers3 /></span><div><small>{t.totalProducts}</small><strong>{summary.totalProducts.toLocaleString("en-US")}</strong></div></article>
         <article><span className="inventory-stat-icon is-positive"><PackageCheck /></span><div><small>{t.availableProducts}</small><strong>{summary.availableProducts.toLocaleString("en-US")}</strong></div></article>
@@ -675,7 +705,7 @@ export default function Inventory() {
                   <tr key={`${row.productId}-${row.batchNo}-${index}`} className="inventory-clickable-row" onClick={() => navigate(`/product-detail/${row.productId}`)}>
                     <td><strong>{row.productName || "—"}</strong></td>
                     <td><span className="inventory-batch-badge">{row.batchNo || "UNBATCHED"}</span></td>
-                    <td><span className="inventory-date-cell"><CalendarClock size={14} />{row.expiryDate || "—"}</span></td>
+                    <td><span className="inventory-date-cell"><CalendarClock size={14} />{formatAfghanDate(row.expiryDate || "—")}</span></td>
                     <td>{stockNumber(row.quantityIn).toLocaleString("en-US")}</td>
                     <td>{stockNumber(row.quantityOut).toLocaleString("en-US")}</td>
                     <td><strong>{stockNumber(row.available).toLocaleString("en-US")}</strong></td>
@@ -694,7 +724,7 @@ export default function Inventory() {
               <tbody>
                 {movementRows.length ? movementRows.map((row) => (
                   <tr key={row.id || `${row.referenceType}-${row.referenceId}-${row.productId}-${row.batchNo || ""}`}>
-                    <td>{row.movementDate || row.createdAt?.slice?.(0, 10) || "—"}</td>
+                    <td>{formatAfghanDate(row.movementDate || row.createdAt?.slice?.(0, 10) || "—")}</td>
                     <td><strong>{row.product?.productName || "—"}</strong></td>
                     <td><span className={`inventory-movement-type ${stockNumber(row.quantityIn) > 0 ? "is-in" : "is-out"}`}>{stockNumber(row.quantityIn) > 0 ? <ArrowDownToLine size={14} /> : <ArrowUpFromLine size={14} />}{t[movementLabelKey(row.referenceType)]}</span></td>
                     <td>{row.referenceId || "—"}</td>

@@ -72,6 +72,10 @@
   display:block !important; font-size:11px !important; margin-top:3px !important;
   color:var(--text-secondary,#64748b) !important; white-space:normal !important;
 }
+@media screen {
+  .purchase-entry-page .apg-picker-product small { font-size:13px !important;
+  }
+}
 .purchase-entry-page .apg-picker-price {
   font-weight:750 !important; font-variant-numeric:tabular-nums !important;
   direction:ltr !important; text-align:end !important;
@@ -160,6 +164,11 @@
 .purchase-entry-page #apg-purchase-picker-results .apg-picker-product > small,
 .purchase-entry-page #apg-sale-picker-results .apg-picker-product > small {
   display:block !important; font-size:11px !important; margin-top:3px !important;
+}
+@media screen {
+  .purchase-entry-page #apg-purchase-picker-results .apg-picker-product > small,
+.purchase-entry-page #apg-sale-picker-results .apg-picker-product > small { font-size:13px !important;
+  }
 }
 .purchase-entry-page #apg-purchase-picker-results .apg-picker-price,
 .purchase-entry-page #apg-sale-picker-results .apg-picker-price {

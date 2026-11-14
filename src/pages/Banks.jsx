@@ -1,3 +1,4 @@
+import { formatAfghanDate } from "../utils/afghanDate";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -424,7 +425,7 @@ export default function Banks() {
               <tbody>
                 {visibleTransactions.map((item) => {
                   const bank = bankMap.get(String(item.bankId));
-                  return <tr key={item.id}><td>{item.date || "—"}</td><td><strong>{bank?.bankName || "—"}</strong><small>{bank?.accountName || ""}</small></td><td><span className={`bank-transaction-type ${item.type}`}>{item.type === "deposit" ? <ArrowDownToLine size={14} /> : <ArrowUpFromLine size={14} />}{item.type === "deposit" ? t.deposit : t.withdrawal}</span></td><td>{item.reference || "—"}</td><td>{item.description || "—"}</td><td className={item.type === "deposit" ? "amount-in" : "amount-out"}>{money(item.amount, bank?.currency || item.currency)}</td><td><div className="bank-row-actions"><button onClick={() => openTransaction(item)}><Edit3 size={15} /></button><button className="danger" onClick={() => removeTransaction(item)}><Trash2 size={15} /></button></div></td></tr>;
+                  return <tr key={item.id}><td>{formatAfghanDate(item.date || "—")}</td><td><strong>{bank?.bankName || "—"}</strong><small>{bank?.accountName || ""}</small></td><td><span className={`bank-transaction-type ${item.type}`}>{item.type === "deposit" ? <ArrowDownToLine size={14} /> : <ArrowUpFromLine size={14} />}{item.type === "deposit" ? t.deposit : t.withdrawal}</span></td><td>{item.reference || "—"}</td><td>{item.description || "—"}</td><td className={item.type === "deposit" ? "amount-in" : "amount-out"}>{money(item.amount, bank?.currency || item.currency)}</td><td><div className="bank-row-actions"><button onClick={() => openTransaction(item)}><Edit3 size={15} /></button><button className="danger" onClick={() => removeTransaction(item)}><Trash2 size={15} /></button></div></td></tr>;
                 })}
                 {!visibleTransactions.length && <tr><td colSpan="7" className="banks-table-empty">{t.noTransactions}</td></tr>}
               </tbody>

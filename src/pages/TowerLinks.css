@@ -177,6 +177,13 @@
   color: #374151;
 }
 
+@media screen {
+
+  .tower-link-badge {
+  font-size: 13px;
+  }
+}
+
 .tower-link-badge.active {
   background: #dcfce7;
   color: #15803d;

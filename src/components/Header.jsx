@@ -19,7 +19,7 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import { getProductBatchBalances, getProductStock, legacyProductStock } from "../utils/stock";
-import { buildSystemSearchResults } from "../utils/systemSearch";
+import { buildSystemSearchResults, searchResultNavigation } from "../utils/systemSearch";
 
 const NOTIFICATION_STATE_KEY = "medicine-notification-state";
 const LANGUAGE_STATE_KEY = "afghan-power-language";
@@ -81,7 +81,7 @@ function HeaderActions({ currentUser, onLogout, compact = false }) {
   const navigate = useNavigate();
   const [openMenu, setOpenMenu] = useState(null);
   const [language, setLanguage] = useState(() => localStorage.getItem(LANGUAGE_STATE_KEY) || "en");
-  const [darkMode, setDarkMode] = useState(() => ["black-white", "aurora", "dark"].includes(localStorage.getItem(THEME_STATE_KEY)));
+  const [darkMode, setDarkMode] = useState(() => ["black-white", "aurora", "dark", "neon", "simple-dark"].includes(localStorage.getItem(THEME_STATE_KEY)));
   const [notificationState, setNotificationState] = useState(readState);
   const [settings, setSettings] = useJsonCollection("settings");
   const [products] = useJsonCollection("products");
@@ -102,7 +102,7 @@ function HeaderActions({ currentUser, onLogout, compact = false }) {
 
   const toggleDarkMode = () => {
     const nextDark = !darkMode;
-    const theme = nextDark ? "black-white" : "minimalism";
+    const theme = nextDark ? "simple-dark" : "minimalism";
     localStorage.setItem(THEME_STATE_KEY, theme);
     document.body.dataset.theme = theme;
     document.documentElement.dataset.theme = theme;
@@ -241,22 +241,22 @@ function Header({ currentUser, onLogout }) {
   useEffect(() => { const sync = () => setLanguage(localStorage.getItem(LANGUAGE_STATE_KEY) || "en"); window.addEventListener("app-language-updated", sync); return () => window.removeEventListener("app-language-updated", sync); }, []);
 
   const results = useMemo(() => {
-    const all = buildSystemSearchResults({ products, productGroups, countries, suppliers, customers, purchases, sales, customerPayments, supplierPayments }, query, { limit: 18 });
+    const all = buildSystemSearchResults({ products, productGroups, countries, suppliers, customers, purchases, sales, customerPayments, supplierPayments }, query);
     return (filter === "All" ? all : all.filter((row) => row.type === filter)).slice(0, 18);
   }, [products, productGroups, countries, suppliers, customers, purchases, sales, customerPayments, supplierPayments, query, filter]);
   const filters = ["All", "Product", "Supplier", "Customer", "Purchase", "Sale", "Payment"];
-  const openResult = (path) => { setOpen(false); setQuery(""); navigate(path); };
-  const fullResults = () => { if (query.trim().length >= 2) { setOpen(false); navigate(`/search-results?q=${encodeURIComponent(query.trim())}`); } };
+  const openResult = (result) => { setOpen(false); setQuery(""); navigate(result.path, searchResultNavigation(result)); };
+  const fullResults = () => { if (query.trim().length >= 1) { setOpen(false); navigate(`/search-results?q=${encodeURIComponent(query.trim())}`); } };
 
   return <header className="topbar">
     <div className="header-search global-search" ref={ref}>
       <button type="button" className="global-search-submit" onClick={fullResults}><Search size={17}/></button>
       <input placeholder={t.search} value={query} onChange={(event) => { setQuery(event.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); fullResults(); } }}/>
-      {open && query.trim().length >= 2 && <div className="global-search-results">
+      {open && query.trim().length >= 1 && <div className="global-search-results">
         <div className="global-search-results-header"><strong>{t.systemSearch}</strong><span>{results.length}</span></div>
         <button type="button" className="global-search-view-all" onClick={fullResults}>{t.openFull}</button>
         <div className="global-search-filters">{filters.map((item) => <button type="button" key={item} className={filter === item ? "active" : ""} onClick={() => setFilter(item)}>{item === "All" ? t.all : (t.types[item] || item)}</button>)}</div>
-        {results.map((row) => <button type="button" key={row.key} className="global-search-result" onClick={() => openResult(row.path)}><span>{t.types[row.type] || row.type}</span><strong>{row.title}</strong><em>{row.subtitle}</em><div>{row.details.slice(0, 4).map((detail) => <small key={detail}>{detail}</small>)}</div></button>)}
+        {results.map((row) => <button type="button" key={row.key} className="global-search-result" onClick={() => openResult(row)}><span>{t.types[row.type] || row.type}</span><strong>{row.title}</strong><em>{row.subtitle}</em><div>{row.details.slice(0, 4).map((detail) => <small key={detail}>{detail}</small>)}</div></button>)}
         {!results.length && <div className="global-search-empty">{t.noResult}</div>}
       </div>}
     </div>

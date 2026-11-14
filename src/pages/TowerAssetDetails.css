@@ -274,6 +274,13 @@
   font-weight: 800;
 }
 
+@media screen {
+
+  .tower-detail-tracking {
+  font-size: 13px;
+  }
+}
+
 .tower-detail-tracking.single {
   background: #e0f2fe;
   color: #0369a1;

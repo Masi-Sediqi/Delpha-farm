@@ -1,3 +1,4 @@
+import { formatAfghanDate } from "../utils/afghanDate";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -409,7 +410,7 @@ export default function CashCount() {
               {!visibleRows.length ? <tr><td colSpan="8" className="cash-count-empty">{t.noHistory}</td></tr> : visibleRows.map((item) => {
                 const status = statusFor(item.difference);
                 return <tr key={item.id}>
-                  <td>{item.date || "—"}</td><td><b>{item.currency}</b></td><td>{money(item.systemBalance, item.currency)}</td><td>{money(item.physicalTotal, item.currency)}</td>
+                  <td>{formatAfghanDate(item.date || "—")}</td><td><b>{item.currency}</b></td><td>{money(item.systemBalance, item.currency)}</td><td>{money(item.physicalTotal, item.currency)}</td>
                   <td className={`cash-count-difference ${status.key}`}>{Number(item.difference || 0) > 0 ? "+" : ""}{money(item.difference, item.currency)}</td>
                   <td><span className={`cash-count-status ${status.key}`}>{status.label}</span></td><td>{item.countedBy || "—"}</td>
                   <td><div className="cash-count-actions"><button onClick={() => openEdit(item)} title={t.edit}><Edit3 size={15} /></button><button className="danger" onClick={() => removeCount(item)} title={t.delete}><Trash2 size={15} /></button></div></td>
@@ -426,7 +427,7 @@ export default function CashCount() {
             <header className="cash-count-modal-head"><div><h2><Calculator size={20} />{editingId ? t.editTitle : t.formTitle}</h2><p>{t.formHint}</p></div><button type="button" onClick={closeModal}><X size={19} /></button></header>
             <div className="cash-count-modal-body">
               <div className="cash-count-form-top">
-                <label><span>{t.date}</span><ShamsiDateInput value={form.date} onChange={(value) => setForm((current) => ({ ...current, date: value }))} /></label>
+                <label><span>{t.date}</span><ShamsiDateInput value={form.date} onChange={(event) => setForm((current) => ({ ...current, date: event.target.value }))} /></label>
                 <label><span>{t.currency}</span><select value={form.currency} onChange={(event) => changeCurrency(event.target.value)}>{currencyCodes.map((code) => <option key={code}>{code}</option>)}</select></label>
               </div>
 

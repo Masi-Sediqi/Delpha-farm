@@ -412,7 +412,7 @@ export default function SupplierDetail() {
     if (openingBalance !== 0) {
       entries.push({
         id: `opening-${supplierId}`,
-        date: supplier?.createdAt || "",
+        date: supplier?.openingBalanceDate || supplier?.createdAt || "",
         reference: "OPENING",
         description: t.opening,
         kind: "opening",
@@ -540,14 +540,6 @@ export default function SupplierDetail() {
     Object.entries(manualPaymentsByCurrency).forEach(([code, amount]) => addCurrencyAmount(totals, code, amount));
     return totals;
   }, [purchasePaymentsByCurrency, manualPaymentsByCurrency]);
-  const totalReturnsByCurrency = useMemo(() => {
-    const totals = {};
-    supplierReturns.forEach((item) => {
-      const linkedPurchase = supplierPurchases.find((purchase) => String(purchase.id) === String(item.purchaseId));
-      addCurrencyAmount(totals, item.currency || linkedPurchase?.currency || supplier?.currency || currencyCode, item.totalAmount);
-    });
-    return totals;
-  }, [supplierReturns, supplierPurchases, supplier, currencyCode]);
   const currentBalances = useMemo(() => {
     const balances = {};
     ledger.forEach((entry) => {
@@ -557,12 +549,6 @@ export default function SupplierDetail() {
     if (!ledger.length && numeric(supplier?.openingBalance) !== 0) balances[currencyCode] = numeric(supplier.openingBalance);
     return balances;
   }, [ledger, supplier, currencyCode]);
-  const netPurchasesByCurrency = useMemo(() => {
-    const totals = {};
-    const codes = new Set([...Object.keys(totalPurchasesByCurrency), ...Object.keys(totalReturnsByCurrency)]);
-    codes.forEach((code) => { totals[code] = numeric(totalPurchasesByCurrency[code]) - numeric(totalReturnsByCurrency[code]); });
-    return totals;
-  }, [totalPurchasesByCurrency, totalReturnsByCurrency]);
   const preferredPaymentCurrency = Object.entries(currentBalances).find(([, value]) => numeric(value) > 0.000001)?.[0] || currencyCode;
   const purchaseRows = ledger.filter((entry) => entry.kind === "purchase");
   const paymentRows = ledger.filter((entry) => entry.kind === "manual-payment");
@@ -765,7 +751,6 @@ export default function SupplierDetail() {
               ["ledger", t.tabLedger],
               ["purchases", t.tabPurchases],
               ["payments", t.tabPayments],
-              ["profit", t.tabProfit],
               ["activity", t.tabActivity],
             ].map(([key, label]) => (
               <button key={key} type="button" role="tab" aria-selected={activeTab === key} className={activeTab === key ? "active" : ""} onClick={() => setActiveTab(key)}>{label}</button>
@@ -783,7 +768,7 @@ export default function SupplierDetail() {
                       const isPurchase = entry.kind === "purchase";
                       const remainingValue = isPurchase ? numeric(entry.remainingAmount) : 0;
                       return (
-                        <tr key={entry.id} id={entry.kind === "purchase" ? `supplier-ledger-purchase-${entry.sourceId}` : undefined}>
+                        <tr data-search-kind={entry.kind === "manual-payment" ? "supplier-payment" : undefined} data-search-id={entry.sourceId} key={entry.id} id={entry.kind === "purchase" ? `supplier-ledger-purchase-${entry.sourceId}` : undefined}>
                           <td>{formatDateTime(entry.date)}</td><td><span className="supplier-ledger-reference">{entry.reference || "—"}</span></td>
                           <td><span className={`supplier-ledger-description ${entry.kind || ""} ${entry.kind === "purchase" ? "is-purchase-badge" : entry.kind === "manual-payment" ? (entry.debit > 0 ? "is-withdrawal-badge" : "is-payment-badge") : ""}`}>{entry.description}</span></td>
                           <td className="supplier-ledger-items">{isPurchase ? (entry.itemCount || 0) : "—"}</td>
@@ -823,19 +808,6 @@ export default function SupplierDetail() {
               <div className="supplier-detail-ledger-wrap"><table><thead><tr><th>{t.date}</th><th>{t.reference}</th><th>{t.description}</th><th>{t.amountPaid}</th><th>{t.actions}</th></tr></thead><tbody>
                 {paymentRows.length ? paymentRows.map((entry) => <tr key={`payment-tab-${entry.id}`}><td>{formatDateTime(entry.date)}</td><td><span className="supplier-ledger-reference">{entry.reference || "—"}</span></td><td>{entry.description}</td><td className={entry.debit > 0 ? "supplier-money-in" : "supplier-ledger-credit"}>{numeric(entry.credit || entry.debit).toLocaleString(undefined,{maximumFractionDigits:2})} {entry.currency || currencyCode}</td><td><div className="supplier-ledger-actions"><button type="button" className="print" onClick={() => printPayment(entry)} aria-label={t.print}><Printer size={13}/></button><button type="button" className="edit" onClick={() => editLedgerEntry(entry)} aria-label={t.edit}><Edit3 size={14}/></button><button type="button" className="delete" onClick={() => deleteLedgerEntry(entry)} aria-label={t.delete}><Trash2 size={13}/></button></div></td></tr>) : <tr><td colSpan="5" className="supplier-ledger-empty">{t.noPayments}</td></tr>}
               </tbody></table></div>
-            </div>
-          )}
-
-          {activeTab === "profit" && (
-            <div className="supplier-tab-panel supplier-profit-panel">
-              <div className="supplier-detail-section-head ledger"><BadgeDollarSign size={18} /><div><h2>{t.tabProfit}</h2><p>{t.profitInfo}</p></div></div>
-              <div className="supplier-profit-grid">
-                <article><span>{t.totalPurchases}</span><strong>{formatCurrencyMap(totalPurchasesByCurrency)}</strong></article>
-                <article><span>{t.returnsTotal}</span><strong>{formatCurrencyMap(totalReturnsByCurrency)}</strong></article>
-                <article><span>{t.netPurchases}</span><strong>{formatCurrencyMap(netPurchasesByCurrency)}</strong></article>
-                <article><span>{t.totalPayments}</span><strong>{formatCurrencyMap(totalPaymentsByCurrency)}</strong></article>
-                <article className="wide"><span>{t.outstanding}</span><strong>{formatCurrencyMap(currentBalances, { absolute: true })}</strong></article>
-              </div>
             </div>
           )}
 

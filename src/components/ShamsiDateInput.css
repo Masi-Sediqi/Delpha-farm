@@ -132,6 +132,13 @@
   text-align: center;
 }
 
+@media screen {
+
+  .shamsi-date-week {
+  font-size: 12px;
+  }
+}
+
 .shamsi-date-grid button {
   width: 100%;
   min-width: 0;
@@ -140,6 +147,13 @@
   padding: 0;
   font-size: 11px;
   font-weight: 750;
+}
+
+@media screen {
+
+  .shamsi-date-grid button {
+  font-size: 13px;
+  }
 }
 
 .shamsi-date-grid button:hover,
@@ -166,11 +180,25 @@
   font-size: 10px;
 }
 
+@media screen {
+
+  .shamsi-date-footer {
+  font-size: 12px;
+  }
+}
+
 .shamsi-date-footer button {
   min-height: 30px;
   height: 30px;
   padding: 0 9px;
   font-size: 11px;
+}
+
+@media screen {
+
+  .shamsi-date-footer button {
+  font-size: 13px;
+  }
 }
 
 body.dark-mode .shamsi-date-popover {

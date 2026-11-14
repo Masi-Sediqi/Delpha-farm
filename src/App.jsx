@@ -1,3 +1,4 @@
+import SearchRecordHighlight from "./components/SearchRecordHighlight";
 import {
   lazy,
   Suspense,
@@ -30,6 +31,7 @@ import {
   Landmark,
   Banknote,
   Boxes,
+  CalendarClock,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
@@ -43,7 +45,6 @@ import StockBootstrap from "./components/StockBootstrap";
 import ProductMasterDataBootstrap from "./components/ProductMasterDataBootstrap";
 import ToastHost from "./components/ToastHost";
 import { useJsonCollection } from "./hooks/useJsonCollection";
-import { downloadBackup } from "./utils/backup";
 import { notify } from "./utils/notify";
 import { canViewModule, createFullPermissions, hasPermission, moduleKeyForPath } from "./utils/permissions";
 import { IS_DEMO, APP_MODE, environmentStorageKey } from "./config/appConfig";
@@ -65,7 +66,6 @@ const SalesRegister = lazy(() => import("./pages/SalesRegister"));
 const SaleNew = lazy(() => import("./pages/SaleNew"));
 const Receivables = lazy(() => import("./pages/Receivables"));
 const PrintReceivablesBatch = lazy(() => import("./pages/PrintReceivablesBatch"));
-const PurchaseReturns = lazy(() => import("./pages/PurchaseReturns"));
 const SaleReturns = lazy(() => import("./pages/SaleReturns"));
 const CashFlow = lazy(() => import("./pages/CashJournal"));
 const ReceivablesPayables = lazy(() => import("./pages/ReceivablesPayables"));
@@ -97,7 +97,7 @@ const defaultAdminAccount = {
   createdAt: "2026-07-18",
 };
 
-const autoBackupStorageKey = environmentStorageKey("isp-auto-backup-last-run");
+
 const sessionStorageKey = environmentStorageKey("isp-system-session");
 const appThemeStorageKey = "afghan-power-theme";
 const appLanguageStorageKey = "afghan-power-language";
@@ -109,12 +109,12 @@ const shellLabels = {
     products: "Products",
     purchasing: "Purchasing",
     payables: "Payables",
-    purchaseReturns: "Purchase Returns",
     customerRegistry: "Customers",
     salesRegister: "Sales",
     receivables: "Receivables",
     saleReturns: "Sale Returns",
     inventory: "Inventory",
+    inventoryExpiry: "Expiry Dates",
     banks: "Banks",
     cashCount: "Cash Count",
     expenses: "Expenses",
@@ -132,12 +132,12 @@ const shellLabels = {
     products: "محصولات",
     purchasing: "خریداری",
     payables: "تادیات",
-    purchaseReturns: "برگشت خرید",
     customerRegistry: "مشتریان",
     salesRegister: "فروشات",
     receivables: "طلبات",
     saleReturns: "برگشت فروش",
     inventory: "موجودی",
+    inventoryExpiry: "تاریخ انقضا",
     banks: "بانک‌ها",
     cashCount: "شمارش نقدی",
     expenses: "مصارف",
@@ -155,12 +155,12 @@ const shellLabels = {
     products: "محصولات",
     purchasing: "پېرود",
     payables: "تادیات",
-    purchaseReturns: "د پېرود بېرته ستنول",
     customerRegistry: "پېرودونکي",
     salesRegister: "خرڅلاو",
     receivables: "طلبات",
     saleReturns: "د خرڅلاو بېرته ستنول",
     inventory: "موجودي",
+    inventoryExpiry: "د ختمېدو نېټه",
     banks: "بانکونه",
     cashCount: "د نغدو شمېرنه",
     expenses: "مصارف",
@@ -176,11 +176,11 @@ const shellLabels = {
 
 function applyStoredTheme() {
   const storedTheme = localStorage.getItem(appThemeStorageKey) || "minimalism";
-  const theme = storedTheme === "soft-green" ? "soft-green" : (["black-white", "aurora", "dark"].includes(storedTheme) ? "black-white" : "minimalism");
+  const theme = storedTheme === "soft-green" ? "soft-green" : (["black-white", "aurora", "dark", "neon", "simple-dark"].includes(storedTheme) ? "simple-dark" : "minimalism");
   if (theme !== storedTheme) localStorage.setItem(appThemeStorageKey, theme);
   document.body.dataset.theme = theme;
   document.documentElement.dataset.theme = theme;
-  document.body.classList.toggle("dark-mode", ["black-white", "aurora"].includes(theme));
+  document.body.classList.toggle("dark-mode", theme === "simple-dark");
 }
 
 function applyCompanyThemeIdentity(companyName = "") {
@@ -214,13 +214,7 @@ function applyStoredLanguage() {
   document.body.dataset.direction = direction;
 }
 
-function getAutoBackupIntervalMs(mode, customDays) {
-  if (mode === "daily") return 24 * 60 * 60 * 1000;
-  if (mode === "weekly") return 7 * 24 * 60 * 60 * 1000;
-  if (mode === "monthly") return 30 * 24 * 60 * 60 * 1000;
-  if (mode === "custom") return Math.max(Number(customDays || 1), 1) * 24 * 60 * 60 * 1000;
-  return 0;
-}
+
 
 function ModulePlaceholder({ title, description, items = [] }) {
   return (
@@ -484,45 +478,7 @@ function App() {
     return () => { cancelled = true; window.clearInterval(timer); };
   }, [currentUser, navigate]);
 
-  useEffect(() => {
-    if (!currentUser) return undefined;
 
-    const mode = company.autoBackupMode || "off";
-    const intervalMs = getAutoBackupIntervalMs(mode, company.autoBackupCustomDays);
-    if (!intervalMs) return undefined;
-
-    let cancelled = false;
-    let running = false;
-
-    const checkBackup = async () => {
-      if (cancelled || running) return;
-
-      const lastRun = Number(localStorage.getItem(autoBackupStorageKey) || 0);
-      const now = Date.now();
-      if (lastRun && now - lastRun < intervalMs) return;
-
-      running = true;
-      try {
-        await downloadBackup(`auto-${mode}`);
-        localStorage.setItem(autoBackupStorageKey, String(now));
-        notify(`Automatic ${mode} backup created successfully.`);
-      } catch (error) {
-        console.error("Automatic backup failed:", error);
-        notify("Automatic backup failed. Please export a manual backup from Settings.", "error");
-      } finally {
-        running = false;
-      }
-    };
-
-    const startupTimer = window.setTimeout(checkBackup, 4000);
-    const intervalTimer = window.setInterval(checkBackup, 60 * 60 * 1000);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(startupTimer);
-      window.clearInterval(intervalTimer);
-    };
-  }, [company.autoBackupCustomDays, company.autoBackupMode, currentUser]);
 
   useEffect(() => {
     if (!IS_DEMO || !accountsLoaded) return;
@@ -624,11 +580,12 @@ function App() {
     { to: "/suppliers", label: labels.suppliers, moduleKey: "suppliers", icon: Truck },
     { to: "/products", label: labels.products, moduleKey: "products", icon: ReceiptText },
     { to: "/purchasing", label: labels.purchasing, moduleKey: "purchasing", icon: ShoppingCart },
+    { to: "/sales-register", label: labels.salesRegister, moduleKey: "sales", icon: ShoppingBag },
     { to: "/payables", label: labels.payables, moduleKey: "payables", icon: BadgeDollarSign },
     { to: "/customer-registry", label: labels.customerRegistry, moduleKey: "customers", icon: Users },
-    { to: "/sales-register", label: labels.salesRegister, moduleKey: "sales", icon: ShoppingBag },
     { to: "/receivables", label: labels.receivables, moduleKey: "receivables", icon: BadgeDollarSign },
     { to: "/inventory", label: labels.inventory, moduleKey: "inventory", icon: Boxes },
+    { to: "/inventory/expiry", label: labels.inventoryExpiry, moduleKey: "inventory", icon: CalendarClock },
     { to: "/cash-journal", label: labels.cashJournal, moduleKey: "reports", icon: BookOpenCheck },
     { to: "/accounts", label: labels.accounts, moduleKey: "accounts", icon: Users },
     { to: "/reports", label: labels.reports, moduleKey: "reports", icon: FileBarChart },
@@ -730,6 +687,7 @@ function App() {
         <NavLink
           key={item.to}
           to={item.to}
+          end={item.to === "/inventory"}
           className="sidebar-main-link"
           onClick={() => setMobileMenuOpen(false)}
         >
@@ -750,6 +708,7 @@ function App() {
         <main className="main">
         <Header company={company} currentUser={currentUser} onLogout={logout} />
         <GlobalTableEnhancer />
+        <SearchRecordHighlight />
 
         <div className="page-content">
           <Suspense fallback={<PageLoader />}>
@@ -770,7 +729,6 @@ function App() {
               <Route path="/purchasing/:purchaseId/print" element={protect("purchasing", <PrintPurchase />, "print")} />
               <Route path="/purchasing/:purchaseId" element={protect("purchasing", <PurchaseDetail />)} />
               <Route path="/purchasing/:purchaseId/edit" element={protect("purchasing", <PurchaseNew />, "edit")} />
-              <Route path="/purchase-returns" element={protect("purchaseReturns", <PurchaseReturns />)} />
               <Route path="/customer-registry" element={protect("customers", <CustomersRegistry />)} />
               <Route path="/customer-detail/:customerId" element={protect("customers", <CustomerDetail />)} />
               <Route path="/sales-register" element={protect("sales", <SalesRegister />)} />

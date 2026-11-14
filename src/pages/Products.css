@@ -417,6 +417,13 @@
   line-height: 1.35;
 }
 
+@media screen {
+
+  .sales-product-field-error {
+  font-size: 13px !important;
+  }
+}
+
 .sales-product-field.has-error > input,
 .sales-product-field.has-error > select,
 .sales-product-field.has-error > textarea,
@@ -478,6 +485,15 @@
   font-size: 11px;
   line-height: 1.45;
   font-weight: 650;
+}
+
+
+@media screen {
+
+  .sales-product-field-help,
+.sales-product-quantity-total {
+  font-size: 13px;
+  }
 }
 
 .sales-product-quantity-total {
@@ -578,6 +594,13 @@ body[data-theme="neon"].dark-mode .sales-product-quantity-total {
   font-style: normal;
   font-weight: 800;
   white-space: nowrap;
+}
+
+@media screen {
+
+  .sales-product-price-input em {
+  font-size: 13px;
+  }
 }
 
 .sales-product-image-control {
@@ -743,6 +766,12 @@ body[data-theme="neon"].dark-mode .sales-products-search { background: #111827; 
   .sales-product-inline-manager.is-editing { width: 100%; }
   .sales-product-field-help,
   .sales-product-quantity-total { font-size: 10.5px; }
+  @media screen {
+
+    .sales-product-field-help,
+  .sales-product-quantity-total { font-size: 12.5px;
+    }
+  }
 }
 
 
@@ -848,3 +877,9 @@ body[data-theme="neon"].dark-mode .sales-product-inline-delete{
     grid-template-columns:minmax(0,1fr) 30px 30px 30px;
   }
 }
+
+.sales-product-batch-select { grid-template-columns:minmax(0,1fr) 28px 28px; }
+.sales-product-batch-select button { width:28px; }
+.sales-product-batch-select .sales-product-master-delete { color:#dc2626; }
+.sales-product-batch-select button:disabled { opacity:.4; cursor:not-allowed; }
+.sales-product-batch-select .sales-product-master-delete:hover:not(:disabled) { background:#fff1f2; border-color:#fecaca; color:#b91c1c; }

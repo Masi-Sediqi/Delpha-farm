@@ -91,6 +91,13 @@
   text-transform: uppercase;
 }
 
+@media screen {
+
+  .startup-splash-content span {
+  font-size: clamp(12px, 0.9vw, 13px);
+  }
+}
+
 .startup-splash-content strong {
   margin-top: 15px;
   color: #ffffff;

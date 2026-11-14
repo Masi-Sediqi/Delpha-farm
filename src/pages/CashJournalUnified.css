@@ -11,6 +11,8 @@
 .journal-page-info { display:flex; flex-direction:column; gap:4px; }
 .journal-page-info strong { font-size:17px; direction:ltr; }
 .journal-page-info small { font-size:10px; color:var(--text-muted,#64748b); }
+@media screen {
+ .journal-page-info small { font-size:12px; } }
 @media(max-width:760px) {
  .unified-journal-panel .journal-entry-head { display:none!important; }
  .unified-journal-panel .journal-entry-row { grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important; }
@@ -45,3 +47,6 @@
   .cash-journal-print-sheet th,.cash-journal-print-sheet td { padding:8px; border:1px solid #999; text-align:right; }
   .cash-journal-print-sheet tr { break-inside:avoid; }
 }
+
+.journal-sales-receivables { margin-top:24px; }
+.journal-sales-receivables h2 { margin:0 0 12px; font-size:18px; }

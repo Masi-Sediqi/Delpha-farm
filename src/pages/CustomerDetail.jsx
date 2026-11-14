@@ -372,7 +372,7 @@ export default function CustomerDetail() {
     if (openingBalance !== 0) {
       entries.push({
         id: `opening-${customerId}`,
-        date: customer?.createdAt || "",
+        date: customer?.openingBalanceDate || customer?.createdAt || "",
         reference: "OPENING",
         description: t.opening,
         kind: "opening",
@@ -801,7 +801,7 @@ export default function CustomerDetail() {
                   <thead><tr><th>{t.date}</th><th>{t.reference}</th><th>{t.description}</th><th>{t.debit}</th><th>{t.credit}</th><th>{t.remaining}</th><th>{t.balance}</th><th>{t.actions}</th></tr></thead>
                   <tbody>
                     {ledger.length ? ledger.map((entry) => (
-                      <tr key={entry.id}>
+                      <tr data-search-kind={entry.kind === "manual-payment" ? "customer-payment" : undefined} data-search-id={entry.sourceId} key={entry.id}>
                         <td>{formatDateTime(entry.date)}</td>
                         <td><span className="customer-ledger-reference">{entry.reference || "—"}</span></td>
                         <td><span className={`customer-ledger-description ${entry.kind || ""}`}>{entry.description}</span></td>

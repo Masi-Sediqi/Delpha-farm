@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Search } from "lucide-react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
-import { buildSystemSearchResults } from "../utils/systemSearch";
+import { buildSystemSearchResults, searchResultNavigation } from "../utils/systemSearch";
 
 const languageKey = "afghan-power-language";
 const rtl = new Set(["fa", "ps"]);
@@ -65,9 +65,9 @@ export default function SearchResults() {
     {groups.map((group) => <section className="search-results-card" key={group.type}>
       <div className="search-results-card-title"><div><h2>{group.type}</h2><p>{group.items.length}</p></div></div>
       <div className="search-results-table-wrap"><table><thead><tr><th>{t.type}</th><th>{t.record}</th><th>{t.details}</th><th>{t.open}</th></tr></thead><tbody>
-        {group.items.map((item) => <tr key={item.key} className="search-result-clickable-row" role="button" tabIndex={0} onClick={() => navigate(item.path)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") navigate(item.path); }}><td><span className="search-result-type">{item.type}</span></td><td data-label={t.record}><strong><Highlight value={item.title} query={query}/></strong><small><Highlight value={item.subtitle} query={query}/></small></td><td data-label={t.details}><div className="search-result-detail-list">{item.details.map((detail) => <span key={detail}><Highlight value={detail} query={query}/></span>)}</div></td><td data-label={t.open}><button type="button" onClick={(event) => { event.stopPropagation(); navigate(item.path); }}>{t.open}</button></td></tr>)}
+        {group.items.map((item) => <tr key={item.key} className="search-result-clickable-row" role="button" tabIndex={0} onClick={() => navigate(item.path, searchResultNavigation(item))} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") navigate(item.path, searchResultNavigation(item)); }}><td><span className="search-result-type">{item.type}</span></td><td data-label={t.record}><strong><Highlight value={item.title} query={query}/></strong><small><Highlight value={item.subtitle} query={query}/></small></td><td data-label={t.details}><div className="search-result-detail-list">{item.details.map((detail) => <span key={detail}><Highlight value={detail} query={query}/></span>)}</div></td><td data-label={t.open}><button type="button" onClick={(event) => { event.stopPropagation(); navigate(item.path, searchResultNavigation(item)); }}>{t.open}</button></td></tr>)}
       </tbody></table></div>
     </section>)}
-    {query.trim().length >= 2 && !results.length && <section className="search-results-empty">{t.no}</section>}
+    {query.trim().length >= 1 && !results.length && <section className="search-results-empty">{t.no}</section>}
   </div>;
 }

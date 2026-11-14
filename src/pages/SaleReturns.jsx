@@ -1,21 +1,121 @@
-import { useEffect, useMemo, useState } from "react";
+import { formatAfghanDate } from "../utils/afghanDate";
+import ShamsiDateInput from "../components/ShamsiDateInput";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, RotateCcw, Undo2, X } from "lucide-react";
+import { RotateCcw, Undo2, X } from "lucide-react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import { writeAtomicFinanceBatch } from "../utils/browserStorage";
 import { notify } from "../utils/notify";
-import { replaceReferenceMovements, stockMovementId } from "../utils/stock";
+import { useSearchParams } from "react-router-dom";
+import { saleReturnLines, returnAmount, buildSaleReturn } from "../utils/saleReturns";
+import { todayDateValue } from "../utils/afghanDate";
 import "./Returns.css";
-const languageKey="afghan-power-language";const rtl=new Set(["fa","ps"]);const n=v=>Math.max(Number(v||0),0);const today=()=>new Date().toISOString().slice(0,10);
+const languageKey="afghan-power-language";const rtl=new Set(["fa","ps"]);const n=v=>Math.max(Number(v||0),0);const today=todayDateValue;
 const tr={en:{title:"Sale Returns",sub:"Return sold medicine from customers and update stock and customer ledger.",new:"New Sale Return",records:"Sale Return Records",search:"Search return, invoice or customer...",empty:"No sale returns recorded.",returnNo:"Return No.",date:"Date",customer:"Customer",sale:"Original Sale",invoice:"Invoice",items:"Items",total:"Return Total",newTitle:"Register Sale Return",selectCustomer:"Select customer",selectSale:"Select original sale",notes:"Notes",notesPh:"Reason or notes...",returnItems:"Return Items",product:"Product",sold:"Sold",returned:"Already Returned",qty:"Return Qty",price:"Sale Price",save:"Save Return",cancel:"Cancel",required:"Select a customer and original sale.",selectItem:"Enter at least one return quantity.",tooMuch:"Return quantity is greater than sold quantity for",saved:"Sale return saved successfully."},fa:{title:"برگشت فروش",sub:"دواهای فروخته‌شده را از مشتری برگشت گرفته و موجودی و لیجر مشتری را اصلاح کنید.",new:"برگشت فروش جدید",records:"ریکاردهای برگشت فروش",search:"جستجوی برگشت، بل یا مشتری...",empty:"هنوز برگشت فروش ثبت نشده است.",returnNo:"نمبر برگشت",date:"تاریخ",customer:"مشتری",sale:"فروش اصلی",invoice:"بل فروش",items:"اقلام",total:"جمله برگشت",newTitle:"ثبت برگشت فروش",selectCustomer:"مشتری را انتخاب کنید",selectSale:"فروش اصلی را انتخاب کنید",notes:"ملاحظات",notesPh:"دلیل یا ملاحظات...",returnItems:"اقلام برگشتی",product:"محصول",sold:"فروخته‌شده",returned:"قبلاً برگشت",qty:"مقدار برگشت",price:"قیمت فروش",save:"ذخیره برگشت",cancel:"لغو",required:"مشتری و فروش اصلی را انتخاب کنید.",selectItem:"حداقل برای یک محصول مقدار برگشت وارد کنید.",tooMuch:"مقدار برگشت بیشتر از مقدار فروخته‌شده است برای",saved:"برگشت فروش با موفقیت ذخیره شد."},ps:{title:"د خرڅلاو بېرته ستنول",sub:"له پېرودونکي څخه پلورل شوي درمل بېرته واخلئ او موجودي او لیجر اصلاح کړئ.",new:"نوی د خرڅلاو بېرته ستنول",records:"د خرڅلاو بېرته ستنولو ریکارډونه",search:"د بېرته ستنولو، بل یا پېرودونکي لټون...",empty:"تر اوسه د خرڅلاو بېرته ستنول نشته.",returnNo:"د بېرته ستنولو نمبر",date:"نېټه",customer:"پېرودونکی",sale:"اصلي خرڅلاو",invoice:"د خرڅلاو بل",items:"توکي",total:"ټول بېرته مبلغ",newTitle:"د خرڅلاو بېرته ستنول ثبتول",selectCustomer:"پېرودونکی وټاکئ",selectSale:"اصلي خرڅلاو وټاکئ",notes:"یادښتونه",notesPh:"دلیل یا یادښتونه...",returnItems:"بېرته ستنېدونکي توکي",product:"محصول",sold:"پلورل شوی",returned:"مخکې بېرته",qty:"بېرته مقدار",price:"د خرڅلاو بیه",save:"ثبت کړئ",cancel:"لغوه",required:"پېرودونکی او اصلي خرڅلاو وټاکئ.",selectItem:"لږ تر لږه د یوه توکي بېرته مقدار ولیکئ.",tooMuch:"بېرته مقدار د پلورل شوي مقدار څخه زیات دی د",saved:"د خرڅلاو بېرته ستنول ثبت شول."}};
-export default function SaleReturns(){
- const [language,setLanguage]=useState(()=>localStorage.getItem(languageKey)||"en");const t=tr[language]||tr.en;const [returns,setReturns]=useJsonCollection("saleReturns");const [returnItems,setReturnItems]=useJsonCollection("saleReturnItems");const [sales]=useJsonCollection("salesRegister");const [customers]=useJsonCollection("customerRegistry");const [movements,setMovements]=useJsonCollection("stockMovements");const [show,setShow]=useState(false),[customerId,setCustomerId]=useState(""),[saleId,setSaleId]=useState(""),[returnNo,setReturnNo]=useState(""),[date,setDate]=useState(today()),[notes,setNotes]=useState(""),[rows,setRows]=useState([]),[search,setSearch]=useState("");
- useEffect(()=>{const f=()=>setLanguage(localStorage.getItem(languageKey)||"en");window.addEventListener("app-language-updated",f);return()=>window.removeEventListener("app-language-updated",f)},[]);useEffect(()=>{document.body.classList.toggle("returns-modal-open",show);return()=>document.body.classList.remove("returns-modal-open")},[show]);
- const customerName=id=>{const c=customers.find(x=>String(x.id)===String(id));return c?.fullName||c?.companyName||"—"};const customerSales=useMemo(()=>sales.filter(x=>!customerId||String(x.customerId)===String(customerId)),[sales,customerId]);const returnedFor=(sid,pid)=>returnItems.filter(x=>String(x.saleId)===String(sid)&&String(x.productId)===String(pid)).reduce((s,x)=>s+n(x.quantity),0);
- const open=()=>{setCustomerId("");setSaleId("");setReturnNo(`SR-${String(Date.now()).slice(-7)}`);setDate(today());setNotes("");setRows([]);setShow(true)};const chooseSale=id=>{setSaleId(id);const s=sales.find(x=>String(x.id)===String(id));if(s)setCustomerId(s.customerId||"");setRows((s?.items||[]).map(x=>({...x,returnQty:"",alreadyReturned:returnedFor(id,x.productId)})))};const total=rows.reduce((s,r)=>s+n(r.returnQty)*n(r.salePrice),0);
- const save=async e=>{e.preventDefault();if(!customerId||!saleId)return notify(t.required,"warning");const selected=rows.filter(r=>n(r.returnQty)>0);if(!selected.length)return notify(t.selectItem,"warning");for(const r of selected){if(n(r.returnQty)>n(r.quantity)-n(r.alreadyReturned))return notify(`${t.tooMuch} ${r.productName}`,"warning")}
- const id=`sale-return-${Date.now()}`,now=new Date().toISOString();const header={id,customerId,saleId,returnNo:returnNo.trim(),returnDate:date,totalAmount:total,itemCount:selected.length,notes:notes.trim(),createdAt:now};const details=[];const stockRows=[];
- selected.forEach((r,ri)=>{let remaining=n(r.returnQty);const allocations=Array.isArray(r.batchAllocations)&&r.batchAllocations.length?r.batchAllocations:[{batchNo:"UNBATCHED",expiryDate:"",quantity:n(r.quantity)}];allocations.forEach((a,ai)=>{if(remaining<=0)return;const batchNo=a.batchNo||"UNBATCHED";const alreadyBatchReturned=returnItems.filter(x=>String(x.saleId)===String(saleId)&&String(x.productId)===String(r.productId)&&String(x.batchNo||"UNBATCHED")===String(batchNo)).reduce((sum,x)=>sum+n(x.quantity),0);const batchReturnable=Math.max(n(a.quantity)-alreadyBatchReturned,0);const qty=Math.min(batchReturnable,remaining);if(!qty)return;details.push({id:`sale-return-item-${id}-${ri+1}-${ai+1}`,saleReturnId:id,saleId,productId:r.productId,productName:r.productName,batchNo,expiryDate:a.expiryDate||"",quantity:qty,salePrice:n(r.salePrice),lineTotal:qty*n(r.salePrice),createdAt:now});stockRows.push({id:stockMovementId("sale-return",id,r.productId,`${batchNo}-${ri+1}-${ai+1}`),productId:r.productId,movementType:"sale-return",referenceType:"sale-return",referenceId:id,referenceNumber:header.returnNo,quantityIn:qty,quantityOut:0,unitPrice:n(r.salePrice),batchNo,expiryDate:a.expiryDate||"",movementDate:date,createdAt:now,updatedAt:now});remaining-=qty})});if(details.reduce((sum,row)=>sum+n(row.quantity),0)!==selected.reduce((sum,row)=>sum+n(row.returnQty),0))return notify("Return batch allocation does not match the requested quantity.","error");try {await writeAtomicFinanceBatch({saleReturns:[header,...returns],saleReturnItems:[...details,...returnItems],stockMovements:replaceReferenceMovements(movements,"sale-return",id,stockRows)});notify(t.saved,"success",{silent:true});setShow(false)}catch(error){notify(error.message||"Unable to save return", "error")}};
- const filtered=returns.filter(r=>`${r.returnNo||""} ${customerName(r.customerId)} ${sales.find(s=>String(s.id)===String(r.saleId))?.invoiceNumber||""}`.toLowerCase().includes(search.toLowerCase()));
- return <div className="returns-page" dir={rtl.has(language)?"rtl":"ltr"}><div className="returns-head"><div><h1>{t.title}</h1><p>{t.sub}</p></div><button className="returns-primary" onClick={open}><RotateCcw size={17}/>{t.new}</button></div><section className="returns-card"><div className="returns-card-head"><h2>{t.records}</h2><div className="returns-search"><input value={search} onChange={e=>setSearch(e.target.value)} placeholder={t.search}/></div></div><div className="returns-table"><table><thead><tr><th>{t.returnNo}</th><th>{t.date}</th><th>{t.customer}</th><th>{t.invoice}</th><th>{t.items}</th><th>{t.total}</th></tr></thead><tbody>{filtered.length?filtered.map(r=><tr key={r.id}><td>{r.returnNo}</td><td>{r.returnDate}</td><td>{customerName(r.customerId)}</td><td>{sales.find(s=>String(s.id)===String(r.saleId))?.invoiceNumber||"—"}</td><td>{r.itemCount}</td><td>{n(r.totalAmount).toFixed(2)}</td></tr>):<tr><td colSpan="6" className="returns-empty">{t.empty}</td></tr>}</tbody></table></div></section>{show&&createPortal(<div className="returns-overlay" ><form className="returns-modal" onSubmit={save} onMouseDown={e=>e.stopPropagation()}><div className="returns-modal-head"><h2><Undo2 size={19}/>{t.newTitle}</h2><button type="button" className="returns-close" onClick={()=>setShow(false)}><X size={18}/></button></div><div className="returns-body"><div className="returns-grid"><label><span>{t.returnNo}</span><input value={returnNo} onChange={e=>setReturnNo(e.target.value)} required/></label><label><span>{t.date}</span><input type="date" value={date} onChange={e=>setDate(e.target.value)} required/></label><label><span>{t.customer}</span><select value={customerId} onChange={e=>{setCustomerId(e.target.value);setSaleId("");setRows([])}}><option value="">{t.selectCustomer}</option>{customers.map(c=><option key={c.id} value={c.id}>{c.fullName||c.companyName}</option>)}</select></label><label><span>{t.sale}</span><select value={saleId} onChange={e=>chooseSale(e.target.value)} disabled={!customerId}><option value="">{t.selectSale}</option>{customerSales.map(s=><option key={s.id} value={s.id}>{s.invoiceNumber} — {s.saleDate||""}</option>)}</select></label><label className="returns-wide"><span>{t.notes}</span><textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder={t.notesPh}/></label></div><div className="returns-items"><div className="returns-items-head"><h3>{t.returnItems}</h3></div>{rows.map((r,i)=><div className="returns-line" key={`${r.productId}-${i}`}><strong>{i+1}. {r.productName}</strong><label><span>{t.sold}</span><input value={n(r.quantity)} readOnly/></label><label><span>{t.returned}</span><input value={n(r.alreadyReturned)} readOnly/></label><label><span>{t.price}</span><input value={n(r.salePrice)} readOnly/></label><label><span>{t.qty}</span><input type="number" min="0" step="any" value={r.returnQty} onChange={e=>setRows(cur=>cur.map((x,ix)=>ix===i?{...x,returnQty:e.target.value}:x))}/></label></div>)}</div><div className="returns-summary"><span>{t.total}</span><strong>{total.toFixed(2)}</strong></div></div><div className="returns-footer"><button type="button" className="returns-secondary" onClick={()=>setShow(false)}>{t.cancel}</button><button className="returns-primary"><Check size={17}/>{t.save}</button></div></form></div>,document.body)}</div>
+export default function SaleReturns() {
+ const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "fa");
+ const t = tr[language] || tr.fa;
+ const [returns, , , returnsLoaded] = useJsonCollection("saleReturns");
+ const [returnItems, , , itemsLoaded] = useJsonCollection("saleReturnItems");
+ const [sales, , , salesLoaded] = useJsonCollection("salesRegister");
+ const [customers] = useJsonCollection("customerRegistry");
+ const [movements, , , movementsLoaded] = useJsonCollection("stockMovements");
+ const [journal, , , journalLoaded] = useJsonCollection("partyCashTransactions");
+ const [params] = useSearchParams();
+ const requestedSale = params.get("saleId");
+ const openedRequest = useRef(null);
+ const saving = useRef(false);
+ const [busy, setBusy] = useState(false);
+ const [show, setShow] = useState(false);
+ const [customerId, setCustomerId] = useState("");
+ const [saleId, setSaleId] = useState("");
+ const [returnNo, setReturnNo] = useState("");
+ const [date, setDate] = useState(today);
+ const [notes, setNotes] = useState("");
+ const [rows, setRows] = useState([]);
+ const [search, setSearch] = useState("");
+ const [refundMode, setRefundMode] = useState("account");
+ const loaded = returnsLoaded && itemsLoaded && salesLoaded && movementsLoaded && journalLoaded;
+ const sale = sales.find((row) => String(row.id) === String(saleId));
+ const customerName = (id) => { const customer = customers.find((row) => String(row.id) === String(id)); return customer?.fullName || customer?.companyName || "—"; };
+ const customerSales = useMemo(() => sales.filter((row) => !customerId || String(row.customerId) === String(customerId)), [sales, customerId]);
+ const total = rows.reduce((sum, row) => sum + returnAmount(row), 0);
+ const currency = sale?.currency || "AFN";
+ useEffect(() => {
+   const sync = () => setLanguage(localStorage.getItem(languageKey) || "fa");
+   window.addEventListener("app-language-updated", sync);
+   return () => window.removeEventListener("app-language-updated", sync);
+ }, []);
+ useEffect(() => {
+   document.body.classList.toggle("returns-modal-open", show);
+   return () => document.body.classList.remove("returns-modal-open");
+ }, [show]);
+ useEffect(() => {
+   if (!requestedSale || !loaded || openedRequest.current === requestedSale) return;
+   const found = sales.find((row) => String(row.id) === requestedSale);
+   if (!found) return;
+   openedRequest.current = requestedSale;
+   setSaleId(found.id); setCustomerId(found.customerId || "");
+   setRows(saleReturnLines(found, returnItems));
+   setReturnNo(`SR-${Date.now()}`); setDate(today()); setNotes(""); setRefundMode("account"); setShow(true);
+ }, [requestedSale, loaded, sales, returnItems]);
+ const open = () => {
+   setCustomerId(""); setSaleId(""); setReturnNo(`SR-${Date.now()}`); setDate(today());
+   setNotes(""); setRows([]); setRefundMode("account"); setShow(true);
+ };
+ const chooseSale = (id) => {
+   const selected = sales.find((row) => String(row.id) === String(id));
+   setSaleId(id); if (selected) setCustomerId(selected.customerId || "");
+   setRows(saleReturnLines(selected, returnItems));
+ };
+ const changeRow = (id, patch) => setRows((current) => current.map((row) => row.saleLineId === id ? { ...row, ...patch } : row));
+ const save = async (event) => {
+   event.preventDefault();
+   if (saving.current || !loaded) return;
+   if (!sale || !customerId) return notify(t.required, "warning");
+   if (!date || !returnNo.trim()) return;
+   saving.current = true; setBusy(true);
+   try {
+     // Recheck the selected quantities against the latest loaded return records.
+     const fresh = saleReturnLines(sale, returnItems).map((row) => {
+       const draft = rows.find((item) => item.saleLineId === row.saleLineId);
+       return { ...row, returnQty: draft?.returnQty || "", returnUnit: draft?.returnUnit || row.returnUnit };
+     });
+     const result = buildSaleReturn({ sale, rows: fresh, id: `sale-return-${Date.now()}`, returnNo: returnNo.trim(), date, notes: notes.trim(), refundMode, now: new Date().toISOString() });
+     const changes = { saleReturns: [result.header, ...returns], saleReturnItems: [...result.items, ...returnItems], stockMovements: [...result.movements, ...movements] };
+     if (result.refund) changes.partyCashTransactions = [result.refund, ...journal];
+     await writeAtomicFinanceBatch(changes);
+     notify(t.saved, "success", { silent: true }); setShow(false);
+   } catch (error) { notify(error.message || "ثبت برگشت انجام نشد.", "error"); }
+   finally { saving.current = false; setBusy(false); }
+ };
+ const filtered = returns.filter((row) => `${row.returnNo} ${customerName(row.customerId)} ${row.saleId}`.toLowerCase().includes(search.trim().toLowerCase()));
+ return <div className="returns-page" dir={rtl.has(language) ? "rtl" : "ltr"}>
+   <div className="returns-head"><div><h1>{t.title}</h1><p>{t.sub}</p></div><button className="returns-primary" type="button" disabled={!loaded} onClick={open}><RotateCcw size={17}/>{t.new}</button></div>
+   <section className="returns-card"><div className="returns-card-head"><h2>{t.records}</h2><div className="returns-search"><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t.search}/></div></div>
+     <div className="returns-table"><table><thead><tr><th>{t.returnNo}</th><th>{t.date}</th><th>{t.customer}</th><th>{t.invoice}</th><th>{t.total}</th><th>نوع تصفیه</th></tr></thead>
+       <tbody>{filtered.map((row) => <tr key={row.id}><td>{row.returnNo}</td><td>{formatAfghanDate(row.returnDate)}</td><td>{customerName(row.customerId)}</td><td>{sales.find((item) => String(item.id) === String(row.saleId))?.invoiceNumber || "—"}</td><td>{n(row.totalAmount).toLocaleString(undefined, { maximumFractionDigits: 6 })} {row.currency || sales.find((item) => String(item.id) === String(row.saleId))?.currency || "AFN"}</td><td>{row.refundMode === "cash" ? "پرداخت نقدی" : "ثبت در حساب مشتری"}</td></tr>)}
+       {!filtered.length && <tr><td colSpan="6" className="returns-empty">{t.empty}</td></tr>}</tbody></table></div>
+   </section>
+   {show && createPortal(<div className="returns-overlay"><form className="returns-modal" onSubmit={save}>
+     <div className="returns-modal-head"><h2><Undo2 size={19}/>{t.newTitle}</h2><button type="button" className="returns-close" disabled={busy} onClick={() => setShow(false)}><X size={18}/></button></div>
+     <div className="returns-body"><div className="returns-grid">
+       <label><span>{t.returnNo}</span><input value={returnNo} onChange={(e) => setReturnNo(e.target.value)} required/></label>
+       <label><span>{t.date}</span><ShamsiDateInput value={date} onChange={(e) => setDate(e.target.value)} required/></label>
+       <label><span>{t.customer}</span><select value={customerId} onChange={(e) => { setCustomerId(e.target.value); setSaleId(""); setRows([]); }} required><option value="">{t.selectCustomer}</option>{customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.fullName || customer.companyName}</option>)}</select></label>
+       <label><span>{t.sale}</span><select value={saleId} onChange={(e) => chooseSale(e.target.value)} disabled={!customerId} required><option value="">{t.selectSale}</option>{customerSales.map((item) => <option key={item.id} value={item.id}>{item.invoiceNumber} — {formatAfghanDate(item.saleDate)}</option>)}</select></label>
+       <label className="returns-wide"><span>تصفیهٔ مبلغ برگشت</span><select value={refundMode} onChange={(e) => setRefundMode(e.target.value)}><option value="account">ثبت در حساب مشتری</option><option value="cash">پرداخت نقدی به مشتری</option></select></label>
+       <label className="returns-wide"><span>{t.notes}</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t.notesPh}/></label>
+     </div><div className="returns-items"><h3>{t.returnItems}</h3>{rows.map((row) => <div className="returns-line sale-return-line" key={row.saleLineId}>
+       <strong>{row.productName}<small>قیمت خالص فی دانه: {row.netPricePerPiece.toLocaleString(undefined, { maximumFractionDigits: 6 })} {currency}</small></strong>
+       <label><span>{t.sold} (دانه)</span><input value={row.quantity} readOnly/></label>
+       <label><span>{t.returned} (دانه)</span><input value={row.alreadyReturned} readOnly/></label>
+       <label><span>واحد برگشت</span><select value={row.returnUnit} onChange={(e) => changeRow(row.saleLineId, { returnUnit: e.target.value, returnQty: "" })}><option value="piece">دانه</option>{row.cartonSize > 1 && <option value="carton">کارتن ({row.cartonSize} دانه)</option>}</select></label>
+       <label><span>{t.qty}</span><input type="number" min="0" step="any" max={row.remainingPieces / (row.returnUnit === "carton" ? row.cartonSize : 1)} value={row.returnQty} onChange={(e) => changeRow(row.saleLineId, { returnQty: e.target.value })}/></label>
+       <output>مبلغ برگشت: {returnAmount(row).toLocaleString(undefined, { maximumFractionDigits: 6 })} {currency}</output>
+     </div>)}</div><div className="returns-summary"><span>{t.total}</span><strong>{total.toLocaleString(undefined, { maximumFractionDigits: 6 })} {currency}</strong></div>
+     <p>{refundMode === "account" ? "مبلغ از باقی مشتری کم می‌شود؛ اگر حساب مشتری طلبکار شود، در تادیات نمایش داده می‌شود." : "مبلغ برگشت همزمان به‌عنوان پرداخت نقدی به مشتری در روزنامچه ثبت می‌شود."}</p>
+     </div><div className="returns-footer"><button type="button" className="returns-secondary" disabled={busy} onClick={() => setShow(false)}>{t.cancel}</button><button type="submit" className="returns-primary" disabled={busy || !loaded}>{busy ? "در حال ثبت..." : t.save}</button></div>
+   </form></div>, document.body)}
+ </div>;
 }

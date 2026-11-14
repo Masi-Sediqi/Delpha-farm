@@ -1,3 +1,4 @@
+import ShamsiDateInput from "../components/ShamsiDateInput";
 import { groupJournalPages, replaceJournalPage } from "../utils/journalPages";
 import { Link } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -12,7 +13,7 @@ import "./CashJournalUnified.css";
 
 const codes = ["AFN", "USD", "PKR", "EUR"];
 const num = (value) => Number(value || 0) || 0;
-const partyName = (row, type) => type === "customer" ? (row.fullName || row.companyName || row.name || "مشتری") : (row.supplierName || row.name || row.companyName || "تأمین‌کننده");
+const customerName = (row) => row.fullName || row.companyName || row.name || "مشتری";
 const emptyRow = () => ({ id: `row-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, account: "", partyKey: "", debit: "", credit: "", details: "", autoDetails: false });
 const INITIAL_ROWS = 50;
 const makeInitialRows = () => Array.from({ length: INITIAL_ROWS }, () => emptyRow());
@@ -22,7 +23,7 @@ const defaultDetails = (row, date, code) => {
   const value = num(row.debit) > 0 ? num(row.debit) : num(row.credit);
   if (!row.account.trim() || value <= 0) return "";
   const action = num(row.debit) > 0 ? "دریافت از" : "پرداخت به";
-  return `${action} ${row.account.trim()} به مبلغ ${formatAmount(value)} ${code} در تاریخ ${date}`.slice(0, 150);
+  return `${action} ${row.account.trim()} به مبلغ ${formatAmount(value)} ${code} در تاریخ ${formatAfghanDate(date)}`.slice(0, 150);
 };
 const withSuggestedDetails = (row, date, code) => {
   // Never overwrite a description typed or edited by the user.
@@ -39,7 +40,7 @@ function AccountPicker({ row, options, update, readOnly = false }) {
   const pick = (option) => { update({ ...row, account: option.name, partyKey: option.key }); setOpened(false); };
   if (readOnly) return <input aria-label="نام اکونت" readOnly value={row.account} />;
   return <div className="journal-party-search" ref={holder} onBlur={(event) => { if (!holder.current?.contains(event.relatedTarget)) setOpened(false); }}>
-    <div className="journal-party-input"><Search size={15}/><input aria-label="نام اکونت" autoComplete="off" value={row.account} placeholder="جستجوی تمام مشتریان، تأمین‌کنندگان یا حساب عمومی..." onFocus={() => setOpened(true)} onChange={(event) => { update({ ...row, account: event.target.value, partyKey: "" }); setOpened(true); setActive(0); }} onKeyDown={(event) => {
+    <div className="journal-party-input"><Search size={15}/><input aria-label="نام اکونت" autoComplete="off" value={row.account} placeholder="جستجوی تمام مشتریان یا حساب عمومی..." onFocus={() => setOpened(true)} onChange={(event) => { update({ ...row, account: event.target.value, partyKey: "" }); setOpened(true); setActive(0); }} onKeyDown={(event) => {
       if (event.key === "ArrowDown") { event.preventDefault(); setOpened(true); setActive((i) => Math.min(i + 1, matches.length - 1)); }
       if (event.key === "ArrowUp") { event.preventDefault(); setOpened(true); setActive((i) => Math.max(0, i - 1)); }
       if (event.key === "Enter" && opened && matches[active]) { event.preventDefault(); pick(matches[active]); }
@@ -51,7 +52,7 @@ function AccountPicker({ row, options, update, readOnly = false }) {
 
 export default function CashJournal() {
   const [customers] = useJsonCollection("customerRegistry");
-  const [suppliers] = useJsonCollection("suppliers");
+  const [sales] = useJsonCollection("salesRegister");
   const [expenseAccounts] = useJsonCollection("expenseAccounts");
   const [bankAccounts] = useJsonCollection("bankAccounts");
   const [entries, setEntries] = useJsonCollection("partyCashTransactions");
@@ -71,12 +72,11 @@ export default function CashJournal() {
 
   // All registered accounts are selectable regardless of outstanding balance.
   const options = useMemo(() => [
-    ...customers.map((row) => ({ key: `customer:${row.id}`, name: partyName(row, "customer"), searchText: [row.companyName, row.phone, row.mobile, row.contactNumber, row.id].filter(Boolean).join(" "), typeLabel: "مشتری" })),
-    ...suppliers.map((row) => ({ key: `supplier:${row.id}`, name: partyName(row, "supplier"), typeLabel: "تأمین‌کننده" })),
+    ...customers.map((row) => ({ key: `customer:${row.id}`, name: customerName(row), searchText: [row.companyName, row.phone, row.mobile, row.contactNumber, row.id].filter(Boolean).join(" "), typeLabel: "مشتری" })),
     ...expenseAccounts.map((row) => ({ key: `expense:${row.id}`, name: row.name || row.accountName || "حساب مصرف", typeLabel: "حساب مصرف" })),
     ...bankAccounts.map((row) => ({ key: `bank:${row.id}`, name: row.accountName || row.bankName || row.name || "بانک", typeLabel: "بانک" })),
     { key: "general:cash", name: "دخل شرکت", typeLabel: "حساب عمومی" },
-  ].filter((option) => option.name), [customers, suppliers, expenseAccounts, bankAccounts]);
+  ].filter((option) => option.name), [customers, expenseAccounts, bankAccounts]);
 
   // Existing records remain intact; only a new page receives a JEN number.
   const nextSequence = useMemo(() => Math.max(0, ...entries.map((entry) => {
@@ -114,6 +114,15 @@ export default function CashJournal() {
   };
   const pages = useMemo(() => groupJournalPages(entries), [entries]);
   const visible = useMemo(() => pages.filter(page => !query.trim() || `${page.number} ${page.entries.map(row=>`${row.accountName || row.partyName || ""} ${row.description || row.note || ""} ${row.currency || ""}`).join(" ")}`.toLowerCase().includes(query.trim().toLowerCase())), [pages, query]);
+  const journalSales = useMemo(() => {
+    const search = query.trim().toLowerCase();
+    const customerMap = new Map(customers.map((customer) => [String(customer.id), customer]));
+    return sales.map((sale) => ({ ...sale,
+      customerLabel: customerName(customerMap.get(String(sale.customerId)) || { name: sale.customerName }),
+    })).filter((sale) => !search || [sale.customerLabel, sale.invoiceNumber, sale.billNumber,
+      sale.systemBillNumber, sale.id, sale.currency].some((value) => String(value || "").toLowerCase().includes(search)))
+      .sort((a, b) => String(b.saleDate || b.createdAt || "").localeCompare(String(a.saleDate || a.createdAt || "")));
+  }, [customers, sales, query]);
   const openPage = (page, viewOnly) => {
     setActionMenu(null); setActivePage(page); setReadOnly(viewOnly);
     setDate(String(page.entries[0]?.date || "").slice(0,10));
@@ -154,17 +163,37 @@ export default function CashJournal() {
     return () => { window.clearTimeout(timer); window.removeEventListener("afterprint",clear); };
   }, [printPage]);
 
-  const modal = opened ? <div className="cash-journal-overlay"><div className="cash-journal-modal unified-journal-modal"><header><div><BookOpenCheck/><div><h2>{readOnly ? "نمایش روزنامچه" : activePage ? "ویرایش روزنامچه" : "روزنامچه شماره"} {pageNumber}</h2><p>Debit دریافت پول به شرکت، Credit پرداخت پول از شرکت</p></div></div><button type="button" onClick={() => setOpened(false)} aria-label="بستن"><X/></button></header><main><section className="cash-journal-panel unified-journal-panel"><header><div className="journal-page-info"><strong>{pageNumber}</strong><small>شماره مسلسل اتومات</small></div><div className="journal-side-controls"><label><small>واحد پول</small><select disabled={readOnly} value={code} onChange={(event) => updateCurrency(event.target.value)}>{codes.map((c) => <option key={c}>{c}</option>)}</select></label><label><small>تاریخ میلادی</small><input readOnly={readOnly} type="date" max={todayDateValue()} value={date} onChange={(event) => updateDate(event.target.value)}/><small>تاریخ هجری شمسی: {formatAfghanDate(date, { pad: true })}</small></label></div></header><div className="journal-entry-head"><span>نام اکونت</span><span>Debit (دریافت)</span><span>Credit (پرداخت)</span><span>تفصیلات</span><span></span></div><div className="journal-entry-list">{rows.map((row) => <div className="journal-entry-row" key={row.id}><AccountPicker readOnly={readOnly} row={row} options={options} update={(value) => updateRow(row.id, value)}/><input readOnly={readOnly} type="number" aria-label="Debit دریافت" min="0" step="any" value={row.debit} onChange={(event) => updateRow(row.id, { ...row, debit: event.target.value, credit: event.target.value && num(event.target.value) > 0 ? "" : row.credit })} placeholder="0"/><input readOnly={readOnly} type="number" aria-label="Credit پرداخت" min="0" step="any" value={row.credit} onChange={(event) => updateRow(row.id, { ...row, credit: event.target.value, debit: event.target.value && num(event.target.value) > 0 ? "" : row.debit })} placeholder="0"/><textarea readOnly={readOnly} aria-label="تفصیلات" value={row.details} maxLength={150} rows={2} onChange={(event) => updateRow(row.id, { ...row, details: event.target.value.slice(0, 150), autoDetails: false })} placeholder="پس از انتخاب حساب و درج مبلغ، تفصیلات خودکار نوشته می‌شود"/><button hidden={readOnly} className="journal-remove" tabIndex={-1} type="button" title="حذف ردیف" onClick={() => setRows((current) => current.length === 1 ? [emptyRow()] : current.filter((item) => item.id !== row.id))}><Trash2 size={15}/></button></div>)}</div><button hidden={readOnly} type="button" className="journal-add-row" disabled={!canAddRow} title={!canAddRow ? "پس از تکمیل ۵۰ ردیف اولیه، می‌توانید ردیف بیشتری اضافه کنید." : "افزودن ردیف"} onClick={() => setRows((current) => [...current, emptyRow()])}><Plus size={16}/>افزودن ردیف دیگر ({rows.length} ردیف)</button></section></main><footer><span>Debit: {totals.debit.toLocaleString()} {code} | Credit: {totals.credit.toLocaleString()} {code}</span><div><button type="button" className="journal-cancel" onClick={() => setOpened(false)}>لغو</button><button hidden={readOnly} type="button" className="journal-save-all" disabled={saving} onClick={save}>{saving ? "در حال ذخیره..." : `ذخیره ${pageNumber}`}</button></div></footer></div></div> : null;
+  const modal = opened ? <div className="cash-journal-overlay"><div className="cash-journal-modal unified-journal-modal"><header><div><BookOpenCheck/><div><h2>{readOnly ? "نمایش روزنامچه" : activePage ? "ویرایش روزنامچه" : "روزنامچه شماره"} {pageNumber}</h2><p>Debit دریافت پول به شرکت، Credit پرداخت پول از شرکت</p></div></div><button type="button" onClick={() => setOpened(false)} aria-label="بستن"><X/></button></header><main><section className="cash-journal-panel unified-journal-panel"><header><div className="journal-page-info"><strong>{pageNumber}</strong><small>شماره مسلسل اتومات</small></div><div className="journal-side-controls"><label><small>واحد پول</small><select disabled={readOnly} value={code} onChange={(event) => updateCurrency(event.target.value)}>{codes.map((c) => <option key={c}>{c}</option>)}</select></label><label><small>تاریخ شمسی</small><ShamsiDateInput readOnly={readOnly}  max={todayDateValue()} value={date} onChange={(event) => updateDate(event.target.value)}/></label></div></header><div className="journal-entry-head"><span>نام اکونت</span><span>Debit (دریافت)</span><span>Credit (پرداخت)</span><span>تفصیلات</span><span></span></div><div className="journal-entry-list">{rows.map((row) => <div className="journal-entry-row" key={row.id}><AccountPicker readOnly={readOnly} row={row} options={options} update={(value) => updateRow(row.id, value)}/><input readOnly={readOnly} type="number" aria-label="Debit دریافت" min="0" step="any" value={row.debit} onChange={(event) => updateRow(row.id, { ...row, debit: event.target.value, credit: event.target.value && num(event.target.value) > 0 ? "" : row.credit })} placeholder="0"/><input readOnly={readOnly} type="number" aria-label="Credit پرداخت" min="0" step="any" value={row.credit} onChange={(event) => updateRow(row.id, { ...row, credit: event.target.value, debit: event.target.value && num(event.target.value) > 0 ? "" : row.debit })} placeholder="0"/><textarea readOnly={readOnly} aria-label="تفصیلات" value={row.details} maxLength={150} rows={2} onChange={(event) => updateRow(row.id, { ...row, details: event.target.value.slice(0, 150), autoDetails: false })} placeholder="پس از انتخاب حساب و درج مبلغ، تفصیلات خودکار نوشته می‌شود"/><button hidden={readOnly} className="journal-remove" tabIndex={-1} type="button" title="حذف ردیف" onClick={() => setRows((current) => current.length === 1 ? [emptyRow()] : current.filter((item) => item.id !== row.id))}><Trash2 size={15}/></button></div>)}</div><button hidden={readOnly} type="button" className="journal-add-row" disabled={!canAddRow} title={!canAddRow ? "پس از تکمیل ۵۰ ردیف اولیه، می‌توانید ردیف بیشتری اضافه کنید." : "افزودن ردیف"} onClick={() => setRows((current) => [...current, emptyRow()])}><Plus size={16}/>افزودن ردیف دیگر ({rows.length} ردیف)</button></section></main><footer><span>Debit: {totals.debit.toLocaleString()} {code} | Credit: {totals.credit.toLocaleString()} {code}</span><div><button type="button" className="journal-cancel" onClick={() => setOpened(false)}>لغو</button><button hidden={readOnly} type="button" className="journal-save-all" disabled={saving} onClick={save}>{saving ? "در حال ذخیره..." : `ذخیره ${pageNumber}`}</button></div></footer></div></div> : null;
 
-  return <div className="cash-journal-page" dir="rtl"><header className="cash-journal-head"><div><BookOpenCheck size={24}/><div><h1>روزنامچه نقدی</h1><p>ثبت یکپارچه دریافت و پرداخت، با شماره مسلسل هر صفحه</p></div></div><button type="button" onClick={() => { setActivePage(null); setReadOnly(false); setDate(todayDateValue()); setRows(makeInitialRows()); setOpened(true); }}><Plus size={18}/>ثبت روزنامچه</button></header><div className="cash-journal-toolbar"><label><Search size={17}/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="جستجوی نام اکونت، تفصیلات یا نمبر JEN..."/></label></div><div className="cash-journal-table"><table><thead><tr><th>نمبر صفحه</th><th>تاریخ میلادی</th><th>تاریخ هجری شمسی</th><th>نام اکونت</th><th>تفصیلات</th><th>تعداد ردیف</th><th>عملیات</th></tr></thead><tbody>{visible.length ? visible.map(page => {
+  return <div className="cash-journal-page" dir="rtl"><header className="cash-journal-head"><div><BookOpenCheck size={24}/><div><h1>روزنامچه نقدی</h1><p>ثبت یکپارچه دریافت و پرداخت، با شماره مسلسل هر صفحه</p></div></div><button type="button" onClick={() => { setActivePage(null); setReadOnly(false); setDate(todayDateValue()); setRows(makeInitialRows()); setOpened(true); }}><Plus size={18}/>ثبت روزنامچه</button></header><div className="cash-journal-toolbar"><label><Search size={17}/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="جستجوی نام اکونت، تفصیلات یا نمبر JEN..."/></label></div><div className="cash-journal-table"><table><thead><tr><th>نمبر صفحه</th><th>تاریخ هجری شمسی</th><th>نام اکونت</th><th>تفصیلات</th><th>تعداد ردیف</th><th>عملیات</th></tr></thead><tbody>{visible.length ? visible.map(page => {
     const row=page.entries[0];
-    return <tr key={page.key}><td>{page.number}</td><td>{String(row.date || "").slice(0,10)}</td><td>{formatAfghanDate(row.date)}</td><td>{page.entries.slice(0,2).map((entry,index)=><span className="journal-account-summary" key={entry.id}>{index>0 ? "، " : ""}{entry.partyId && ["customer","supplier"].includes(entry.partyType) ? <Link to={`/${entry.partyType}-detail/${encodeURIComponent(entry.partyId)}`}>{entry.accountName || entry.partyName}</Link> : entry.accountName || entry.partyName || "عمومی"}</span>)}{page.entries.length>2 && <small title={page.entries.map(entry=>entry.accountName || entry.partyName).join("، ")}> و {page.entries.length-2} ردیف دیگر</small>}</td><td>{row.note || row.description || ""}</td><td>{page.entries.length}</td><td className="journal-actions-cell"><button type="button" className="journal-actions-trigger" aria-label={`عملیات ${page.number}`} aria-haspopup="menu" aria-expanded={actionMenu?.page.key===page.key} aria-controls={actionMenu?.page.key===page.key ? "journal-actions-menu" : undefined} onClick={event=>toggleMenu(event,page)}><MoreHorizontal size={20}/></button></td></tr>;
-  }) : <tr><td colSpan="7" className="journal-empty">هنوز ریکاردی ثبت نشده است.</td></tr>}</tbody></table></div>{modal && createPortal(modal, document.body)}
+    return <tr key={page.key}><td>{page.number}</td><td>{formatAfghanDate(row.date)}</td><td>{page.entries.slice(0,2).map((entry,index)=><span className="journal-account-summary" key={entry.id}>{index>0 ? "، " : ""}{entry.partyId && ["customer","supplier"].includes(entry.partyType) ? <Link to={`/${entry.partyType}-detail/${encodeURIComponent(entry.partyId)}`}>{entry.accountName || entry.partyName}</Link> : entry.accountName || entry.partyName || "عمومی"}</span>)}{page.entries.length>2 && <small title={page.entries.map(entry=>entry.accountName || entry.partyName).join("، ")}> و {page.entries.length-2} ردیف دیگر</small>}</td><td>{row.note || row.description || ""}</td><td>{page.entries.length}</td><td className="journal-actions-cell"><button type="button" className="journal-actions-trigger" aria-label={`عملیات ${page.number}`} aria-haspopup="menu" aria-expanded={actionMenu?.page.key===page.key} aria-controls={actionMenu?.page.key===page.key ? "journal-actions-menu" : undefined} onClick={event=>toggleMenu(event,page)}><MoreHorizontal size={20}/></button></td></tr>;
+  }) : <tr><td colSpan="6" className="journal-empty">هنوز ریکاردی ثبت نشده است.</td></tr>}</tbody></table></div>{modal && createPortal(modal, document.body)}
+    <section className="journal-sales-receivables" aria-labelledby="journal-sales-title">
+      <h2 id="journal-sales-title">فروشات</h2>
+      <div className="cash-journal-table"><table>
+        <thead><tr><th>تاریخ شمسی</th><th>نمبر بل</th><th>مشتری</th><th>مبلغ فروش</th><th>دریافت هنگام فروش</th><th>باقی هنگام فروش</th><th>اسعار</th><th>عملیات</th></tr></thead>
+        <tbody>{journalSales.length ? journalSales.map((sale) => (
+          <tr key={sale.id}>
+            <td>{formatAfghanDate(sale.saleDate || sale.createdAt)}</td>
+            <td><Link to={`/sale-detail/${encodeURIComponent(sale.id)}`}>{sale.invoiceNumber || sale.billNumber || sale.systemBillNumber || sale.id}</Link></td>
+            <td>{sale.customerId ? <Link to={`/customer-detail/${encodeURIComponent(sale.customerId)}`}>{sale.customerLabel}</Link> : sale.customerLabel}</td>
+            <td>{formatAmount(sale.totalAmount)}</td>
+            <td>{formatAmount(sale.paidAmount)}</td>
+            <td>{formatAmount(sale.remainingAmount ?? Math.max(num(sale.totalAmount) - num(sale.paidAmount), 0))}</td>
+            <td>{sale.currency || "AFN"}</td>
+            <td><Link to={`/sale-detail/${encodeURIComponent(sale.id)}`}>نمایش بل</Link>
+              {sale.customerId && <> · <Link to={`/customer-detail/${encodeURIComponent(sale.customerId)}`}>حساب مشتری</Link></>}
+            </td>
+          </tr>
+        )) : <tr><td colSpan="8" className="journal-empty">{query.trim() ? "فروش مطابق جستجو پیدا نشد." : "هنوز فروشی ثبت نشده است."}</td></tr>}</tbody>
+      </table></div>
+    </section>
     {actionMenu && createPortal(<div id="journal-actions-menu" ref={menuRef} role="menu" dir="rtl" aria-label="عملیات روزنامچه" className="journal-actions-menu" style={{top:actionMenu.top,left:actionMenu.left}}>
       <button type="button" role="menuitem" onClick={()=>openPage(actionMenu.page,true)}><Eye size={16}/>نمایش</button>
       <button type="button" role="menuitem" onClick={()=>openPage(actionMenu.page,false)}><Pencil size={16}/>ویرایش</button>
       <button type="button" role="menuitem" onClick={()=>{setPrintPage(actionMenu.page);setActionMenu(null);}}><Printer size={16}/>چاپ</button>
     </div>,document.body)}
-    {printPage && createPortal(<div className="cash-journal-print-sheet" dir="rtl"><h1>روزنامچه نقدی {printPage.number}</h1><p>{String(printPage.entries[0]?.date || "").slice(0,10)} — {formatAfghanDate(printPage.entries[0]?.date)}</p><table><thead><tr><th>ردیف</th><th>نام اکونت</th><th>تفصیلات</th><th>Debit</th><th>Credit</th><th>اسعار</th></tr></thead><tbody>{printPage.entries.map((entry,index)=><tr key={entry.id}><td>{index+1}</td><td>{entry.accountName || entry.partyName}</td><td>{entry.note || entry.description}</td><td>{entry.direction==="in" ? formatAmount(entry.amount) : ""}</td><td>{entry.direction==="out" ? formatAmount(entry.amount) : ""}</td><td>{entry.currency}</td></tr>)}</tbody></table></div>,document.body)}
+    {printPage && createPortal(<div className="cash-journal-print-sheet" dir="rtl"><h1>روزنامچه نقدی {printPage.number}</h1><p>{formatAfghanDate(printPage.entries[0]?.date)}</p><table><thead><tr><th>ردیف</th><th>نام اکونت</th><th>تفصیلات</th><th>Debit</th><th>Credit</th><th>اسعار</th></tr></thead><tbody>{printPage.entries.map((entry,index)=><tr key={entry.id}><td>{index+1}</td><td>{entry.accountName || entry.partyName}</td><td>{entry.note || entry.description}</td><td>{entry.direction==="in" ? formatAmount(entry.amount) : ""}</td><td>{entry.direction==="out" ? formatAmount(entry.amount) : ""}</td><td>{entry.currency}</td></tr>)}</tbody></table></div>,document.body)}
   </div>;
 }

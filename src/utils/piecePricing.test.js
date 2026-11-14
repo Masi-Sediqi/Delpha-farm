@@ -1,6 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { productPricePerPiece, purchasePieceQuantity } from "./piecePricing.js";
+import { productPricePerPiece, purchasePieceQuantity, pieceLineAmount } from "./piecePricing.js";
+
+test("purchase and sale totals use piece prices regardless of carton size", () => {
+  const pieces = purchasePieceQuantity({ quantity: 2 }, 24);
+  assert.equal(pieceLineAmount(pieces, 10), 480);
+  assert.equal(pieceLineAmount(pieces, 15), 720);
+  assert.equal(pieceLineAmount(1, 15), 15);
+  assert.equal(productPricePerPiece({ priceUnit: "piece", cartonSize: 24, salePrice: 15 }, "salePrice"), 15);
+});
 
 test("carton product prices convert once before a piece purchase", () => {
   const carton = { productUnit: "carton", piecesPerUnit: 36, purchasePrice: 30, salePrice: 45 };

@@ -58,6 +58,9 @@ export default function ShamsiDateInput({
   id,
   required,
   disabled,
+  readOnly,
+  min,
+  max,
   placeholder,
   className = "",
 }) {
@@ -137,10 +140,13 @@ export default function ShamsiDateInput({
   }, [open, positionPopover]);
 
   const days = getAfghanMonthDays(view.jy, view.jm);
+  const firstWeekday = (new Date(`${afghanToGregorian(view.jy, view.jm, 1)}T12:00:00`).getDay() + 1) % 7;
+  const isAllowed = (date) => (!min || date >= min) && (!max || date <= max);
   const selectedLabel = value ? formatAfghanDate(value) : "";
 
   const commitDate = (day) => {
     const nextValue = afghanToGregorian(view.jy, view.jm, day);
+    if (disabled || readOnly || !isAllowed(nextValue)) return;
     onChange?.(buildChangeEvent(name, nextValue));
     setOpen(false);
   };
@@ -178,7 +184,9 @@ export default function ShamsiDateInput({
       <div className="shamsi-date-head">
         <button type="button" onClick={() => changeMonth(-1)} aria-label={text.previousMonth}><ChevronRight size={17} /></button>
         <div>
-          <strong>{text.months[view.jm - 1]}</strong>
+          <select aria-label={language === "en" ? "Month" : "ماه"} value={view.jm} onChange={(event) => setView((current) => ({ ...current, jm: Number(event.target.value) }))}>
+            {text.months.map((month, index) => <option key={month} value={index + 1}>{month}</option>)}
+          </select>
           <select value={view.jy} onChange={(event) => setView((current) => ({ ...current, jy: Number(event.target.value) }))}>
             {Array.from({ length: 21 }, (_, index) => view.jy - 10 + index).map((year) => (
               <option key={year} value={year}>{year}</option>
@@ -191,6 +199,7 @@ export default function ShamsiDateInput({
         {text.weekdays.map((day) => <span key={day}>{day}</span>)}
       </div>
       <div className="shamsi-date-grid">
+        {Array.from({ length: firstWeekday }, (_, index) => <span key={`empty-${index}`} aria-hidden="true" />)}
         {Array.from({ length: days }, (_, index) => index + 1).map((day) => {
           const active = selectedDate?.jy === view.jy && selectedDate?.jm === view.jm && selectedDate?.jd === day;
           const isToday = today?.jy === view.jy && today?.jm === view.jm && today?.jd === day;
@@ -200,6 +209,7 @@ export default function ShamsiDateInput({
               key={day}
               className={`${active ? "active" : ""} ${isToday ? "today" : ""}`}
               onClick={() => commitDate(day)}
+              disabled={!isAllowed(afghanToGregorian(view.jy, view.jm, day))}
             >
               {day}
             </button>
@@ -207,7 +217,7 @@ export default function ShamsiDateInput({
         })}
       </div>
       <div className="shamsi-date-footer">
-        <button type="button" onClick={clearDate}>{text.clear}</button>
+        <button type="button" onClick={clearDate} disabled={required}>{text.clear}</button>
         {today && <span>{text.today}: {today.jy}/{today.jm}/{today.jd}</span>}
       </div>
     </div>,
@@ -221,15 +231,30 @@ export default function ShamsiDateInput({
         id={id}
         type="button"
         className="shamsi-date-trigger"
-        onClick={() => !disabled && setOpen((current) => !current)}
+        onClick={() => !disabled && !readOnly && setOpen((current) => !current)}
         disabled={disabled}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-required={required}
+        aria-readonly={readOnly}
       >
         <span>{selectedLabel || effectivePlaceholder}</span>
         <CalendarDays size={16} />
       </button>
+      <input
+        tabIndex={-1}
+        aria-hidden="true"
+        value={value}
+        onChange={() => {}}
+        required={required}
+        disabled={disabled || readOnly}
+        onInvalid={(event) => {
+          event.preventDefault();
+          triggerRef.current?.focus();
+          setOpen(true);
+        }}
+        style={{ position: "absolute", opacity: 0, width: 1, height: 1, pointerEvents: "none" }}
+      />
       {popover}
     </div>
   );

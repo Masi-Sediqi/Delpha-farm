@@ -2,3 +2,5 @@
 .supplier-currency-stack>span{display:flex;align-items:baseline;gap:6px;white-space:nowrap}
 .supplier-currency-stack b{font:inherit;font-weight:850}
 .supplier-currency-stack em{font-size:10px;font-style:normal;font-weight:800;opacity:.75}
+@media screen{
+.supplier-currency-stack em{font-size:12px}}

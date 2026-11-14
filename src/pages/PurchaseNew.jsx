@@ -1,4 +1,6 @@
-import { productPricePerPiece, purchasePieceQuantity } from "../utils/piecePricing";
+import { useEntryNavigationLock } from "../hooks/useEntryNavigationLock";
+import PartySearchSelect from "../components/PartySearchSelect";
+import { productPricePerPiece, purchasePieceQuantity, pieceLineAmount } from "../utils/piecePricing";
 import { writeAtomicFinanceBatch } from "../utils/browserStorage";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -75,7 +77,7 @@ const text = {
     unitPrice: "Purchase price / piece",
     salePrice: "Sale price / piece",
     addMedicine: "Add",
-    expiryDate: "Expiry date (Gregorian)",
+    expiryDate: "Expiry date (Solar Hijri)",
     total: "Total",
     stock: "Current stock",
     unit: "Unit",
@@ -139,7 +141,7 @@ const text = {
     unitPrice: "قیمت خرید فی دانه",
     salePrice: "قیمت فروش فی دانه",
     addMedicine: "اضافه",
-    expiryDate: "تاریخ انقضا (میلادی)",
+    expiryDate: "تاریخ انقضا (شمسی)",
     total: "جمله",
     stock: "موجودی فعلی",
     unit: "واحد",
@@ -288,6 +290,7 @@ function PurchaseNew() {
   const [searchFocused, setSearchFocused] = useState(false);
   const [activeResultIndex, setActiveResultIndex] = useState(0);
   const [items, setItems] = useState([]);
+  const releaseNavigationLock = useEntryNavigationLock(items.length > 0);
   const searchInputRef = useRef(null);
   const searchAreaRef = useRef(null);
   const resultButtonRefs = useRef(new Map());
@@ -666,7 +669,7 @@ function PurchaseNew() {
   };
 
   const removeItem = (lineId) => setItems((current) => current.filter((row) => String(row.lineId) !== String(lineId)));
-  const lineTotal = (row) => Math.max(receivedQuantity(row) * num(row.purchasePrice), 0);
+  const lineTotal = (row) => pieceLineAmount(receivedQuantity(row), row.purchasePrice);
   const subtotal = items.reduce((sum, row) => sum + lineTotal(row), 0);
   const grandTotal = subtotal + num(shippingCost);
   const paid = paymentStatus === "paid" ? grandTotal : Math.min(num(paidAmount), grandTotal);
@@ -821,6 +824,7 @@ function PurchaseNew() {
       return;
     }
 
+    releaseNavigationLock();
     notify(isEditing ? t.updated : t.saved, "success", { silent: true });
     navigate("/purchasing");
   };
@@ -880,16 +884,16 @@ function PurchaseNew() {
                           >
                             <Info size={14} />
                           </button>
-                          <select
+                          <PartySearchSelect
+                            records={suppliers}
                             value={supplierId}
-                            onChange={(e) => {
-                              setSupplierId(e.target.value);
+                            language={language}
+                            placeholder={t.selectSupplier}
+                            onChange={(id) => {
+                              setSupplierId(id);
                               setSupplierInfoOpen(false);
                             }}
-                          >
-                            <option value="">{t.selectSupplier}</option>
-                            {suppliers.filter((row) => row.status !== "inactive").map((row) => <option value={row.id} key={row.id}>{row.supplierName}</option>)}
-                          </select>
+                          />
                           <button className="purchase-inline-supplier-add" type="button" onClick={() => { setSupplierInfoOpen(false); setQuickOpen(true); }} aria-label={t.quickSupplier}><Plus size={17} /></button>
                         </>
                       )}
@@ -1018,9 +1022,9 @@ function PurchaseNew() {
                   </div>
                   <label className="purchase-expiry-field">
                     <span>{t.expiryDate}</span>
-                    <input
-                      type="date"
-                      dir="ltr"
+                    <ShamsiDateInput
+
+
                       value={row.expiryDate || ""}
                       onChange={(e) => updateItemField(row.lineId, { expiryDate: e.target.value })}
                     />

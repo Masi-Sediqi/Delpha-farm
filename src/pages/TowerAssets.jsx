@@ -2,8 +2,6 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import { notify } from "../utils/notify";
-import TablePagination from "../components/TablePagination";
-import { useTablePagination } from "../hooks/useTablePagination";
 import { formatDateTime } from "../utils/afghanDate";
 import { buildTowerInsights, sumTowerRows } from "../utils/towerInsights";
 import "./TowerAssets.css";
@@ -300,7 +298,6 @@ const filteredAssets = buildAvailableAssetOptions().filter((asset) => {
   );
 });
 
-  const towerPagination = useTablePagination(filteredTowerAssets, search);
 
   const towerInsights = useMemo(
     () => buildTowerInsights({ towerAssets, assets, deviceTransfers }),
@@ -675,7 +672,7 @@ const openEditModal = (index) => {
             </thead>
 
             <tbody>
-  {towerPagination.pageItems.map((record) => {
+  {filteredTowerAssets.map((record) => {
     const index = record.originalIndex;
     const recordAssetCount =
       towerAssetCounts.get(String(record.id || record.towerName)) ||
@@ -761,14 +758,7 @@ const openEditModal = (index) => {
           </table>
         </div>
 
-        <TablePagination
-          page={towerPagination.page}
-          totalPages={towerPagination.totalPages}
-          setPage={towerPagination.setPage}
-          totalItems={filteredTowerAssets.length}
-          pageSize={towerPagination.pageSize}
-          setPageSize={towerPagination.setPageSize}
-        />
+
       </div>
 
       {showModal && (

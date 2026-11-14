@@ -167,6 +167,13 @@
   font-weight: 900;
 }
 
+@media screen {
+
+  .asset-audit-event {
+  font-size: 13px;
+  }
+}
+
 .asset-audit-current-row td {
   background: #fffbeb;
   border-top-color: #fde68a;

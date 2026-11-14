@@ -1,3 +1,4 @@
+import { useSearchResultReset } from "../hooks/useSearchResultReset";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
@@ -5,6 +6,7 @@ import { Building2, Check, Edit3, MapPin, Phone, Plus, Search, Trash2, UserRound
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import { confirmAction } from "../utils/confirmDialog";
 import { notify } from "../utils/notify";
+import ShamsiDateInput from "../components/ShamsiDateInput";
 import "./CustomersRegistry.css";
 import "./CustomersRegistryCategory.css";
 
@@ -45,6 +47,10 @@ const labelsByLanguage = {
     country: "Country",
     currency: "Currency",
     openingBalance: "Opening Balance",
+    balanceSide: "Balance Type",
+    ourReceivable: "Our Receivable",
+    customerReceivable: "Customer Receivable",
+    openingBalanceDate: "Opening Balance Date",
     creditLimit: "Credit Limit",
     status: "Status",
     active: "Active",
@@ -109,6 +115,10 @@ const labelsByLanguage = {
     country: "کشور",
     currency: "واحد پولی",
     openingBalance: "بیلانس افتتاحیه",
+    balanceSide: "حالت بیلانس",
+    ourReceivable: "طلب ما",
+    customerReceivable: "طلب مشتری",
+    openingBalanceDate: "تاریخ بیلانس افتتاحیه",
     creditLimit: "حد اعتبار",
     status: "حالت",
     active: "فعال",
@@ -173,6 +183,10 @@ const labelsByLanguage = {
     country: "هېواد",
     currency: "د پیسو واحد",
     openingBalance: "افتتاحي بیلانس",
+    balanceSide: "د بیلانس حالت",
+    ourReceivable: "زموږ طلب",
+    customerReceivable: "د پېرودونکي طلب",
+    openingBalanceDate: "د افتتاحي بیلانس نېټه",
     creditLimit: "د اعتبار حد",
     status: "حالت",
     active: "فعال",
@@ -223,6 +237,8 @@ const blankForm = {
   address: "",
   currency: "AFN",
   openingBalance: "0",
+  balanceSide: "ours",
+  openingBalanceDate: "",
   status: "active",
   notes: "",
 };
@@ -234,6 +250,7 @@ export default function CustomersRegistry({ modalOnly = false, onClose, onSaved,
   const [customers, setCustomers] = useJsonCollection("customerRegistry");
   const [customerCategories, setCustomerCategories] = useJsonCollection("customerCategories");
   const [query, setQuery] = useState("");
+  useSearchResultReset(setQuery);
   const [isOpen, setIsOpen] = useState(modalOnly);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(() => ({ ...blankForm, currency: initialCurrency }));
@@ -270,7 +287,13 @@ export default function CustomersRegistry({ modalOnly = false, onClose, onSaved,
 
   const openEdit = (item) => {
     setEditingId(item.id);
-    setForm({ ...blankForm, ...item });
+    setForm({
+      ...blankForm,
+      ...item,
+      openingBalance: Math.abs(Number(item.openingBalance || 0)),
+      balanceSide: Number(item.openingBalance || 0) < 0 ? "customer" : "ours",
+      openingBalanceDate: item.openingBalanceDate || item.createdAt?.slice(0, 10) || "",
+    });
     setFieldErrors({});
     setIsOpen(true);
   };
@@ -325,6 +348,7 @@ export default function CustomersRegistry({ modalOnly = false, onClose, onSaved,
       province: _province,
       country: _country,
       creditLimit: _creditLimit,
+      balanceSide,
       ...visibleForm
     } = form;
 
@@ -334,7 +358,7 @@ export default function CustomersRegistry({ modalOnly = false, onClose, onSaved,
       companyName: form.companyName.trim(),
       phone: form.phone.trim(),
       address: form.address.trim(),
-      openingBalance: Number(form.openingBalance || 0),
+      openingBalance: Math.abs(Number(form.openingBalance || 0)) * (balanceSide === "customer" ? -1 : 1),
       updatedAt: new Date().toISOString(),
     };
 
@@ -399,7 +423,7 @@ export default function CustomersRegistry({ modalOnly = false, onClose, onSaved,
             </thead>
             <tbody>
               {filtered.map((item) => (
-                <tr key={item.id} className="customer-clickable-row" onClick={() => navigate(`/customer-detail/${encodeURIComponent(item.id)}`)}>
+                <tr data-search-kind="customer" data-search-id={item.id} key={item.id} className="customer-clickable-row" onClick={() => navigate(`/customer-detail/${encodeURIComponent(item.id)}`)}>
                   <td>
                     <div className="customer-name-cell">
                       <span className="customer-avatar"><UserRound size={18} /></span>
@@ -476,7 +500,9 @@ export default function CustomersRegistry({ modalOnly = false, onClose, onSaved,
                   <div className="customer-section-title"><Building2 size={18} /><span>{t.balance}</span></div>
                   <div className="customer-form-grid">
                     <label className="customer-field customer-span-4"><span>{t.currency}</span><select value={form.currency} onChange={(e) => change("currency", e.target.value)}><option value="AFN">AFN</option><option value="USD">USD</option><option value="INR">INR</option><option value="EUR">EUR</option></select></label>
-                    <label className="customer-field customer-span-4"><span>{t.openingBalance}</span><input type="number" step="any" value={form.openingBalance} onChange={(e) => change("openingBalance", e.target.value)} /></label>
+                    <label className="customer-field customer-span-4"><span>{t.balanceSide}</span><select value={form.balanceSide} onChange={(e) => change("balanceSide", e.target.value)}><option value="ours">{t.ourReceivable}</option><option value="customer">{t.customerReceivable}</option></select></label>
+                    <label className="customer-field customer-span-4"><span>{t.openingBalance}</span><input type="number" min="0" step="any" value={form.openingBalance} onChange={(e) => change("openingBalance", e.target.value)} /></label>
+                    <label className="customer-field customer-span-4"><span>{t.openingBalanceDate}</span><ShamsiDateInput required={Number(form.openingBalance || 0) !== 0} value={form.openingBalanceDate} onChange={(e) => change("openingBalanceDate", e.target.value)} /></label>
                     <label className="customer-field customer-span-4"><span>{t.status}</span><select value={form.status} onChange={(e) => change("status", e.target.value)}><option value="active">{t.active}</option><option value="inactive">{t.inactive}</option></select></label>
                     <label className="customer-field customer-span-2"><span>{t.notes}</span><textarea rows="4" value={form.notes} onChange={(e) => change("notes", e.target.value)} /></label>
                   </div>

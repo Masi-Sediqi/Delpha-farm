@@ -1,3 +1,5 @@
+import { formatAfghanDate } from "../utils/afghanDate";
+import ShamsiDateInput from "../components/ShamsiDateInput";
 import { accountCurrency } from "../utils/partyAccounts";
 import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
@@ -520,7 +522,7 @@ export default function GeneralJournal() {
               <thead><tr><th>{t.date}</th><th>{t.reference}</th><th>{t.source}</th><th>{t.currency}</th><th>{t.account}</th><th>{t.debit}</th><th>{t.credit}</th><th>{t.description}</th><th /></tr></thead>
               <tbody>
                 {filteredLines.length ? filteredLines.map((row) => <tr key={row.id}>
-                  <td>{row.date || "—"}</td><td>{row.reference}</td><td><span className={`general-journal-source source-${row.source}`}>{sourceLabel(row.source)}</span></td><td>{row.currency}</td><td className="general-journal-account">{row.partyId && ["customer","supplier"].includes(row.partyType) ? <Link to={`/${row.partyType}-detail/${encodeURIComponent(row.partyId)}`}>{row.account}</Link> : row.account}</td><td className="journal-debit">{row.debit ? row.debit.toFixed(2) : "—"}</td><td className="journal-credit">{row.credit ? row.credit.toFixed(2) : "—"}</td><td>{row.description || "—"}</td><td>{!row.automatic && <button className="general-journal-delete" onClick={() => deleteManual(row.journalId)} title="Delete"><Trash2 size={15} /></button>}</td>
+                  <td>{formatAfghanDate(row.date || "—")}</td><td>{row.reference}</td><td><span className={`general-journal-source source-${row.source}`}>{sourceLabel(row.source)}</span></td><td>{row.currency}</td><td className="general-journal-account">{row.partyId && ["customer","supplier"].includes(row.partyType) ? <Link to={`/${row.partyType}-detail/${encodeURIComponent(row.partyId)}`}>{row.account}</Link> : row.account}</td><td className="journal-debit">{row.debit ? row.debit.toFixed(2) : "—"}</td><td className="journal-credit">{row.credit ? row.credit.toFixed(2) : "—"}</td><td>{row.description || "—"}</td><td>{!row.automatic && <button className="general-journal-delete" onClick={() => deleteManual(row.journalId)} title="Delete"><Trash2 size={15} /></button>}</td>
                 </tr>) : <tr><td colSpan="9" className="general-journal-empty">{t.noEntries}</td></tr>}
               </tbody>
             </table>
@@ -543,7 +545,7 @@ export default function GeneralJournal() {
             <div className="general-journal-modal-head"><div><h2><FilePlus2 size={19} />{t.manual}</h2><p>{t.manualHint}</p></div><button type="button" onClick={() => setShowModal(false)}><X size={18} /></button></div>
             <div className="general-journal-modal-body">
               <div className="general-journal-form-grid">
-                <label><span>{t.date}</span><input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required /></label>
+                <label><span>{t.date}</span><ShamsiDateInput  value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required /></label>
                 <label><span>{t.reference}</span><input value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} placeholder={t.refPlaceholder} /></label>
                 <label><span>{t.currency}</span><select value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })}>{currencies.map((code) => <option key={code}>{code}</option>)}</select></label>
                 <label><span>{t.amount}</span><input type="number" min="0" step="any" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required /></label>

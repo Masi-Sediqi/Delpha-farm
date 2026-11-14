@@ -1,3 +1,4 @@
+import { useSearchResultReset } from "../hooks/useSearchResultReset";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
@@ -17,6 +18,7 @@ import { useJsonCollection } from "../hooks/useJsonCollection";
 import { confirmAction } from "../utils/confirmDialog";
 import { notify } from "../utils/notify";
 import { findSupplierByName } from "../utils/supplierName";
+import ShamsiDateInput from "../components/ShamsiDateInput";
 import "./Suppliers.css";
 
 const languageKey = "afghan-power-language";
@@ -38,8 +40,11 @@ const translations = {
     contactPerson: "Contact Person",
     phone: "Phone Number",
     address: "Address",
-    openingBalance: "Opening Balance (+ / -)",
-    openingBalanceHint: "Positive means we owe the supplier. Negative means the supplier owes us.",
+    openingBalance: "Opening Balance",
+    openingBalanceDate: "Opening Balance Date",
+    balanceSide: "Balance Type",
+    ourReceivable: "Our Receivable",
+    supplierReceivable: "Supplier Receivable",
     notes: "Notes",
     status: "Status",
     actions: "Actions",
@@ -100,8 +105,11 @@ const translations = {
     contactPerson: "شخص ارتباطی",
     phone: "شماره تماس",
     address: "آدرس",
-    openingBalance: "بیلانس افتتاحیه (+ / -)",
-    openingBalanceHint: "مثبت یعنی ما قرضدار تأمین‌کننده هستیم. منفی یعنی تأمین‌کننده قرضدار ما است.",
+    openingBalance: "بیلانس افتتاحیه",
+    openingBalanceDate: "تاریخ بیلانس افتتاحیه",
+    balanceSide: "حالت بیلانس",
+    ourReceivable: "طلب ما",
+    supplierReceivable: "طلب تأمین‌کننده",
     notes: "ملاحظات",
     status: "حالت",
     actions: "عملیات",
@@ -162,8 +170,11 @@ const translations = {
     contactPerson: "د اړیکې کس",
     phone: "د اړیکې شمېره",
     address: "پته",
-    openingBalance: "افتتاحي بیلانس (+ / -)",
-    openingBalanceHint: "مثبت یعنې موږ عرضه کوونکي ته قرضدار یو. منفي یعنې عرضه کوونکی موږ ته قرضدار دی.",
+    openingBalance: "افتتاحي بیلانس",
+    openingBalanceDate: "د افتتاحي بیلانس نېټه",
+    balanceSide: "د بیلانس حالت",
+    ourReceivable: "زموږ طلب",
+    supplierReceivable: "د عرضه کوونکي طلب",
     notes: "یادښتونه",
     status: "حالت",
     actions: "کړنې",
@@ -221,6 +232,8 @@ const emptyForm = {
   phone: "",
   address: "",
   openingBalance: "",
+  openingBalanceDate: "",
+  balanceSide: "supplier",
   notes: "",
   status: "active",
 };
@@ -231,6 +244,7 @@ export default function Suppliers() {
   const [customSupplierTypes, setCustomSupplierTypes] = useJsonCollection("supplierTypes");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [search, setSearch] = useState("");
+  useSearchResultReset(setSearch);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -353,7 +367,14 @@ export default function Suppliers() {
 
   const openEdit = (item) => {
     setEditingId(item.id);
-    setForm({ ...emptyForm, ...item, currency: item.currency === "pkr" ? "inr" : (item.currency || "afn") });
+    setForm({
+      ...emptyForm,
+      ...item,
+      openingBalance: Math.abs(Number(item.openingBalance || 0)),
+      openingBalanceDate: item.openingBalanceDate || item.createdAt?.slice(0, 10) || "",
+      balanceSide: Number(item.openingBalance || 0) < 0 ? "ours" : "supplier",
+      currency: item.currency === "pkr" ? "inr" : (item.currency || "afn"),
+    });
     setFieldErrors({});
     setShowTypeManager(false);
     resetTypeDraft();
@@ -392,9 +413,10 @@ export default function Suppliers() {
     }
     setFieldErrors({});
 
+    const { balanceSide, ...supplierForm } = form;
     const payload = {
-      ...form,
-      openingBalance: Number(form.openingBalance || 0),
+      ...supplierForm,
+      openingBalance: Math.abs(Number(form.openingBalance || 0)) * (balanceSide === "ours" ? -1 : 1),
       updatedAt: new Date().toISOString(),
     };
 
@@ -523,9 +545,21 @@ export default function Suppliers() {
             </div>
 
             <div className="supplier-field">
-              <label>{t.openingBalance}</label>
-              <input type="number" step="any" value={form.openingBalance} onChange={(e) => updateField("openingBalance", e.target.value)} />
-              <small>{t.openingBalanceHint}</small>
+              <label htmlFor="supplier-balance-side">{t.balanceSide}</label>
+              <select id="supplier-balance-side" value={form.balanceSide} onChange={(e) => updateField("balanceSide", e.target.value)}>
+                <option value="supplier">{t.supplierReceivable}</option>
+                <option value="ours">{t.ourReceivable}</option>
+              </select>
+            </div>
+
+            <div className="supplier-field">
+              <label htmlFor="supplier-opening-balance">{t.openingBalance}</label>
+              <input id="supplier-opening-balance" type="number" min="0" step="any" value={form.openingBalance} onChange={(e) => updateField("openingBalance", e.target.value)} />
+            </div>
+
+            <div className="supplier-field">
+              <label htmlFor="supplier-opening-balance-date">{t.openingBalanceDate}</label>
+              <ShamsiDateInput id="supplier-opening-balance-date" required={Number(form.openingBalance || 0) !== 0} value={form.openingBalanceDate} onChange={(e) => updateField("openingBalanceDate", e.target.value)} />
             </div>
 
             <div className="supplier-field">
@@ -588,7 +622,7 @@ export default function Suppliers() {
             </thead>
             <tbody>
               {filtered.length ? filtered.map((item) => (
-                <tr key={item.id} className="supplier-clickable-row" onClick={() => navigate(`/supplier-detail/${item.id}`)}>
+                <tr data-search-kind="supplier" data-search-id={item.id} key={item.id} className="supplier-clickable-row" onClick={() => navigate(`/supplier-detail/${item.id}`)}>
                   <td className="supplier-name-cell"><span className="supplier-avatar"><Building2 size={15} /></span><span>{item.supplierName}</span></td>
                   <td>{typeLabel(item.supplierType)}</td>
                   <td>{t[item.currency === "pkr" ? "inr" : item.currency] || String(item.currency === "pkr" ? "INR" : (item.currency || "—")).toUpperCase()}</td>
