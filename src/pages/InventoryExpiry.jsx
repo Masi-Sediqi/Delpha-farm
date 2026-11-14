@@ -1,16 +1,16 @@
 import { formatAfghanDate } from "../utils/afghanDate";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, CalendarDays, FileText, Search, Printer } from "lucide-react";
+import { ArrowRight, CalendarDays, FileText, Search, Printer, FileDown, FileSpreadsheet } from "lucide-react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import { getProductBatchBalances, stockNumber } from "../utils/stock";
 import { countryNameById } from "../utils/productMasterData";
 import "./InventoryExpiry.css";
 
 const labels = {
-  fa: { title: "تاریخ انقضا", back: "برگشت به موجودی", search: "جستجوی نام دوا، کمپنی یا نمبر بچ...", all: "همه", inStock: "موجود", consumed: "مصرف شده", range: "مدت انقضا", months: "ماه", report: "چاپ گزارش", medicine: "نام جنس دری", english: "نام جنس انگلیسی", manufacturer: "کمپنی", madeIn: "ساخت", batch: "نمبر بچ", purchase: "تاریخ خرید", expiry: "تاریخ انقضا", days: "روز باقی‌مانده", remainingMonths: "ماه باقی‌مانده", qty: "مقدار باقی‌مانده", status: "وضعیت", expired: "تاریخ گذشته", missing: "بدون تاریخ", soon: "نزدیک انقضا", healthy: "معتبر", none: "هیچ بچ مطابق جستجو پیدا نشد.", total: "تعداد ریکارد" },
-  en: { title: "Expiry Dates", back: "Back to inventory", search: "Search medicine, manufacturer or batch...", all: "All", inStock: "In stock", consumed: "Consumed", range: "Expiry period", months: "months", report: "Print report", medicine: "Medicine", english: "English name", manufacturer: "Manufacturer", madeIn: "Made in", batch: "Batch", purchase: "Purchase date", expiry: "Expiry date", days: "Days remaining", remainingMonths: "Months remaining", qty: "Remaining units", status: "Status", expired: "Expired", missing: "No expiry", soon: "Expiring soon", healthy: "Valid", none: "No matching batches found.", total: "Records" },
-  ps: { title: "د ختمېدو نېټې", back: "موجودۍ ته ستنېدل", search: "د درمل، کمپنۍ یا بچ لټون...", all: "ټول", inStock: "موجود", consumed: "مصرف شوي", range: "د ختمېدو موده", months: "میاشتې", report: "راپور چاپ", medicine: "د درمل نوم", english: "انګلیسي نوم", manufacturer: "تولیدوونکی", madeIn: "جوړ شوی", batch: "بچ نمبر", purchase: "د پېرود نېټه", expiry: "د ختمېدو نېټه", days: "پاتې ورځې", remainingMonths: "پاتې میاشتې", qty: "پاتې دانې", status: "حالت", expired: "تېر شوی", missing: "نېټه نشته", soon: "ژر ختمېږي", healthy: "معتبر", none: "هیڅ بچ ونه موندل شو.", total: "ریکارډونه" },
+  fa: { pdf: "PDF", excel: "دانلود Excel", exportError: "ساخت فایل موفق نشد.", title: "تاریخ انقضا", back: "برگشت به موجودی", search: "جستجوی نام دوا، کمپنی یا نمبر بچ...", all: "همه", inStock: "موجود", consumed: "مصرف شده", range: "مدت انقضا", months: "ماه", report: "چاپ گزارش", medicine: "نام جنس دری", english: "نام جنس انگلیسی", manufacturer: "کمپنی", madeIn: "ساخت", batch: "نمبر بچ", purchase: "تاریخ خرید", expiry: "تاریخ انقضا", days: "روز باقی‌مانده", remainingMonths: "ماه باقی‌مانده", qty: "مقدار باقی‌مانده", status: "وضعیت", expired: "تاریخ گذشته", missing: "بدون تاریخ", soon: "نزدیک انقضا", healthy: "معتبر", none: "هیچ بچ مطابق جستجو پیدا نشد.", total: "تعداد ریکارد" },
+  en: { pdf: "PDF", excel: "Export Excel", exportError: "Could not export file.", title: "Expiry Dates", back: "Back to inventory", search: "Search medicine, manufacturer or batch...", all: "All", inStock: "In stock", consumed: "Consumed", range: "Expiry period", months: "months", report: "Print report", medicine: "Medicine", english: "English name", manufacturer: "Manufacturer", madeIn: "Made in", batch: "Batch", purchase: "Purchase date", expiry: "Expiry date", days: "Days remaining", remainingMonths: "Months remaining", qty: "Remaining units", status: "Status", expired: "Expired", missing: "No expiry", soon: "Expiring soon", healthy: "Valid", none: "No matching batches found.", total: "Records" },
+  ps: { pdf: "PDF", excel: "Excel", exportError: "فایل جوړ نه شو.", title: "د ختمېدو نېټې", back: "موجودۍ ته ستنېدل", search: "د درمل، کمپنۍ یا بچ لټون...", all: "ټول", inStock: "موجود", consumed: "مصرف شوي", range: "د ختمېدو موده", months: "میاشتې", report: "راپور چاپ", medicine: "د درمل نوم", english: "انګلیسي نوم", manufacturer: "تولیدوونکی", madeIn: "جوړ شوی", batch: "بچ نمبر", purchase: "د پېرود نېټه", expiry: "د ختمېدو نېټه", days: "پاتې ورځې", remainingMonths: "پاتې میاشتې", qty: "پاتې دانې", status: "حالت", expired: "تېر شوی", missing: "نېټه نشته", soon: "ژر ختمېږي", healthy: "معتبر", none: "هیڅ بچ ونه موندل شو.", total: "ریکارډونه" },
 };
 
 const midnightUtc = (date) => Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
@@ -42,6 +42,7 @@ export default function InventoryExpiry() {
   const [filter, setFilter] = useState("inStock");
   const [months, setMonths] = useState("all");
   const [query, setQuery] = useState("");
+  const [exporting, setExporting] = useState("");
 
   const rows = useMemo(() => {
     const purchases = new Map();
@@ -81,10 +82,61 @@ export default function InventoryExpiry() {
     return true;
   }).sort((a, b) => (a.expiryDate || "9999").localeCompare(b.expiryDate || "9999") || a.productName.localeCompare(b.productName)), [rows, filter, months, query]);
 
+  const columns = [t.medicine, t.manufacturer, t.madeIn, t.batch, t.purchase, t.expiry, t.days, t.remainingMonths, t.qty, t.status];
+  const exportRows = () => visibleRows.map((row) => [
+    row.productName, row.company, row.country, row.batchNo,
+    formatAfghanDate(row.purchaseDate), formatAfghanDate(row.expiryDate), row.days ?? "", row.days === null ? "" : +(row.days / 30.44).toFixed(1),
+    row.available, t[row.status],
+  ]);
+  const exportExcel = async () => {
+    if (exporting) return;
+    setExporting("excel");
+    try {
+      const { default: ExcelJS } = await import("exceljs");
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet(t.title, { views: [{ rightToLeft: language !== "en" }] });
+      worksheet.addRow(columns);
+      exportRows().forEach((values) => worksheet.addRow(values));
+      worksheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+      worksheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF095D49" } };
+      worksheet.columns.forEach((column) => { column.width = 22; });
+      worksheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: columns.length } };
+      const data = await workbook.xlsx.writeBuffer();
+      const url = URL.createObjectURL(new Blob([data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+      const link = document.createElement("a"); link.href = url; link.download = "delpha-expiry-report.xlsx"; link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    } catch (error) { console.error("Expiry Excel export", error); window.alert(t.exportError); }
+    finally { setExporting(""); }
+  };
+  const exportPdf = async () => {
+    if (exporting) return;
+    setExporting("pdf");
+    const host = document.createElement("div");
+    try {
+      host.className = "expiry-export-pdf";
+      host.dir = language === "en" ? "ltr" : "rtl";
+      const heading = document.createElement("h2"); heading.textContent = t.title; host.append(heading);
+      const table = document.createElement("table");
+      const header = document.createElement("tr");
+      columns.forEach((name) => { const th = document.createElement("th"); th.textContent = name; header.append(th); });
+      const thead = document.createElement("thead"); thead.append(header); table.append(thead);
+      const tbody = document.createElement("tbody");
+      exportRows().forEach((values) => {
+        const tr = document.createElement("tr");
+        values.forEach((value) => { const td = document.createElement("td"); td.textContent = String(value ?? ""); tr.append(td); });
+        tbody.append(tr);
+      });
+      table.append(tbody); host.append(table); document.body.append(host);
+      const { default: html2pdf } = await import("html2pdf.js");
+      await html2pdf().set({ margin: 8, filename: "delpha-expiry-report.pdf", image: { type: "jpeg", quality: 0.96 }, html2canvas: { scale: 1.6, backgroundColor: "#ffffff" }, jsPDF: { unit: "mm", format: "a4", orientation: "landscape" }, pagebreak: { mode: ["css", "legacy"] } }).from(host).save();
+    } catch (error) { console.error("Expiry PDF export", error); window.alert(t.exportError); }
+    finally { host.remove(); setExporting(""); }
+  };
+
   return <main className="expiry-page" dir={language === "en" ? "ltr" : "rtl"}>
     <header className="expiry-heading">
       <div><h1><CalendarDays size={25} /> {t.title}</h1><button type="button" className="expiry-back" onClick={() => navigate("/inventory")}><ArrowRight size={16}/>{t.back}</button></div>
-      <button type="button" className="expiry-print" onClick={() => window.print()}><Printer size={17}/>{t.report}</button>
+      <div className="expiry-actions"><button type="button" className="expiry-print" onClick={() => window.print()}><Printer size={17}/>{t.report}</button><button type="button" className="expiry-export" disabled={!!exporting} onClick={exportPdf}><FileDown size={17}/>{t.pdf}</button><button type="button" className="expiry-export" disabled={!!exporting} onClick={exportExcel}><FileSpreadsheet size={17}/>{t.excel}</button></div>
     </header>
     <div className="expiry-filters">
       <div className="expiry-search"><Search size={17}/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t.search}/></div>

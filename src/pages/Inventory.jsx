@@ -480,6 +480,7 @@ export default function Inventory() {
         <button type="button" onClick={() => navigate("/reports?inventoryFlow=purchases")}>راپور آمد</button>
       </div>
       <div className="inventory-adjust-actions">
+        <button type="button" onClick={() => navigate("/products")}><Boxes size={17}/> مدیریت محصولات</button>
         <button type="button" onClick={() => navigate("/products?new=1")}><PackagePlus size={17}/> جنس جدید</button>
         <button type="button" onClick={() => setAdjustOpen(true)}><SlidersHorizontal size={17}/> اصلاح موجودی</button>
       </div>

@@ -1,3 +1,4 @@
+import { formatAfghanDate } from "./afghanDate.js";
 const safe = (value) => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const fmt = (value) => Number(value || 0).toLocaleString('en-US', {maximumFractionDigits: 2});
 
@@ -20,7 +21,7 @@ export function accountReportRows(rows, type) {
 }
 
 const columns = [['no','#'],['name','نام حساب'],['company','کمپنی / شخص مسئول'],['phone','شماره تماس'],['category','کتگوری'],['currency','اسعار'],['count','تعداد بل'],['total','مجموع'],['paid','دریافت / پرداخت'],['balance','بیلانس']];
-const reportMarkup = (rows, title) => `<div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;padding:22px;color:#17233b;background:#fff"><h2 style="margin:0 0 8px">${safe(title)}</h2><small>APG Medicine Management · ${safe(new Date().toLocaleDateString('en-CA'))}</small><table style="border-collapse:collapse;width:100%;margin-top:18px;font-size:11px"><thead><tr>${columns.map(([,label])=>`<th style="border:1px solid #ccd5df;padding:8px;background:#e7edf4">${safe(label)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${columns.map(([key])=>`<td style="border:1px solid #ccd5df;padding:7px;overflow-wrap:anywhere">${safe(['total','paid','balance'].includes(key)?fmt(r[key]):r[key])}</td>`).join('')}</tr>`).join('')}</tbody></table><p style="font-size:11px;color:#65758a">مبالغ بدون تبدیل اسعار، در واحد پولی همان ردیف نمایش داده می‌شوند.</p></div>`;
+const reportMarkup = (rows, title) => `<div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;padding:22px;color:#17233b;background:#fff"><h2 style="margin:0 0 8px">${safe(title)}</h2><small>APG Medicine Management · ${safe(formatAfghanDate(new Date()))}</small><table style="border-collapse:collapse;width:100%;margin-top:18px;font-size:11px"><thead><tr>${columns.map(([,label])=>`<th style="border:1px solid #ccd5df;padding:8px;background:#e7edf4">${safe(label)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${columns.map(([key])=>`<td style="border:1px solid #ccd5df;padding:7px;overflow-wrap:anywhere">${safe(['total','paid','balance'].includes(key)?fmt(r[key]):r[key])}</td>`).join('')}</tr>`).join('')}</tbody></table><p style="font-size:11px;color:#65758a">مبالغ بدون تبدیل اسعار، در واحد پولی همان ردیف نمایش داده می‌شوند.</p></div>`;
 
 export function printAccountStatement(rows, title) {
   const popup = window.open('', '_blank', 'width=1100,height=800');

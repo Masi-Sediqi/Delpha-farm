@@ -1,3 +1,5 @@
+import { useAccountStatementFilters } from "../hooks/useAccountStatementFilters";
+import AccountStatementTools, { AccountStatementExports } from "../components/AccountStatementTools";
 import { partyAccountRows } from "../utils/partyAccounts";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
@@ -140,7 +142,8 @@ export default function Receivables() {
   const rows = useMemo(() => partyAccountRows({type:"customer",parties:customers,invoices:sales,returns:saleReturns,payments:customerPayments,journal:partyCashTransactions}).filter(row=>row.balance>0).map(row=>({customer:row.party,invoiceCount:row.invoices.length,totalSold:row.total,totalPaid:row.paid,balance:row.balance,currency:row.currency,focusSale:row.focusInvoice})), [customers,sales,saleReturns,customerPayments,partyCashTransactions]);
   const totalText = field => [...new Set(rows.map(row=>row.currency))].map(code=>`${rows.filter(row=>row.currency===code).reduce((sum,row)=>sum+(field==="balance"?Math.max(row[field],0):row[field]),0).toLocaleString(undefined,{maximumFractionDigits:2})} ${code}`).join(" · ") || "—";
 
-  const filteredRows = rows.filter(({ customer }) => {
+  const accountFilters = useAccountStatementFilters(rows, "customer");
+  const filteredRows = rows.filter(accountFilters.filter).filter(({ customer }) => {
     const q = search.trim().toLowerCase();
     if (!q) return true;
     return `${customer.fullName || ""} ${customer.companyName || ""} ${customer.phone || ""}`.toLowerCase().includes(q);
@@ -207,6 +210,7 @@ export default function Receivables() {
       <section className="payables-card">
         <div className="payables-toolbar">
           <label className="payables-search"><Search size={16} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t.search} /></label>
+          <AccountStatementTools filters={accountFilters} rows={filteredRows} type="customer"/>
         </div>
         <div className="payables-table-wrap">
           <table className="payables-table">
@@ -241,6 +245,7 @@ export default function Receivables() {
           <button type="button" disabled={actionMenu.payload.balance<=0} onClick={() => { const row = actionMenu.payload; setActionMenu(null); markAsReceived(row); }}><WalletCards size={14} /><span>{t.markReceived}</span></button>
           <button type="button" disabled={!actionMenu.payload.focusSale} onClick={() => { const sale = actionMenu.payload.focusSale; setActionMenu(null); if (sale) navigate(`/sale-detail/${sale.id}/print`); }}><Printer size={14} /><span>{t.print}</span></button>
           <button type="button" disabled={!actionMenu.payload.focusSale} onClick={() => { const sale = actionMenu.payload.focusSale; setActionMenu(null); if (sale) navigate(`/sale-detail/${sale.id}`); }}><ReceiptText size={14} /><span>{t.bill}</span></button>
+          <AccountStatementExports rows={[actionMenu.payload]} type="customer"/>
         </div>,
         document.body
       )}
