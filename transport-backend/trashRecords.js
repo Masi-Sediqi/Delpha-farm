@@ -4,10 +4,16 @@ const index = (rows) => new Map((rows || []).map(row => [key(row), row]));
 
 export function deletedRecordChanges(changes) {
   // Legacy purchase trash already owns the purchase and all its dependent records.
-  if (changes.some(change => change.name === "trashPurchases")) return [];
+  const legacy = changes.find(change => change.name === "trashPurchases");
+  const oldTrash = index(legacy?.before || []);
+  const snapshots = (legacy?.after || []).filter(row => !oldTrash.has(key(row)));
+  const covered = (name, row) => snapshots.some(snapshot =>
+    (name === "purchases" && equal(snapshot.purchase, row)) ||
+    (name === "purchaseItems" && (snapshot.items || []).some(item => equal(item, row))) ||
+    (name === "stockMovements" && (snapshot.movements || []).some(item => equal(item, row))));
   const deltas = changes.filter(change => !change.name.startsWith("trash")).map(({ name, before = [], after = [] }) => {
     const old = index(before), next = index(after);
-    return { name, removed: [...old].filter(([id]) => !next.has(id)).map(([, row]) => row),
+    return { name, removed: [...old].filter(([id]) => !next.has(id)).map(([, row]) => row).filter(row => !covered(name, row)),
       added: [...next].filter(([id]) => !old.has(id)).map(([, row]) => row),
       updated: [...old].filter(([id, row]) => next.has(id) && !equal(row, next.get(id))).map(([id, row]) => ({ before: row, after: next.get(id) })) };
   });
@@ -41,5 +47,5 @@ export function trashSummary(record) {
   const first = removed[0] || {};
   return { id: record.id, deletedAt: record.deletedAt || record.deleted_at,
     collections: changes.map(change => change.name), count: removed.length,
-    recordName: first.productName || first.fullName || first.supplierName || first.name || first.returnNo || first.invoiceNumber || first.billNumber || first.reference || first.description || String(first.id || changes[0]?.name || "Record") };
+    recordName: first.productName || first.fullName || first.full_name || first.supplierName || first.name || first.returnNo || first.invoiceNumber || first.billNumber || first.reference || first.description || String(first.id || changes[0]?.name || "Record") };
 }

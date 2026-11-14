@@ -64,3 +64,27 @@ body[data-theme="black-white"] .customer-detail-tabs button.active{background:#f
 .customer-detail-result strong>.customer-currency-stack{align-items:flex-end}
 .customer-payment-grid select{width:100%;min-width:0;box-sizing:border-box;border:1px solid var(--border-color,#dfe3e8);border-radius:9px;background:var(--input-bg,var(--card-bg,#fff));color:inherit;padding:9px 10px;outline:0;font:inherit;font-size:13px;height:40px;min-height:40px}
 .customer-payment-grid select:focus{border-color:var(--company-accent,#667085);box-shadow:0 0 0 3px color-mix(in srgb,var(--company-accent,#667085) 12%,transparent)}
+
+/* Keep ledger amounts legible against their dark-mode status backgrounds. */
+@media screen {
+  body[data-theme="simple-dark"].dark-mode .customer-detail-ledger-card .customer-ledger-badge.remaining {
+    background: #52272d !important;
+    color: #ffd9dc !important;
+    -webkit-text-fill-color: #ffd9dc !important;
+    border-color: #a65b65 !important;
+  }
+
+  body[data-theme="simple-dark"].dark-mode .customer-detail-ledger-card .customer-ledger-badge.remaining.settled {
+    background: #303943 !important;
+    color: #e2e8f0 !important;
+    -webkit-text-fill-color: #e2e8f0 !important;
+    border-color: #64748b !important;
+  }
+
+  body[data-theme="simple-dark"].dark-mode .customer-detail-ledger-card .customer-ledger-badge.paid {
+    background: #164e3e !important;
+    color: #d1fae5 !important;
+    -webkit-text-fill-color: #d1fae5 !important;
+    border-color: #438970 !important;
+  }
+}

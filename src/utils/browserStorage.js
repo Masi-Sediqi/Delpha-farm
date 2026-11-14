@@ -137,11 +137,15 @@ export async function writeAtomicFinanceBatch(changes) {
     throw new Error(details.error || `Atomic save failed: HTTP ${response.status}`);
   }
   const result = await response.json();
+  publishServerCollections(result);
+  return result;
+}
+
+export function publishServerCollections(result) {
   for (const [name, record] of Object.entries(result.collections || {})) {
     collectionRevisions.set(name, String(record.revision));
     window.dispatchEvent(new CustomEvent("app-json-collection-updated", {
       detail: { name, items: record.items, internal: false },
     }));
   }
-  return result;
 }

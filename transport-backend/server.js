@@ -1,3 +1,4 @@
+import { deletedRecordChanges, restoreDeletedChanges, trashSummary } from "./trashRecords.js";
 import "dotenv/config";
 import { randomBytes, createHash, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
@@ -265,6 +266,9 @@ async function initializeDatabase() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  await pool.query(`CREATE TABLE IF NOT EXISTS app_trash (
+    id TEXT PRIMARY KEY, payload JSONB NOT NULL, deleted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`);
   await pool.query(`CREATE TABLE IF NOT EXISTS delpha_users (
     id BIGSERIAL PRIMARY KEY, email TEXT NOT NULL UNIQUE, full_name TEXT NOT NULL,
     password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'Admin',
@@ -492,12 +496,17 @@ app.patch("/api/admin/users/:id", async (request, response, next) => {
   } catch (error) { if (error.code === "23505") return response.status(409).json({ error: "Email already exists." }); next(error); }
 });
 app.delete("/api/admin/users/:id", async (request, response, next) => {
+  if (!/^\d+$/.test(request.params.id) || String(request.authUser.id) === request.params.id) return response.status(400).json({ error: "Cannot delete this user." });
+  const client = await pool.connect();
   try {
-    if (!/^\d+$/.test(request.params.id) || String(request.authUser.id) === request.params.id) return response.status(400).json({ error: "Cannot delete this user." });
-    const result = await pool.query("DELETE FROM delpha_users WHERE id=$1 AND role <> 'Admin' RETURNING id", [request.params.id]);
-    if (!result.rowCount) return response.status(404).json({ error: "User not found or protected administrator." });
+    await client.query("BEGIN");
+    const result = await client.query("DELETE FROM delpha_users WHERE id=$1 AND role <> 'Admin' RETURNING *", [request.params.id]);
+    if (!result.rowCount) { await client.query("ROLLBACK"); return response.status(404).json({ error: "User not found or protected administrator." }); }
+    await archiveRemovals(client, [{ name: "__users", before: result.rows, after: [] }]);
+    await client.query("COMMIT");
     response.json({ ok: true });
-  } catch (error) { next(error); }
+  } catch (error) { await client.query("ROLLBACK").catch(() => {}); next(error); }
+  finally { client.release(); }
 });
 
 // Server-side collection authorization. The browser UI is not a security boundary.
@@ -645,6 +654,66 @@ app.get("/api/collections/:name", async (request, response, next) => {
   }
 });
 
+async function archiveRemovals(client, changes) {
+  const payload = deletedRecordChanges(changes);
+  if (!payload.length) return;
+  await client.query("INSERT INTO app_trash(id,payload) VALUES($1,$2::jsonb)", [randomBytes(16).toString("hex"), JSON.stringify(payload)]);
+}
+
+app.get("/api/trash", requireSession, async (request, response, next) => {
+  try {
+    if (!isFullAdmin(request.authUser) && !canReadCollection(request.authUser, "trashPurchases")) return response.status(403).json({ error: "Trash access denied." });
+    const records = localStorageMode ? (localState.trash || []) : (await pool.query('SELECT id,payload,deleted_at AS "deletedAt" FROM app_trash ORDER BY deleted_at DESC')).rows;
+    response.json(records.filter(row => isFullAdmin(request.authUser) || row.payload.every(change => change.name !== "__users" && canReadCollection(request.authUser, change.name))).map(trashSummary));
+  } catch (error) { next(error); }
+});
+
+app.post("/api/trash/:id/restore", requireSession, requireAdmin, async (request, response, next) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(706251)");
+    const found = await client.query("SELECT payload FROM app_trash WHERE id=$1 FOR UPDATE", [request.params.id]);
+    if (!found.rowCount) { await client.query("ROLLBACK"); return response.status(404).json({ error: "Trash record not found." }); }
+    const deltas = found.rows[0].payload;
+    const results = {};
+    if (deltas[0]?.name === "__users") {
+      const user = deltas[0].removed[0];
+      await client.query(`INSERT INTO delpha_users(id,email,full_name,password_hash,role,status,created_at,permissions) VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb)`,
+        [user.id,user.email,user.full_name,user.password_hash,user.role,user.status,user.created_at,JSON.stringify(user.permissions || {})]);
+    } else {
+      const current = {};
+      for (const delta of deltas) {
+        const result = await client.query("SELECT items FROM app_collections WHERE name=$1 FOR UPDATE", [delta.name]);
+        current[delta.name] = result.rows[0]?.items || [];
+      }
+      const restored = restoreDeletedChanges(deltas, current);
+      for (const [name, items] of Object.entries(restored)) {
+        const result = await client.query(`INSERT INTO app_collections(name,items,revision) VALUES($1,$2::jsonb,1)
+          ON CONFLICT(name) DO UPDATE SET items=EXCLUDED.items,revision=app_collections.revision+1,updated_at=NOW()
+          RETURNING name,items,revision,updated_at AS "updatedAt"`, [name,JSON.stringify(items)]);
+        results[name] = result.rows[0];
+      }
+    }
+    await client.query("DELETE FROM app_trash WHERE id=$1", [request.params.id]);
+    await client.query("COMMIT");
+    response.json({ ok:true, collections:results });
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => {});
+    if (error.code === "23505" || error.message.startsWith("Restore conflict")) return response.status(409).json({ error: "ریکارد یا موارد وابسته تغییر کرده است؛ بازیابی بدون بازنویسی معلومات جدید ممکن نیست." });
+    next(error);
+  } finally { client.release(); }
+});
+
+app.delete("/api/trash/:id", requireSession, requireAdmin, async (request, response, next) => {
+  try {
+    if (!(await verifyAdminDeletion(request,response))) return;
+    const result = await pool.query("DELETE FROM app_trash WHERE id=$1 RETURNING id", [request.params.id]);
+    if (!result.rowCount) return response.status(404).json({ error: "Trash record not found." });
+    response.json({ ok:true });
+  } catch (error) { next(error); }
+});
+
 // Atomic finance batch. The full purchase/sale and its stock effects commit together.
 // Only an authenticated Admin may use this endpoint until operation-level server
 // authorization and stock validation are implemented for ordinary users.
@@ -674,7 +743,13 @@ app.post("/api/collections/atomic-batch", requireAdmin, async (request, response
     await client.query("BEGIN");
     // Serialize all batch writers. Existing single-collection writers remain
     // guarded by the revision comparisons in the UPDATE / INSERT below.
+    await client.query("SELECT pg_advisory_xact_lock(706251)");
     const results = {};
+    const trashChanges = [];
+    for (const change of changes) {
+      const previous = await client.query("SELECT items FROM app_collections WHERE name=$1 FOR UPDATE", [change.name]);
+      trashChanges.push({ name: change.name, before: previous.rows[0]?.items || [], after: change.items });
+    }
     let protectedDeletion = false;
     for (const change of changes) {
       if (!protectedDeletionCollections.has(change.name)) continue;
@@ -702,6 +777,7 @@ app.post("/api/collections/atomic-batch", requireAdmin, async (request, response
       }
       results[change.name] = result.rows[0];
     }
+    await archiveRemovals(client, trashChanges);
     await client.query("COMMIT");
     return response.json({ ok: true, collections: results });
   } catch (error) {
@@ -711,79 +787,49 @@ app.post("/api/collections/atomic-batch", requireAdmin, async (request, response
 });
 
 app.put("/api/collections/:name", async (request, response, next) => {
-  try {
-    // The removed purchase-return module remains readable for historical balances.
-    if (["purchaseReturns", "purchaseReturnItems"].includes(request.params.name)) {
-      return response.status(410).json({ error: "Purchase returns have been removed." });
-    }
-    if (!Array.isArray(request.body?.items)) {
-      return response.status(400).json({ error: "items must be an array." });
-    }
-    if (request.params.name === "partyCashTransactions") {
-      const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kabul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-      if (request.body.items.some((row) => row && typeof row.date === "string" && row.date.slice(0, 10) > today)) {
-        return response.status(422).json({ error: "Future journal dates are not allowed." });
-      }
-    }
-    if (localStorageMode) {
-      const name = request.params.name;
-      const previous = localState.collections[name];
-      const record = {
-        items: request.body.items,
-        revision: Number(previous?.revision || 0) + 1,
-        updatedAt: new Date().toISOString(),
-      };
+  const name = request.params.name;
+  if (["purchaseReturns", "purchaseReturnItems"].includes(name)) return response.status(410).json({ error: "Purchase returns have been removed." });
+  if (!Array.isArray(request.body?.items)) return response.status(400).json({ error: "items must be an array." });
+  if (name === "partyCashTransactions") {
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kabul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    if (request.body.items.some(row => row && typeof row.date === "string" && row.date.slice(0, 10) > today)) return response.status(422).json({ error: "Future journal dates are not allowed." });
+  }
+  const match = String(request.get("If-Match") || "").match(/^"(\d+)"$/);
+  if (!match) return response.status(428).json({ error: "If-Match revision is required." });
+  const revision = Number(match[1]);
+  if (!Number.isSafeInteger(revision) || revision < 0) return response.status(400).json({ error: "Invalid revision." });
+  if (localStorageMode) {
+    try {
+      const before = localState.collections[name];
+      if (Number(before?.revision || 0) !== revision) return response.status(409).json({ error: "Collection changed. Reload before saving." });
+      const payload = deletedRecordChanges([{ name, before: before?.items || [], after: request.body.items }]);
+      if (payload.length) { localState.trash ||= []; localState.trash.unshift({ id: randomBytes(16).toString("hex"), payload, deletedAt: new Date().toISOString() }); }
+      const record = { items: request.body.items, revision: revision + 1, updatedAt: new Date().toISOString() };
       localState.collections[name] = record;
       await saveLocalState();
       return response.json({ name, ...record, revision: String(record.revision) });
-    }
-    // Optimistic concurrency: write only when the client's last-read revision matches.
-    const match = String(request.get("If-Match") || "").match(/^"(\d+)"$/);
-    if (!match) return response.status(428).json({ error: "If-Match revision is required." });
-    const revision = Number(match[1]);
-    if (!Number.isSafeInteger(revision) || revision < 0) return response.status(400).json({ error: "Invalid revision." });
-    if (request.permissionModule) {
-      const previous = await pool.query("SELECT items, revision FROM app_collections WHERE name=$1", [request.params.name]);
-      const serverRevision = previous.rowCount ? Number(previous.rows[0].revision) : 0;
-      if (serverRevision !== revision) return response.status(409).json({ error: "Collection changed on the server. Reload before saving." });
-      const serverItems = previous.rowCount ? previous.rows[0].items : [];
-      if (!actionAllowedOnChanges(request.authUser, request.permissionModule, serverItems, request.body.items)) {
-        return response.status(403).json({ error: "Create, edit or delete permission denied for this operation." });
-      }
-    }
-    if (protectedDeletionCollections.has(request.params.name)) {
-      const previous = await pool.query("SELECT items, revision FROM app_collections WHERE name=$1", [request.params.name]);
-      if (previous.rowCount && Number(previous.rows[0].revision) === revision &&
-          removesProtectedRecords(request.params.name, previous.rows[0].items, request.body.items) &&
-          !(await verifyAdminDeletion(request, response))) return;
-    }
-    // A revision of 0 creates a collection only if it does not exist.
-    // Existing collections MUST use UPDATE: the previous INSERT ... SELECT
-    // WHERE revision = 0 skipped the entire statement for revisions > 0,
-    // so ON CONFLICT never ran and every subsequent save returned 409.
-    const params = [request.params.name, JSON.stringify(request.body.items), revision];
-    const result = revision === 0
-      ? await pool.query(
-          `INSERT INTO app_collections (name, items, revision)
-           VALUES ($1, $2::jsonb, 1)
-           ON CONFLICT (name) DO NOTHING
-           RETURNING name, items, revision, updated_at AS "updatedAt"`,
-          params.slice(0, 2)
-        )
-      : await pool.query(
-          `UPDATE app_collections
-           SET items = $2::jsonb,
-               revision = revision + 1,
-               updated_at = NOW()
-           WHERE name = $1 AND revision = $3::bigint
-           RETURNING name, items, revision, updated_at AS "updatedAt"`,
-          params
-        );
-    if (!result.rowCount) return response.status(409).json({ error: "Collection changed on the server. Reload before saving." });
-    response.json(result.rows[0]);
-  } catch (error) {
-    next(error);
+    } catch (error) { return next(error); }
   }
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(706251)");
+    const previous = await client.query("SELECT items,revision FROM app_collections WHERE name=$1 FOR UPDATE", [name]);
+    const before = previous.rows[0]?.items || [];
+    if (Number(previous.rows[0]?.revision || 0) !== revision) { await client.query("ROLLBACK"); return response.status(409).json({ error: "Collection changed on the server. Reload before saving." }); }
+    if (request.permissionModule && !actionAllowedOnChanges(request.authUser, request.permissionModule, before, request.body.items)) { await client.query("ROLLBACK"); return response.status(403).json({ error: "Create, edit or delete permission denied for this operation." }); }
+    if (removesProtectedRecords(name, before, request.body.items) && !(await verifyAdminDeletion(request, response))) { await client.query("ROLLBACK"); return; }
+    const result = revision === 0
+      ? await client.query(`INSERT INTO app_collections(name,items,revision) VALUES($1,$2::jsonb,1)
+          ON CONFLICT(name) DO NOTHING RETURNING name,items,revision,updated_at AS "updatedAt"`, [name,JSON.stringify(request.body.items)])
+      : await client.query(`UPDATE app_collections SET items=$2::jsonb,revision=revision+1,updated_at=NOW()
+          WHERE name=$1 AND revision=$3::bigint RETURNING name,items,revision,updated_at AS "updatedAt"`, [name,JSON.stringify(request.body.items),revision]);
+    if (!result.rowCount) { await client.query("ROLLBACK"); return response.status(409).json({ error: "Collection changed on the server. Reload before saving." }); }
+    await archiveRemovals(client, [{ name, before, after: request.body.items }]);
+    await client.query("COMMIT");
+    response.json(result.rows[0]);
+  } catch (error) { await client.query("ROLLBACK").catch(() => {}); next(error); }
+  finally { client.release(); }
 });
 
 // Safe import: never overwrite an existing record with different content.
