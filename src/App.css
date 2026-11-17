@@ -2336,7 +2336,7 @@ body.dark-mode .notification-item:hover { background: #111c31 !important; }
   position: fixed;
   top: 22px;
   left: 22px;
-  z-index: 200000;
+  z-index: 2147483647;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -8180,7 +8180,7 @@ body[data-theme="aurora"].dark-mode .app-confirm-backdrop {
 .app-confirm-overlay {
   position: fixed !important;
   inset: 0 !important;
-  z-index: 2147483000 !important;
+  z-index: 2147483646 !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;

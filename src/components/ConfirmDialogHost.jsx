@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 
@@ -20,7 +21,7 @@ function ConfirmDialogHost() {
     setDialog(null);
   };
 
-  return (
+  return createPortal(
     <div className="app-confirm-overlay" role="presentation">
       <section className="app-confirm-modal" role="dialog" aria-modal="true">
         <div className={`app-confirm-icon ${dialog.tone || "danger"}`}>
@@ -39,7 +40,8 @@ function ConfirmDialogHost() {
           </button>
         </div>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

@@ -1,3 +1,5 @@
+import { IS_DEMO } from "../config/appConfig";
+import { isAdminUser, PERMISSION_ACTIONS, PERMISSION_MODULES } from "../utils/permissions";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Edit3, Mail, Search, ShieldCheck, Trash2, UserPlus, UserRound, X } from "lucide-react";
@@ -11,6 +13,13 @@ const rtlLanguages = new Set(["fa", "ps"]);
 
 const translations = {
   en: {
+    employee: "Employee",
+    inactive: "Inactive",
+    permissions: "Permissions",
+    actionLabels: ["Create", "Edit", "Delete", "Print"],
+    loading: "Loading accounts…",
+    loadError: "Unable to load accounts.",
+    retry: "Retry",
     title: "Accounts",
     subtitle: "Create and manage system login accounts.",
     addAccount: "Add Account",
@@ -44,7 +53,7 @@ const translations = {
     requiredEmail: "Please enter an email address.",
     invalidEmail: "Please enter a valid email address.",
     requiredPassword: "Please enter a password.",
-    shortPassword: "Password must be at least 4 characters.",
+    shortPassword: "Password must be at least {min} characters.",
     mismatch: "The passwords do not match.",
     duplicateEmail: "This email is already used by another account.",
     duplicateUsername: "This user name is already used by another account.",
@@ -57,6 +66,13 @@ const translations = {
     cannotDeleteCurrent: "You cannot delete the account currently in use.",
   },
   fa: {
+    employee: "کارمند",
+    inactive: "غیرفعال",
+    permissions: "صلاحیت‌ها",
+    actionLabels: ["ثبت", "ویرایش", "حذف", "چاپ"],
+    loading: "در حال بارگیری اکونت‌ها…",
+    loadError: "بارگیری اکونت‌ها ممکن نشد.",
+    retry: "تلاش دوباره",
     title: "اکونت‌ها",
     subtitle: "اکونت‌های ورود به سیستم را ثبت و مدیریت کنید.",
     addAccount: "افزودن اکونت",
@@ -90,7 +106,7 @@ const translations = {
     requiredEmail: "لطفاً ایمیل را وارد کنید.",
     invalidEmail: "لطفاً یک ایمیل معتبر وارد کنید.",
     requiredPassword: "لطفاً پسورد را وارد کنید.",
-    shortPassword: "پسورد باید حداقل ۴ کاراکتر باشد.",
+    shortPassword: "پسورد باید حداقل {min} کاراکتر باشد.",
     mismatch: "پسورد و تکرار پسورد یکسان نیست.",
     duplicateEmail: "این ایمیل قبلاً برای یک اکونت دیگر استفاده شده است.",
     duplicateUsername: "این نام کاربری قبلاً استفاده شده است.",
@@ -103,6 +119,13 @@ const translations = {
     cannotDeleteCurrent: "اکونتی را که فعلاً با آن وارد شده‌اید نمی‌توانید حذف کنید.",
   },
   ps: {
+    employee: "کارکوونکی",
+    inactive: "غیرفعال",
+    permissions: "صلاحیتونه",
+    actionLabels: ["ثبت", "سمون", "حذف", "چاپ"],
+    loading: "اکونټونه بارېږي…",
+    loadError: "اکونټونه بار نه شول.",
+    retry: "بیا هڅه",
     title: "اکونټونه",
     subtitle: "سیسټم ته د ننوتلو اکونټونه ثبت او مدیریت کړئ.",
     addAccount: "اکونټ اضافه کړئ",
@@ -136,7 +159,7 @@ const translations = {
     requiredEmail: "مهرباني وکړئ برېښنالیک ولیکئ.",
     invalidEmail: "مهرباني وکړئ سم برېښنالیک ولیکئ.",
     requiredPassword: "مهرباني وکړئ پټنوم ولیکئ.",
-    shortPassword: "پټنوم باید لږ تر لږه ۴ توري ولري.",
+    shortPassword: "پټنوم باید لږ تر لږه {min} توري ولري.",
     mismatch: "پټنومونه یو شان نه دي.",
     duplicateEmail: "دا برېښنالیک د بل اکونټ لپاره کارول شوی دی.",
     duplicateUsername: "دا د کارن نوم مخکې کارول شوی دی.",
@@ -151,14 +174,39 @@ const translations = {
 };
 
 const emptyForm = { username: "", email: "", password: "", confirmPassword: "" };
+async function requestAccounts(path = "", method = "GET", body, signal) {
+  const response = await fetch(`/api/admin/users${path}`, {
+    method, signal, credentials: "same-origin",
+    ...(body ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}),
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+  return result;
+}
+
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export default function Accounts({ accounts = [], setAccounts, currentUser }) {
+export default function Accounts({ accounts: demoAccounts = [], setAccounts, currentUser }) {
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [serverAccounts, setServerAccounts] = useState(null);
+  const [loadError, setLoadError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const accounts = IS_DEMO ? demoAccounts : serverAccounts || [];
+  const canManage = IS_DEMO || (isAdminUser(currentUser) && !currentUser.isDefaultAdmin);
+
+  useEffect(() => {
+    if (IS_DEMO || !canManage) return;
+    const controller = new AbortController();
+    requestAccounts("", "GET", undefined, controller.signal)
+      .then(setServerAccounts)
+      .catch(() => { if (!controller.signal.aborted) setLoadError(true); });
+    return () => controller.abort();
+  }, [canManage, loadAttempt]);
 
   useEffect(() => {
     const syncLanguage = () => setLanguage(localStorage.getItem(languageKey) || "en");
@@ -198,6 +246,7 @@ export default function Accounts({ accounts = [], setAccounts, currentUser }) {
   const openEdit = (account) => {
     setEditId(account.id);
     setForm({
+      permissions: account.permissions || {},
       username: account.username || account.fullName || "",
       email: account.email || "",
       password: "",
@@ -214,6 +263,7 @@ export default function Accounts({ accounts = [], setAccounts, currentUser }) {
 
   const saveAccount = async (event) => {
     event.preventDefault();
+    if (saving || !canManage) return;
     const username = form.username.trim();
     const email = form.email.trim().toLowerCase();
 
@@ -221,7 +271,8 @@ export default function Accounts({ accounts = [], setAccounts, currentUser }) {
     if (!email) return notify(t.requiredEmail, "error");
     if (!emailPattern.test(email)) return notify(t.invalidEmail, "error");
     if (!editId && !form.password) return notify(t.requiredPassword, "error");
-    if (form.password && form.password.length < 4) return notify(t.shortPassword, "error");
+    const minimumPasswordLength = IS_DEMO ? 4 : 12;
+    if (form.password && form.password.length < minimumPasswordLength) return notify(t.shortPassword.replace("{min}", minimumPasswordLength), "error");
     if (form.password !== form.confirmPassword) return notify(t.mismatch, "error");
 
     const duplicateUsername = accounts.some(
@@ -233,6 +284,21 @@ export default function Accounts({ accounts = [], setAccounts, currentUser }) {
       (item) => String(item.id) !== String(editId) && String(item.email || "").trim().toLowerCase() === email
     );
     if (duplicateEmail) return notify(t.duplicateEmail, "error");
+
+    if (!IS_DEMO) {
+      setSaving(true);
+      try {
+        const { user } = await requestAccounts(editId ? `/${encodeURIComponent(editId)}` : "", editId ? "PATCH" : "POST", {
+          fullName: username, email, password: form.password, permissions: form.permissions || {},
+        });
+        setServerAccounts((current) => editId ? current.map((item) => item.id === user.id ? user : item) : [...current, user]);
+        notify(editId ? t.updated : t.saved, "success");
+        closeModal();
+      } catch (error) {
+        notify(error.message, "error");
+      } finally { setSaving(false); }
+      return;
+    }
 
     let nextAccounts;
     if (editId) {
@@ -287,6 +353,14 @@ export default function Accounts({ accounts = [], setAccounts, currentUser }) {
       cancelText: t.cancel,
     });
     if (!confirmed) return;
+    if (!IS_DEMO) {
+      try {
+        await requestAccounts(`/${encodeURIComponent(account.id)}`, "DELETE");
+        setServerAccounts((current) => current.filter((item) => item.id !== account.id));
+        notify(t.deleted, "success");
+      } catch (error) { notify(error.message, "error"); }
+      return;
+    }
     const saved = await setAccounts(accounts.filter((item) => String(item.id) !== String(account.id)));
     if (saved) notify(t.deleted, "success", { silent: true });
   };
@@ -320,9 +394,26 @@ export default function Accounts({ accounts = [], setAccounts, currentUser }) {
             <span>{editId ? t.reNewPassword : t.rePassword}</span>
             <input type="password" value={form.confirmPassword} onChange={(e) => setForm((prev) => ({ ...prev, confirmPassword: e.target.value }))} placeholder={t.rePasswordPlaceholder} autoComplete="new-password" />
           </label>
+          {!IS_DEMO && <details className="account-manager-permissions">
+            <summary>{t.permissions}</summary>
+            <table>
+              <thead><tr><th scope="col">{t.permissions}</th>{t.actionLabels.map((label) => <th scope="col" key={label}>{label}</th>)}</tr></thead>
+              <tbody>{PERMISSION_MODULES.map(({ key, labels }) => (
+                <tr key={key}><th scope="row">{labels[language] || labels.en}</th>
+                  {PERMISSION_ACTIONS.map((action, index) => <td key={action}><input type="checkbox"
+                    aria-label={`${labels[language] || labels.en} · ${t.actionLabels[index]}`}
+                    checked={Boolean(form.permissions?.[key]?.[action])}
+                    onChange={(event) => {
+                      const checked = event.target.checked;
+                      setForm((prev) => ({ ...prev, permissions: { ...prev.permissions, [key]: { ...prev.permissions?.[key], [action]: checked } } }));
+                    }} /></td>)}
+                </tr>
+              ))}</tbody>
+            </table>
+          </details>}
           <div className="account-manager-form-actions">
             <button type="button" className="secondary" onClick={closeModal}>{t.cancel}</button>
-            <button type="submit" className="primary">{editId ? t.update : t.save}</button>
+            <button type="submit" className="primary" disabled={saving}>{editId ? t.update : t.save}</button>
           </div>
         </form>
       </section>
@@ -336,7 +427,7 @@ export default function Accounts({ accounts = [], setAccounts, currentUser }) {
           <h1>{t.title}</h1>
           <p>{t.subtitle}</p>
         </div>
-        <button type="button" className="account-manager-add" onClick={openCreate}><UserPlus size={17} />{t.addAccount}</button>
+        <button type="button" className="account-manager-add" disabled={!canManage || (!IS_DEMO && !serverAccounts)} onClick={openCreate}><UserPlus size={17} />{t.addAccount}</button>
       </div>
 
       <div className="account-manager-stats">
@@ -359,12 +450,12 @@ export default function Accounts({ accounts = [], setAccounts, currentUser }) {
                 <tr key={account.id}>
                   <td><div className="account-manager-user"><span><UserRound size={18} /></span><strong>{account.username || account.fullName || "—"}</strong></div></td>
                   <td><div className="account-manager-email"><Mail size={14} />{account.email || "—"}</div></td>
-                  <td><span className="account-manager-role">{t.administrator}</span></td>
-                  <td><span className="account-manager-status">{t.active}</span></td>
+                  <td><span className="account-manager-role">{isAdminUser(account) ? t.administrator : t.employee}</span></td>
+                  <td><span className="account-manager-status">{account.status === "Inactive" ? t.inactive : t.active}</span></td>
                   <td>{account.createdAt || "—"}</td>
-                  <td><div className="account-manager-actions"><button type="button" onClick={() => openEdit(account)} title={t.editTitle}><Edit3 size={15} /></button><button type="button" className="danger" onClick={() => removeAccount(account)} title={t.delete}><Trash2 size={15} /></button></div></td>
+                  <td>{(IS_DEMO || !isAdminUser(account)) && <div className="account-manager-actions"><button type="button" onClick={() => openEdit(account)} title={t.editTitle}><Edit3 size={15} /></button><button type="button" className="danger" onClick={() => removeAccount(account)} title={t.delete}><Trash2 size={15} /></button></div>}</td>
                 </tr>
-              )) : <tr><td colSpan="6" className="account-manager-empty">{t.noAccounts}</td></tr>}
+              )) : <tr><td colSpan="6" className="account-manager-empty">{loadError ? <>{t.loadError} <button type="button" onClick={() => { setLoadError(false); setLoadAttempt((attempt) => attempt + 1); }}>{t.retry}</button></> : !IS_DEMO && canManage && !serverAccounts ? t.loading : t.noAccounts}</td></tr>}
             </tbody>
           </table>
         </div>

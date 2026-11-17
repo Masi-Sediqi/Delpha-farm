@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
 
 function ToastHost() {
@@ -16,7 +17,7 @@ function ToastHost() {
     return () => window.removeEventListener("app-notification", showMessage);
   }, []);
 
-  return (
+  return createPortal(
     <div className="toast-host" aria-live="polite">
       {messages.map((message) => (
         <div key={message.id} className={`app-toast ${message.type}`}>
@@ -24,7 +25,8 @@ function ToastHost() {
           <p>{message.message}</p>
         </div>
       ))}
-    </div>
+    </div>,
+    document.body,
   );
 }
 

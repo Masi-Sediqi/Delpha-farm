@@ -72,12 +72,12 @@ const text = {
     qty: "Carton count",
     purchaseUnit: "Main unit",
     unitsPerUnit: "Pieces in unit",
-    actualQty: "Quantity by piece",
+    actualQty: "Carton quantity",
     actualQtyText: "{qty} {unit}",
     unitPrice: "Purchase price / piece",
     salePrice: "Sale price / piece",
     addMedicine: "Add",
-    expiryDate: "Expiry date (Solar Hijri)",
+    expiryDate: "Expiry date (Gregorian)",
     total: "Total",
     stock: "Current stock",
     unit: "Unit",
@@ -91,6 +91,7 @@ const text = {
     requiredSupplier: "Please select a supplier.",
     requiredItems: "Please add at least one medicine.",
     invalidPaid: "Paid amount cannot be greater than the payable total.",
+    positivePrice: "The price must be greater than zero.",
     supplierSaved: "Supplier added successfully.",
     saved: "Purchase saved successfully.",
     updated: "Purchase updated successfully.",
@@ -136,12 +137,12 @@ const text = {
     qty: "تعداد کارتن",
     purchaseUnit: "واحد اصلی",
     unitsPerUnit: "تعداد دانه در واحد",
-    actualQty: "مقدار به دانه",
+    actualQty: "مقدار به کارتن",
     actualQtyText: "{qty} {unit}",
     unitPrice: "قیمت خرید فی دانه",
     salePrice: "قیمت فروش فی دانه",
     addMedicine: "اضافه",
-    expiryDate: "تاریخ انقضا (شمسی)",
+    expiryDate: "تاریخ انقضا (میلادی)",
     total: "جمله",
     stock: "موجودی فعلی",
     unit: "واحد",
@@ -155,6 +156,7 @@ const text = {
     requiredSupplier: "لطفاً تأمین‌کننده را انتخاب کنید.",
     requiredItems: "حداقل یک دوا را اضافه کنید.",
     invalidPaid: "مقدار پرداخت نمی‌تواند بیشتر از مجموع نهایی باشد.",
+    positivePrice: "نرخ باید بیشتر از صفر باشد.",
     supplierSaved: "تأمین‌کننده با موفقیت اضافه شد.",
     saved: "خریداری با موفقیت ذخیره شد.",
     updated: "خریداری با موفقیت ویرایش شد.",
@@ -200,7 +202,7 @@ const text = {
     qty: "د کارتنونو شمېر",
     purchaseUnit: "اصلي واحد",
     unitsPerUnit: "په واحد کې دانې",
-    actualQty: "په دانه مقدار",
+    actualQty: "د کارتنونو شمېر",
     actualQtyText: "{qty} {unit}",
     unitPrice: "د هرې دانې د پېرود بیه",
     salePrice: "د هرې دانې د پلور بیه",
@@ -219,6 +221,7 @@ const text = {
     requiredSupplier: "مهرباني وکړئ عرضه کوونکی وټاکئ.",
     requiredItems: "لږ تر لږه یو درمل اضافه کړئ.",
     invalidPaid: "ورکړل شوی مبلغ له وروستي مجموع څخه زیات نه شي کېدای.",
+    positivePrice: "بیه باید له صفر څخه لوړه وي.",
     supplierSaved: "عرضه کوونکی په بریالیتوب اضافه شو.",
     saved: "پېرود په بریالیتوب ذخیره شو.",
     updated: "پېرود په بریالیتوب سم شو.",
@@ -420,6 +423,8 @@ function PurchaseNew() {
         purchaseId,
         productId: movement.productId || movement.product_id,
         quantity: num(movement.purchaseQuantity ?? movement.packQuantity ?? (num(movement.quantityIn ?? movement.quantity ?? movement.qty) / positiveUnitCount(movement.unitsPerUnit ?? 1))),
+        cartonUnitsPerUnit: movement.cartonUnitsPerUnit,
+        receivedQuantity: movement.quantityIn ?? movement.quantity,
         purchasePrice: num(movement.unitCost ?? movement.purchasePrice ?? movement.buyPrice),
         salePrice: num(movement.salePrice ?? movement.sellPrice),
       }));
@@ -442,6 +447,8 @@ function PurchaseNew() {
       const product = products.find((item) => String(item.id) === String(productId));
       const unitsPerUnit = positiveUnitCount(row.unitsPerUnit ?? row.quantityPerUnit ?? row.piecesPerUnit ?? row.piecesPerBox ?? productPiecesPerUnit(product));
       const pieceQuantity = purchasePieceQuantity(row, unitsPerUnit);
+      const cartonUnitsPerUnit = positiveUnitCount(row.cartonUnitsPerUnit ??
+        (row.quantityUnit === "piece" || row.purchaseUnit === "piece" ? productPiecesPerUnit(product) : unitsPerUnit));
       return {
         ...row,
         id: row.id || `purchase-item-${purchaseId}-${index + 1}`,
@@ -452,7 +459,8 @@ function PurchaseNew() {
         unit: row.unit || product?.productUnit || "piece",
         baseUnit: row.baseUnit || row.stockUnit || "piece",
         purchaseUnit: "piece",
-        cartonUnitsPerUnit: row.cartonUnitsPerUnit || unitsPerUnit,
+        cartonUnitsPerUnit,
+        cartonQuantity: row.cartonQuantity ?? pieceQuantity / cartonUnitsPerUnit,
         unitsPerUnit: 1,
         quantityUnit: "piece",
         priceUnit: "piece",
@@ -538,8 +546,9 @@ function PurchaseNew() {
       priceUnit: "piece",
       cartonUnitsPerUnit: piecesPerUnit,
       unitsPerUnit: 1,
-      receivedQuantity: 1,
-      quantity: 1,
+      cartonQuantity: 1,
+      receivedQuantity: piecesPerUnit,
+      quantity: piecesPerUnit,
       purchasePrice: productPricePerPiece(product, "purchasePrice"),
       salePrice: productPricePerPiece(product, "salePrice"),
       saleCurrency: (product.saleCurrency || saleCurrency).toUpperCase(),
@@ -660,11 +669,12 @@ function PurchaseNew() {
     setItems((current) => current.map((row) => String(row.lineId) === String(lineId) ? { ...row, ...fields } : row));
   };
 
-  const updatePieceQuantity = (lineId, value) => {
+  const updateCartonQuantity = (lineId, value) => {
     setItems((current) => current.map((row) => {
       if (String(row.lineId) !== String(lineId)) return row;
-      const pieces = cleanNumberInput(value);
-      return { ...row, receivedQuantity: pieces, quantity: pieces };
+      const cartonQuantity = cleanNumberInput(value);
+      const pieces = num(cartonQuantity) * row.cartonUnitsPerUnit;
+      return { ...row, cartonQuantity, receivedQuantity: pieces, quantity: pieces };
     }));
   };
 
@@ -710,6 +720,14 @@ function PurchaseNew() {
   const savePurchase = async () => {
     if (!supplierId) return notify(t.requiredSupplier, "warning");
     if (!items.length) return notify(t.requiredItems, "warning");
+    for (const row of items) {
+      if (!(num(row.purchasePrice) > 0)) {
+        return notify(`${row.productName} — ${t.unitPrice}. ${t.positivePrice}`, "warning");
+      }
+      if (!(num(row.salePrice) > 0)) {
+        return notify(`${row.productName} — ${t.salePrice}. ${t.positivePrice}`, "warning");
+      }
+    }
     if (paymentStatus === "debt" && num(paidAmount) > grandTotal) return notify(t.invalidPaid, "warning");
 
     const now = new Date().toISOString();
@@ -774,6 +792,7 @@ function PurchaseNew() {
       quantityOut: 0,
       quantity: receivedQuantity(row),
       purchaseQuantity: receivedQuantity(row),
+      cartonUnitsPerUnit: row.cartonUnitsPerUnit,
       quantityUnit: "piece",
       stockUnit: "piece",
       priceUnit: "piece",
@@ -829,8 +848,10 @@ function PurchaseNew() {
     navigate("/purchasing");
   };
 
+  const productLabel = language === "en" ? "Product name" : language === "ps" ? "د توکي نوم" : "نام جنس";
+
   return (
-    <div className="purchase-entry-page" dir={direction}>
+    <div className="purchase-entry-page purchase-carton-entry" dir={direction}>
       <header className="purchase-entry-header">
         <div>
           <button className="purchase-back" type="button" onClick={() => navigate("/purchasing")}><ArrowLeft size={16} />{t.back}</button>
@@ -950,10 +971,17 @@ function PurchaseNew() {
               <span className="purchase-items-count">{items.length}</span>
             </div>
             <div className="purchase-items-list">
+              {items.length > 0 && (
+                <div className="purchase-carton-grid-head" aria-hidden="true">
+                  {[productLabel, t.company, t.actualQty, t.unitPrice, `${t.salePrice} (${saleCurrency})`, t.total, t.expiryDate, ""].map((label) => (
+                    <span key={label}>{label}</span>
+                  ))}
+                </div>
+              )}
               {items.map((row) => (
                 <article className="purchase-item-row purchase-keyboard-row" key={row.lineId || row.id}>
                   <div className="purchase-item-name">
-                    <span className="purchase-item-product-label">{language === "en" ? "Product name" : language === "ps" ? "د توکي نوم" : "نام جنس"}</span>
+                    <span className="purchase-item-product-label">{productLabel}</span>
                     <strong title={row.productName}>{row.productName}</strong>
                     <small>{row.group || "—"} · {t.purchaseUnit}: {unitLabel(row.purchaseUnit)}</small>
                   </div>
@@ -980,16 +1008,16 @@ function PurchaseNew() {
                   <label>
                     <span>{t.actualQty}</span>
                     <input
-                      className="purchase-piece-quantity"
+                      aria-label={t.actualQty}
                       ref={(node) => { if (node) quantityInputRefs.current.set(String(row.lineId), node); else quantityInputRefs.current.delete(String(row.lineId)); }}
                       type="text"
                       inputMode="decimal"
                       dir="ltr"
                       min="0"
                       step="any"
-                      value={row.receivedQuantity ?? receivedQuantity(row)}
+                      value={row.cartonQuantity}
                       onFocus={(e) => e.target.select()}
-                      onChange={(e) => updatePieceQuantity(row.lineId, e.target.value)}
+                      onChange={(e) => updateCartonQuantity(row.lineId, e.target.value)}
                     />
                   </label>
                   <label>
@@ -1022,9 +1050,9 @@ function PurchaseNew() {
                   </div>
                   <label className="purchase-expiry-field">
                     <span>{t.expiryDate}</span>
-                    <ShamsiDateInput
-
-
+                    <input
+                      type="date"
+                      lang="en"
                       value={row.expiryDate || ""}
                       onChange={(e) => updateItemField(row.lineId, { expiryDate: e.target.value })}
                     />

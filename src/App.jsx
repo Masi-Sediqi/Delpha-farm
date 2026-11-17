@@ -264,7 +264,7 @@ function App() {
   const [serverUser, setServerUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(IS_DEMO);
   const [serverSetupRequired, setServerSetupRequired] = useState(false);
-  const [accounts, setAccounts, , accountsLoaded] = useJsonCollection("accounts");
+  const [accounts, setAccounts, , accountsLoaded] = useJsonCollection("accounts", { enabled: IS_DEMO });
   useEffect(() => {
     if (IS_DEMO) return;
     let active = true;

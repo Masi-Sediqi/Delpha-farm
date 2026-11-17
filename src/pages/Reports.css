@@ -41,3 +41,18 @@
     border-color: #64748b !important;
   }
 }
+
+@media (max-width: 650px) {
+  .date-grid > span {
+    grid-column: 1 / -1;
+  }
+  .date-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .date-grid > label {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .date-grid input[type="date"] {
+    min-width: 0;
+  }
+}

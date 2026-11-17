@@ -105,10 +105,10 @@ const text = {
     expiryDate: "Expiry date",
     addMedicine: "Add",
     total: "Total",
-    discount: "Discount",
+    discount: "Discount (%)",
     totalBeforeDiscount: "Total before discount",
     totalDiscount: "Total discount",
-    invalidDiscount: "Discount cannot be greater than the item total.",
+    invalidDiscount: "Discount must be between 0% and 100%.",
     stock: "Current stock",
     unit: "Unit",
     remove: "Remove",
@@ -121,6 +121,7 @@ const text = {
     requiredCustomer: "Please select a customer.",
     requiredItems: "Please add at least one medicine.",
     invalidPaid: "Paid amount cannot be greater than the payable total.",
+    positivePrice: "The price must be greater than zero.",
     insufficientStock: "Insufficient stock for",
     outOfStock: "Out of stock",
     maxStock: "Maximum available stock",
@@ -175,10 +176,10 @@ const text = {
     expiryDate: "تاریخ انقضا",
     addMedicine: "اضافه",
     total: "جمله",
-    discount: "تخفیف",
+    discount: "تخفیف (%)",
     totalBeforeDiscount: "مجموع قبل از تخفیف",
     totalDiscount: "مجموع تخفیف",
-    invalidDiscount: "تخفیف نمی‌تواند بیشتر از مجموع همان جنس باشد.",
+    invalidDiscount: "فیصدی تخفیف باید بین ۰ تا ۱۰۰ باشد.",
     stock: "موجودی فعلی",
     unit: "واحد",
     remove: "حذف",
@@ -191,6 +192,7 @@ const text = {
     requiredCustomer: "لطفاً مشتری را انتخاب کنید.",
     requiredItems: "حداقل یک دوا را اضافه کنید.",
     invalidPaid: "مقدار پرداخت نمی‌تواند بیشتر از مجموع نهایی باشد.",
+    positivePrice: "نرخ باید بیشتر از صفر باشد.",
     insufficientStock: "موجودی کافی نیست برای",
     outOfStock: "موجودی تمام شده",
     maxStock: "حداکثر موجودی قابل فروش",
@@ -245,10 +247,10 @@ const text = {
     expiryDate: "د ختمېدو نېټه",
     addMedicine: "اضافه",
     total: "ټول",
-    discount: "تخفیف",
+    discount: "تخفیف (%)",
     totalBeforeDiscount: "له تخفیف مخکې مجموع",
     totalDiscount: "ټول تخفیف",
-    invalidDiscount: "تخفیف د هماغه توکي له مجموع څخه زیات نه شي کېدای.",
+    invalidDiscount: "د تخفیف سلنه باید له ۰ تر ۱۰۰ پورې وي.",
     stock: "اوسنی موجودي",
     unit: "واحد",
     remove: "حذف",
@@ -261,6 +263,7 @@ const text = {
     requiredCustomer: "مهرباني وکړئ پېرودونکی وټاکئ.",
     requiredItems: "لږ تر لږه یو درمل اضافه کړئ.",
     invalidPaid: "ورکړل شوی مبلغ له وروستي مجموع څخه زیات نه شي کېدای.",
+    positivePrice: "بیه باید له صفر څخه لوړه وي.",
     insufficientStock: "کافي موجودي نشته د",
     outOfStock: "موجودي ختمه ده",
     maxStock: "د پلور اعظمي موجودي",
@@ -700,7 +703,7 @@ function SaleNew() {
         if (!Number.isFinite(raw)) return { ...row, quantity: "" };
         const clamped = Math.min(Math.max(raw, 0), availableStockForLine(current, row));
         const nextGross = clamped * num(row.salePrice);
-        return { ...row, quantity: clamped, discountAmount: row.discountPercent != null ? nextGross * Math.min(100, Math.max(0, num(row.discountPercent))) / 100 : Math.min(num(row.discountAmount), nextGross) };
+        return { ...row, quantity: clamped, discountAmount: Math.min(num(row.discountAmount), nextGross) };
       }
       if (key === "salePrice") {
         const price = Math.max(Number(value || 0), 0);
@@ -710,17 +713,8 @@ function SaleNew() {
           ...row,
           salePrice: value,
           sourceSalePrice: reverseRate ? price * reverseRate : price,
-          discountAmount: row.discountPercent != null ? nextGross * Math.min(100, Math.max(0, num(row.discountPercent))) / 100 : Math.min(num(row.discountAmount), nextGross),
+          discountAmount: Math.min(num(row.discountAmount), nextGross),
         };
-      }
-      if (key === "discountPercent") {
-        const percent = Math.min(100, Math.max(0, Number(value || 0)));
-        return { ...row, discountPercent: value, discountAmount: num(row.quantity) * num(row.salePrice) * percent / 100 };
-      }
-      if (key === "discountAmount") {
-        const gross = num(row.quantity) * num(row.salePrice);
-        const discount = Math.min(Math.max(Number(value || 0), 0), gross);
-        return { ...row, discountAmount: discount };
       }
       return { ...row, [key]: value };
     }));
@@ -742,9 +736,7 @@ function SaleNew() {
         exchangeRate: rate,
         purchaseComparisonRates: { ...row.purchaseComparisonRates, [normalized]: row.purchaseComparisonRates?.[normalized] || currencyRate(row.purchaseCurrency, normalized) },
         salePrice,
-        discountAmount: row.discountPercent != null
-          ? num(row.quantity) * salePrice * Math.min(100, Math.max(0, num(row.discountPercent))) / 100
-          : Math.min(num(row.discountAmount) * currencyRate(currency, normalized), num(row.quantity) * salePrice),
+        discountAmount: Math.min(num(row.discountAmount) * currencyRate(currency, normalized), num(row.quantity) * salePrice),
       };
     }));
     setCurrency(normalized);
@@ -774,7 +766,7 @@ function SaleNew() {
       const packageQuantity = Math.min(Math.max(raw, 0), maxPackages);
       const pieceQuantity = Number((packageQuantity * unitsPerUnit).toFixed(4));
       const nextGross = num(pieceQuantity) * num(row.salePrice);
-      return { ...row, packageQuantity, quantity: pieceQuantity, discountAmount: row.discountPercent != null ? nextGross * Math.min(100, Math.max(0, num(row.discountPercent))) / 100 : Math.min(num(row.discountAmount), nextGross) };
+      return { ...row, packageQuantity, quantity: pieceQuantity, discountAmount: Math.min(num(row.discountAmount), nextGross) };
     }));
   };
 
@@ -790,7 +782,7 @@ function SaleNew() {
         ...row,
         quantity: clamped,
         packageQuantity: Number((clamped / unitsPerUnit).toFixed(4)),
-        discountAmount: row.discountPercent != null ? nextGross * Math.min(100, Math.max(0, num(row.discountPercent))) / 100 : Math.min(num(row.discountAmount), nextGross),
+        discountAmount: Math.min(num(row.discountAmount), nextGross),
       };
     }));
   };
@@ -803,7 +795,12 @@ function SaleNew() {
   };
   const pieceQuantity = (row) => num(row.quantity);
   const lineGross = (row) => pieceLineAmount(pieceQuantity(row), row.salePrice);
-  const lineDiscount = (row) => Math.min(num(row.discountAmount), lineGross(row));
+  const lineDiscount = (row) => {
+    const gross = lineGross(row);
+    if (row.discountPercent == null) return Math.min(Math.max(0, num(row.discountAmount)), gross);
+    const percent = Math.min(100, Math.max(0, num(row.discountPercent)));
+    return gross * percent / 100;
+  };
   const lineTotal = (row) => Math.max(lineGross(row) - lineDiscount(row), 0);
   const subtotal = items.reduce((sum, row) => sum + lineGross(row), 0);
   const totalDiscount = items.reduce((sum, row) => sum + lineDiscount(row), 0);
@@ -816,6 +813,7 @@ function SaleNew() {
   }, [paymentStatus, grandTotal]);
 
   const warnIfSellingAtLoss = async (row) => {
+    if (!(num(row.salePrice) > 0)) return false;
     if (pendingLossWarning.current) { await pendingLossWarning.current; return false; }
     const loss = assessSaleLoss(row, currency);
     if (!loss) return true;
@@ -851,13 +849,21 @@ function SaleNew() {
     if (isEditMode && !editingSale) return notify(t.notFound, "warning");
     if (!customerId) return notify(t.requiredCustomer, "warning");
     if (!items.length) return notify(t.requiredItems, "warning");
+    for (const row of items) {
+      if (!(num(row.purchasePrice) > 0)) {
+        return notify(`${row.productName} — ${t.purchasePrice}. ${t.positivePrice}`, "warning");
+      }
+      if (!(num(row.salePrice) > 0)) {
+        return notify(`${row.productName} — ${t.salePrice}. ${t.positivePrice}`, "warning");
+      }
+    }
     if (paymentStatus === "debt" && num(paidAmount) > grandTotal) return notify(t.invalidPaid, "warning");
 
     if (pendingLossWarning.current) { await pendingLossWarning.current; return; }
     const allocationByLine = new Map();
     const itemsByProduct = new Map();
     for (const item of items) {
-      if (num(item.discountAmount) > lineGross(item)) {
+      if (num(item.discountPercent) < 0 || num(item.discountPercent) > 100) {
         return notify(`${t.invalidDiscount} ${item.productName}.`, "warning");
       }
       if (num(item.quantity) <= 0) {
@@ -940,7 +946,7 @@ function SaleNew() {
         purchaseUnit: row.purchaseUnit || row.unit || "piece",
         lineGross: lineGross(row),
         discountAmount: lineDiscount(row),
-        discountPercent: lineGross(row) ? Number((100 * lineDiscount(row) / lineGross(row)).toFixed(2)) : 0,
+        discountPercent: row.discountPercent == null ? null : num(row.discountPercent),
         lineTotal: lineTotal(row),
         batchAllocations: allocationByLine.get(String(row.lineId)) || [],
       })),
