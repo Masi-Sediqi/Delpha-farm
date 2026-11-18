@@ -120,6 +120,7 @@ const text = {
     update: "Update Sale",
     requiredCustomer: "Please select a customer.",
     requiredItems: "Please add at least one medicine.",
+    duplicateProduct: "This product has already been selected.",
     invalidPaid: "Paid amount cannot be greater than the payable total.",
     positivePrice: "The price must be greater than zero.",
     insufficientStock: "Insufficient stock for",
@@ -191,6 +192,7 @@ const text = {
     update: "ذخیره تغییرات",
     requiredCustomer: "لطفاً مشتری را انتخاب کنید.",
     requiredItems: "حداقل یک دوا را اضافه کنید.",
+    duplicateProduct: "این جنس تکراری انتخاب شده است.",
     invalidPaid: "مقدار پرداخت نمی‌تواند بیشتر از مجموع نهایی باشد.",
     positivePrice: "نرخ باید بیشتر از صفر باشد.",
     insufficientStock: "موجودی کافی نیست برای",
@@ -262,6 +264,7 @@ const text = {
     update: "بدلونونه ذخیره کړئ",
     requiredCustomer: "مهرباني وکړئ پېرودونکی وټاکئ.",
     requiredItems: "لږ تر لږه یو درمل اضافه کړئ.",
+    duplicateProduct: "دا جنس بیا ټاکل شوی دی.",
     invalidPaid: "ورکړل شوی مبلغ له وروستي مجموع څخه زیات نه شي کېدای.",
     positivePrice: "بیه باید له صفر څخه لوړه وي.",
     insufficientStock: "کافي موجودي نشته د",
@@ -313,6 +316,7 @@ function SaleNew() {
   const resultButtonRefs = useRef(new Map());
   const customerSelectRef = useRef(null);
   const packageQuantityInputRefs = useRef(new Map());
+  const pendingQuantityLine = useRef(null);
 
   const t = text[language] || text.en;
   const direction = language === "en" ? "ltr" : "rtl";
@@ -440,6 +444,7 @@ function SaleNew() {
         purchaseComparisonRates: item.purchaseComparisonRates || capturePurchaseComparisonRates(purchaseCost.purchaseCurrency, currencies, currencyRate),
         sourceSalePrice: num(item.sourceSalePrice ?? item.salePrice ?? productPricePerPiece(product, "salePrice")),
         exchangeRate: num(item.exchangeRate) || 1,
+        cartonUnitsPerUnit: positiveUnitCount(item.cartonUnitsPerUnit ?? item.cartonSize ?? productPiecesPerUnit(product)),
         cartonSize: item.cartonSize ?? product?.cartonSize ?? unitsPerUnit,
         manufacturerName: item.manufacturerName || item.manufacturerCompany || product?.manufacturerName || product?.companyName || "",
         expiryDate: item.expiryDate || product?.expiryDate || "",
@@ -457,8 +462,6 @@ function SaleNew() {
     const q = normalizeSearchText(query);
     if (!searchFocused || !q) return [];
 
-    // Keep already-selected products searchable. Selecting the same product again
-    // increases its existing sale quantity instead of silently ignoring the click.
     const available = (Array.isArray(products) ? products : [])
       .filter((product) => product && product.status !== "inactive" && product.active !== false);
 
@@ -498,6 +501,11 @@ function SaleNew() {
   }, [activeResultIndex]);
 
   const addProduct = (product) => {
+    const productKey = String(product.id);
+    if (items.some((row) => String(row.productId) === productKey)) {
+      notify(t.duplicateProduct, "warning");
+    }
+
     const stock = getStock(product);
     if (stock <= 0) return;
 
@@ -508,11 +516,9 @@ function SaleNew() {
       return;
     }
 
-    const productKey = String(product.id);
     const unitsPerUnit = productPiecesPerUnit(product);
     const purchaseCost = productPurchaseCostSnapshot(product);
     const lineId = `sale-line-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    let changed = false;
 
     setItems((current) => {
       const selectedQuantity = current
@@ -523,7 +529,6 @@ function SaleNew() {
       if (remainingStock <= 0) return current;
 
       const pieceQuantityToAdd = Math.min(1, remainingStock);
-      changed = true;
 
       return [...current, {
         lineId,
@@ -555,12 +560,8 @@ function SaleNew() {
     setQuery("");
     setSearchFocused(false);
     setActiveResultIndex(0);
-    window.setTimeout(() => {
-      if (!changed) return;
-      const input = packageQuantityInputRefs.current.get(lineId);
-      input?.focus();
-      input?.select?.();
-    }, 0);
+    pendingQuantityLine.current = lineId;
+    window.setTimeout(() => searchInputRef.current?.focus(), 0);
   };
 
   const pieceCostDisplay = (row) => {
@@ -580,14 +581,12 @@ function SaleNew() {
   };
 
   const handleSearchKeyDown = (event) => {
-    if (event.key === "Tab" && !event.shiftKey && results.length) {
+    if (event.key === "Tab" && !event.shiftKey) {
       event.preventDefault();
-      focusSearchResult(Math.min(activeResultIndex, results.length - 1));
-      return;
-    }
-    if (event.key === "Tab" && !event.shiftKey && !results.length) {
-      event.preventDefault();
-      customerSelectRef.current?.focus();
+      const input = packageQuantityInputRefs.current.get(pendingQuantityLine.current);
+      pendingQuantityLine.current = null;
+      input?.focus();
+      input?.select();
       return;
     }
     if ((event.key === "ArrowDown" || event.key === "ArrowUp") && results.length) {
@@ -625,14 +624,7 @@ function SaleNew() {
   const handleResultKeyDown = (event, product, index) => {
     if (event.key === "Tab") {
       event.preventDefault();
-      if (event.shiftKey) {
-        if (index === 0) searchInputRef.current?.focus();
-        else moveSearchResult(index, -1);
-      } else if (index === results.length - 1) {
-        customerSelectRef.current?.focus();
-      } else {
-        moveSearchResult(index, 1);
-      }
+      searchInputRef.current?.focus();
       return;
     }
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
@@ -1005,7 +997,7 @@ function SaleNew() {
           ref={searchInputRef}
           value={query}
           onFocus={() => setSearchFocused(true)}
-          onChange={(event) => { setQuery(event.target.value); setSearchFocused(true); }}
+          onChange={(event) => { pendingQuantityLine.current = null; setQuery(event.target.value); setSearchFocused(true); }}
           onKeyDown={handleSearchKeyDown}
           placeholder={t.searchPlaceholder}
           autoComplete="off"
@@ -1177,7 +1169,7 @@ function SaleNew() {
                   <div className="sale-wholesale-size"><span>{formatQuantity(row.cartonSize || row.unitsPerUnit || 1)}</span></div>
                   <div className="sale-wholesale-price-display" title={language === "en" ? "Purchase cost per piece in selected currency" : "قیمت تمام‌شد فی دانه به اسعار انتخاب‌شده"}><output dir="ltr" aria-label={t.purchasePrice}>{pieceCostDisplay(row)}</output></div>
                   <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">{t.salePrice}</span><input aria-label={t.salePrice} type="number" min="0" step="0.01" value={row.salePrice} onBlur={event => { if (!event.relatedTarget?.closest(".purchase-save-top,.purchase-save-mobile")) warnIfSellingAtLoss(row); }} onChange={(e) => updateItem(row.lineId, "salePrice", e.target.value)} /></label>
-                  <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">تعداد کارتن</span><input aria-label="تعداد کارتن" ref={(node) => { const key = String(row.lineId); if (node) packageQuantityInputRefs.current.set(key, node); else packageQuantityInputRefs.current.delete(key); }} type="number" min="0" max={maxPiecesForLine(row) / positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit)} step="any" value={num(row.quantity) / positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit)} onChange={(e) => { changeLineQuantityUnit(row.lineId, "carton"); updatePieceQuantity(row.lineId, String(num(e.target.value) * positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit))); }} /></label>
+                  <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">تعداد کارتن</span><input aria-label="تعداد کارتن" ref={(node) => { const key = String(row.lineId); if (node) packageQuantityInputRefs.current.set(key, node); else packageQuantityInputRefs.current.delete(key); }} type="number" min="0" max={maxPiecesForLine(row) / positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit)} step="any" value={row.quantity === "" ? "" : num(row.quantity) / positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit)} onChange={(e) => { changeLineQuantityUnit(row.lineId, "carton"); updatePieceQuantity(row.lineId, e.target.value === "" ? "" : String(num(e.target.value) * positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit))); }} /></label>
                   <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">مقدار دانه</span><input aria-label="مقدار دانه" type="number" min="0" max={maxPiecesForLine(row)} step="any" value={row.quantity} onChange={(e) => updatePieceQuantity(row.lineId, e.target.value)} /></label>
                   <label className="sale-wholesale-cell sale-wholesale-discount"><span className="sale-wholesale-mobile-label">{t.discount}</span><input aria-label={t.discount} onKeyDown={(event) => { if (event.key === "Tab" && !event.shiftKey) { event.preventDefault(); focusSaleSearch(); } }} type="number" min="0" max="100" step="0.01" onBlur={event => { if (!event.relatedTarget?.closest(".purchase-save-top,.purchase-save-mobile")) warnIfSellingAtLoss(row); }} value={row.discountPercent ?? (lineGross(row) ? Number((100 * lineDiscount(row) / lineGross(row)).toFixed(2)) : 0)} onChange={(e) => updateItem(row.lineId, "discountPercent", e.target.value)} /></label>
                   <div className="sale-wholesale-total"><strong>{lineTotal(row).toFixed(2)}</strong></div>

@@ -272,7 +272,7 @@ function Settings() {
 
     applyCompanyThemeIdentity(nextSettings[0].companyName);
     window.dispatchEvent(new Event("company-settings-updated"));
-    notify(st.settingsSaved, "success", { silent: true });
+    notify(st.settingsSaved, "success");
   };
 
   return (

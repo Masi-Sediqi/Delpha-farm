@@ -1,7 +1,9 @@
+import { preserveOpeningPieces, updateProductDetails } from "../src/utils/productDetails.js";
+import { hasPermission, PERMISSION_ACTIONS, PERMISSION_MODULES } from "../src/utils/permissions.js";
 import { deletedRecordChanges, restoreDeletedChanges, trashSummary } from "./trashRecords.js";
 import "dotenv/config";
 import { randomBytes, createHash, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
-import { promisify } from "node:util";
+import { isDeepStrictEqual, promisify } from "node:util";
 import express from "express";
 import cors from "cors";
 import pg from "pg";
@@ -436,20 +438,16 @@ app.post("/api/auth/logout", requireSession, async (request, response, next) => 
   } catch(error) { next(error); }
 });
 // Authoritative PostgreSQL-backed user administration. Never store passwords in JSON collections.
-const permissionModules = new Set(["dashboard", "suppliers", "products", "purchasing", "payables", "customers", "sales", "receivables", "saleReturns", "inventory", "expenses", "accounts", "reports", "trash", "settings"]);
-const permissionActions = new Set(["create", "edit", "delete", "print"]);
+const permissionModules = new Map(PERMISSION_MODULES.map(({ key, actions }) => [key, actions]));
 function validatedPermissions(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)) return null;
-  if (Object.keys(input).some((key) => !permissionModules.has(key))) return null;
   const output = {};
-  for (const moduleName of permissionModules) {
-    const row = input[moduleName] ?? {};
-    if (!row || typeof row !== "object" || Array.isArray(row) || Object.keys(row).some((key) => !permissionActions.has(key))) return null;
-    output[moduleName] = {};
-    for (const action of permissionActions) {
-      if (row[action] !== undefined && typeof row[action] !== "boolean") return null;
-      output[moduleName][action] = row[action] === true;
-    }
+  for (const [key, row] of Object.entries(input)) {
+    const supported = permissionModules.get(key);
+    if (!supported || !row || typeof row !== "object" || Array.isArray(row) ||
+        Object.entries(row).some(([action, value]) => !PERMISSION_ACTIONS.includes(action) || typeof value !== "boolean")) return null;
+    const view = supported.includes("view") && (row.view ?? PERMISSION_ACTIONS.some((action) => row[action] === true));
+    output[key] = Object.fromEntries(supported.map((action) => [action, view && (action === "view" || row[action] === true)]));
   }
   return output;
 }
@@ -526,9 +524,9 @@ const collectionPermissions = Object.freeze({
   purchaseReturns: "purchasing", purchaseReturnItems: "purchasing",
   saleReturns: "saleReturns", saleReturnItems: "saleReturns",
   expenses: "expenses", expenseReasons: "expenses", expenseAccounts: "expenses",
-  expenseCategories: "expenses", cashTransactions: "reports",
-  cashCounts: "reports", bankAccounts: "reports", bankTransactions: "reports",
-  journalEntries: "reports", partyCashTransactions: "reports",
+  expenseCategories: "expenses", cashTransactions: "cashJournal",
+  cashCounts: "cashCount", bankAccounts: "banks", bankTransactions: "banks",
+  journalEntries: "generalJournal", partyCashTransactions: "cashJournal", settings: "settings",
   trashPurchases: "trash"
 });
 // These collections affect several financial/inventory documents in separate writes.
@@ -537,15 +535,14 @@ const financialCollections = new Set([
   "purchases", "purchaseItems", "supplierPurchases", "salesRegister", "transactions",
   "stockMovements", "inventory", "supplierPayments", "supplierPaymentBatches",
   "customerPayments", "customerPaymentBatches", "purchaseReturns", "purchaseReturnItems",
-  "saleReturns", "saleReturnItems", "expenses", "cashTransactions", "cashCounts",
-  "bankAccounts", "bankTransactions", "journalEntries", "partyCashTransactions", "trashPurchases"
+  "saleReturns", "saleReturnItems", "expenses", "cashTransactions",
+  "bankAccounts", "bankTransactions", "partyCashTransactions", "trashPurchases"
 ]);
 const isFullAdmin = (user) => user?.role === "Admin";
 const canReadCollection = (user, name) => {
   if (isFullAdmin(user)) return name !== "accounts";
   const moduleName = collectionPermissions[name];
-  const actions = moduleName && user?.permissions?.[moduleName];
-  return Boolean(actions && ["create", "edit", "delete", "print"].some((action) => actions[action] === true));
+  return Boolean(moduleName && hasPermission(user, moduleName));
 };
 // Destructive operations are re-authorized server-side, including for Admin sessions.
 const protectedDeletionCollections = new Set(["salesRegister", "purchases", "purchaseItems", "products", "trashPurchases"]);
@@ -588,16 +585,16 @@ const rowsById = (items) => {
   }
   return map;
 };
-const actionAllowedOnChanges = (user, moduleName, before, after) => {
+const actionAllowedOnChanges = (user, moduleName, name, before, after) => {
   const oldItems = rowsById(before), newItems = rowsById(after);
   if (!oldItems || !newItems) return false;
-  const permissions = user.permissions?.[moduleName] || {};
-  const identical = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
   for (const [id, row] of newItems) {
-    if (!oldItems.has(id) && permissions.create !== true) return false;
-    if (oldItems.has(id) && !identical(row, oldItems.get(id)) && permissions.edit !== true) return false;
+    if (!oldItems.has(id) && !hasPermission(user, moduleName, "create")) return false;
+    if (oldItems.has(id) && !isDeepStrictEqual(row, oldItems.get(id)) &&
+        (moduleName === "products" && name === "products" || !hasPermission(user, moduleName, "edit"))) return false;
   }
-  for (const id of oldItems.keys()) if (!newItems.has(id) && permissions.delete !== true) return false;
+  for (const id of oldItems.keys()) if (!newItems.has(id) && !hasPermission(user, moduleName, "delete")) return false;
   return true;
 };
 app.use("/api/collections", requireSession, (request, response, next) => {
@@ -714,13 +711,30 @@ app.delete("/api/trash/:id", requireSession, requireAdmin, async (request, respo
   } catch (error) { next(error); }
 });
 
-// Atomic finance batch. The full purchase/sale and its stock effects commit together.
-// Only an authenticated Admin may use this endpoint until operation-level server
-// authorization and stock validation are implemented for ordinary users.
-app.post("/api/collections/atomic-batch", requireAdmin, async (request, response, next) => {
-  const changes = request.body?.changes;
+function productDetailsEdit(beforeItems, afterItems) {
+  const before = rowsById(beforeItems);
+  const after = rowsById(afterItems);
+  if (!before || !after || before.size !== after.size) return null;
+  let editedProduct;
+  for (const [id, next] of after) {
+    const previous = before.get(id);
+    if (!previous) return null;
+    if (isDeepStrictEqual(previous, next)) continue;
+    if (editedProduct || typeof next.updatedAt !== "string" ||
+        [next.countryId, next.unit, next.saleCurrency].some((value) => typeof value !== "string" && typeof value !== "number") ||
+        !isDeepStrictEqual(next, updateProductDetails(previous, next, next.updatedAt))) return null;
+    editedProduct = previous;
+  }
+  return editedProduct;
+}
+
+// Commit changes to invoices, product details, and their related stock together.
+// Delegated product edits are checked against the locked product and stock rows.
+app.post("/api/collections/atomic-batch", async (request, response, next) => {
+  const submittedChanges = request.body?.changes;
+  const changes = Array.isArray(submittedChanges) ? [...submittedChanges] : null;
   const permitted = new Set(["salesRegister", "purchases", "purchaseItems", "stockMovements", "products", "saleReturns", "saleReturnItems", "partyCashTransactions", "trashPurchases"]);
-  if (!Array.isArray(changes) || changes.length < 2 || changes.length > 4 ||
+  if (!Array.isArray(changes) || changes.length < 1 || changes.length > 4 ||
       changes.some((change) => !change || typeof change !== "object" ||
         !permitted.has(change.name) || !Array.isArray(change.items) ||
         !Number.isSafeInteger(change.revision) || change.revision < 0) ||
@@ -728,16 +742,20 @@ app.post("/api/collections/atomic-batch", requireAdmin, async (request, response
     return response.status(400).json({ error: "Invalid atomic batch." });
   }
   const names = changes.map(({ name }) => name);
-  const sale = names.includes("salesRegister");
-  const purchase = names.includes("purchases");
   const sameNames = (expected) => names.length === expected.length && expected.every((name) => names.includes(name));
-  const validShape =
+  const productEdit = sameNames(["products"]);
+  const validShape = productEdit ||
     sameNames(["salesRegister", "stockMovements"]) ||
+    sameNames(["products", "stockMovements"]) ||
     sameNames(["purchases", "purchaseItems", "stockMovements", "products"]) ||
     sameNames(["saleReturns", "saleReturnItems", "stockMovements"]) ||
     sameNames(["saleReturns", "saleReturnItems", "stockMovements", "partyCashTransactions"]) ||
     sameNames(["trashPurchases", "purchases", "purchaseItems", "stockMovements"]);
   if (!validShape) return response.status(400).json({ error: "Incomplete or unsupported atomic batch." });
+  if (!isFullAdmin(request.authUser) &&
+      (!productEdit || !hasPermission(request.authUser, "products", "edit"))) {
+    return response.status(403).json({ error: "Permission denied for this batch." });
+  }
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -749,6 +767,20 @@ app.post("/api/collections/atomic-batch", requireAdmin, async (request, response
     for (const change of changes) {
       const previous = await client.query("SELECT items FROM app_collections WHERE name=$1 FOR UPDATE", [change.name]);
       trashChanges.push({ name: change.name, before: previous.rows[0]?.items || [], after: change.items });
+    }
+    if (productEdit) {
+      const [productChange] = trashChanges;
+      const previousProduct = productDetailsEdit(productChange.before, productChange.after);
+      if (!previousProduct) {
+        await client.query("ROLLBACK");
+        return response.status(409).json({ error: "The product changed or the edit contains unsupported fields. Reload and retry." });
+      }
+      const stock = await client.query("SELECT items,revision FROM app_collections WHERE name=$1 FOR UPDATE", ["stockMovements"]);
+      const previousStock = stock.rows[0]?.items || [];
+      const nextStock = preserveOpeningPieces(previousStock, previousProduct);
+      if (!isDeepStrictEqual(previousStock, nextStock)) {
+        changes.push({ name: "stockMovements", items: nextStock, revision: Number(stock.rows[0].revision) });
+      }
     }
     let protectedDeletion = false;
     for (const change of changes) {
@@ -775,7 +807,7 @@ app.post("/api/collections/atomic-batch", requireAdmin, async (request, response
         await client.query("ROLLBACK");
         return response.status(409).json({ error: `Concurrent change in ${change.name}. Reload and retry without losing your form.` });
       }
-      results[change.name] = result.rows[0];
+      if (canReadCollection(request.authUser, change.name)) results[change.name] = result.rows[0];
     }
     await archiveRemovals(client, trashChanges);
     await client.query("COMMIT");
@@ -817,7 +849,9 @@ app.put("/api/collections/:name", async (request, response, next) => {
     const previous = await client.query("SELECT items,revision FROM app_collections WHERE name=$1 FOR UPDATE", [name]);
     const before = previous.rows[0]?.items || [];
     if (Number(previous.rows[0]?.revision || 0) !== revision) { await client.query("ROLLBACK"); return response.status(409).json({ error: "Collection changed on the server. Reload before saving." }); }
-    if (request.permissionModule && !actionAllowedOnChanges(request.authUser, request.permissionModule, before, request.body.items)) { await client.query("ROLLBACK"); return response.status(403).json({ error: "Create, edit or delete permission denied for this operation." }); }
+    if (request.permissionModule && !(name === "settings"
+      ? request.body.items.length === 1 && request.body.items[0] && typeof request.body.items[0] === "object" && !Array.isArray(request.body.items[0]) && hasPermission(request.authUser, "settings", "edit")
+      : actionAllowedOnChanges(request.authUser, request.permissionModule, name, before, request.body.items))) { await client.query("ROLLBACK"); return response.status(403).json({ error: "Create, edit or delete permission denied for this operation." }); }
     if (removesProtectedRecords(name, before, request.body.items) && !(await verifyAdminDeletion(request, response))) { await client.query("ROLLBACK"); return; }
     const result = revision === 0
       ? await client.query(`INSERT INTO app_collections(name,items,revision) VALUES($1,$2::jsonb,1)

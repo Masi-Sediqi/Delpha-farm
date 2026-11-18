@@ -1,5 +1,5 @@
 import { IS_DEMO } from "../config/appConfig";
-import { isAdminUser, PERMISSION_ACTIONS, PERMISSION_MODULES } from "../utils/permissions";
+import { hasPermission, isAdminUser, PERMISSION_ACTIONS, PERMISSION_MODULES } from "../utils/permissions";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Edit3, Mail, Search, ShieldCheck, Trash2, UserPlus, UserRound, X } from "lucide-react";
@@ -16,7 +16,7 @@ const translations = {
     employee: "Employee",
     inactive: "Inactive",
     permissions: "Permissions",
-    actionLabels: ["Create", "Edit", "Delete", "Print"],
+    actionLabels: ["View", "Create", "Edit", "Delete", "Print"],
     loading: "Loading accounts…",
     loadError: "Unable to load accounts.",
     retry: "Retry",
@@ -69,7 +69,7 @@ const translations = {
     employee: "کارمند",
     inactive: "غیرفعال",
     permissions: "صلاحیت‌ها",
-    actionLabels: ["ثبت", "ویرایش", "حذف", "چاپ"],
+    actionLabels: ["مشاهده", "ثبت", "ویرایش", "حذف", "چاپ"],
     loading: "در حال بارگیری اکونت‌ها…",
     loadError: "بارگیری اکونت‌ها ممکن نشد.",
     retry: "تلاش دوباره",
@@ -122,7 +122,7 @@ const translations = {
     employee: "کارکوونکی",
     inactive: "غیرفعال",
     permissions: "صلاحیتونه",
-    actionLabels: ["ثبت", "سمون", "حذف", "چاپ"],
+    actionLabels: ["کتل", "ثبت", "سمون", "حذف", "چاپ"],
     loading: "اکونټونه بارېږي…",
     loadError: "اکونټونه بار نه شول.",
     retry: "بیا هڅه",
@@ -246,7 +246,7 @@ export default function Accounts({ accounts: demoAccounts = [], setAccounts, cur
   const openEdit = (account) => {
     setEditId(account.id);
     setForm({
-      permissions: account.permissions || {},
+      permissions: Object.fromEntries(PERMISSION_MODULES.filter((module) => module.actions.length).map(({ key, actions }) => [key, Object.fromEntries(actions.map((action) => [action, hasPermission(account, key, action)]))])),
       username: account.username || account.fullName || "",
       email: account.email || "",
       password: "",
@@ -398,15 +398,16 @@ export default function Accounts({ accounts: demoAccounts = [], setAccounts, cur
             <summary>{t.permissions}</summary>
             <table>
               <thead><tr><th scope="col">{t.permissions}</th>{t.actionLabels.map((label) => <th scope="col" key={label}>{label}</th>)}</tr></thead>
-              <tbody>{PERMISSION_MODULES.map(({ key, labels }) => (
+              <tbody>{PERMISSION_MODULES.filter((module) => module.actions.length).map(({ key, labels, actions }) => (
                 <tr key={key}><th scope="row">{labels[language] || labels.en}</th>
-                  {PERMISSION_ACTIONS.map((action, index) => <td key={action}><input type="checkbox"
+                  {PERMISSION_ACTIONS.map((action, index) => <td key={action}>{actions.includes(action) ? <input type="checkbox"
                     aria-label={`${labels[language] || labels.en} · ${t.actionLabels[index]}`}
                     checked={Boolean(form.permissions?.[key]?.[action])}
+                    disabled={action !== "view" && !form.permissions?.[key]?.view}
                     onChange={(event) => {
                       const checked = event.target.checked;
-                      setForm((prev) => ({ ...prev, permissions: { ...prev.permissions, [key]: { ...prev.permissions?.[key], [action]: checked } } }));
-                    }} /></td>)}
+                      setForm((prev) => ({ ...prev, permissions: { ...prev.permissions, [key]: { ...prev.permissions?.[key], ...(action === "view" && !checked ? Object.fromEntries(actions.map((item) => [item, false])) : {}), [action]: checked } } }));
+                    }} /> : "—"}</td>)}
                 </tr>
               ))}</tbody>
             </table>

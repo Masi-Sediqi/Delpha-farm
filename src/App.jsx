@@ -548,14 +548,14 @@ function App() {
     if (!currentUser) return undefined;
     const protectAction = (event) => {
       const control = event.target.closest("button, a, [role='button'], [role='menuitem']");
-      if (!control) return;
+      if (!control || control.closest(".sidebar, .app-header")) return;
       const href = control.getAttribute("href") || "";
       const targetPath = href.startsWith("/") ? href : location.pathname;
       const moduleKey = moduleKeyForPath(targetPath);
       const textValue = `${control.textContent || ""} ${control.getAttribute("title") || ""} ${control.getAttribute("aria-label") || ""}`.toLowerCase();
       const contextValue = `${control.closest("form, [role='dialog']")?.textContent || ""}`.toLowerCase();
       let action = "";
-      if (/\/print(?:\/|$)/.test(targetPath) || /(print|چاپ)/i.test(textValue)) action = "print";
+      if (/\/print(?:\/|$)/.test(targetPath) || /(print|چاپ|export|download|excel|pdf|دانلود)/i.test(textValue)) action = "print";
       else if (/(delete|remove|حذف|پاک)/i.test(textValue)) action = "delete";
       else if (/\/edit(?:\/|$)/.test(targetPath) || /(edit|update|ایدیت|ویرایش|سمون)/i.test(textValue)) action = "edit";
       else if (/\/new(?:\/|$)/.test(targetPath) || /(add|new|create|register|افزودن|اضافه|جدید|ثبت|نوی)/i.test(textValue)) action = "create";
@@ -586,7 +586,7 @@ function App() {
     { to: "/receivables", label: labels.receivables, moduleKey: "receivables", icon: BadgeDollarSign },
     { to: "/inventory", label: labels.inventory, moduleKey: "inventory", icon: Boxes },
     { to: "/inventory/expiry", label: labels.inventoryExpiry, moduleKey: "inventory", icon: CalendarClock },
-    { to: "/cash-journal", label: labels.cashJournal, moduleKey: "reports", icon: BookOpenCheck },
+    { to: "/cash-journal", label: labels.cashJournal, moduleKey: "cashJournal", icon: BookOpenCheck },
     { to: "/accounts", label: labels.accounts, moduleKey: "accounts", icon: Users },
     { to: "/reports", label: labels.reports, moduleKey: "reports", icon: FileBarChart },
     { to: "/trash", label: labels.trash, moduleKey: "trash", icon: Trash2 },
@@ -740,11 +740,11 @@ function App() {
               <Route path="/sale-returns" element={protect("saleReturns", <SaleReturns />)} />
               <Route path="/inventory" element={protect("inventory", <Inventory />)} />
               <Route path="/inventory/expiry" element={protect("inventory", <InventoryExpiry />)} />
-              <Route path="/banks" element={protect("reports", <Banks />)} />
-              <Route path="/cash-count" element={protect("reports", <CashCount />)} />
-              <Route path="/cash-journal" element={protect("reports", <CashFlow />)} />
+              <Route path="/banks" element={protect("banks", <Banks />)} />
+              <Route path="/cash-count" element={protect("cashCount", <CashCount />)} />
+              <Route path="/cash-journal" element={protect("cashJournal", <CashFlow />)} />
               <Route path="/receivables-payables" element={protect("reports", <ReceivablesPayables />)} />
-              <Route path="/general-journal" element={protect("reports", <GeneralJournal />)} />
+              <Route path="/general-journal" element={protect("generalJournal", <GeneralJournal />)} />
               <Route path="/sale-detail/:saleId/print" element={protect("sales", <SaleDetail autoPrint />, "print")} />
               <Route path="/sale-detail/:saleId" element={protect("sales", <SaleDetail />)} />
               <Route path="/reports" element={protect("reports", <Reports />)} />

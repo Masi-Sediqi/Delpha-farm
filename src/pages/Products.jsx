@@ -9,7 +9,7 @@ import { notify } from "../utils/notify";
 import { countryNameById, groupNameById, makeMasterId, normalizeMasterName, isProductMasterInUse } from "../utils/productMasterData";
 import { productPricePerPiece } from "../utils/piecePricing";
 import { writeAtomicFinanceBatch } from "../utils/browserStorage";
-import { updateProductDetails, preserveOpeningPieces } from "../utils/productDetails";
+import { updateProductDetails } from "../utils/productDetails";
 import "./Products.css";
 
 const languageKey = "afghan-power-language";
@@ -462,7 +462,6 @@ function Products() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts, , productsLoaded] = useJsonCollection("products");
-  const [stockMovements, , , stockLoaded] = useJsonCollection("stockMovements");
   const [productGroups] = useJsonCollection("productGroups");
   const [suppliers] = useJsonCollection("suppliers");
   const [legacyCompanies] = useJsonCollection("companies");
@@ -761,11 +760,9 @@ function Products() {
     const existing = products.find(item => String(item.id) === String(editingId));
     if (!existing) return;
     const record = updateProductDetails(existing, formData, new Date().toISOString());
-    if (!stockLoaded) return;
     try {
       await writeAtomicFinanceBatch({
         products: products.map(item => String(item.id) === String(editingId) ? record : item),
-        stockMovements: preserveOpeningPieces(stockMovements, existing),
       });
       notify(t.saved);
       closeModal();
@@ -928,7 +925,7 @@ function Products() {
                 {!editingId && <button type="button" className="sales-product-add-row" onClick={addBatchForm}><CopyPlus size={17} />{t.addAnother}</button>}
                 <div className="sales-product-modal-footer">
                   <button type="button" className="sales-product-cancel-btn" onClick={closeModal}>{t.cancel}</button>
-                  <button type="submit" disabled={Boolean(editingId) && !stockLoaded} className="sales-product-save-btn">{editingId ? t.update : t.saveAll}</button>
+                  <button type="submit" className="sales-product-save-btn">{editingId ? t.update : t.saveAll}</button>
                 </div>
               </form>
           </section>

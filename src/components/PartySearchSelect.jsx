@@ -34,8 +34,9 @@ export default function PartySearchSelect({ records, value, onChange, placeholde
     return () => document.removeEventListener("mousedown", close);
   }, [open]);
   const isProduct = partyType === "product";
+  const isManufacturer = partyType === "manufacturer";
   const isCustomer = partyType === "customer";
-  const recordName = (record) => isProduct ? (record.productName || record.name) : isCustomer ? (record.fullName || record.companyName || record.name) : (record.supplierName || record.name);
+  const recordName = (record) => isManufacturer ? (record.manufacturerName || record.companyName || record.name) : isProduct ? (record.productName || record.name) : isCustomer ? (record.fullName || record.companyName || record.name) : (record.supplierName || record.name);
   const selected = records.find((supplier) => String(supplier.id) === String(value));
   const search = normalizeSupplierName(query);
   const matches = records.filter((supplier) => isProduct || supplier.status !== "inactive")
@@ -45,10 +46,10 @@ export default function PartySearchSelect({ records, value, onChange, placeholde
     setOpen(false);
     trigger.current?.focus();
   };
-  const searchLabel = isProduct ? (language === "en" ? "Search product..." : "جستجوی نام جنس...") : isCustomer
+  const searchLabel = isManufacturer ? (language === "en" ? "Search company..." : language === "ps" ? "کمپنۍ ولټوئ..." : "جستجوی کمپنی...") : isProduct ? (language === "en" ? "Search product..." : "جستجوی نام جنس...") : isCustomer
     ? (language === "en" ? "Search customer name or phone..." : language === "ps" ? "د پېرودونکي نوم یا شمېره ولټوئ..." : "جستجوی نام یا شماره تماس مشتری...")
     : (language === "en" ? "Search supplier name or phone..." : language === "ps" ? "د عرضه کوونکي نوم یا شمېره ولټوئ..." : "جستجوی نام یا شماره تماس تأمین‌کننده...");
-  const emptyLabel = isProduct ? (language === "en" ? "No product found." : "جنس پیدا نشد.") : isCustomer
+  const emptyLabel = isManufacturer ? (language === "en" ? "No company found." : language === "ps" ? "کمپنۍ ونه موندل شوه." : "کمپنی پیدا نشد.") : isProduct ? (language === "en" ? "No product found." : "جنس پیدا نشد.") : isCustomer
     ? (language === "en" ? "No customer found." : language === "ps" ? "پېرودونکی ونه موندل شو." : "مشتری پیدا نشد.")
     : (language === "en" ? "No supplier found." : language === "ps" ? "عرضه کوونکی ونه موندل شو." : "تأمین‌کننده پیدا نشد.");
   const dropdown = <div className="supplier-search-dropdown">

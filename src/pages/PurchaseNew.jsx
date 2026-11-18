@@ -69,6 +69,7 @@ const text = {
     emptyText: "Search above and select a medicine to add it to this purchase.",
     company: "Company",
     selectCompany: "Select company",
+    pieceQty: "Quantity in pieces",
     qty: "Carton count",
     purchaseUnit: "Main unit",
     unitsPerUnit: "Pieces in unit",
@@ -134,6 +135,7 @@ const text = {
     emptyText: "از جستجوی بالا دوا را پیدا کرده و به این خریداری اضافه کنید.",
     company: "کمپنی",
     selectCompany: "کمپنی را انتخاب کنید",
+    pieceQty: "مقدار به دانه",
     qty: "تعداد کارتن",
     purchaseUnit: "واحد اصلی",
     unitsPerUnit: "تعداد دانه در واحد",
@@ -199,6 +201,7 @@ const text = {
     emptyText: "له پورته لټون څخه درمل پیدا او دې پېرود ته یې اضافه کړئ.",
     company: "کمپنۍ",
     selectCompany: "کمپنۍ وټاکئ",
+    pieceQty: "په دانه مقدار",
     qty: "د کارتنونو شمېر",
     purchaseUnit: "اصلي واحد",
     unitsPerUnit: "په واحد کې دانې",
@@ -669,11 +672,12 @@ function PurchaseNew() {
     setItems((current) => current.map((row) => String(row.lineId) === String(lineId) ? { ...row, ...fields } : row));
   };
 
-  const updateCartonQuantity = (lineId, value) => {
+  const updateLineQuantity = (lineId, value, unit) => {
     setItems((current) => current.map((row) => {
       if (String(row.lineId) !== String(lineId)) return row;
-      const cartonQuantity = cleanNumberInput(value);
-      const pieces = num(cartonQuantity) * row.cartonUnitsPerUnit;
+      const quantity = cleanNumberInput(value);
+      const pieces = unit === "piece" ? quantity : num(quantity) * row.cartonUnitsPerUnit;
+      const cartonQuantity = unit === "carton" || quantity === "" ? quantity : num(pieces) / row.cartonUnitsPerUnit;
       return { ...row, cartonQuantity, receivedQuantity: pieces, quantity: pieces };
     }));
   };
@@ -971,95 +975,104 @@ function PurchaseNew() {
               <span className="purchase-items-count">{items.length}</span>
             </div>
             <div className="purchase-items-list">
-              {items.length > 0 && (
-                <div className="purchase-carton-grid-head" aria-hidden="true">
-                  {[productLabel, t.company, t.actualQty, t.unitPrice, `${t.salePrice} (${saleCurrency})`, t.total, t.expiryDate, ""].map((label) => (
-                    <span key={label}>{label}</span>
-                  ))}
-                </div>
-              )}
-              {items.map((row) => (
-                <article className="purchase-item-row purchase-keyboard-row" key={row.lineId || row.id}>
-                  <div className="purchase-item-name">
-                    <span className="purchase-item-product-label">{productLabel}</span>
-                    <strong title={row.productName}>{row.productName}</strong>
-                    <small>{row.group || "—"} · {t.purchaseUnit}: {unitLabel(row.purchaseUnit)}</small>
+              <div className="purchase-carton-grid">
+                {items.length > 0 && (
+                  <div className="purchase-carton-grid-head" aria-hidden="true">
+                    {[productLabel, t.company, t.actualQty, t.pieceQty, t.unitPrice, `${t.salePrice} (${saleCurrency})`, t.total, t.expiryDate, ""].map((label) => (
+                      <span key={label}>{label}</span>
+                    ))}
                   </div>
-                  <label className="purchase-company-field">
-                    <span>{t.company}</span>
-                    <select
-                      value={row.manufacturerId || manufacturerIdForProduct(products.find((product) => String(product.id) === String(row.productId)) || row) || ""}
-                      onChange={(e) => {
-                        const selected = manufacturers.find((item) => String(item.id) === String(e.target.value));
-                        updateItemField(row.lineId, {
-                          manufacturerId: e.target.value,
-                          manufacturerName: manufacturerName(selected),
-                        });
-                      }}
-                    >
-                      <option value="">{t.selectCompany}</option>
-                      {manufacturers
-                        .filter((item) => item && item.status !== "inactive")
-                        .map((item) => (
-                          <option key={item.id} value={item.id}>{manufacturerName(item)}</option>
-                        ))}
-                    </select>
-                  </label>
-                  <label>
-                    <span>{t.actualQty}</span>
-                    <input
-                      aria-label={t.actualQty}
-                      ref={(node) => { if (node) quantityInputRefs.current.set(String(row.lineId), node); else quantityInputRefs.current.delete(String(row.lineId)); }}
-                      type="text"
-                      inputMode="decimal"
-                      dir="ltr"
-                      min="0"
-                      step="any"
-                      value={row.cartonQuantity}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => updateCartonQuantity(row.lineId, e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    <span>{t.unitPrice}</span>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      dir="ltr"
-                      min="0"
-                      step="0.01"
-                      value={row.purchasePrice}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => updateItem(row.lineId, "purchasePrice", e.target.value)}
-                    />
-                  </label>
-                  <label className="purchase-sale-price-field">
-                    <span>{t.salePrice} ({saleCurrency})</span>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      dir="ltr"
-                      value={row.salePrice ?? ""}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => updateItem(row.lineId, "salePrice", e.target.value)}
-                    />
-                  </label>
-                  <div className="purchase-line-total">
-                    <span>{t.total}</span>
-                    <strong>{money(lineTotal(row))} {currency}</strong>
-                  </div>
-                  <label className="purchase-expiry-field">
-                    <span>{t.expiryDate}</span>
-                    <input
-                      type="date"
-                      lang="en"
-                      value={row.expiryDate || ""}
-                      onChange={(e) => updateItemField(row.lineId, { expiryDate: e.target.value })}
-                    />
-                  </label>
-                  <button className="purchase-remove" type="button" title={t.remove} onClick={() => removeItem(row.lineId)}><Trash2 size={16} /></button>
-                </article>
-              ))}
+                )}
+                {items.map((row) => (
+                  <article className="purchase-item-row purchase-keyboard-row" key={row.lineId || row.id}>
+                    <div className="purchase-item-name">
+                      <span className="purchase-item-product-label">{productLabel}</span>
+                      <strong title={row.productName}>{row.productName}</strong>
+                      <small>{row.group || "—"} · {t.purchaseUnit}: {unitLabel(row.purchaseUnit)}</small>
+                    </div>
+                    <div className="purchase-company-field">
+                      <span>{t.company}</span>
+                      <PartySearchSelect
+                        records={manufacturers.filter(Boolean)}
+                        value={row.manufacturerId}
+                        placeholder={t.selectCompany}
+                        language={language}
+                        partyType="manufacturer"
+                        portal
+                        onChange={(id) => {
+                          const selected = manufacturers.find((item) => String(item?.id) === id);
+                          updateItemField(row.lineId, { manufacturerId: id, manufacturerName: manufacturerName(selected) });
+                        }}
+                      />
+                    </div>
+                    <label>
+                      <span>{t.actualQty}</span>
+                      <input
+                        aria-label={t.actualQty}
+                        ref={(node) => { if (node) quantityInputRefs.current.set(String(row.lineId), node); else quantityInputRefs.current.delete(String(row.lineId)); }}
+                        type="text"
+                        inputMode="decimal"
+                        dir="ltr"
+                        min="0"
+                        step="any"
+                        value={row.cartonQuantity}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => updateLineQuantity(row.lineId, e.target.value, "carton")}
+                      />
+                    </label>
+                    <label>
+                      <span>{t.pieceQty}</span>
+                      <input
+                        aria-label={t.pieceQty}
+                        type="text"
+                        inputMode="decimal"
+                        dir="ltr"
+                        value={row.receivedQuantity}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => updateLineQuantity(row.lineId, e.target.value, "piece")}
+                      />
+                    </label>
+                    <label>
+                      <span>{t.unitPrice}</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        dir="ltr"
+                        min="0"
+                        step="0.01"
+                        value={row.purchasePrice}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => updateItem(row.lineId, "purchasePrice", e.target.value)}
+                      />
+                    </label>
+                    <label className="purchase-sale-price-field">
+                      <span>{t.salePrice} ({saleCurrency})</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        dir="ltr"
+                        value={row.salePrice ?? ""}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => updateItem(row.lineId, "salePrice", e.target.value)}
+                      />
+                    </label>
+                    <div className="purchase-line-total">
+                      <span>{t.total}</span>
+                      <strong>{money(lineTotal(row))} {currency}</strong>
+                    </div>
+                    <label className="purchase-expiry-field">
+                      <span>{t.expiryDate}</span>
+                      <input
+                        type="date"
+                        lang="en"
+                        value={row.expiryDate || ""}
+                        onChange={(e) => updateItemField(row.lineId, { expiryDate: e.target.value })}
+                      />
+                    </label>
+                    <button className="purchase-remove" type="button" title={t.remove} onClick={() => removeItem(row.lineId)}><Trash2 size={16} /></button>
+                  </article>
+                ))}
+              </div>
 
               <div
                 className="purchase-inline-search-row"
@@ -1123,7 +1136,9 @@ function PurchaseNew() {
                 <div className="purchase-summary-grid">
                   <div className="purchase-summary-row"><span>{t.itemCount}</span><strong>{items.length.toLocaleString("en-US")}</strong></div>
                   <div className="purchase-summary-row"><span>{t.subtotal}</span><strong>{money(subtotal)} {currency}</strong></div>
-                  <div className="purchase-summary-row"><span>{t.shippingCost}</span><strong>{money(shippingCost)} {currency}</strong></div>
+                  {num(shippingCost) > 0 && (
+                    <div className="purchase-summary-row"><span>{t.shippingCost}</span><strong>{money(shippingCost)} {currency}</strong></div>
+                  )}
                   <div className="purchase-summary-row purchase-summary-grand"><span>{t.grandTotal}</span><strong>{money(grandTotal)} {currency}</strong></div>
                   <div className="purchase-summary-row"><span>{t.paid}</span><strong>{money(paid)} {currency}</strong></div>
                   <div className={`purchase-summary-row ${remaining > 0 ? "has-debt" : ""}`}><span>{t.remaining}</span><strong>{money(remaining)} {currency}</strong></div>
@@ -1148,18 +1163,6 @@ function PurchaseNew() {
                     value={paymentStatus === "debt" ? paidAmount : plainAmount(grandTotal)}
                     disabled={paymentStatus !== "debt"}
                     onChange={(e) => setPaidAmount(cleanNumberInput(e.target.value))}
-                  />
-                </label>
-                <label className="purchase-field">
-                  <span>{t.shippingCost}</span>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    dir="ltr"
-                    min="0"
-                    step="0.01"
-                    value={shippingCost}
-                    onChange={(e) => setShippingCost(cleanNumberInput(e.target.value))}
                   />
                 </label>
                 <div className="purchase-payment-record"><span>{t.paid}</span><strong>{paymentStatus === "paid" ? t.paidFull : `${money(paid)} ${currency}`}</strong></div>
