@@ -1,17 +1,19 @@
 import ShamsiDateInput from "../components/ShamsiDateInput";
 import { groupJournalPages, replaceJournalPage } from "../utils/journalPages";
+import { accountCurrency } from "../utils/partyAccounts";
 import { Link } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { BookOpenCheck, Plus, Search, Trash2, X, MoreHorizontal, Eye, Pencil, Printer } from "lucide-react";
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import { notify } from "../utils/notify";
+import { confirmAction } from "../utils/confirmDialog";
 import { todayDateValue, formatAfghanDate } from "../utils/afghanDate";
 import "./CashJournal.css";
 import "./CashJournalPolish.css";
 import "./CashJournalUnified.css";
 
-const codes = ["AFN", "USD", "PKR", "EUR"];
+const codes = ["AFN", "USD", "INR", "EUR"];
 const num = (value) => Number(value || 0) || 0;
 const customerName = (row) => row.fullName || row.companyName || row.name || "مشتری";
 const emptyRow = () => ({ id: `row-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, account: "", partyKey: "", debit: "", credit: "", details: "", autoDetails: false, detailsTouched: false });
@@ -71,7 +73,7 @@ export default function CashJournal() {
   useEffect(() => { document.body.classList.toggle("cash-journal-open", opened); return () => document.body.classList.remove("cash-journal-open"); }, [opened]);
 
   const customerAccounts = useMemo(() => new Map(customers.map((row) => [
-    `customer:${row.id}`, String(row.currency || "AFN").trim().toUpperCase(),
+    `customer:${row.id}`, accountCurrency(row.currency || row.currencyCode),
   ])), [customers]);
   const options = useMemo(() => [
     ...customers.filter((row) => customerAccounts.get(`customer:${row.id}`) === code).map((row) => ({ key: `customer:${row.id}`, name: customerName(row), searchText: [row.companyName, row.phone, row.mobile, row.contactNumber, row.id].filter(Boolean).join(" "), typeLabel: "مشتری" })),
@@ -119,6 +121,15 @@ export default function CashJournal() {
     } finally { setSaving(false); }
   };
   const pages = useMemo(() => groupJournalPages(entries), [entries]);
+  const openingBalances = useMemo(() => {
+    const search = query.trim().toLowerCase();
+    return customers.filter((customer) =>
+      num(customer.openingBalance) !== 0 && [
+        customerName(customer), customer.companyName, customer.id,
+        accountCurrency(customer.currency || customer.currencyCode),
+      ].some((value) => String(value || "").toLowerCase().includes(search))
+    );
+  }, [customers, query]);
   const visible = useMemo(() => pages.filter(page => !query.trim() || `${page.number} ${page.entries.map(row=>`${row.accountName || row.partyName || ""} ${row.description || row.note || ""} ${row.currency || ""}`).join(" ")}`.toLowerCase().includes(query.trim().toLowerCase())), [pages, query]);
   const journalSales = useMemo(() => {
     const search = query.trim().toLowerCase();
@@ -132,16 +143,32 @@ export default function CashJournal() {
   const openPage = (page, viewOnly) => {
     setActionMenu(null); setActivePage(page); setReadOnly(viewOnly);
     setDate(String(page.entries[0]?.date || "").slice(0,10));
-    setCode(page.entries[0]?.currency || "AFN");
+    setCode(accountCurrency(page.entries[0]?.currency));
     setRows(page.entries.map(entry=>({id:entry.id,account:entry.accountName || entry.partyName || "",partyKey:entry.partyType && entry.partyId ? `${entry.partyType}:${entry.partyId}` : entry.accountType && entry.accountId ? `${entry.accountType}:${entry.accountId}` : "",debit:entry.direction==="in" ? entry.amount : "",credit:entry.direction==="out" ? entry.amount : "",details:entry.note || entry.description || "",autoDetails:false,detailsTouched:true})));
     setOpened(true);
   };
   const toggleMenu = (event, page) => {
     const trigger = event.currentTarget;
     if (actionMenu?.page.key === page.key) { setActionMenu(null); return; }
-    const rect = trigger.getBoundingClientRect(), width = 180, height = 132, gap = 5;
+    const rect = trigger.getBoundingClientRect(), width = 180, height = 180, gap = 5;
     actionTrigger.current = trigger;
     setActionMenu({page,left:Math.max(8,Math.min(rect.right-width,window.innerWidth-width-8)),top:window.innerHeight-rect.bottom>=height+gap+8 ? rect.bottom+gap : Math.max(8,rect.top-height-gap)});
+  };
+  const deletePage = async (page) => {
+    setActionMenu(null);
+    const confirmed = await confirmAction({
+      title: "حذف صفحهٔ روزنامچه",
+      message: `آیا می‌خواهید صفحهٔ ${page.number} و تمام ردیف‌های آن را حذف کنید؟`,
+      confirmText: "حذف",
+      cancelText: "لغو",
+    });
+    if (!confirmed) {
+      actionTrigger.current?.focus();
+      return;
+    }
+    if (await setEntries((current) => replaceJournalPage(current, page, []))) {
+      notify(`صفحهٔ ${page.number} حذف شد.`, "success");
+    }
   };
   useEffect(() => {
     if (!actionMenu) return;
@@ -175,6 +202,25 @@ export default function CashJournal() {
     const row=page.entries[0];
     return <tr key={page.key}><td>{page.number}</td><td>{formatAfghanDate(row.date)}</td><td dir="ltr">{row.date?.slice(0, 10) || "—"}</td><td>{page.entries.slice(0,2).map((entry,index)=><span className="journal-account-summary" key={entry.id}>{index>0 ? "، " : ""}{entry.partyId && ["customer","supplier"].includes(entry.partyType) ? <Link to={`/${entry.partyType}-detail/${encodeURIComponent(entry.partyId)}`}>{entry.accountName || entry.partyName}</Link> : entry.accountName || entry.partyName || "عمومی"}</span>)}{page.entries.length>2 && <small title={page.entries.map(entry=>entry.accountName || entry.partyName).join("، ")}> و {page.entries.length-2} ردیف دیگر</small>}</td><td className="journal-description-cell" title={row.note || row.description || ""}><span className="journal-description-preview">{Array.from(row.note || row.description || "").slice(0, 90).join("")}{Array.from(row.note || row.description || "").length > 90 ? "…" : ""}</span></td><td>{page.entries.length}</td><td className="journal-actions-cell"><button type="button" className="journal-actions-trigger" aria-label={`عملیات ${page.number}`} aria-haspopup="menu" aria-expanded={actionMenu?.page.key===page.key} aria-controls={actionMenu?.page.key===page.key ? "journal-actions-menu" : undefined} onClick={event=>toggleMenu(event,page)}><MoreHorizontal size={20}/></button></td></tr>;
   }) : <tr><td colSpan="7" className="journal-empty">هنوز ریکاردی ثبت نشده است.</td></tr>}</tbody></table></div>{modal && createPortal(modal, document.body)}
+    <section className="journal-sales-receivables" aria-labelledby="journal-opening-balances-title">
+      <h2 id="journal-opening-balances-title">بیلانس افتتاحیۀ مشتریان</h2>
+      <div className="cash-journal-table"><table>
+        <thead><tr><th>تاریخ شمسی</th><th>تاریخ میلادی</th><th>مشتری</th><th>قرضداری مشتری</th><th>بستانکاری مشتری</th><th>اسعار</th></tr></thead>
+        <tbody>{openingBalances.length ? openingBalances.map((customer) => {
+          const date = customer.openingBalanceDate || customer.createdAt?.slice(0, 10);
+          const balance = num(customer.openingBalance);
+          return (
+            <tr key={customer.id}>
+              <td>{date ? formatAfghanDate(date) : "—"}</td><td dir="ltr">{date || "—"}</td>
+              <td><Link to={`/customer-detail/${encodeURIComponent(customer.id)}`}>{customerName(customer)}</Link></td>
+              <td>{balance > 0 ? formatAmount(balance) : "—"}</td>
+              <td>{balance < 0 ? formatAmount(Math.abs(balance)) : "—"}</td>
+              <td>{accountCurrency(customer.currency || customer.currencyCode)}</td>
+            </tr>
+          );
+        }) : <tr><td colSpan="6" className="journal-empty">بیلانس افتتاحیۀ مشتری یافت نشد.</td></tr>}</tbody>
+      </table></div>
+    </section>
     <section className="journal-sales-receivables" aria-labelledby="journal-sales-title">
       <h2 id="journal-sales-title">فروشات</h2>
       <div className="cash-journal-table"><table>
@@ -199,6 +245,8 @@ export default function CashJournal() {
       <button type="button" role="menuitem" onClick={()=>openPage(actionMenu.page,true)}><Eye size={16}/>نمایش</button>
       <button type="button" role="menuitem" onClick={()=>openPage(actionMenu.page,false)}><Pencil size={16}/>ویرایش</button>
       <button type="button" role="menuitem" onClick={()=>{setPrintPage(actionMenu.page);setActionMenu(null);}}><Printer size={16}/>چاپ</button>
+      {!actionMenu.page.entries.some((entry) => entry.saleReturnId) &&
+        <button type="button" role="menuitem" onClick={() => deletePage(actionMenu.page)}><Trash2 size={16}/>حذف</button>}
     </div>,document.body)}
     {printPage && createPortal(<div className="cash-journal-print-sheet" dir="rtl"><h1>روزنامچه نقدی {printPage.number}</h1><p>{formatAfghanDate(printPage.entries[0]?.date)} · <bdi>{printPage.entries[0]?.date?.slice(0, 10)}</bdi> میلادی</p><table><thead><tr><th>ردیف</th><th>نام اکونت</th><th>تفصیلات</th><th>Debit</th><th>Credit</th><th>اسعار</th></tr></thead><tbody>{printPage.entries.map((entry,index)=><tr key={entry.id}><td>{index+1}</td><td>{entry.accountName || entry.partyName}</td><td>{entry.note || entry.description}</td><td>{entry.direction==="in" ? formatAmount(entry.amount) : ""}</td><td>{entry.direction==="out" ? formatAmount(entry.amount) : ""}</td><td>{entry.currency}</td></tr>)}</tbody></table></div>,document.body)}
   </div>;

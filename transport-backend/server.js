@@ -447,7 +447,7 @@ function validatedPermissions(input) {
     if (!supported || !row || typeof row !== "object" || Array.isArray(row) ||
         Object.entries(row).some(([action, value]) => !PERMISSION_ACTIONS.includes(action) || typeof value !== "boolean")) return null;
     const view = supported.includes("view") && (row.view ?? PERMISSION_ACTIONS.some((action) => row[action] === true));
-    output[key] = Object.fromEntries(supported.map((action) => [action, view && (action === "view" || row[action] === true)]));
+    output[key] = Object.fromEntries(supported.map((action) => [action, action === "view" ? view : row[action] === true]));
   }
   return output;
 }

@@ -13,7 +13,7 @@ export const PERMISSION_MODULES = [
   { key: "inventory", actions: ["view", "print"], labels: { en: "Inventory", fa: "موجودی", ps: "موجودي" } },
   { key: "expenses", actions: ["view", "print"], labels: { en: "Expenses", fa: "مصارف", ps: "مصارف" } },
   { key: "accounts", actions: [], labels: { en: "Accounts", fa: "اکونت‌ها", ps: "اکونټونه" } },
-  { key: "cashJournal", actions: ["view", "print"], labels: { en: "Cash Journal", fa: "روزنامچه / نقدی", ps: "نغدي ورځپاڼه" } },
+  { key: "cashJournal", actions: ["view", "delete", "print"], labels: { en: "Cash Journal", fa: "روزنامچه / نقدی", ps: "نغدي ورځپاڼه" } },
   { key: "banks", actions: ["view", "print"], labels: { en: "Banks", fa: "بانک‌ها", ps: "بانکونه" } },
   { key: "cashCount", actions: ["view", "create", "edit", "delete"], labels: { en: "Cash Count", fa: "شمارش نقدی", ps: "نغدي شمېرنه" } },
   { key: "generalJournal", actions: ["view", "create", "delete"], labels: { en: "General Journal", fa: "روزنامچه عمومی", ps: "عمومي ورځپاڼه" } },

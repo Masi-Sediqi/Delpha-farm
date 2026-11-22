@@ -246,7 +246,13 @@ export default function Accounts({ accounts: demoAccounts = [], setAccounts, cur
   const openEdit = (account) => {
     setEditId(account.id);
     setForm({
-      permissions: Object.fromEntries(PERMISSION_MODULES.filter((module) => module.actions.length).map(({ key, actions }) => [key, Object.fromEntries(actions.map((action) => [action, hasPermission(account, key, action)]))])),
+      permissions: Object.fromEntries(PERMISSION_MODULES.filter((module) => module.actions.length).map(({ key, actions }) => [
+        key,
+        Object.fromEntries(actions.map((action) => [
+          action,
+          account.permissions?.[key]?.[action] ?? hasPermission(account, key, action),
+        ])),
+      ])),
       username: account.username || account.fullName || "",
       email: account.email || "",
       password: "",
@@ -403,10 +409,15 @@ export default function Accounts({ accounts: demoAccounts = [], setAccounts, cur
                   {PERMISSION_ACTIONS.map((action, index) => <td key={action}>{actions.includes(action) ? <input type="checkbox"
                     aria-label={`${labels[language] || labels.en} · ${t.actionLabels[index]}`}
                     checked={Boolean(form.permissions?.[key]?.[action])}
-                    disabled={action !== "view" && !form.permissions?.[key]?.view}
                     onChange={(event) => {
                       const checked = event.target.checked;
-                      setForm((prev) => ({ ...prev, permissions: { ...prev.permissions, [key]: { ...prev.permissions?.[key], ...(action === "view" && !checked ? Object.fromEntries(actions.map((item) => [item, false])) : {}), [action]: checked } } }));
+                      setForm((prev) => ({
+                        ...prev,
+                        permissions: {
+                          ...prev.permissions,
+                          [key]: { ...prev.permissions?.[key], [action]: checked },
+                        },
+                      }));
                     }} /> : "—"}</td>)}
                 </tr>
               ))}</tbody>

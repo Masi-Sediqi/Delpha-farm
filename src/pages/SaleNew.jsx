@@ -5,10 +5,11 @@ import { confirmAction } from "../utils/confirmDialog";
 import { assessSaleLoss, capturePurchaseComparisonRates, correctLossPrice } from "../utils/saleLossWarning";
 import { productPurchaseCostSnapshot, salePurchaseCostSnapshot } from "../utils/salePurchaseCost";
 import { productPricePerPiece, pieceLineAmount } from "../utils/piecePricing";
+import { accountCurrency, partyAccountRows } from "../utils/partyAccounts";
 import { writeAtomicFinanceBatch } from "../utils/browserStorage";
 import CustomersRegistry from "./CustomersRegistry";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   Check,
@@ -74,6 +75,10 @@ const text = {
     customerName: "Customer name",
     customerPlaceholder: "Enter customer name",
     customerInfo: "Customer information",
+    customerBalance: "Current customer balance",
+    previousBalance: "Previous balance",
+    customerOwes: "Customer owes",
+    customerCredit: "Customer credit",
     customerInfoEmpty: "Select a customer to view information.",
     phone: "Phone",
     company: "Company / Business",
@@ -146,6 +151,10 @@ const text = {
     customerName: "نام مشتری",
     customerPlaceholder: "نام مشتری را وارد کنید",
     customerInfo: "معلومات مشتری",
+    customerBalance: "بیلانس فعلی حساب مشتری",
+    previousBalance: "باقی گذشته",
+    customerOwes: "قرضداری مشتری",
+    customerCredit: "بستانکاری مشتری",
     customerInfoEmpty: "برای دیدن معلومات، مشتری را انتخاب کنید.",
     phone: "شماره تماس",
     company: "نام شرکت / تجارت",
@@ -218,6 +227,10 @@ const text = {
     customerName: "د پېرودونکي نوم",
     customerPlaceholder: "د پېرودونکي نوم ولیکئ",
     customerInfo: "د پېرودونکي معلومات",
+    customerBalance: "د پېرودونکي اوسنی بیلانس",
+    previousBalance: "پخوانی پاتې حساب",
+    customerOwes: "د پېرودونکي پور",
+    customerCredit: "د پېرودونکي اعتبار",
     customerInfoEmpty: "د معلوماتو لپاره پېرودونکی وټاکئ.",
     phone: "د اړیکې شمېره",
     company: "د شرکت / سوداګرۍ نوم",
@@ -287,6 +300,9 @@ function SaleNew() {
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [sales, setSales] = useJsonCollection("salesRegister");
   const [customers] = useJsonCollection("customerRegistry");
+  const [saleReturns] = useJsonCollection("saleReturns");
+  const [customerPayments] = useJsonCollection("customerPayments");
+  const [partyCashTransactions] = useJsonCollection("partyCashTransactions");
   const [products] = useJsonCollection("products");
   const [productGroups] = useJsonCollection("productGroups");
   const [productCountries] = useJsonCollection("countries");
@@ -331,6 +347,14 @@ function SaleNew() {
     () => customers.find((row) => String(row.id) === String(customerId)) || null,
     [customers, customerId]
   );
+  const customerBalances = useMemo(() => selectedCustomer ? partyAccountRows({
+    type: "customer",
+    parties: [selectedCustomer],
+    invoices: sales,
+    returns: saleReturns,
+    payments: customerPayments,
+    journal: partyCashTransactions,
+  }) : [], [selectedCustomer, sales, saleReturns, customerPayments, partyCashTransactions]);
 
   useEffect(() => {
     const sync = () => setLanguage(localStorage.getItem(languageKey) || "en");
@@ -1148,35 +1172,51 @@ function SaleNew() {
 
               <span className="purchase-items-count">{items.length}</span>
             </div>
+            {selectedCustomer && (
+              <div className="sale-customer-balance">
+                <Link to={`/customer-detail/${encodeURIComponent(selectedCustomer.id)}`}>{t.customerBalance}</Link>
+                {customerBalances.map(({ currency: code, balance }) => {
+                  const amount = Number(balance.toFixed(2));
+                  return (
+                    <span key={code}>
+                      {amount !== 0 && (amount > 0 ? t.customerOwes : t.customerCredit)}{" "}
+                      <strong dir="ltr">{Math.abs(amount).toFixed(2)} {code}</strong>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
             <div className="purchase-items-list">
               {!items.length && saleSearchField}
               {!items.length && (
                 <div className="purchase-items-empty sale-inline-empty"><ImageIcon size={34} /><strong>{t.emptyTitle}</strong><p>{t.emptyText}</p></div>
               )}
               {!!items.length && (
-                <div className="sale-wholesale-grid-head" role="row">
-                  <span>نام جنس</span><span>سایز کارتن</span><span>{language === "en" ? "Cost / piece" : language === "ps" ? "د هرې دانې لګښت" : "نرخ تمام‌شد فی دانه"}</span>
-                  <span>{t.salePrice}</span><span>تعداد کارتن</span><span>مقدار دانه</span>
-                  <span>{t.discount}</span><span>مجموع</span><span>{t.stock}</span><span>عملیات</span>
+                <div className="sale-wholesale-grid-scroll">
+                  <div className="sale-wholesale-grid-head" role="row">
+                    <span>نام جنس</span><span>سایز کارتن</span><span>{language === "en" ? "Cost / piece" : language === "ps" ? "د هرې دانې لګښت" : "نرخ تمام‌شد فی دانه"}</span>
+                    <span>{t.salePrice}</span><span>تعداد کارتن</span><span>مقدار دانه</span>
+                    <span>{t.discount}</span><span>مجموع</span><span>{t.stock}</span><span>عملیات</span>
+                  </div>
+                  {items.map((row, index) => (
+                    <article className="sale-wholesale-line" key={row.lineId}>
+                      <div className="sale-wholesale-product" title={row.productName}>
+                        <strong>{row.productName}</strong>
+                        <small>{row.manufacturerName || ""}</small>
+                      </div>
+                      <div className="sale-wholesale-size"><span>{formatQuantity(row.cartonSize || row.unitsPerUnit || 1)}</span></div>
+                      <div className="sale-wholesale-price-display" title={language === "en" ? "Purchase cost per piece in selected currency" : "قیمت تمام‌شد فی دانه به اسعار انتخاب‌شده"}><output dir="ltr" aria-label={t.purchasePrice}>{pieceCostDisplay(row)}</output></div>
+                      <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">{t.salePrice}</span><input aria-label={t.salePrice} type="number" min="0" step="0.01" value={row.salePrice} onBlur={event => { if (!event.relatedTarget?.closest(".purchase-save-top,.purchase-save-mobile")) warnIfSellingAtLoss(row); }} onChange={(e) => updateItem(row.lineId, "salePrice", e.target.value)} /></label>
+                      <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">تعداد کارتن</span><input aria-label="تعداد کارتن" ref={(node) => { const key = String(row.lineId); if (node) packageQuantityInputRefs.current.set(key, node); else packageQuantityInputRefs.current.delete(key); }} type="number" min="0" max={maxPiecesForLine(row) / positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit)} step="any" value={row.quantity === "" ? "" : num(row.quantity) / positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit)} onChange={(e) => { changeLineQuantityUnit(row.lineId, "carton"); updatePieceQuantity(row.lineId, e.target.value === "" ? "" : String(num(e.target.value) * positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit))); }} /></label>
+                      <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">مقدار دانه</span><input aria-label="مقدار دانه" type="number" min="0" max={maxPiecesForLine(row)} step="any" value={row.quantity} onChange={(e) => updatePieceQuantity(row.lineId, e.target.value)} /></label>
+                      <label className="sale-wholesale-cell sale-wholesale-discount"><span className="sale-wholesale-mobile-label">{t.discount}</span><input aria-label={t.discount} onKeyDown={(event) => { if (event.key === "Tab" && !event.shiftKey) { event.preventDefault(); focusSaleSearch(); } }} type="number" min="0" max="100" step="0.01" onBlur={event => { if (!event.relatedTarget?.closest(".purchase-save-top,.purchase-save-mobile")) warnIfSellingAtLoss(row); }} value={row.discountPercent ?? (lineGross(row) ? Number((100 * lineDiscount(row) / lineGross(row)).toFixed(2)) : 0)} onChange={(e) => updateItem(row.lineId, "discountPercent", e.target.value)} /></label>
+                      <div className="sale-wholesale-total"><strong>{lineTotal(row).toFixed(2)}</strong></div>
+                      <label className="sale-wholesale-cell sale-wholesale-stock"><span className="sale-wholesale-mobile-label">{t.stock}</span><input aria-label={t.stock} type="text" readOnly value={formatQuantity(maxPiecesForLine(row))} tabIndex={-1} /></label>
+                      <button className="sale-wholesale-remove" type="button" tabIndex={-1} title={t.remove} aria-label={t.remove} onKeyDown={(event) => handleSaleRemoveKeyDown(event, index)} onClick={() => removeItem(row.lineId)}><Trash2 size={17} /></button>
+                    </article>
+                  ))}
                 </div>
               )}
-              {items.map((row, index) => (
-                <article className="sale-wholesale-line" key={row.lineId}>
-                  <div className="sale-wholesale-product" title={row.productName}>
-                    <strong>{row.productName}</strong>
-                    <small>{row.manufacturerName || ""}</small>
-                  </div>
-                  <div className="sale-wholesale-size"><span>{formatQuantity(row.cartonSize || row.unitsPerUnit || 1)}</span></div>
-                  <div className="sale-wholesale-price-display" title={language === "en" ? "Purchase cost per piece in selected currency" : "قیمت تمام‌شد فی دانه به اسعار انتخاب‌شده"}><output dir="ltr" aria-label={t.purchasePrice}>{pieceCostDisplay(row)}</output></div>
-                  <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">{t.salePrice}</span><input aria-label={t.salePrice} type="number" min="0" step="0.01" value={row.salePrice} onBlur={event => { if (!event.relatedTarget?.closest(".purchase-save-top,.purchase-save-mobile")) warnIfSellingAtLoss(row); }} onChange={(e) => updateItem(row.lineId, "salePrice", e.target.value)} /></label>
-                  <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">تعداد کارتن</span><input aria-label="تعداد کارتن" ref={(node) => { const key = String(row.lineId); if (node) packageQuantityInputRefs.current.set(key, node); else packageQuantityInputRefs.current.delete(key); }} type="number" min="0" max={maxPiecesForLine(row) / positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit)} step="any" value={row.quantity === "" ? "" : num(row.quantity) / positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit)} onChange={(e) => { changeLineQuantityUnit(row.lineId, "carton"); updatePieceQuantity(row.lineId, e.target.value === "" ? "" : String(num(e.target.value) * positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit))); }} /></label>
-                  <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">مقدار دانه</span><input aria-label="مقدار دانه" type="number" min="0" max={maxPiecesForLine(row)} step="any" value={row.quantity} onChange={(e) => updatePieceQuantity(row.lineId, e.target.value)} /></label>
-                  <label className="sale-wholesale-cell sale-wholesale-discount"><span className="sale-wholesale-mobile-label">{t.discount}</span><input aria-label={t.discount} onKeyDown={(event) => { if (event.key === "Tab" && !event.shiftKey) { event.preventDefault(); focusSaleSearch(); } }} type="number" min="0" max="100" step="0.01" onBlur={event => { if (!event.relatedTarget?.closest(".purchase-save-top,.purchase-save-mobile")) warnIfSellingAtLoss(row); }} value={row.discountPercent ?? (lineGross(row) ? Number((100 * lineDiscount(row) / lineGross(row)).toFixed(2)) : 0)} onChange={(e) => updateItem(row.lineId, "discountPercent", e.target.value)} /></label>
-                  <div className="sale-wholesale-total"><strong>{lineTotal(row).toFixed(2)}</strong></div>
-                  <label className="sale-wholesale-cell sale-wholesale-stock"><span className="sale-wholesale-mobile-label">{t.stock}</span><input aria-label={t.stock} type="text" readOnly value={formatQuantity(maxPiecesForLine(row))} tabIndex={-1} /></label>
-                  <button className="sale-wholesale-remove" type="button" tabIndex={-1} title={t.remove} aria-label={t.remove} onKeyDown={(event) => handleSaleRemoveKeyDown(event, index)} onClick={() => removeItem(row.lineId)}><Trash2 size={17} /></button>
-                </article>
-              ))}
               {!!items.length && saleSearchField}
             </div>
           </section>
@@ -1190,6 +1230,12 @@ function SaleNew() {
             <div className="purchase-summary-row purchase-summary-grand"><span>{t.grandTotal}</span><strong>{grandTotal.toFixed(2)} {currency}</strong></div>
             <div className="purchase-summary-row"><span>{t.paid}</span><strong>{paid.toFixed(2)} {currency}</strong></div>
             <div className={`purchase-summary-row ${remaining > 0 ? "has-debt" : ""}`}><span>{t.remaining}</span><strong>{remaining.toFixed(2)} {currency}</strong></div>
+            <div className="purchase-summary-row">
+              <span>{t.previousBalance}</span>
+              <strong dir="ltr">{selectedCustomer
+                ? `${(Number(selectedCustomer.openingBalance) || 0).toFixed(2)} ${accountCurrency(selectedCustomer.currency || selectedCustomer.currencyCode)}`
+                : "—"}</strong>
+            </div>
           </section>
 
           <section className="purchase-side-card sale-payment-card">
