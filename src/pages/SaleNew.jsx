@@ -79,6 +79,7 @@ const text = {
     previousBalance: "Previous balance",
     customerOwes: "Customer owes",
     customerCredit: "Customer credit",
+    customerAdvance: "Customer advance / credit",
     customerInfoEmpty: "Select a customer to view information.",
     phone: "Phone",
     company: "Company / Business",
@@ -155,6 +156,7 @@ const text = {
     previousBalance: "باقی گذشته",
     customerOwes: "قرضداری مشتری",
     customerCredit: "بستانکاری مشتری",
+    customerAdvance: "بستانکاری مشتری از این فروش",
     customerInfoEmpty: "برای دیدن معلومات، مشتری را انتخاب کنید.",
     phone: "شماره تماس",
     company: "نام شرکت / تجارت",
@@ -231,6 +233,7 @@ const text = {
     previousBalance: "پخوانی پاتې حساب",
     customerOwes: "د پېرودونکي پور",
     customerCredit: "د پېرودونکي اعتبار",
+    customerAdvance: "د دې خرڅلاو له مخې د پېرودونکي اضافه تادیه",
     customerInfoEmpty: "د معلوماتو لپاره پېرودونکی وټاکئ.",
     phone: "د اړیکې شمېره",
     company: "د شرکت / سوداګرۍ نوم",
@@ -342,6 +345,16 @@ function SaleNew() {
     const code = String(value || "AFN").trim().toUpperCase();
     return code === "PKR" ? "INR" : code;
   };
+  const currencyDecimals = settings?.[0]?.currencyDecimals || {};
+  const decimalsFor = (code = currency) => {
+    const normalized = normalizeCurrency(code);
+    const key = normalized === "INR" ? "PKR" : normalized;
+    return Math.max(0, Math.min(6, Number(currencyDecimals[key] ?? 2)));
+  };
+  const formatAmount = (value, code = currency) => (Number(value || 0) || 0).toLocaleString("en-US", {
+    minimumFractionDigits: decimalsFor(code), maximumFractionDigits: decimalsFor(code),
+  });
+  const formatAmountInput = (value, code = currency) => (Number(value || 0) || 0).toFixed(decimalsFor(code));
   const currencyRate = (from, to) => exchangeRate(exchangeRates, from, to);
   const convertCurrency = (amount, from, to) => num(amount) * currencyRate(from, to);
   const selectedCustomer = useMemo(
@@ -595,7 +608,7 @@ function SaleNew() {
 
   const pieceCostDisplay = (row) => {
     const rate = currencyRate(row.purchaseCurrency, currency);
-    return rate ? `${(num(row.purchasePrice) * rate).toFixed(2)} ${currency}` : `${num(row.purchasePrice).toFixed(2)} ${row.purchaseCurrency}`;
+    return rate ? `${formatAmount(num(row.purchasePrice) * rate, currency)} ${currency}` : `${formatAmount(row.purchasePrice, row.purchaseCurrency)} ${row.purchaseCurrency}`;
   };
 
   const focusSearchResult = (index) => {
@@ -818,8 +831,9 @@ function SaleNew() {
   const subtotal = items.reduce((sum, row) => sum + lineGross(row), 0);
   const totalDiscount = items.reduce((sum, row) => sum + lineDiscount(row), 0);
   const grandTotal = Math.max(subtotal - totalDiscount, 0);
-  const paid = paymentStatus === "paid" ? grandTotal : Math.min(num(paidAmount), grandTotal);
+  const paid = paymentStatus === "paid" ? grandTotal : num(paidAmount);
   const remaining = Math.max(grandTotal - paid, 0);
+  const customerAdvance = Math.max(paid - grandTotal, 0);
 
   useEffect(() => {
     if (paymentStatus === "paid") setPaidAmount(String(grandTotal || ""));
@@ -836,10 +850,10 @@ function SaleNew() {
     }
     if (approvedLosses.current.has(loss.signature)) return true;
     const message = language === "en"
-      ? `Sale price is below purchase cost for ${row.productName}. Purchase cost per piece = ${num(row.purchasePrice).toFixed(2)} ${row.purchaseCurrency}. Correct the sale price?`
+      ? `Sale price is below purchase cost for ${row.productName}. Purchase cost per piece = ${formatAmount(row.purchasePrice, row.purchaseCurrency)} ${row.purchaseCurrency}. Correct the sale price?`
       : language === "ps"
-        ? `د ${row.productName} د پلور بیه له تمام شوي قیمت څخه ټیټه ده. د هرې دانې قیمت = ${num(row.purchasePrice).toFixed(2)} ${row.purchaseCurrency}. اصلاح شي؟`
-        : `قیمت فروش کمتر از قیمت تمام‌شده است. جنس: ${row.productName}. قیمت تمام‌شده فی دانه = ${num(row.purchasePrice).toFixed(2)} ${row.purchaseCurrency}. اصلاح شود؟`;
+        ? `د ${row.productName} د پلور بیه له تمام شوي قیمت څخه ټیټه ده. د هرې دانې قیمت = ${formatAmount(row.purchasePrice, row.purchaseCurrency)} ${row.purchaseCurrency}. اصلاح شي؟`
+        : `قیمت فروش کمتر از قیمت تمام‌شده است. جنس: ${row.productName}. قیمت تمام‌شده فی دانه = ${formatAmount(row.purchasePrice, row.purchaseCurrency)} ${row.purchaseCurrency}. اصلاح شود؟`;
     const request = confirmAction({title: language === "en" ? "Attention!" : language === "ps" ? "پاملرنه!" : "توجه!", message,
       confirmText: language === "en" ? "Yes" : language === "ps" ? "هو" : "بلی",
       cancelText: language === "en" ? "No" : language === "ps" ? "نه" : "نخیر", tone:"warning"});
@@ -870,8 +884,6 @@ function SaleNew() {
         return notify(`${row.productName} — ${t.salePrice}. ${t.positivePrice}`, "warning");
       }
     }
-    if (paymentStatus === "debt" && num(paidAmount) > grandTotal) return notify(t.invalidPaid, "warning");
-
     if (pendingLossWarning.current) { await pendingLossWarning.current; return; }
     const allocationByLine = new Map();
     const itemsByProduct = new Map();
@@ -1058,7 +1070,7 @@ function SaleNew() {
                     <span className="apg-picker-product"><strong>{productDisplayName(product)}</strong><small>{t.stock}: {formatQuantity(remainingStock)}</small></span>
                     <span className="apg-picker-maker">{product.manufacturerName || product.companyName || product.company || "—"}</span>
                     <span className="apg-picker-country">{countryNameById(productCountries, product.countryId, language, product.madeIn || "—")}</span>
-                    <em className="apg-picker-price">{unavailable ? t.outOfStock : `${convertCurrency(productPricePerPiece(product, "salePrice"), product.saleCurrency || product.unit || "AFN", currency).toFixed(2)} ${currency}`}</em>
+                    <em className="apg-picker-price">{unavailable ? t.outOfStock : `${formatAmount(convertCurrency(productPricePerPiece(product, "salePrice"), product.saleCurrency || product.unit || "AFN", currency), currency)} ${currency}`}</em>
                   </button>
                 );
               })}
@@ -1077,7 +1089,7 @@ function SaleNew() {
       {quickOpen && <CustomersRegistry modalOnly initialCurrency={currency} onClose={() => { setQuickOpen(false); customerSelectRef.current?.focus(); }} onSaved={(customer) => { setCustomerId(customer.id); setCustomerInfoOpen(false); }} />}
       <header className="purchase-entry-header">
         <div>
-          <button className="purchase-back" type="button" onClick={() => navigate("/sales-register")}><ArrowLeft size={16} />{t.back}</button>
+          <button className="purchase-back" type="button" onClick={() => navigate("/sales-register", { replace: true })}><ArrowLeft size={16} />{t.back}</button>
           <h1>{isEditMode ? t.editTitle : t.title}</h1>
           <p>{isEditMode ? t.editSubtitle : t.subtitle}</p>
         </div>
@@ -1143,7 +1155,7 @@ function SaleNew() {
                         <div><span>{t.phone}</span><strong dir="ltr">{selectedCustomer.phone || selectedCustomer.contact || "—"}</strong></div>
                         <div><span>{t.company}</span><strong>{selectedCustomer.companyName || "—"}</strong></div>
                         <div className="sale-customer-info-wide"><span>{t.address}</span><strong>{selectedCustomer.address || "—"}</strong></div>
-                        <div><span>{t.openingBalance}</span><strong dir="ltr">{num(selectedCustomer.openingBalance || 0).toFixed(2)} {String(selectedCustomer.currency || currency || "AFN").toUpperCase()}</strong></div>
+                        <div><span>{t.openingBalance}</span><strong dir="ltr">{formatAmount(selectedCustomer.openingBalance || 0, selectedCustomer.currency || currency || "AFN")} {String(selectedCustomer.currency || currency || "AFN").toUpperCase()}</strong></div>
                       </div>
                     </div>
                   )}
@@ -1189,11 +1201,11 @@ function SaleNew() {
                       </div>
                       <div className="sale-wholesale-size"><span>{formatQuantity(row.cartonSize || row.unitsPerUnit || 1)}</span></div>
                       <div className="sale-wholesale-price-display" title={language === "en" ? "Purchase cost per piece in selected currency" : "قیمت تمام‌شد فی دانه به اسعار انتخاب‌شده"}><output dir="ltr" aria-label={t.purchasePrice}>{pieceCostDisplay(row)}</output></div>
-                      <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">{t.salePrice}</span><input aria-label={t.salePrice} ref={(node) => { const key = String(row.lineId); if (node) salePriceInputRefs.current.set(key, node); else salePriceInputRefs.current.delete(key); }} type="number" min="0" step="0.01" value={row.salePrice} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); packageQuantityInputRefs.current.get(String(row.lineId))?.focus(); } }} onBlur={event => { if (!event.relatedTarget?.closest(".purchase-save-top,.purchase-save-mobile")) warnIfSellingAtLoss(row); }} onChange={(e) => updateItem(row.lineId, "salePrice", e.target.value)} /></label>
-                      <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">تعداد کارتن</span><input aria-label="تعداد کارتن" ref={(node) => { const key = String(row.lineId); if (node) packageQuantityInputRefs.current.set(key, node); else packageQuantityInputRefs.current.delete(key); }} type="number" min="0" max={maxPiecesForLine(row) / positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit)} step="any" value={row.quantity === "" ? "" : num(row.quantity) / positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit)} onChange={(e) => { changeLineQuantityUnit(row.lineId, "carton"); updatePieceQuantity(row.lineId, e.target.value === "" ? "" : String(num(e.target.value) * positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit))); }} /></label>
+                      <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">{t.salePrice}</span><input aria-label={t.salePrice} ref={(node) => { const key = String(row.lineId); if (node) salePriceInputRefs.current.set(key, node); else salePriceInputRefs.current.delete(key); }} type="number" min="0" step={10 ** -decimalsFor(currency)} value={row.salePrice === "" ? "" : formatAmountInput(row.salePrice, currency)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); packageQuantityInputRefs.current.get(String(row.lineId))?.focus(); } }} onBlur={event => { if (!event.relatedTarget?.closest(".purchase-save-top,.purchase-save-mobile")) warnIfSellingAtLoss(row); }} onChange={(e) => updateItem(row.lineId, "salePrice", e.target.value)} /></label>
+                      <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">تعداد کارتن</span><input aria-label="تعداد کارتن" ref={(node) => { const key = String(row.lineId); if (node) packageQuantityInputRefs.current.set(key, node); else packageQuantityInputRefs.current.delete(key); }} type="number" min="0" max={maxPiecesForLine(row) / positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit)} step={10 ** -decimalsFor(currency)} value={row.quantity === "" ? "" : formatAmountInput(num(row.quantity) / positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit), currency)} onChange={(e) => { changeLineQuantityUnit(row.lineId, "carton"); updatePieceQuantity(row.lineId, e.target.value === "" ? "" : String(num(e.target.value) * positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit))); }} /></label>
                       <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">مقدار دانه</span><input aria-label="مقدار دانه" type="number" min="0" max={maxPiecesForLine(row)} step="any" value={row.quantity} onChange={(e) => updatePieceQuantity(row.lineId, e.target.value)} /></label>
                       <label className="sale-wholesale-cell sale-wholesale-discount"><span className="sale-wholesale-mobile-label">{t.discount}</span><input aria-label={t.discount} onKeyDown={(event) => { if (event.key === "Tab" && !event.shiftKey) { event.preventDefault(); focusSaleSearch(); } }} type="number" min="0" max="100" step="0.01" onBlur={event => { if (!event.relatedTarget?.closest(".purchase-save-top,.purchase-save-mobile")) warnIfSellingAtLoss(row); }} value={row.discountPercent ?? (lineGross(row) ? Number((100 * lineDiscount(row) / lineGross(row)).toFixed(2)) : 0)} onChange={(e) => updateItem(row.lineId, "discountPercent", e.target.value)} /></label>
-                      <div className="sale-wholesale-total"><strong>{lineTotal(row).toFixed(2)}</strong></div>
+                      <div className="sale-wholesale-total"><strong>{formatAmount(lineTotal(row), currency)}</strong></div>
                       <label className="sale-wholesale-cell sale-wholesale-stock"><span className="sale-wholesale-mobile-label">{t.stock}</span><input aria-label={t.stock} type="text" readOnly value={formatQuantity(maxPiecesForLine(row))} tabIndex={-1} /></label>
                       <button className="sale-wholesale-remove" type="button" tabIndex={-1} title={t.remove} aria-label={t.remove} onKeyDown={(event) => handleSaleRemoveKeyDown(event, index)} onClick={() => removeItem(row.lineId)}><Trash2 size={17} /></button>
                     </article>
@@ -1208,22 +1220,23 @@ function SaleNew() {
         <aside className="purchase-entry-sidebar sale-bottom-panels">
           <section className="purchase-side-card purchase-summary-card">
             <div className="purchase-side-title"><ShoppingBag size={17} /><strong>{t.grandTotal}</strong></div>
-            <div className="purchase-summary-row"><span>{t.totalBeforeDiscount}</span><strong>{subtotal.toFixed(2)} {currency}</strong></div>
+            <div className="purchase-summary-row"><span>{t.totalBeforeDiscount}</span><strong>{formatAmount(subtotal, currency)} {currency}</strong></div>
             
-            <div className="purchase-summary-row purchase-summary-grand"><span>{t.grandTotal}</span><strong>{grandTotal.toFixed(2)} {currency}</strong></div>
-            <div className="purchase-summary-row"><span>{t.paid}</span><strong>{paid.toFixed(2)} {currency}</strong></div>
-            <div className={`purchase-summary-row ${remaining > 0 ? "has-debt" : ""}`}><span>{t.remaining}</span><strong>{remaining.toFixed(2)} {currency}</strong></div>
+            <div className="purchase-summary-row purchase-summary-grand"><span>{t.grandTotal}</span><strong>{formatAmount(grandTotal, currency)} {currency}</strong></div>
+            <div className="purchase-summary-row"><span>{t.paid}</span><strong>{formatAmount(paid, currency)} {currency}</strong></div>
+            <div className={`purchase-summary-row ${remaining > 0 ? "has-debt" : ""}`}><span>{t.remaining}</span><strong>{formatAmount(remaining, currency)} {currency}</strong></div>
+            {customerAdvance > 0 && <div className="purchase-summary-row sale-customer-advance"><span>{t.customerAdvance}</span><strong>{formatAmount(customerAdvance, currency)} {currency}</strong></div>}
             <div className="purchase-summary-row">
               <span>{t.previousBalance}</span>
               <strong dir="ltr">{selectedCustomer
-                ? `${(Number(selectedCustomer.openingBalance) || 0).toFixed(2)} ${accountCurrency(selectedCustomer.currency || selectedCustomer.currencyCode)}`
+                ? `${formatAmount(selectedCustomer.openingBalance, accountCurrency(selectedCustomer.currency || selectedCustomer.currencyCode))} ${accountCurrency(selectedCustomer.currency || selectedCustomer.currencyCode)}`
                 : "—"}</strong>
             </div>
             {selectedCustomer && customerBalances.map(({ currency: code, balance }) => {
-              const amount = Number(balance.toFixed(2));
+              const amount = Number(formatAmountInput(balance, code));
               return <div className="purchase-summary-row sale-current-customer-balance" key={`balance-${code}`}>
                 <span>{amount > 0 ? t.customerOwes : amount < 0 ? t.customerCredit : t.customerBalance}</span>
-                <strong dir="ltr">{Math.abs(amount).toFixed(2)} {code}</strong>
+                <strong dir="ltr">{formatAmount(Math.abs(amount), code)} {code}</strong>
               </div>;
             })}
           </section>
@@ -1232,10 +1245,10 @@ function SaleNew() {
             <div className="purchase-side-title"><WalletCards size={17} /><strong>{t.paymentStatus}</strong></div>
             <div className="purchase-payment-options">
               <button type="button" className={paymentStatus === "paid" ? "active" : ""} onClick={() => setPaymentStatus("paid")}>{t.paidFull}</button>
-              <button type="button" className={paymentStatus === "debt" ? "active" : ""} onClick={() => setPaymentStatus("debt")}>{t.debt}</button>
+              <button type="button" className={paymentStatus === "debt" ? "active" : ""} onClick={() => { if (paymentStatus !== "debt") setPaidAmount(""); setPaymentStatus("debt"); }}>{t.debt}</button>
             </div>
-            {paymentStatus === "debt" && <label className="purchase-field"><span>{t.paidAmount}</span><input type="number" min="0" max={grandTotal} step="0.01" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} /></label>}
-            <div className="purchase-payment-record"><span>{t.paid}</span><strong>{paymentStatus === "paid" ? t.paidFull : `${paid.toFixed(2)} ${currency}`}</strong></div>
+            {paymentStatus === "debt" && <label className="purchase-field"><span>{t.paidAmount}</span><input type="number" min="0" step={10 ** -decimalsFor(currency)} value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} /></label>}
+            <div className="purchase-payment-record"><span>{t.paid}</span><strong>{paymentStatus === "paid" ? t.paidFull : `${formatAmount(paid, currency)} ${currency}`}</strong></div>
           </section>
 
           <button className="purchase-save-mobile" type="button" disabled={savingSale} onClick={saveSale}><Check size={17} />{isEditMode ? t.update : t.save}</button>

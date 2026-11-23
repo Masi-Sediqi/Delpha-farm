@@ -26,6 +26,7 @@
 .sale-customer-balance-value.owes strong { color:#b42318; }
 .sale-customer-balance-value.credit strong { color:#067647; }
 .sale-customer-balance-link { display:inline-flex; margin-top:12px; color:var(--company-accent,#2563eb); font-size:13px; font-weight:700; text-decoration:underline; }
+.sale-customer-advance strong { color:#067647; font-weight:850; }
 .sale-customer-balance a {
   color: inherit;
   font-weight: 700;

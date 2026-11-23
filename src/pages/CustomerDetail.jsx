@@ -21,12 +21,22 @@ import {
 import ShamsiDateInput from "../components/ShamsiDateInput";
 import { useJsonCollection } from "../hooks/useJsonCollection";
 import { confirmAction } from "../utils/confirmDialog";
-import { formatDateTime } from "../utils/afghanDate";
+import { afghanToGregorian, formatDateTime } from "../utils/afghanDate";
 import { notify } from "../utils/notify";
 import "./CustomerDetail.css";
 
 const languageKey = "afghan-power-language";
 const rtlLanguages = new Set(["fa", "ps"]);
+const ledgerDateOrder = (value) => {
+  const raw = String(value || "").trim();
+  const afghan = raw.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
+  if (afghan && Number(afghan[1]) < 1700) {
+    const gregorian = afghanToGregorian(afghan[1], afghan[2], afghan[3]);
+    return gregorian ? Date.parse(`${gregorian}T00:00:00Z`) || 0 : 0;
+  }
+  const parsed = Date.parse(raw);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
 
 const translations = {
   en: {
@@ -379,15 +389,16 @@ export default function CustomerDetail() {
         currency: currencyCode,
         debit: openingBalance > 0 ? openingBalance : 0,
         credit: openingBalance < 0 ? Math.abs(openingBalance) : 0,
-        order: new Date(customer?.createdAt || 0).getTime() || 0,
+        order: ledgerDateOrder(customer?.openingBalanceDate || customer?.createdAt),
+        priority: 0,
       });
     }
 
     customerSales.forEach((sale) => {
       const saleDate = sale.saleDate || sale.date || sale.createdAt || "";
-      const order = new Date(saleDate || 0).getTime() || 0;
+      const order = ledgerDateOrder(saleDate || sale.createdAt);
       const saleTotal = numeric(sale.totalAmount);
-      const salePaid = Math.min(numeric(sale.paidAmount), saleTotal);
+      const salePaid = numeric(sale.paidAmount);
       const saleRemaining = Math.max(
         sale.remainingAmount !== undefined && sale.remainingAmount !== null
           ? numeric(sale.remainingAmount)
@@ -405,13 +416,16 @@ export default function CustomerDetail() {
         debit: saleTotal,
         credit: salePaid,
         remaining: saleRemaining,
+        overpaid: Math.max(salePaid - saleTotal, 0),
         order,
+        timeOrder: Date.parse(sale.createdAt || "") || 0,
+        priority: 2,
       });
     });
 
     customerReturns.forEach((item) => {
       const returnDate = item.returnDate || item.date || item.createdAt || "";
-      const order = new Date(returnDate || 0).getTime() || 0;
+      const order = ledgerDateOrder(returnDate || item.createdAt);
       const linkedSale = customerSales.find((sale) => String(sale.id) === String(item.saleId));
       entries.push({
         id: `sale-return-${item.id}`,
@@ -423,12 +437,14 @@ export default function CustomerDetail() {
         currency: normalizeCurrency(item.currency || linkedSale?.currency || customer?.currency || currencyCode),
         debit: 0,
         credit: numeric(item.totalAmount),
-        order: order + 2,
+        order,
+        timeOrder: Date.parse(item.createdAt || "") || 0,
+        priority: 3,
       });
     });
 
     customerPayments.forEach((payment) => {
-      const order = new Date(payment.date || payment.createdAt || 0).getTime() || 0;
+      const order = ledgerDateOrder(payment.date || payment.createdAt);
       entries.push({
         id: `payment-${payment.id}`,
         date: payment.date || payment.createdAt || "",
@@ -440,13 +456,15 @@ export default function CustomerDetail() {
         debit: 0,
         credit: numeric(payment.amount),
         order,
+        timeOrder: Date.parse(payment.createdAt || "") || 0,
+        priority: 1,
       });
     });
 
     customerCashTransactions.forEach((payment) => {
       const amount = numeric(payment.amount);
       const cashIn = payment.direction === "in";
-      const order = new Date(payment.date || payment.createdAt || 0).getTime() || 0;
+      const order = ledgerDateOrder(payment.date || payment.createdAt);
       entries.push({
         id: `cash-journal-${payment.id}`,
         date: payment.date || payment.createdAt || "",
@@ -457,11 +475,13 @@ export default function CustomerDetail() {
         currency: normalizeCurrency(payment.currency || currencyCode),
         debit: cashIn ? 0 : amount,
         credit: cashIn ? amount : 0,
-        order: order + 3,
+        order,
+        timeOrder: Date.parse(payment.createdAt || "") || 0,
+        priority: 1,
       });
     });
 
-    entries.sort((a, b) => (a.order - b.order) || String(a.id).localeCompare(String(b.id)));
+    entries.sort((a, b) => (a.order - b.order) || ((a.priority ?? 1) - (b.priority ?? 1)) || ((a.timeOrder || 0) - (b.timeOrder || 0)) || String(a.id).localeCompare(String(b.id)));
     const runningByCurrency = {};
     return entries.map((entry) => {
       const code = normalizeCurrency(entry.currency || currencyCode);
@@ -807,7 +827,7 @@ export default function CustomerDetail() {
                         <td><span className={`customer-ledger-description ${entry.kind || ""}`}>{entry.description}</span></td>
                         <td className="customer-ledger-debit">{entry.debit ? `${entry.debit.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${entry.currency}` : "—"}</td>
                         <td className="customer-ledger-credit">{entry.credit ? <span className="customer-ledger-badge paid">{entry.credit.toLocaleString(undefined, { maximumFractionDigits: 2 })} {entry.currency}</span> : "—"}</td>
-                        <td className="customer-ledger-remaining">{entry.kind === "sale" ? <span className={`customer-ledger-badge remaining ${numeric(entry.remaining) <= 0 ? "settled" : ""}`}>{numeric(entry.remaining).toLocaleString(undefined, { maximumFractionDigits: 2 })} {entry.currency}</span> : "—"}</td>
+                        <td className="customer-ledger-remaining">{entry.kind === "sale" ? entry.overpaid > 0 ? <span className="customer-ledger-badge paid customer-ledger-advance">{t.youOweCustomer}: {numeric(entry.overpaid).toLocaleString(undefined, { maximumFractionDigits: 2 })} {entry.currency}</span> : <span className={`customer-ledger-badge remaining ${numeric(entry.remaining) <= 0 ? "settled" : ""}`}>{numeric(entry.remaining).toLocaleString(undefined, { maximumFractionDigits: 2 })} {entry.currency}</span> : "—"}</td>
                         <td className={entry.balance > 0 ? "customer-ledger-balance receivable" : entry.balance < 0 ? "customer-ledger-balance owe" : "customer-ledger-balance"}>{Math.abs(entry.balance).toLocaleString(undefined, { maximumFractionDigits: 2 })} {entry.currency}</td>
                         <td><div className="customer-ledger-actions">
                           {entry.kind === "manual-payment" && <button type="button" className="edit" onClick={() => editLedgerEntry(entry)} aria-label={t.edit} title={t.edit}><Edit3 size={14} /></button>}

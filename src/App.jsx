@@ -296,6 +296,7 @@ function App() {
   const routeClassName = location.pathname === "/"
     ? "route-dashboard"
     : `route-${location.pathname.replace(/^\/+/, "").replace(/[^a-zA-Z0-9]+/g, "-") || "dashboard"}`;
+  const isSaleEntryRoute = location.pathname === "/sales/new" || /^\/sales\/[^/]+\/edit$/.test(location.pathname);
 
   // Keep the active view across refreshes without modifying the browser URL.
   useEffect(() => {
@@ -632,7 +633,7 @@ function App() {
   } else {
     appContent = (
       <div
-        className={`app app-${appDirection} ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}
+        className={`app app-${appDirection} ${sidebarCollapsed ? "sidebar-collapsed" : ""} ${isSaleEntryRoute ? "sale-entry-fullscreen" : ""}`}
         dir={appDirection}
         data-direction={appDirection}
         data-language={appLanguage}
