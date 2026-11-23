@@ -9580,6 +9580,25 @@ body[data-theme="soft-green"] { --bg:#c3dec3; --background:#c3dec3; --surface:#e
 body[data-theme="soft-green"] #root, body[data-theme="soft-green"] .app, body[data-theme="soft-green"] .main, body[data-theme="soft-green"] .page-content {background:#c3dec3!important;color:#19372c;}
 body[data-theme="soft-green"] .sidebar, body[data-theme="soft-green"] .topbar {background:#075b47!important;color:#fff!important;border-color:#126f56!important;}
 body[data-theme="soft-green"] .sidebar a, body[data-theme="soft-green"] .sidebar button, body[data-theme="soft-green"] .topbar button {color:#fff;}
+
+/* A sale entry has no sidebar column; let its main panel use the full shell. */
+body[data-language] .app.sale-entry-fullscreen {
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) !important;
+  gap:0 !important;
+  padding:0 !important;
+}
+body[data-language] .app.sale-entry-fullscreen > .sidebar { display:none !important; }
+body[data-language] .app.sale-entry-fullscreen > .main {
+  grid-column:1 !important;
+  grid-row:1 !important;
+  width:100% !important;
+  min-width:0 !important;
+  height:100vh;
+  margin:0 !important;
+  border:0 !important;
+  border-radius:0 !important;
+}
 body[data-theme="soft-green"] .card, body[data-theme="soft-green"] [class$="-card"], body[data-theme="soft-green"] [class$="-panel"], body[data-theme="soft-green"] .settings-shell-card, body[data-theme="soft-green"] .sales-products-card {background:#d9ebd7;color:#19372c;border-color:#9cc2a0;}
 body[data-theme="soft-green"] input, body[data-theme="soft-green"] select, body[data-theme="soft-green"] textarea {background:#f4faf1;color:#19372c;border-color:#91b69a;}
 body[data-theme="soft-green"] button:focus-visible {outline:2px solid #14785e;outline-offset:2px;}
