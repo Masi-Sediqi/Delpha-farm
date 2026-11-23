@@ -77,6 +77,9 @@ const translations = {
     cash: "Cash",
     installment: "Installment",
     paidAmount: "Paid Amount",
+    availableCredit: "Available customer credit",
+    creditApplied: "Credit used on this sale",
+    creditAfterSale: "Customer credit after this sale",
     remaining: "Remaining",
     notes: "Notes",
     notesPlaceholder: "Optional sale notes...",
@@ -149,7 +152,10 @@ const translations = {
     paymentMode: "حالت پرداخت",
     cash: "پرداخت نقدی",
     installment: "پرداخت قسطی",
-    paidAmount: "مقدار پرداخت",
+    paidAmount: "مقدار پرداخت نقدی جدید",
+    availableCredit: "اعتبار قبلی مشتری",
+    creditApplied: "اعتبار استفاده‌شده در این فروش",
+    creditAfterSale: "اعتبار باقی‌مانده مشتری",
     remaining: "باقی‌مانده",
     notes: "ملاحظات",
     notesPlaceholder: "ملاحظات فروش در صورت نیاز...",
@@ -222,7 +228,10 @@ const translations = {
     paymentMode: "د تادیې ډول",
     cash: "نغدي",
     installment: "قسطی",
-    paidAmount: "ورکړل شوی مبلغ",
+    paidAmount: "نوې نغدي تادیه",
+    availableCredit: "د پېرودونکي پخوانی اعتبار",
+    creditApplied: "په دې پلور کې کارول شوی اعتبار",
+    creditAfterSale: "له پلور وروسته پاتې اعتبار",
     remaining: "پاتې مبلغ",
     notes: "یادښتونه",
     notesPlaceholder: "د خرڅلاو اختیاري یادښتونه...",
@@ -266,6 +275,9 @@ export default function SalesRegister() {
   const [sales, setSales] = useJsonCollection("salesRegister");
   const navigate = useNavigate();
   const [customers] = useJsonCollection("customerRegistry");
+  const [customerPayments] = useJsonCollection("customerPayments", { enabled: showModal });
+  const [saleReturns] = useJsonCollection("saleReturns", { enabled: showModal });
+  const [partyCashTransactions] = useJsonCollection("partyCashTransactions", { enabled: showModal });
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [search, setSearch] = useState("");
   useSearchResultReset(setSearch);
@@ -409,13 +421,41 @@ export default function SalesRegister() {
 
   const lineTotal = (item) => Math.max(numeric(item.quantity) * numeric(item.salePrice) - numeric(item.discount), 0);
   const grandTotal = selectedItems.reduce((sum, item) => sum + lineTotal(item), 0);
-  // Keep the full amount received: excess belongs to the customer as an advance/credit.
+  // A customer's signed balance is sales + outgoing cash - actual money received.
+  // A negative balance is an advance available for future invoices. Never record
+  // the applied advance as a second cash receipt (that would double-count cash).
+  const selectedCustomer = customers.find((item) => String(item.id) === String(customerId));
+  const selectedCurrency = currencyCode(selectedCustomer?.currency || "AFN");
+  const matchesCurrency = (value) => currencyCode(value || selectedCurrency) === selectedCurrency;
+  const customerBalanceBefore = useMemo(() => {
+    if (!customerId) return 0;
+    let balance = Number(selectedCustomer?.openingBalance || 0);
+    for (const sale of sales) {
+      if (String(sale.customerId) !== String(customerId) || !matchesCurrency(sale.currency || selectedCurrency)) continue;
+      // The full amount paid may exceed an invoice: do not clamp its credit.
+      balance += Number(sale.totalAmount || 0) - Number(sale.paidAmount || 0);
+    }
+    for (const payment of customerPayments) {
+      if (String(payment.customerId) === String(customerId) && matchesCurrency(payment.currency)) balance -= Number(payment.amount || 0);
+    }
+    for (const item of saleReturns) {
+      if (String(item.customerId) === String(customerId) && matchesCurrency(item.currency)) balance -= Number(item.totalAmount || 0);
+    }
+    for (const item of partyCashTransactions) {
+      if (item.partyType !== "customer" || String(item.partyId) !== String(customerId) || !matchesCurrency(item.currency)) continue;
+      balance += (item.direction === "in" ? -1 : 1) * Number(item.amount || 0);
+    }
+    return Math.round(balance * 100) / 100;
+  }, [customerId, selectedCustomer, selectedCurrency, sales, customerPayments, saleReturns, partyCashTransactions]);
+  const availableCredit = Math.max(-customerBalanceBefore, 0);
   const paid = Math.max(numeric(paidAmount), 0);
-  const remaining = Math.max(grandTotal - paid, 0);
+  const creditApplied = Math.min(availableCredit, Math.max(grandTotal - paid, 0));
+  const remaining = Math.max(grandTotal - paid - creditApplied, 0);
+  const creditAfterSale = Math.max(-(customerBalanceBefore + grandTotal - paid), 0);
 
   useEffect(() => {
-    if (showModal && paymentMode === "cash") setPaidAmount(grandTotal ? String(grandTotal) : "");
-  }, [grandTotal, paymentMode, showModal]);
+    if (showModal && paymentMode === "cash") setPaidAmount(grandTotal ? String(Math.max(grandTotal - availableCredit, 0)) : "");
+  }, [grandTotal, paymentMode, showModal, availableCredit]);
 
   const saveSale = async (event) => {
     event.preventDefault();
@@ -453,7 +493,10 @@ export default function SalesRegister() {
       paymentMode,
       totalAmount: grandTotal,
       paidAmount: paid,
+      // Informational allocation only: not an additional payment or ledger credit.
+      creditApplied,
       remainingAmount: remaining,
+      currency: selectedCurrency,
       notes: notes.trim(),
       items: selectedItems.map((item) => ({ ...item, batchAllocations: allocationByProduct.get(String(item.productId)) || [], lineTotal: lineTotal(item) })),
       createdAt: editingSaleId ? sales.find((item) => String(item.id) === String(editingSaleId))?.createdAt || now : now,
@@ -818,7 +861,10 @@ export default function SalesRegister() {
                   <button type="button" className={paymentMode === "installment" ? "active" : ""} onClick={() => setPaymentMode("installment")}><CreditCard size={16} />{t.installment}</button>
                 </div>
                 <label><span>{t.paidAmount}</span><input type="number" min="0" step="0.01" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} /></label>
+                {customerId && availableCredit > 0 && <div className="sales-register-balance"><span>{t.availableCredit}</span><strong>{money(availableCredit)}</strong></div>}
+                {creditApplied > 0 && <div className="sales-register-balance"><span>{t.creditApplied}</span><strong>{money(creditApplied)}</strong></div>}
                 <div className="sales-register-balance"><span>{t.remaining}</span><strong>{money(remaining)}</strong></div>
+                {customerId && creditAfterSale > 0 && <div className="sales-register-balance"><span>{t.creditAfterSale}</span><strong>{money(creditAfterSale)}</strong></div>
                 <label className="sales-register-notes"><span>{t.notes}</span><textarea rows="3" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t.notesPlaceholder} /></label>
               </section>
             </div>
