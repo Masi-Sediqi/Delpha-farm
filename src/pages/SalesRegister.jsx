@@ -864,7 +864,7 @@ export default function SalesRegister() {
                 {customerId && availableCredit > 0 && <div className="sales-register-balance"><span>{t.availableCredit}</span><strong>{money(availableCredit)}</strong></div>}
                 {creditApplied > 0 && <div className="sales-register-balance"><span>{t.creditApplied}</span><strong>{money(creditApplied)}</strong></div>}
                 <div className="sales-register-balance"><span>{t.remaining}</span><strong>{money(remaining)}</strong></div>
-                {customerId && creditAfterSale > 0 && <div className="sales-register-balance"><span>{t.creditAfterSale}</span><strong>{money(creditAfterSale)}</strong></div>
+                {customerId && creditAfterSale > 0 && <div className="sales-register-balance"><span>{t.creditAfterSale}</span><strong>{money(creditAfterSale)}</strong></div>}
                 <label className="sales-register-notes"><span>{t.notes}</span><textarea rows="3" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t.notesPlaceholder} /></label>
               </section>
             </div>
