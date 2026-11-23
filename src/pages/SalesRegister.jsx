@@ -409,7 +409,8 @@ export default function SalesRegister() {
 
   const lineTotal = (item) => Math.max(numeric(item.quantity) * numeric(item.salePrice) - numeric(item.discount), 0);
   const grandTotal = selectedItems.reduce((sum, item) => sum + lineTotal(item), 0);
-  const paid = Math.min(numeric(paidAmount), grandTotal);
+  // Keep the full amount received: excess belongs to the customer as an advance/credit.
+  const paid = Math.max(numeric(paidAmount), 0);
   const remaining = Math.max(grandTotal - paid, 0);
 
   useEffect(() => {
@@ -432,7 +433,6 @@ export default function SalesRegister() {
         return notify(`${t.insufficientStock} ${item.productName}.`, "warning");
       }
     }
-    if (numeric(paidAmount) > grandTotal) return notify(t.invalidPaid, "warning");
 
     const allocationByProduct = new Map();
     for (const item of selectedItems) {
@@ -817,7 +817,7 @@ export default function SalesRegister() {
                   <button type="button" className={paymentMode === "cash" ? "active" : ""} onClick={() => setPaymentMode("cash")}><Wallet size={16} />{t.cash}</button>
                   <button type="button" className={paymentMode === "installment" ? "active" : ""} onClick={() => setPaymentMode("installment")}><CreditCard size={16} />{t.installment}</button>
                 </div>
-                <label><span>{t.paidAmount}</span><input type="number" min="0" max={grandTotal} step="0.01" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} /></label>
+                <label><span>{t.paidAmount}</span><input type="number" min="0" step="0.01" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} /></label>
                 <div className="sales-register-balance"><span>{t.remaining}</span><strong>{money(remaining)}</strong></div>
                 <label className="sales-register-notes"><span>{t.notes}</span><textarea rows="3" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t.notesPlaceholder} /></label>
               </section>
