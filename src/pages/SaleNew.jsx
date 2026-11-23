@@ -623,6 +623,13 @@ function SaleNew() {
   };
 
   const handleSearchKeyDown = (event) => {
+    // Product selection is the end of the sale-item Tab cycle. Keep keyboard
+    // focus in search until the next product is chosen with Enter or click.
+    if (event.key === "Tab") {
+      event.preventDefault();
+      searchInputRef.current?.focus();
+      return;
+    }
     if ((event.key === "ArrowDown" || event.key === "ArrowUp") && results.length) {
       event.preventDefault();
       // Keep focus in the search input so the user can continue typing.
