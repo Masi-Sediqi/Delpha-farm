@@ -578,7 +578,7 @@ function SaleNew() {
         priceUnit: "piece",
         cartonUnitsPerUnit: unitsPerUnit,
         unitsPerUnit: 1,
-        packageQuantity: pieceQuantityToAdd,
+        packageQuantity: Number((pieceQuantityToAdd / positiveUnitCount(unitsPerUnit)).toFixed(4)),
         quantity: pieceQuantityToAdd,
         sourceCurrency,
         ...purchaseCost,
@@ -783,7 +783,7 @@ function SaleNew() {
   const updatePackageQuantity = (lineId, value) => {
     setItems((current) => current.map((row) => {
       if (String(row.lineId) !== String(lineId)) return row;
-      const unitsPerUnit = positiveUnitCount(row.unitsPerUnit);
+      const unitsPerUnit = positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit);
       const maxPieces = availableStockForLine(current, row);
       const maxPackages = maxPieces / unitsPerUnit;
       if (value === "") return { ...row, packageQuantity: "", quantity: "" };
@@ -802,7 +802,7 @@ function SaleNew() {
       const raw = Number(value);
       if (!Number.isFinite(raw)) return { ...row, quantity: "", packageQuantity: "" };
       const clamped = Math.min(Math.max(raw, 0), availableStockForLine(current, row));
-      const unitsPerUnit = positiveUnitCount(row.unitsPerUnit);
+      const unitsPerUnit = positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit);
       const nextGross = clamped * num(row.salePrice);
       return {
         ...row,
@@ -814,7 +814,7 @@ function SaleNew() {
   };
   const removeItem = (lineId) => setItems((current) => current.filter((row) => String(row.lineId) !== String(lineId)));
   const maxPiecesForLine = (row) => availableStockForLine(items, row);
-  const maxPackageQuantity = (row) => maxPiecesForLine(row) / positiveUnitCount(row.unitsPerUnit);
+  const maxPackageQuantity = (row) => maxPiecesForLine(row) / positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit);
   const formatQuantity = (value) => {
     const number = num(value);
     return Number.isInteger(number) ? String(number) : number.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
@@ -1202,7 +1202,7 @@ function SaleNew() {
                       <div className="sale-wholesale-size"><span>{formatQuantity(row.cartonSize || row.unitsPerUnit || 1)}</span></div>
                       <div className="sale-wholesale-price-display" title={language === "en" ? "Purchase cost per piece in selected currency" : "قیمت تمام‌شد فی دانه به اسعار انتخاب‌شده"}><output dir="ltr" aria-label={t.purchasePrice}>{pieceCostDisplay(row)}</output></div>
                       <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">{t.salePrice}</span><input aria-label={t.salePrice} ref={(node) => { const key = String(row.lineId); if (node) salePriceInputRefs.current.set(key, node); else salePriceInputRefs.current.delete(key); }} type="number" min="0" step={10 ** -decimalsFor(currency)} value={row.salePrice === "" ? "" : formatAmountInput(row.salePrice, currency)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); packageQuantityInputRefs.current.get(String(row.lineId))?.focus(); } }} onBlur={event => { if (!event.relatedTarget?.closest(".purchase-save-top,.purchase-save-mobile")) warnIfSellingAtLoss(row); }} onChange={(e) => updateItem(row.lineId, "salePrice", e.target.value)} /></label>
-                      <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">تعداد کارتن</span><input aria-label="تعداد کارتن" ref={(node) => { const key = String(row.lineId); if (node) packageQuantityInputRefs.current.set(key, node); else packageQuantityInputRefs.current.delete(key); }} type="number" min="0" max={maxPiecesForLine(row) / positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit)} step={10 ** -decimalsFor(currency)} value={row.quantity === "" ? "" : formatAmountInput(num(row.quantity) / positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit), currency)} onChange={(e) => { changeLineQuantityUnit(row.lineId, "carton"); updatePieceQuantity(row.lineId, e.target.value === "" ? "" : String(num(e.target.value) * positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit))); }} /></label>
+                      <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">تعداد کارتن</span><input aria-label="تعداد کارتن" ref={(node) => { const key = String(row.lineId); if (node) packageQuantityInputRefs.current.set(key, node); else packageQuantityInputRefs.current.delete(key); }} type="number" min="0" max={maxPackageQuantity(row)} step="any" value={row.packageQuantity === "" ? "" : String(row.packageQuantity ?? num(row.quantity) / positiveUnitCount(row.cartonUnitsPerUnit || row.unitsPerUnit))} onChange={(e) => { changeLineQuantityUnit(row.lineId, "carton"); updatePackageQuantity(row.lineId, e.target.value); }} /></label>
                       <label className="sale-wholesale-cell"><span className="sale-wholesale-mobile-label">مقدار دانه</span><input aria-label="مقدار دانه" type="number" min="0" max={maxPiecesForLine(row)} step="any" value={row.quantity} onChange={(e) => updatePieceQuantity(row.lineId, e.target.value)} /></label>
                       <label className="sale-wholesale-cell sale-wholesale-discount"><span className="sale-wholesale-mobile-label">{t.discount}</span><input aria-label={t.discount} onKeyDown={(event) => { if (event.key === "Tab" && !event.shiftKey) { event.preventDefault(); focusSaleSearch(); } }} type="number" min="0" max="100" step="0.01" onBlur={event => { if (!event.relatedTarget?.closest(".purchase-save-top,.purchase-save-mobile")) warnIfSellingAtLoss(row); }} value={row.discountPercent ?? (lineGross(row) ? Number((100 * lineDiscount(row) / lineGross(row)).toFixed(2)) : 0)} onChange={(e) => updateItem(row.lineId, "discountPercent", e.target.value)} /></label>
                       <div className="sale-wholesale-total"><strong>{formatAmount(lineTotal(row), currency)}</strong></div>
