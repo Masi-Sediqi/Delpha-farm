@@ -275,14 +275,14 @@ export default function SalesRegister() {
   const [sales, setSales] = useJsonCollection("salesRegister");
   const navigate = useNavigate();
   const [customers] = useJsonCollection("customerRegistry");
-  const [customerPayments] = useJsonCollection("customerPayments", { enabled: showModal });
-  const [saleReturns] = useJsonCollection("saleReturns", { enabled: showModal });
-  const [partyCashTransactions] = useJsonCollection("partyCashTransactions", { enabled: showModal });
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
   const [search, setSearch] = useState("");
   useSearchResultReset(setSearch);
   const [productSearch, setProductSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [customerPayments] = useJsonCollection("customerPayments", { enabled: showModal });
+  const [saleReturns] = useJsonCollection("saleReturns", { enabled: showModal });
+  const [partyCashTransactions] = useJsonCollection("partyCashTransactions", { enabled: showModal });
   const [products] = useJsonCollection("products", { enabled: showModal });
   const [productGroups] = useJsonCollection("productGroups", { enabled: showModal });
   const [stockMovements, setStockMovements] = useJsonCollection("stockMovements", { enabled: showModal });
