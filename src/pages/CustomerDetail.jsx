@@ -84,6 +84,7 @@ const translations = {
     noTransactions: "No sales or payments have been recorded for this customer yet.",
     customerOwes: "This customer owes you",
     youOweCustomer: "You owe this customer",
+    overpaymentApplied: "Overpayment applied to prior balance",
     settled: "Account is settled",
     paymentTitle: "Register Customer Payment",
     paymentHint: "Record a payment received from this customer. It will immediately appear in the customer ledger.",
@@ -169,6 +170,7 @@ const translations = {
     noTransactions: "برای این مشتری هنوز فروش یا پرداختی ثبت نشده است.",
     customerOwes: "این مشتری به ما قرضدار است",
     youOweCustomer: "ما به این مشتری قرضدار استیم",
+    overpaymentApplied: "اضافه‌پرداخت از بدهی قبلی کم شد",
     settled: "حساب تصفیه است",
     paymentTitle: "ثبت پرداخت مشتری",
     paymentHint: "پرداخت دریافت‌شده از این مشتری را ثبت کنید؛ ریکارد فوراً در لیجر نمایش داده می‌شود.",
@@ -254,6 +256,7 @@ const translations = {
     noTransactions: "د دې پېرودونکي لپاره تر اوسه خرڅلاو یا تادیه نه ده ثبت شوې.",
     customerOwes: "دا پېرودونکی موږ ته پوروړی دی",
     youOweCustomer: "موږ دې پېرودونکي ته پوروړي یو",
+    overpaymentApplied: "اضافي تادیه له پخواني پور څخه کمه شوه",
     settled: "حساب تصفیه دی",
     paymentTitle: "د پېرودونکي تادیه ثبتول",
     paymentHint: "له پېرودونکي ترلاسه شوې تادیه ثبت کړئ؛ ریکارډ به سمدستي په لیجر کې ښکاره شي.",
@@ -521,8 +524,9 @@ export default function CustomerDetail() {
     const runningByCurrency = {};
     return entries.map((entry) => {
       const code = normalizeCurrency(entry.currency || currencyCode);
+      const balanceBefore = numeric(runningByCurrency[code]);
       runningByCurrency[code] = numeric(runningByCurrency[code]) + numeric(entry.debit) - numeric(entry.credit);
-      return { ...entry, currency: code, balance: runningByCurrency[code] };
+      return { ...entry, currency: code, balanceBefore, balance: runningByCurrency[code] };
     });
   }, [customer, customerId, customerSales, customerReturns, customerPayments, customerCashTransactions, currencyCode, t.systemOpening, t.systemSale, t.systemSaleReturn, t.systemPayment, t.systemCashTransaction]);
 
@@ -867,7 +871,14 @@ export default function CustomerDetail() {
                         <td><span title={entry.description} className={`customer-ledger-description ${entry.kind || ""}`}>{entry.description}</span></td>
                         <td className="customer-ledger-debit">{entry.debit ? `${entry.debit.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${entry.currency}` : "—"}</td>
                         <td className="customer-ledger-credit">{entry.credit ? <span className="customer-ledger-badge paid">{entry.credit.toLocaleString(undefined, { maximumFractionDigits: 2 })} {entry.currency}</span> : "—"}</td>
-                        <td className="customer-ledger-remaining">{entry.kind === "sale" ? entry.overpaid > 0 ? <span className="customer-ledger-badge paid customer-ledger-advance">{t.youOweCustomer}: {numeric(entry.overpaid).toLocaleString(undefined, { maximumFractionDigits: 2 })} {entry.currency}</span> : <span className={`customer-ledger-badge remaining ${numeric(entry.remaining) <= 0 ? "settled" : ""}`}>{numeric(entry.remaining).toLocaleString(undefined, { maximumFractionDigits: 2 })} {entry.currency}</span> : "—"}</td>
+                        <td className="customer-ledger-remaining">{entry.kind === "sale" ? entry.overpaid > 0 ? (() => {
+                          const applied = Math.min(numeric(entry.overpaid), Math.max(numeric(entry.balanceBefore), 0));
+                          const creditLeft = Math.max(numeric(entry.overpaid) - applied, 0);
+                          return <span className="customer-ledger-badge paid customer-ledger-advance">
+                            {applied > 0 && <span>{t.overpaymentApplied}: {applied.toLocaleString(undefined, { maximumFractionDigits: 2 })} {entry.currency}</span>}
+                            {creditLeft > 0 && <span>{t.youOweCustomer}: {creditLeft.toLocaleString(undefined, { maximumFractionDigits: 2 })} {entry.currency}</span>}
+                          </span>;
+                        })() : <span className={`customer-ledger-badge remaining ${numeric(entry.remaining) <= 0 ? "settled" : ""}`}>{numeric(entry.remaining).toLocaleString(undefined, { maximumFractionDigits: 2 })} {entry.currency}</span> : "—"}</td>
                         <td className={entry.balance > 0 ? "customer-ledger-balance receivable" : entry.balance < 0 ? "customer-ledger-balance owe" : "customer-ledger-balance"}><span>{Math.abs(entry.balance).toLocaleString(undefined, { maximumFractionDigits: 2 })} {entry.currency}</span><small>{entry.balance > 0 ? t.customerOwes : entry.balance < 0 ? t.youOweCustomer : t.settled}</small></td>
                         <td><div className="customer-ledger-actions">
                           {entry.kind === "manual-payment" && <button type="button" className="edit" onClick={() => editLedgerEntry(entry)} aria-label={t.edit} title={t.edit}><Edit3 size={14} /></button>}
