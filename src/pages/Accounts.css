@@ -29,3 +29,25 @@
   width: 16px;
   height: 16px;
 }
+
+/* Keep account table text and badges readable in dark mode. */
+.dark-mode .account-manager-page { color:#e5e7eb; }
+.dark-mode .account-manager-header h1,
+.dark-mode .account-manager-user strong,
+.dark-mode .account-manager-table td { color:#f3f4f6; }
+.dark-mode .account-manager-header p,
+.dark-mode .account-manager-stats span { color:#aab4c2; }
+.dark-mode .account-manager-email { color:#cbd5e1; }
+.dark-mode .account-manager-table tbody tr:hover { background:#292d35; }
+.dark-mode .account-manager-table tbody tr:nth-child(even) { background:#191d25; }
+.dark-mode .account-manager-table tbody tr:nth-child(even):hover { background:#292d35; }
+.dark-mode .account-manager-role { background:#3730a3; color:#e0e7ff; }
+.dark-mode .account-manager-status { background:#14532d; color:#dcfce7; }
+.dark-mode .account-manager-user>span { background:#312e81; color:#e0e7ff; }
+.dark-mode .account-manager-search input { color:#f3f4f6; }
+.dark-mode .account-manager-search input::placeholder { color:#9ca3af; }
+.dark-mode .account-manager-actions button.danger { background:#3b1d25; border-color:#7f1d1d; color:#fca5a5; }
+.dark-mode .account-manager-modal-head p,
+.dark-mode .account-manager-form label { color:#cbd5e1; }
+.dark-mode .account-manager-form input { color:#f8fafc; }
+.dark-mode .account-manager-form input::placeholder { color:#9ca3af; }

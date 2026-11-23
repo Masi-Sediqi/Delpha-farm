@@ -1172,20 +1172,6 @@ function SaleNew() {
 
               <span className="purchase-items-count">{items.length}</span>
             </div>
-            {selectedCustomer && (
-              <div className="sale-customer-balance">
-                <Link to={`/customer-detail/${encodeURIComponent(selectedCustomer.id)}`}>{t.customerBalance}</Link>
-                {customerBalances.map(({ currency: code, balance }) => {
-                  const amount = Number(balance.toFixed(2));
-                  return (
-                    <span key={code}>
-                      {amount !== 0 && (amount > 0 ? t.customerOwes : t.customerCredit)}{" "}
-                      <strong dir="ltr">{Math.abs(amount).toFixed(2)} {code}</strong>
-                    </span>
-                  );
-                })}
-              </div>
-            )}
             <div className="purchase-items-list">
               {!items.length && saleSearchField}
               {!items.length && (
@@ -1247,6 +1233,24 @@ function SaleNew() {
             {paymentStatus === "debt" && <label className="purchase-field"><span>{t.paidAmount}</span><input type="number" min="0" max={grandTotal} step="0.01" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} /></label>}
             <div className="purchase-payment-record"><span>{t.paid}</span><strong>{paymentStatus === "paid" ? t.paidFull : `${paid.toFixed(2)} ${currency}`}</strong></div>
           </section>
+
+          {selectedCustomer && (
+            <section className="purchase-side-card sale-customer-balance-card" aria-label={t.customerBalance}>
+              <div className="purchase-side-title"><UserRound size={17} /><strong>{t.customerBalance}</strong></div>
+              <div className="sale-customer-balance-values">
+                {customerBalances.map(({ currency: code, balance }) => {
+                  const amount = Number(balance.toFixed(2));
+                  return (
+                    <div className={`sale-customer-balance-value ${amount > 0 ? "owes" : amount < 0 ? "credit" : "settled"}`} key={code}>
+                      <span>{amount > 0 ? t.customerOwes : amount < 0 ? t.customerCredit : t.customerBalance}</span>
+                      <strong dir="ltr">{Math.abs(amount).toFixed(2)} {code}</strong>
+                    </div>
+                  );
+                })}
+              </div>
+              <Link className="sale-customer-balance-link" to={`/customer-detail/${encodeURIComponent(selectedCustomer.id)}`}>{t.customerBalance}</Link>
+            </section>
+          )}
 
           <button className="purchase-save-mobile" type="button" disabled={savingSale} onClick={saveSale}><Check size={17} />{isEditMode ? t.update : t.save}</button>
         </aside>

@@ -68,7 +68,6 @@ export default function CashJournal() {
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState("journal");
-  const [journalPageIndex, setJournalPageIndex] = useState(0);
   const [date, setDate] = useState(todayDateValue());
   const [code, setCode] = useState("AFN");
   const [rows, setRows] = useState(makeInitialRows);
@@ -133,10 +132,6 @@ export default function CashJournal() {
     );
   }, [customers, query]);
   const visible = useMemo(() => pages.filter(page => !query.trim() || `${page.number} ${page.entries.map(row=>`${row.accountName || row.partyName || ""} ${row.description || row.note || ""} ${row.currency || ""}`).join(" ")}`.toLowerCase().includes(query.trim().toLowerCase())), [pages, query]);
-  const recordsPerPage = 3;
-  const journalPageCount = Math.max(1, Math.ceil(visible.length / recordsPerPage));
-  const visibleJournalPages = visible.slice(journalPageIndex * recordsPerPage, (journalPageIndex + 1) * recordsPerPage);
-  useEffect(() => { setJournalPageIndex(0); }, [query]);
   const journalSales = useMemo(() => {
     const search = query.trim().toLowerCase();
     const customerMap = new Map(customers.map((customer) => [String(customer.id), customer]));
@@ -206,12 +201,11 @@ export default function CashJournal() {
 
   return <div className="cash-journal-page" dir="rtl"><header className="cash-journal-head"><div><BookOpenCheck size={24}/><div><h1>روزنامچه نقدی</h1><p>ثبت یکپارچه دریافت و پرداخت، با شماره مسلسل هر صفحه</p></div></div><button type="button" onClick={() => { setActivePage(null); setReadOnly(false); setDate(todayDateValue()); setRows(makeInitialRows()); setOpened(true); }}><Plus size={18}/>ثبت روزنامچه</button></header><nav className="cash-journal-tabs" role="tablist" aria-label="بخش‌های روزنامچه">
     {[["journal", "روزنامچه"], ["opening", "بیلانس افتتاحیه"], ["sales", "فروشات"]].map(([id, label]) => <button key={id} id={`cash-journal-tab-${id}`} type="button" role="tab" aria-selected={activeTab === id} aria-controls={`cash-journal-panel-${id}`} className={activeTab === id ? "active" : ""} onClick={() => setActiveTab(id)}>{label}</button>)}
-  </nav>{activeTab === "journal" && <section role="tabpanel" id="cash-journal-panel-journal" aria-labelledby="cash-journal-tab-journal" className="cash-journal-tab-panel"><div className="cash-journal-toolbar"><label><Search size={17}/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="جستجوی نام اکونت، تفصیلات یا نمبر JEN..."/></label></div><div className="cash-journal-table"><table><thead><tr><th>نمبر صفحه</th><th>تاریخ هجری شمسی</th><th>تاریخ میلادی</th><th>نام اکونت</th><th>تفصیلات</th><th>تعداد ردیف</th><th>عملیات</th></tr></thead><tbody>{visibleJournalPages.length ? visibleJournalPages.map(page => {
+  </nav>{activeTab === "journal" && <section role="tabpanel" id="cash-journal-panel-journal" aria-labelledby="cash-journal-tab-journal" className="cash-journal-tab-panel"><div className="cash-journal-toolbar"><label><Search size={17}/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="جستجوی نام اکونت، تفصیلات یا نمبر JEN..."/></label></div><div className="cash-journal-table"><table><thead><tr><th>نمبر صفحه</th><th>تاریخ هجری شمسی</th><th>تاریخ میلادی</th><th>نام اکونت</th><th>تفصیلات</th><th>تعداد ردیف</th><th>عملیات</th></tr></thead><tbody>{visible.length ? visible.map(page => {
     const row=page.entries[0];
     return <tr key={page.key}><td>{page.number}</td><td>{formatAfghanDate(row.date)}</td><td dir="ltr">{row.date?.slice(0, 10) || "—"}</td><td>{page.entries.slice(0,2).map((entry,index)=><span className="journal-account-summary" key={entry.id}>{index>0 ? "، " : ""}{entry.partyId && ["customer","supplier"].includes(entry.partyType) ? <Link to={`/${entry.partyType}-detail/${encodeURIComponent(entry.partyId)}`}>{entry.accountName || entry.partyName}</Link> : entry.accountName || entry.partyName || "عمومی"}</span>)}{page.entries.length>2 && <small title={page.entries.map(entry=>entry.accountName || entry.partyName).join("، ")}> و {page.entries.length-2} ردیف دیگر</small>}</td><td className="journal-description-cell" title={row.note || row.description || ""}><span className="journal-description-preview">{Array.from(row.note || row.description || "").slice(0, 90).join("")}{Array.from(row.note || row.description || "").length > 90 ? "…" : ""}</span></td><td>{page.entries.length}</td><td className="journal-actions-cell"><button type="button" className="journal-actions-trigger" aria-label={`عملیات ${page.number}`} aria-haspopup="menu" aria-expanded={actionMenu?.page.key===page.key} aria-controls={actionMenu?.page.key===page.key ? "journal-actions-menu" : undefined} onClick={event=>toggleMenu(event,page)}><MoreHorizontal size={20}/></button></td></tr>;
-  }) : <tr><td colSpan="7" className="journal-empty">هنوز ریکاردی ثبت نشده است.</td></tr>}</tbody></table></div><div className="cash-journal-pagination" aria-label="صفحه‌بندی ریکاردهای روزنامچه"><button type="button" disabled={journalPageIndex === 0} onClick={() => setJournalPageIndex((index) => Math.max(0, index - 1))}>قبلی</button><span>صفحه {journalPageIndex + 1} از {journalPageCount} · هر صفحه ۳ ریکارد</span><button type="button" disabled={journalPageIndex + 1 >= journalPageCount} onClick={() => setJournalPageIndex((index) => Math.min(journalPageCount - 1, index + 1))}>بعدی</button></div></section>}{modal && createPortal(modal, document.body)}
+  }) : <tr><td colSpan="7" className="journal-empty">هنوز ریکاردی ثبت نشده است.</td></tr>}</tbody></table></div></section>}{modal && createPortal(modal, document.body)}
     {activeTab === "opening" && <section role="tabpanel" id="cash-journal-panel-opening" aria-labelledby="cash-journal-tab-opening" className="cash-journal-tab-panel journal-sales-receivables" >
-      <h2 id="journal-opening-balances-title">بیلانس افتتاحیۀ مشتریان</h2>
       <h2 id="journal-opening-balances-title">بیلانس افتتاحیۀ مشتریان</h2>
       <div className="cash-journal-table"><table>
         <thead><tr><th>تاریخ شمسی</th><th>تاریخ میلادی</th><th>مشتری</th><th>قرضداری مشتری</th><th>بستانکاری مشتری</th><th>اسعار</th></tr></thead>

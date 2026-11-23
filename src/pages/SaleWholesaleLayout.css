@@ -13,6 +13,15 @@
   padding-block: 10px;
   border-bottom: 1px solid var(--border-color, #e2e8f0);
 }
+.sale-wholesale-page .sale-customer-balance-card { grid-column:1/-1; border-color:var(--wh-border); background:color-mix(in srgb,var(--wh-green) 3%,var(--card-bg,#fff)); }
+.sale-wholesale-page .sale-customer-balance-card .purchase-side-title { margin-bottom:12px; }
+.sale-customer-balance-values { display:flex; flex-wrap:wrap; gap:10px; }
+.sale-customer-balance-value { flex:1 1 220px; min-width:0; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 15px; border:1px solid var(--border-color,#e2e8f0); border-radius:8px; background:var(--card-bg,#fff); }
+.sale-customer-balance-value span { color:var(--text-secondary,#64748b); font-size:13px; font-weight:650; line-height:1.5; }
+.sale-customer-balance-value strong { color:var(--text-primary,#111827); font-size:17px; font-weight:800; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.sale-customer-balance-value.owes strong { color:#b42318; }
+.sale-customer-balance-value.credit strong { color:#067647; }
+.sale-customer-balance-link { display:inline-flex; margin-top:12px; color:var(--company-accent,#2563eb); font-size:13px; font-weight:700; text-decoration:underline; }
 .sale-customer-balance a {
   color: inherit;
   font-weight: 700;
