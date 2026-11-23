@@ -1,5 +1,9 @@
 /* Wholesale entry view: isolated from legacy sale layout selectors. */
 .sale-wholesale-page { --wh-green:#075a48; --wh-border:#d9e5e0; }
+.sale-wholesale-page .sale-inline-search-results .apg-picker-header,
+.sale-wholesale-page .sale-inline-search-results .purchase-inline-result-list > button.purchase-inline-result {
+  grid-template-columns:minmax(0,30fr) minmax(0,24fr) minmax(0,22fr) minmax(110px,24fr) !important;
+}
 .sale-wholesale-page .sale-wholesale-layout { display:flex; flex-direction:column; gap:15px; }
 .sale-wholesale-page .sale-wholesale-main { width:100%; min-width:0; }
 .sale-wholesale-page .sale-wholesale-card { overflow:visible; min-width:0; }
@@ -52,16 +56,15 @@
 .sale-wholesale-mobile-label { display:none; }
 @media screen {
   .sale-wholesale-grid-scroll {
-    max-height: 60dvh;
-    overflow: auto;
-    scrollbar-width: thin;
-    scroll-padding-block-start: 40px;
+    max-height: none;
+    overflow: visible;
   }
 
   .sale-wholesale-grid-head {
     position: sticky;
     top: 0;
-    z-index: 1;
+    z-index: 20;
+    box-shadow: 0 3px 8px rgba(15,23,42,.16);
   }
 }
 .sale-wholesale-page .purchase-side-card { min-width:0; }
