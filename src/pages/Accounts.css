@@ -17,6 +17,7 @@
 
 .account-manager-permissions table {
   width: 100%;
+  min-width: 760px;
   margin-block-start: 8px;
   text-align: center;
 }

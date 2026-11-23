@@ -1,15 +1,15 @@
-export const PERMISSION_ACTIONS = ["view", "create", "edit", "delete", "print"];
+export const PERMISSION_ACTIONS = ["view", "details", "create", "edit", "delete", "return", "print"];
 
 export const PERMISSION_MODULES = [
   { key: "dashboard", actions: ["view"], labels: { en: "Dashboard", fa: "داشبورد", ps: "ډشبورد" } },
-  { key: "suppliers", actions: ["view", "create", "edit", "delete", "print"], labels: { en: "Suppliers", fa: "تأمین‌کننده‌گان", ps: "عرضه کوونکي" } },
-  { key: "products", actions: ["view", "create", "edit", "delete"], labels: { en: "Products", fa: "محصولات", ps: "محصولات" } },
-  { key: "purchasing", actions: ["view", "print"], labels: { en: "Purchasing", fa: "خریداری", ps: "پېرود" } },
+  { key: "suppliers", actions: ["view", "details", "create", "edit", "delete", "print"], labels: { en: "Suppliers", fa: "تأمین‌کننده‌گان", ps: "عرضه کوونکي" } },
+  { key: "products", actions: ["view", "details", "create", "edit", "delete", "print"], labels: { en: "Products", fa: "محصولات", ps: "محصولات" } },
+  { key: "purchasing", actions: ["view", "details", "create", "edit", "print"], labels: { en: "Purchasing", fa: "خریداری", ps: "پېرود" } },
   { key: "payables", actions: ["view", "print"], labels: { en: "Payables", fa: "تادیات", ps: "تادیات" } },
-  { key: "customers", actions: ["view", "create", "edit", "delete", "print"], labels: { en: "Customers", fa: "مشتریان", ps: "پېرودونکي" } },
-  { key: "sales", actions: ["view", "print"], labels: { en: "Sales", fa: "فروشات", ps: "خرڅلاو" } },
+  { key: "customers", actions: ["view", "details", "create", "edit", "delete", "return", "print"], labels: { en: "Customers", fa: "مشتریان", ps: "پېرودونکي" } },
+  { key: "sales", actions: ["view", "details", "create", "edit", "delete", "return", "print"], labels: { en: "Sales", fa: "فروشات", ps: "خرڅلاو" } },
   { key: "receivables", actions: ["view", "print"], labels: { en: "Receivables", fa: "طلبات", ps: "طلبات" } },
-  { key: "saleReturns", actions: ["view"], labels: { en: "Sale Returns", fa: "برگشت فروش", ps: "د خرڅلاو بېرته ستنول" } },
+  { key: "saleReturns", actions: ["view", "create", "return"], labels: { en: "Sale Returns", fa: "برگشت فروش", ps: "د خرڅلاو بېرته ستنول" } },
   { key: "inventory", actions: ["view", "print"], labels: { en: "Inventory", fa: "موجودی", ps: "موجودي" } },
   { key: "expenses", actions: ["view", "print"], labels: { en: "Expenses", fa: "مصارف", ps: "مصارف" } },
   { key: "accounts", actions: [], labels: { en: "Accounts", fa: "اکونت‌ها", ps: "اکونټونه" } },

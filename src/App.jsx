@@ -557,13 +557,18 @@ function App() {
       const contextValue = `${control.closest("form, [role='dialog']")?.textContent || ""}`.toLowerCase();
       let action = "";
       if (/\/print(?:\/|$)/.test(targetPath) || /(print|چاپ|export|download|excel|pdf|دانلود)/i.test(textValue)) action = "print";
+      else if (/(return|برگشت|بازگشت|بېرته|ستنول)/i.test(textValue)) action = "return";
       else if (/(delete|remove|حذف|پاک)/i.test(textValue)) action = "delete";
+      else if (/\/[^/]*detail(?:\/|$)/i.test(targetPath) || /(full details|معلومات کامل|بشپړ معلومات)/i.test(textValue)) action = "details";
       else if (/\/edit(?:\/|$)/.test(targetPath) || /(edit|update|ایدیت|ویرایش|سمون)/i.test(textValue)) action = "edit";
       else if (/\/new(?:\/|$)/.test(targetPath) || /(add|new|create|register|افزودن|اضافه|جدید|ثبت|نوی)/i.test(textValue)) action = "create";
       else if (/(save|ذخیره|خوندي)/i.test(textValue)) {
         action = /(add|new|create|register|افزودن|اضافه|جدید|ثبت|نوی)/i.test(contextValue) ? "create" : "edit";
       }
-      if (!action || hasPermission(currentUser, moduleKey, action)) return;
+      const hasRequiredPermission = !action
+        || (hasPermission(currentUser, moduleKey, action)
+          && (action !== "return" || moduleKey !== "saleReturns" || hasPermission(currentUser, moduleKey, "create")));
+      if (hasRequiredPermission) return;
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
@@ -720,18 +725,18 @@ function App() {
               <Route path="/search-results" element={protect("dashboard", <SearchResults />)} />
 
               <Route path="/suppliers" element={protect("suppliers", <Suppliers />)} />
-              <Route path="/supplier-detail/:supplierId" element={protect("suppliers", <SupplierDetail />)} />
+              <Route path="/supplier-detail/:supplierId" element={protect("suppliers", <SupplierDetail />, "details")} />
               <Route path="/products" element={protect("products", <Products />)} />
-              <Route path="/product-detail/:productId" element={protect("products", <ProductDetail />)} />
+              <Route path="/product-detail/:productId" element={protect("products", <ProductDetail />, "details")} />
               <Route path="/purchasing" element={protect("purchasing", <Purchasing />)} />
               <Route path="/payables" element={protect("payables", <Payables />)} />
               <Route path="/payables/payments/:batchId/print" element={protect("payables", <PrintPayablesBatch />, "print")} />
               <Route path="/purchasing/new" element={protect("purchasing", <PurchaseNew />, "create")} />
               <Route path="/purchasing/:purchaseId/print" element={protect("purchasing", <PrintPurchase />, "print")} />
-              <Route path="/purchasing/:purchaseId" element={protect("purchasing", <PurchaseDetail />)} />
+              <Route path="/purchasing/:purchaseId" element={protect("purchasing", <PurchaseDetail />, "details")} />
               <Route path="/purchasing/:purchaseId/edit" element={protect("purchasing", <PurchaseNew />, "edit")} />
               <Route path="/customer-registry" element={protect("customers", <CustomersRegistry />)} />
-              <Route path="/customer-detail/:customerId" element={protect("customers", <CustomerDetail />)} />
+              <Route path="/customer-detail/:customerId" element={protect("customers", <CustomerDetail />, "details")} />
               <Route path="/sales-register" element={protect("sales", <SalesRegister />)} />
               <Route path="/sales" element={protect("sales", <SalesRegister />)} />
               <Route path="/sales/new" element={protect("sales", <SaleNew />, "create")} />
@@ -747,7 +752,7 @@ function App() {
               <Route path="/receivables-payables" element={protect("reports", <ReceivablesPayables />)} />
               <Route path="/general-journal" element={protect("generalJournal", <GeneralJournal />)} />
               <Route path="/sale-detail/:saleId/print" element={protect("sales", <SaleDetail autoPrint />, "print")} />
-              <Route path="/sale-detail/:saleId" element={protect("sales", <SaleDetail />)} />
+              <Route path="/sale-detail/:saleId" element={protect("sales", <SaleDetail />, "details")} />
               <Route path="/reports" element={protect("reports", <Reports />)} />
               <Route path="/trash" element={protect("trash", <Trash />)} />
               <Route path="/accounts" element={protect("accounts", <Accounts accounts={effectiveAccounts} setAccounts={setAccounts} currentUser={currentUser} />)} />
