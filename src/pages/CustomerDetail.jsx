@@ -871,14 +871,7 @@ export default function CustomerDetail() {
                         <td><span title={entry.description} className={`customer-ledger-description ${entry.kind || ""}`}>{entry.description}</span></td>
                         <td className="customer-ledger-debit">{entry.debit ? `${entry.debit.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${entry.currency}` : "—"}</td>
                         <td className="customer-ledger-credit">{entry.credit ? <span className="customer-ledger-badge paid">{entry.credit.toLocaleString(undefined, { maximumFractionDigits: 2 })} {entry.currency}</span> : "—"}</td>
-                        <td className="customer-ledger-remaining">{entry.kind === "sale" ? entry.overpaid > 0 ? (() => {
-                          const applied = Math.min(numeric(entry.overpaid), Math.max(numeric(entry.balanceBefore), 0));
-                          const creditLeft = Math.max(numeric(entry.overpaid) - applied, 0);
-                          return <span className="customer-ledger-badge paid customer-ledger-advance">
-                            {applied > 0 && <span>{t.overpaymentApplied}: {applied.toLocaleString(undefined, { maximumFractionDigits: 2 })} {entry.currency}</span>}
-                            {creditLeft > 0 && <span>{t.youOweCustomer}: {creditLeft.toLocaleString(undefined, { maximumFractionDigits: 2 })} {entry.currency}</span>}
-                          </span>;
-                        })() : <span className={`customer-ledger-badge remaining ${numeric(entry.remaining) <= 0 ? "settled" : ""}`}>{numeric(entry.remaining).toLocaleString(undefined, { maximumFractionDigits: 2 })} {entry.currency}</span> : "—"}</td>
+                        <td className="customer-ledger-remaining">{entry.kind === "sale" ? entry.overpaid > 0 ? <span className="customer-ledger-badge paid customer-ledger-advance">{numeric(entry.overpaid).toLocaleString(undefined, { maximumFractionDigits: 2 })} {entry.currency}</span> : <span className={`customer-ledger-badge remaining ${numeric(entry.remaining) <= 0 ? "settled" : ""}`}>{numeric(entry.remaining).toLocaleString(undefined, { maximumFractionDigits: 2 })} {entry.currency}</span> : "—"}</td>
                         <td className={entry.balance > 0 ? "customer-ledger-balance receivable" : entry.balance < 0 ? "customer-ledger-balance owe" : "customer-ledger-balance"}><span>{Math.abs(entry.balance).toLocaleString(undefined, { maximumFractionDigits: 2 })} {entry.currency}</span><small>{entry.balance > 0 ? t.customerOwes : entry.balance < 0 ? t.youOweCustomer : t.settled}</small></td>
                         <td><div className="customer-ledger-actions">
                           {entry.kind === "manual-payment" && <button type="button" className="edit" onClick={() => editLedgerEntry(entry)} aria-label={t.edit} title={t.edit}><Edit3 size={14} /></button>}
