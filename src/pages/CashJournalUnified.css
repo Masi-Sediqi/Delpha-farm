@@ -63,3 +63,12 @@
 .cash-journal-tabs button:focus-visible { outline:2px solid var(--company-accent,#2563eb); outline-offset:2px; }
 .cash-journal-tab-panel { min-width:0; }
 @media(max-width:600px) { .cash-journal-tabs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); }.cash-journal-tabs button { padding:0 8px; font-size:12px; } }
+
+/* Customer balance alongside account lookup and below the selected customer. */
+.unified-journal-panel .journal-party-search { align-self:stretch; }
+.unified-journal-panel .journal-customer-balance { display:block; padding:3px 2px 0; font-size:11px; line-height:1.45; font-weight:650; white-space:normal; }
+.unified-journal-panel .journal-customer-balance.debtor { color:#b45309; }
+.unified-journal-panel .journal-customer-balance.creditor { color:#047857; }
+.unified-journal-panel .journal-customer-balance.settled { color:var(--text-muted,#64748b); }
+.unified-journal-panel .journal-party-results .journal-customer-balance { padding-top:2px; }
+.unified-journal-panel .journal-party-selected input { width:100%; height:40px; border:1px solid var(--border-color,#dbe2ea); padding:0 9px; color:inherit; background:var(--input-bg,#fff); }

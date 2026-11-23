@@ -1,6 +1,6 @@
 import ShamsiDateInput from "../components/ShamsiDateInput";
 import { groupJournalPages, replaceJournalPage } from "../utils/journalPages";
-import { accountCurrency } from "../utils/partyAccounts";
+import { accountCurrency, partyAccountRows } from "../utils/partyAccounts";
 import { Link } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -21,6 +21,13 @@ const INITIAL_ROWS = 50;
 const makeInitialRows = () => Array.from({ length: INITIAL_ROWS }, () => emptyRow());
 const JEN = (number) => `JEN${String(number).padStart(5, "0")}`;
 const formatAmount = (value) => num(value).toLocaleString("en-US", { maximumFractionDigits: 6 });
+const customerBalanceText = (balance, currency) => {
+  const amount = formatAmount(Math.abs(balance));
+  if (balance > 0.000001) return `این مشتری به ما قرضدار است: ${amount} ${currency}`;
+  if (balance < -0.000001) return `ما به این مشتری قرضدار استیم: ${amount} ${currency}`;
+  return `حساب مشتری تصفیه است: 0 ${currency}`;
+};
+
 const defaultDetails = (row) => {
   const account = row.account.trim();
   const isDebit = num(row.debit) > 0;
@@ -40,7 +47,8 @@ function AccountPicker({ row, options, update, readOnly = false }) {
   const q = String(row.account || "").trim().toLowerCase();
   const matches = options.filter((option) => !q || `${option.name} ${option.searchText || ""} ${option.typeLabel}`.toLowerCase().includes(q)).slice(0, 30);
   const pick = (option) => { update({ ...row, account: option.name, partyKey: option.key }); setOpened(false); };
-  if (readOnly) return <input aria-label="نام اکونت" readOnly value={row.account} />;
+  const selected = options.find((option) => option.key === row.partyKey);
+  if (readOnly) return <div className="journal-party-selected"><input aria-label="نام اکونت" readOnly value={row.account} />{selected?.type === "customer" && <small className={`journal-customer-balance ${selected.balance > 0 ? "debtor" : selected.balance < 0 ? "creditor" : "settled"}`}>{customerBalanceText(selected.balance, selected.currency)}</small>}</div>;
   return <div className="journal-party-search" ref={holder} onBlur={(event) => { if (!holder.current?.contains(event.relatedTarget)) setOpened(false); }}>
     <div className="journal-party-input"><Search size={15}/><input aria-label="نام اکونت" autoComplete="off" value={row.account} placeholder="جستجوی اکونت یا حساب عمومی..." onFocus={() => setOpened(true)} onChange={(event) => { update({ ...row, account: event.target.value, partyKey: "" }); setOpened(true); setActive(0); }} onKeyDown={(event) => {
       if (event.key === "ArrowDown") { event.preventDefault(); setOpened(true); setActive((i) => Math.min(i + 1, matches.length - 1)); }
@@ -48,13 +56,16 @@ function AccountPicker({ row, options, update, readOnly = false }) {
       if (event.key === "Enter" && opened && matches[active]) { event.preventDefault(); pick(matches[active]); }
       if (event.key === "Escape") setOpened(false);
     }}/></div>
-    {opened && <div className="journal-party-results">{matches.length ? matches.map((option, index) => <button key={option.key} type="button" className={index === active ? "active" : ""} onMouseDown={(event) => event.preventDefault()} onMouseEnter={() => setActive(index)} onClick={() => pick(option)}><span><strong>{option.name}</strong><small>{option.typeLabel}</small></span></button>) : <div className="journal-no-result">حساب پیدا نشد. برای حساب عمومی می‌توانید نام را مستقیم وارد کنید.</div>}</div>}
+    {selected?.type === "customer" && <small className={`journal-customer-balance ${selected.balance > 0 ? "debtor" : selected.balance < 0 ? "creditor" : "settled"}`}>{customerBalanceText(selected.balance, selected.currency)}</small>}
+    {opened && <div className="journal-party-results">{matches.length ? matches.map((option, index) => <button key={option.key} type="button" className={index === active ? "active" : ""} onMouseDown={(event) => event.preventDefault()} onMouseEnter={() => setActive(index)} onClick={() => pick(option)}><span><strong>{option.name}</strong><small>{option.typeLabel}</small>{option.type === "customer" && <small className={`journal-customer-balance ${option.balance > 0 ? "debtor" : option.balance < 0 ? "creditor" : "settled"}`}>{customerBalanceText(option.balance, option.currency)}</small>}</span></button>) : <div className="journal-no-result">حساب پیدا نشد. برای حساب عمومی می‌توانید نام را مستقیم وارد کنید.</div>}</div>}
   </div>;
 }
 
 export default function CashJournal() {
   const [customers] = useJsonCollection("customerRegistry");
   const [sales] = useJsonCollection("salesRegister");
+  const [saleReturns] = useJsonCollection("saleReturns");
+  const [customerPayments] = useJsonCollection("customerPayments");
   const [expenseAccounts] = useJsonCollection("expenseAccounts");
   const [bankAccounts] = useJsonCollection("bankAccounts");
   const [entries, setEntries] = useJsonCollection("partyCashTransactions");
@@ -76,12 +87,18 @@ export default function CashJournal() {
   const customerAccounts = useMemo(() => new Map(customers.map((row) => [
     `customer:${row.id}`, accountCurrency(row.currency || row.currencyCode),
   ])), [customers]);
+  // Compute from the same financial sources as customer ledgers; do not count journal cash twice.
+  const customerBalances = useMemo(() => new Map(partyAccountRows({
+    type: "customer", parties: customers, invoices: sales,
+    returns: saleReturns, payments: customerPayments, journal: entries,
+  }).map((row) => [`customer:${row.party.id}:${row.currency}`, row.balance])),
+  [customers, sales, saleReturns, customerPayments, entries]);
   const options = useMemo(() => [
-    ...customers.filter((row) => customerAccounts.get(`customer:${row.id}`) === code).map((row) => ({ key: `customer:${row.id}`, name: customerName(row), searchText: [row.companyName, row.phone, row.mobile, row.contactNumber, row.id].filter(Boolean).join(" "), typeLabel: "مشتری" })),
+    ...customers.filter((row) => customerAccounts.get(`customer:${row.id}`) === code).map((row) => ({ key: `customer:${row.id}`, name: customerName(row), searchText: [row.companyName, row.phone, row.mobile, row.contactNumber, row.id].filter(Boolean).join(" "), typeLabel: "مشتری", type: "customer", currency: code, balance: customerBalances.get(`customer:${row.id}:${code}`) ?? 0 })),
     ...expenseAccounts.map((row) => ({ key: `expense:${row.id}`, name: row.name || row.accountName || "حساب مصرف", typeLabel: "حساب مصرف" })),
     ...bankAccounts.map((row) => ({ key: `bank:${row.id}`, name: row.accountName || row.bankName || row.name || "بانک", typeLabel: "بانک" })),
     { key: "general:cash", name: "دخل شرکت", typeLabel: "حساب عمومی" },
-  ].filter((option) => option.name), [customers, customerAccounts, code, expenseAccounts, bankAccounts]);
+  ].filter((option) => option.name), [customers, customerAccounts, customerBalances, code, expenseAccounts, bankAccounts]);
 
   // Existing records remain intact; only a new page receives a JEN number.
   const nextSequence = useMemo(() => Math.max(0, ...entries.map((entry) => {
