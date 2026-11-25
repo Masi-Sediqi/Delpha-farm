@@ -216,7 +216,7 @@ export default function ReceivablesBatch() {
   }, [collectionRows]);
 
   const totalText = Object.entries(totalByCurrency)
-    .map(([currency, value]) => `${num(value).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency}`)
+    .map(([currency, value]) => `${num(value).toLocaleString("en-US", { maximumFractionDigits: 2 })} ${currency}`)
     .join(" · ") || "0 AFN";
 
   const addCustomer = (customer) => {
@@ -364,7 +364,7 @@ export default function ReceivablesBatch() {
 
                 <div className={`payables-payment-balance ${state}`}>
                   <span>{t.balance}</span>
-                  <strong>{Math.abs(remainingBalance).toLocaleString(undefined, { maximumFractionDigits: 2 })} {customerCurrency(customer)}</strong>
+                  <strong>{Math.abs(remainingBalance).toLocaleString("en-US", { maximumFractionDigits: 2 })} {customerCurrency(customer)}</strong>
                   <small>{stateText}</small>
                 </div>
 
@@ -376,7 +376,7 @@ export default function ReceivablesBatch() {
                         if (node) amountRefs.current.set(id, node);
                         else amountRefs.current.delete(id);
                       }}
-                      type="number"
+                      type="number" lang="en"
                       min="0"
                       step="0.01"
                       value={amounts[id] ?? ""}
@@ -423,7 +423,7 @@ export default function ReceivablesBatch() {
                     <small>{customer.phone || customer.phoneNumber || customer.alternatePhone || customer.companyName || "—"}</small>
                   </span>
                   <span className="result-balance">
-                    {Math.abs(num(balanceMap.get(String(customer.id)))).toLocaleString(undefined, { maximumFractionDigits: 2 })} {customerCurrency(customer)}
+                    {Math.abs(num(balanceMap.get(String(customer.id)))).toLocaleString("en-US", { maximumFractionDigits: 2 })} {customerCurrency(customer)}
                   </span>
                   <span className="result-add"><Plus size={14} />{t.add}</span>
                 </button>

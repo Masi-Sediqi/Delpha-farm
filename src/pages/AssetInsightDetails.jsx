@@ -719,7 +719,7 @@ function AssetInsightDetails() {
                 <label>
                   Amount
                   <input
-                    type="number"
+                    type="number" lang="en"
                     min="0"
                     value={editRow.amount || ""}
                     onChange={(event) =>

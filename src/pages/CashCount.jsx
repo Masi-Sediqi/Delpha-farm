@@ -269,7 +269,7 @@ export default function CashCount() {
 
   const money = (value, currency) => {
     const digits = Math.max(0, Math.min(6, Number(decimalsMap?.[currency] ?? 2)));
-    return `${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits })} ${currency}`;
+    return `${Number(value || 0).toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits })} ${currency}`;
   };
 
   const physicalTotal = useMemo(() => form.breakdown.reduce((sum, item) => sum + numeric(item.value) * numeric(item.count), 0), [form.breakdown]);
@@ -440,8 +440,8 @@ export default function CashCount() {
               <div className="cash-count-denominations">
                 <div className="cash-count-denomination-head"><span>{t.denomination}</span><span>{t.count}</span><span>{t.total}</span></div>
                 {form.breakdown.map((item) => <div className="cash-count-denomination-row" key={item.value}>
-                  <strong>{item.value.toLocaleString()} {form.currency}</strong>
-                  <input type="number" min="0" step="1" value={item.count || ""} onChange={(event) => updateCount(item.value, event.target.value)} placeholder="0" />
+                  <strong>{item.value.toLocaleString("en-US")} {form.currency}</strong>
+                  <input type="number" lang="en" min="0" step="1" value={item.count || ""} onChange={(event) => updateCount(item.value, event.target.value)} placeholder="0" />
                   <b>{money(item.value * numeric(item.count), form.currency)}</b>
                 </div>)}
               </div>

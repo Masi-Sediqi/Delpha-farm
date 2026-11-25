@@ -433,7 +433,7 @@ function Settings() {
                   <div className="settings-exchange-input-row">
                     <span>{st.oneUnit.replace("{code}", item.key)}</span>
                     <input
-                      type="number"
+                      type="number" lang="en"
                       min="0"
                       step="any"
                       inputMode="decimal"
@@ -458,7 +458,7 @@ function Settings() {
               <div className="settings-pair-controls">
                 <label>{language === "en" ? "From" : "از"}<select value={rateFrom} onChange={(e) => { setRateFrom(e.target.value); setPairValue(""); }}>{exchangeCurrencies.map((code) => <option key={code}>{code}</option>)}</select></label>
                 <label>{language === "en" ? "To" : "به"}<select value={rateTo} onChange={(e) => { setRateTo(e.target.value); setPairValue(""); }}>{exchangeCurrencies.map((code) => <option key={code}>{code}</option>)}</select></label>
-                <label>{language === "en" ? "Rate for 1 unit" : "معادل یک واحد"}<input type="number" step="any" min="0" value={pairValue} placeholder={exchangeRate(exchangeRates, rateFrom, rateTo) ? rateText(exchangeRate(exchangeRates, rateFrom, rateTo)) : "—"} onChange={(e) => setPairValue(e.target.value)} /></label>
+                <label>{language === "en" ? "Rate for 1 unit" : "معادل یک واحد"}<input type="number" lang="en" step="any" min="0" value={pairValue} placeholder={exchangeRate(exchangeRates, rateFrom, rateTo) ? rateText(exchangeRate(exchangeRates, rateFrom, rateTo)) : "—"} onChange={(e) => setPairValue(e.target.value)} /></label>
                 <button type="button" className="settings-save" onClick={applyPair}>{language === "en" ? "Apply rate" : "اعمال نرخ"}</button>
               </div>
               <output dir="ltr">{exchangeRate(exchangeRates, rateFrom, rateTo) ? `1 ${rateFrom} = ${rateText(exchangeRate(exchangeRates, rateFrom, rateTo))} ${rateTo} · 1 ${rateTo} = ${rateText(exchangeRate(exchangeRates, rateTo, rateFrom))} ${rateFrom}` : "—"}</output>
@@ -492,7 +492,7 @@ function Settings() {
               ].map((item) => (
                 <label className="settings-decimal-card" key={item.key}>
                   <div><strong>{item.title}</strong><span>{item.code}</span></div>
-                  <input type="number" min="0" max="6" step="1" value={currencyDecimals[item.key]} onChange={(event) => {
+                  <input type="number" lang="en" min="0" max="6" step="1" value={currencyDecimals[item.key]} onChange={(event) => {
                     const value = Math.min(6, Math.max(0, Number.parseInt(event.target.value || "0", 10)));
                     setCurrencyDecimals((previous) => ({ ...previous, [item.key]: value }));
                   }} aria-label={`${item.title} ${st.decimalPlaces}`} />

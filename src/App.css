@@ -249,14 +249,17 @@ body.dark-mode tbody tr {
   flex-direction: column;
 }
 
-.app.sale-entry-fullscreen {
+.app.sale-entry-fullscreen,
+.app.purchase-entry-fullscreen {
   gap: 0;
   padding: 0;
 }
-.app.sale-entry-fullscreen > .sidebar {
+.app.sale-entry-fullscreen > .sidebar,
+.app.purchase-entry-fullscreen > .sidebar {
   display: none;
 }
-.app.sale-entry-fullscreen > .main {
+.app.sale-entry-fullscreen > .main,
+.app.purchase-entry-fullscreen > .main {
   width: 100%;
   height: 100vh;
   border: 0;
@@ -9581,15 +9584,18 @@ body[data-theme="soft-green"] #root, body[data-theme="soft-green"] .app, body[da
 body[data-theme="soft-green"] .sidebar, body[data-theme="soft-green"] .topbar {background:#075b47!important;color:#fff!important;border-color:#126f56!important;}
 body[data-theme="soft-green"] .sidebar a, body[data-theme="soft-green"] .sidebar button, body[data-theme="soft-green"] .topbar button {color:#fff;}
 
-/* A sale entry has no sidebar column; let its main panel use the full shell. */
-body[data-language] .app.sale-entry-fullscreen {
+/* Entry forms use the full shell without the sidebar column. */
+body[data-language] .app.sale-entry-fullscreen,
+body[data-language] .app.purchase-entry-fullscreen {
   display:grid !important;
   grid-template-columns:minmax(0,1fr) !important;
   gap:0 !important;
   padding:0 !important;
 }
-body[data-language] .app.sale-entry-fullscreen > .sidebar { display:none !important; }
-body[data-language] .app.sale-entry-fullscreen > .main {
+body[data-language] .app.sale-entry-fullscreen > .sidebar,
+body[data-language] .app.purchase-entry-fullscreen > .sidebar { display:none !important; }
+body[data-language] .app.sale-entry-fullscreen > .main,
+body[data-language] .app.purchase-entry-fullscreen > .main {
   grid-column:1 !important;
   grid-row:1 !important;
   width:100% !important;

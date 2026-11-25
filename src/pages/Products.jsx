@@ -882,7 +882,7 @@ function Products() {
                         </label>
                         <label className="sales-product-field">
                           <span>{t.cartonSize}</span>
-                          <input type="number" min="1" step="1" name="cartonSize" value={item.cartonSize} onChange={(event) => updateBatchForm(index, event)} placeholder={t.cartonPlaceholder} />
+                          <input type="number" lang="en" min="1" step="1" name="cartonSize" value={item.cartonSize} onChange={(event) => updateBatchForm(index, event)} placeholder={t.cartonPlaceholder} />
                         </label>
                         <label className="sales-product-field">
                           <span>{t.madeIn}</span>
@@ -906,7 +906,7 @@ function Products() {
                         </label>
                         <label className="sales-product-field">
                           <span>{t.purchasePrice}</span>
-                          <input type="number" min="0" step="any" name="purchasePrice" value={item.purchasePrice} onChange={(event) => updateBatchForm(index, event)} placeholder={t.pricePlaceholder} />
+                          <input type="number" lang="en" min="0" step="any" name="purchasePrice" value={item.purchasePrice} onChange={(event) => updateBatchForm(index, event)} placeholder={t.pricePlaceholder} />
                         </label>
                         <label className="sales-product-field">
                           <span>{t.currency}</span>
@@ -916,7 +916,7 @@ function Products() {
                         </label>
                         <label className="sales-product-field">
                           <span>{t.salePrice}</span>
-                          <input type="number" min="0" step="any" name="salePrice" value={item.salePrice} onChange={(event) => updateBatchForm(index, event)} placeholder={t.pricePlaceholder} />
+                          <input type="number" lang="en" min="0" step="any" name="salePrice" value={item.salePrice} onChange={(event) => updateBatchForm(index, event)} placeholder={t.pricePlaceholder} />
                         </label>
                       </div>
                     </section>

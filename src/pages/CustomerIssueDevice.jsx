@@ -3696,7 +3696,7 @@ if (!movementsSaved) {
                           <label className="customer-issue-buyback-price">
                             <span>Purchase Price</span>
                             <input
-                              type="number"
+                              type="number" lang="en"
                               min="0"
                               value={
                                 buybackForm.purchasePrices[transferId] ??
@@ -3737,7 +3737,7 @@ if (!movementsSaved) {
                 <label>
                   Paid Amount
                   <input
-                    type="number"
+                    type="number" lang="en"
                     min="0"
                     max={buybackTotal}
                     value={buybackForm.paidAmount}
@@ -4325,7 +4325,7 @@ if (!movementsSaved) {
                       <div className="customer-issue-form-group">
                         <label>Return Amount</label>
                         <input
-                          type="number"
+                          type="number" lang="en"
                           min="0"
                           name="depositRefundAmount"
                           value={formData.depositRefundAmount}
@@ -4590,7 +4590,7 @@ if (!movementsSaved) {
                             >
                               <small>Quantity</small>
                               <input
-                                type="number"
+                                type="number" lang="en"
                                 min="1"
                                 max={asset.availableQuantity ?? asset.quantity ?? 1}
                                 value={
@@ -4705,7 +4705,7 @@ if (!movementsSaved) {
                             <label className="customer-issue-selected-price">
                               <span>Quantity</span>
                               <input
-                                type="number"
+                                type="number" lang="en"
                                 min="1"
                                 max={asset.availableQuantity ?? asset.quantity ?? 1}
                                 value={asset.quantity || 1}
@@ -5295,7 +5295,7 @@ if (!movementsSaved) {
                       </label>
 
                       <input
-                        type="number"
+                        type="number" lang="en"
                         min="0"
                         name="salePrice"
                         value={
@@ -5313,7 +5313,7 @@ if (!movementsSaved) {
                       </label>
 
                       <input
-                        type="number"
+                        type="number" lang="en"
                         min="0"
                         name="paidAmount"
                         value={
@@ -5368,7 +5368,7 @@ if (!movementsSaved) {
                       </label>
 
                       <input
-                        type="number"
+                        type="number" lang="en"
                         min="0"
                         name="depositAmount"
                         value={

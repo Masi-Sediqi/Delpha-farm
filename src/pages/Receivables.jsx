@@ -11,7 +11,7 @@ import { notify } from "../utils/notify";
 import "./Payables.css";
 
 const languageKey = "afghan-power-language";
-const money = (value) => Math.max(Number(value || 0), 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
+const money = (value) => Math.max(Number(value || 0), 0).toLocaleString("en-US", { maximumFractionDigits: 2 });
 const tr = {
   en: {
     title: "Receivables",
@@ -140,7 +140,7 @@ export default function Receivables() {
   }, [actionMenu]);
 
   const rows = useMemo(() => partyAccountRows({type:"customer",parties:customers,invoices:sales,returns:saleReturns,payments:customerPayments,journal:partyCashTransactions}).filter(row=>row.balance>0).map(row=>({customer:row.party,invoiceCount:row.invoices.length,totalSold:row.total,totalPaid:row.paid,balance:row.balance,currency:row.currency,focusSale:row.focusInvoice})), [customers,sales,saleReturns,customerPayments,partyCashTransactions]);
-  const totalText = field => [...new Set(rows.map(row=>row.currency))].map(code=>`${rows.filter(row=>row.currency===code).reduce((sum,row)=>sum+(field==="balance"?Math.max(row[field],0):row[field]),0).toLocaleString(undefined,{maximumFractionDigits:2})} ${code}`).join(" · ") || "—";
+  const totalText = field => [...new Set(rows.map(row=>row.currency))].map(code=>`${rows.filter(row=>row.currency===code).reduce((sum,row)=>sum+(field==="balance"?Math.max(row[field],0):row[field]),0).toLocaleString("en-US",{maximumFractionDigits:2})} ${code}`).join(" · ") || "—";
 
   const accountFilters = useAccountStatementFilters(rows, "customer");
   const filteredRows = rows.filter(accountFilters.filter).filter(({ customer }) => {
@@ -226,7 +226,7 @@ export default function Receivables() {
                     <td>{invoiceCount}</td>
                     <td>{money(totalSold)}</td>
                     <td>{money(totalPaid)}</td>
-                    <td><span className="payables-balance-pill">{Number(balance).toLocaleString(undefined,{maximumFractionDigits:2})}</span></td>
+                    <td><span className="payables-balance-pill">{Number(balance).toLocaleString("en-US",{maximumFractionDigits:2})}</span></td>
                     <td><span className="payables-currency-pill">{currency}</span></td>
                     <td className="payables-actions-cell" onClick={(event) => event.stopPropagation()}>
                       <button type="button" className="payables-action-trigger" onClick={(event) => openMenu(event, row)} aria-label={t.menu} title={t.menu}><MoreHorizontal size={16} /></button>

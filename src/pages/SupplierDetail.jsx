@@ -301,14 +301,14 @@ const formatCurrencyMap = (map, { absolute = false } = {}) => {
     .filter((code) => Math.abs(numeric(map?.[code])) > 0.000001)
     .map((code) => {
       const value = absolute ? Math.abs(numeric(map[code])) : numeric(map[code]);
-      return `${value.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${code}`;
+      return `${value.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${code}`;
     });
   return rows.join(" · ") || "0 AFN";
 };
 const SupplierCurrencyStack = ({ values, absolute = false }) => {
   const order = ["AFN", "USD", "INR", "EUR"];
   const rows = order.filter((code) => Math.abs(numeric(values?.[code])) > 0.000001);
-  return <span className="supplier-currency-stack">{(rows.length ? rows : ["AFN"]).map((code) => <span key={code}><b>{(absolute ? Math.abs(numeric(values?.[code])) : numeric(values?.[code])).toLocaleString(undefined, { maximumFractionDigits: 2 })}</b><em>{code}</em></span>)}</span>;
+  return <span className="supplier-currency-stack">{(rows.length ? rows : ["AFN"]).map((code) => <span key={code}><b>{(absolute ? Math.abs(numeric(values?.[code])) : numeric(values?.[code])).toLocaleString("en-US", { maximumFractionDigits: 2 })}</b><em>{code}</em></span>)}</span>;
 };
 const today = () => new Date().toISOString().slice(0, 10);
 const normalizeDate = (value) => {
@@ -681,7 +681,7 @@ export default function SupplierDetail() {
               </label>
               <label>
                 <span><BadgeDollarSign size={15} />{t.amount}</span>
-                <input autoFocus type="number" min="0" step="any" value={paymentForm.amount} onChange={(e) => setPaymentForm((prev) => ({ ...prev, amount: e.target.value }))} />
+                <input autoFocus type="number" lang="en" min="0" step="any" value={paymentForm.amount} onChange={(e) => setPaymentForm((prev) => ({ ...prev, amount: e.target.value }))} />
               </label>
               <label>
                 <span><Wallet size={15} />{t.unit}</span>
@@ -720,7 +720,6 @@ export default function SupplierDetail() {
         </div>
         <div className="supplier-detail-hero-actions">
           <button type="button" className="supplier-detail-print-btn" onClick={printLedger}><Printer size={17} />{t.print}</button>
-          <button type="button" className="supplier-detail-payment-btn" onClick={openPaymentModal}><Wallet size={18} />{t.payment}</button>
         </div>
       </div>
 
@@ -739,7 +738,7 @@ export default function SupplierDetail() {
             <div><span><UserRound size={15} />{t.contact}</span><strong>{supplier.contactPerson || "—"}</strong></div>
             <div><span><Phone size={15} />{t.phone}</span><strong dir="ltr">{supplier.phone || "—"}</strong></div>
             <div><span><MapPin size={15} />{t.address}</span><strong>{supplier.address || "—"}</strong></div>
-            <div><span><Wallet size={15} />{t.openingBalance}</span><strong>{numeric(supplier.openingBalance).toLocaleString()} {currencyCode}</strong></div>
+            <div><span><Wallet size={15} />{t.openingBalance}</span><strong>{numeric(supplier.openingBalance).toLocaleString("en-US")} {currencyCode}</strong></div>
             <div><span><FileText size={15} />{t.ledgerPage}</span><strong>{supplier.ledgerPage || "—"}</strong></div>
             <div className="notes"><span><FileText size={15} />{t.notes}</span><strong>{supplier.notes || "—"}</strong></div>
           </div>
@@ -751,7 +750,6 @@ export default function SupplierDetail() {
               ["ledger", t.tabLedger],
               ["purchases", t.tabPurchases],
               ["payments", t.tabPayments],
-              ["activity", t.tabActivity],
             ].map(([key, label]) => (
               <button key={key} type="button" role="tab" aria-selected={activeTab === key} className={activeTab === key ? "active" : ""} onClick={() => setActiveTab(key)}>{label}</button>
             ))}
@@ -772,10 +770,10 @@ export default function SupplierDetail() {
                           <td>{formatDateTime(entry.date)}</td><td><span className="supplier-ledger-reference">{entry.reference || "—"}</span></td>
                           <td><span className={`supplier-ledger-description ${entry.kind || ""} ${entry.kind === "purchase" ? "is-purchase-badge" : entry.kind === "manual-payment" ? (entry.debit > 0 ? "is-withdrawal-badge" : "is-payment-badge") : ""}`}>{entry.description}</span></td>
                           <td className="supplier-ledger-items">{isPurchase ? (entry.itemCount || 0) : "—"}</td>
-                          <td className={entry.kind === "manual-payment" && entry.debit > 0 ? "supplier-money-in" : "supplier-ledger-debit"}>{isPurchase ? `${numeric(entry.purchaseTotal).toLocaleString(undefined,{maximumFractionDigits:2})} ${entry.currency}` : (entry.debit ? `${entry.debit.toLocaleString(undefined,{maximumFractionDigits:2})} ${entry.currency}` : "—")}</td>
-                          <td className="supplier-ledger-credit">{isPurchase ? `${numeric(entry.paidAtPurchase).toLocaleString(undefined,{maximumFractionDigits:2})} ${entry.currency}` : (entry.credit ? `${entry.credit.toLocaleString(undefined,{maximumFractionDigits:2})} ${entry.currency}` : "—")}</td>
-                          <td className={remainingValue > 0 ? "supplier-ledger-remaining owe" : "supplier-ledger-remaining"}>{isPurchase ? `${remainingValue.toLocaleString(undefined,{maximumFractionDigits:2})} ${entry.currency}` : "—"}</td>
-                          <td className={entry.balance > 0 ? "supplier-ledger-balance owe" : entry.balance < 0 ? "supplier-ledger-balance receivable" : "supplier-ledger-balance"}>{Math.abs(entry.balance).toLocaleString(undefined,{maximumFractionDigits:2})} {entry.currency}</td>
+                          <td className={entry.kind === "manual-payment" && entry.debit > 0 ? "supplier-money-in" : "supplier-ledger-debit"}>{isPurchase ? `${numeric(entry.purchaseTotal).toLocaleString("en-US",{maximumFractionDigits:2})} ${entry.currency}` : (entry.debit ? `${entry.debit.toLocaleString("en-US",{maximumFractionDigits:2})} ${entry.currency}` : "—")}</td>
+                          <td className="supplier-ledger-credit">{isPurchase ? `${numeric(entry.paidAtPurchase).toLocaleString("en-US",{maximumFractionDigits:2})} ${entry.currency}` : (entry.credit ? `${entry.credit.toLocaleString("en-US",{maximumFractionDigits:2})} ${entry.currency}` : "—")}</td>
+                          <td className={remainingValue > 0 ? "supplier-ledger-remaining owe" : "supplier-ledger-remaining"}>{isPurchase ? `${remainingValue.toLocaleString("en-US",{maximumFractionDigits:2})} ${entry.currency}` : "—"}</td>
+                          <td className={entry.balance > 0 ? "supplier-ledger-balance owe" : entry.balance < 0 ? "supplier-ledger-balance receivable" : "supplier-ledger-balance"}>{Math.abs(entry.balance).toLocaleString("en-US",{maximumFractionDigits:2})} {entry.currency}</td>
                           <td><div className="supplier-ledger-actions">
                             {entry.kind === "manual-payment" && <button type="button" className="print" onClick={() => printPayment(entry)} aria-label={t.print} title={t.print}><Printer size={13} strokeWidth={2} /></button>}
                             {entry.kind === "purchase" && <button type="button" className="locked-purchase" onClick={() => editLedgerEntry(entry)} aria-label={t.purchase} title={t.purchase}><Lock size={13} strokeWidth={2} /></button>}
@@ -797,7 +795,7 @@ export default function SupplierDetail() {
             <div className="supplier-tab-panel">
               <div className="supplier-detail-section-head ledger"><ReceiptText size={18} /><div><h2>{t.tabPurchases}</h2><p>{purchaseRows.length}</p></div></div>
               <div className="supplier-detail-ledger-wrap"><table><thead><tr><th>{t.date}</th><th>{t.reference}</th><th>{t.items}</th><th>{t.purchaseTotal}</th><th>{t.paidAtPurchase}</th><th>{t.remainingDebt}</th></tr></thead><tbody>
-                {purchaseRows.length ? purchaseRows.map((entry) => <tr key={`purchase-tab-${entry.id}`}><td>{formatDateTime(entry.date)}</td><td><span className="supplier-ledger-reference">{entry.reference || "—"}</span></td><td className="supplier-ledger-items">{entry.itemCount || 0}</td><td>{numeric(entry.purchaseTotal).toLocaleString(undefined,{maximumFractionDigits:2})} {entry.currency}</td><td>{numeric(entry.paidAtPurchase).toLocaleString(undefined,{maximumFractionDigits:2})} {entry.currency}</td><td className={numeric(entry.remainingAmount)>0?"supplier-ledger-remaining owe":"supplier-ledger-remaining"}>{numeric(entry.remainingAmount).toLocaleString(undefined,{maximumFractionDigits:2})} {entry.currency}</td></tr>) : <tr><td colSpan="6" className="supplier-ledger-empty">{t.noPurchases}</td></tr>}
+                {purchaseRows.length ? purchaseRows.map((entry) => <tr key={`purchase-tab-${entry.id}`}><td>{formatDateTime(entry.date)}</td><td><span className="supplier-ledger-reference">{entry.reference || "—"}</span></td><td className="supplier-ledger-items">{entry.itemCount || 0}</td><td>{numeric(entry.purchaseTotal).toLocaleString("en-US",{maximumFractionDigits:2})} {entry.currency}</td><td>{numeric(entry.paidAtPurchase).toLocaleString("en-US",{maximumFractionDigits:2})} {entry.currency}</td><td className={numeric(entry.remainingAmount)>0?"supplier-ledger-remaining owe":"supplier-ledger-remaining"}>{numeric(entry.remainingAmount).toLocaleString("en-US",{maximumFractionDigits:2})} {entry.currency}</td></tr>) : <tr><td colSpan="6" className="supplier-ledger-empty">{t.noPurchases}</td></tr>}
               </tbody></table></div>
             </div>
           )}
@@ -806,19 +804,11 @@ export default function SupplierDetail() {
             <div className="supplier-tab-panel">
               <div className="supplier-detail-section-head ledger"><Wallet size={18} /><div><h2>{t.tabPayments}</h2><p>{paymentRows.length}</p></div></div>
               <div className="supplier-detail-ledger-wrap"><table><thead><tr><th>{t.date}</th><th>{t.reference}</th><th>{t.description}</th><th>{t.amountPaid}</th><th>{t.actions}</th></tr></thead><tbody>
-                {paymentRows.length ? paymentRows.map((entry) => <tr key={`payment-tab-${entry.id}`}><td>{formatDateTime(entry.date)}</td><td><span className="supplier-ledger-reference">{entry.reference || "—"}</span></td><td>{entry.description}</td><td className={entry.debit > 0 ? "supplier-money-in" : "supplier-ledger-credit"}>{numeric(entry.credit || entry.debit).toLocaleString(undefined,{maximumFractionDigits:2})} {entry.currency || currencyCode}</td><td><div className="supplier-ledger-actions"><button type="button" className="print" onClick={() => printPayment(entry)} aria-label={t.print}><Printer size={13}/></button><button type="button" className="edit" onClick={() => editLedgerEntry(entry)} aria-label={t.edit}><Edit3 size={14}/></button><button type="button" className="delete" onClick={() => deleteLedgerEntry(entry)} aria-label={t.delete}><Trash2 size={13}/></button></div></td></tr>) : <tr><td colSpan="5" className="supplier-ledger-empty">{t.noPayments}</td></tr>}
+                {paymentRows.length ? paymentRows.map((entry) => <tr key={`payment-tab-${entry.id}`}><td>{formatDateTime(entry.date)}</td><td><span className="supplier-ledger-reference">{entry.reference || "—"}</span></td><td>{entry.description}</td><td className={entry.debit > 0 ? "supplier-money-in" : "supplier-ledger-credit"}>{numeric(entry.credit || entry.debit).toLocaleString("en-US",{maximumFractionDigits:2})} {entry.currency || currencyCode}</td><td><div className="supplier-ledger-actions"><button type="button" className="print" onClick={() => printPayment(entry)} aria-label={t.print}><Printer size={13}/></button><button type="button" className="edit" onClick={() => editLedgerEntry(entry)} aria-label={t.edit}><Edit3 size={14}/></button><button type="button" className="delete" onClick={() => deleteLedgerEntry(entry)} aria-label={t.delete}><Trash2 size={13}/></button></div></td></tr>) : <tr><td colSpan="5" className="supplier-ledger-empty">{t.noPayments}</td></tr>}
               </tbody></table></div>
             </div>
           )}
 
-          {activeTab === "activity" && (
-            <div className="supplier-tab-panel">
-              <div className="supplier-detail-section-head ledger"><FileText size={18} /><div><h2>{t.tabActivity}</h2><p>{activityRows.length}</p></div></div>
-              <div className="supplier-activity-list">
-                {activityRows.length ? activityRows.map((entry) => <div className="supplier-activity-item" key={`activity-${entry.id}`}><span className={`supplier-activity-dot ${entry.kind}`}></span><div><strong>{entry.description}</strong><small>{formatDateTime(entry.date)} · {entry.reference || "—"}</small></div><b>{entry.kind === "purchase" ? numeric(entry.purchaseTotal).toLocaleString(undefined,{maximumFractionDigits:2}) : numeric(entry.credit || entry.debit).toLocaleString(undefined,{maximumFractionDigits:2})} {entry.currency || currencyCode}</b></div>) : <div className="supplier-ledger-empty">{t.noActivity}</div>}
-              </div>
-            </div>
-          )}
         </section>
       </div>
 
@@ -837,7 +827,7 @@ export default function SupplierDetail() {
               </div>
               <table className="supplier-print-table">
                 <thead><tr><th>{t.date}</th><th>{t.reference}</th><th>{t.description}</th><th>{t.purchaseTotal}</th><th>{t.paidAtPurchase}</th><th>{t.remainingDebt}</th><th>{t.balance}</th></tr></thead>
-                <tbody>{ledger.map((entry)=><tr key={`print-${entry.id}`}><td>{formatDateTime(entry.date)}</td><td>{entry.reference||"—"}</td><td>{entry.description}</td><td>{entry.kind==="purchase"?`${numeric(entry.purchaseTotal).toLocaleString()} ${entry.currency}`:entry.debit?`${entry.debit.toLocaleString()} ${entry.currency}`:"—"}</td><td>{entry.kind==="purchase"?`${numeric(entry.paidAtPurchase).toLocaleString()} ${entry.currency}`:entry.credit?`${entry.credit.toLocaleString()} ${entry.currency}`:"—"}</td><td>{entry.kind==="purchase"?`${numeric(entry.remainingAmount).toLocaleString()} ${entry.currency}`:"—"}</td><td>{Math.abs(entry.balance).toLocaleString()} {entry.currency}</td></tr>)}</tbody>
+                <tbody>{ledger.map((entry)=><tr key={`print-${entry.id}`}><td>{formatDateTime(entry.date)}</td><td>{entry.reference||"—"}</td><td>{entry.description}</td><td>{entry.kind==="purchase"?`${numeric(entry.purchaseTotal).toLocaleString("en-US")} ${entry.currency}`:entry.debit?`${entry.debit.toLocaleString("en-US")} ${entry.currency}`:"—"}</td><td>{entry.kind==="purchase"?`${numeric(entry.paidAtPurchase).toLocaleString("en-US")} ${entry.currency}`:entry.credit?`${entry.credit.toLocaleString("en-US")} ${entry.currency}`:"—"}</td><td>{entry.kind==="purchase"?`${numeric(entry.remainingAmount).toLocaleString("en-US")} ${entry.currency}`:"—"}</td><td>{Math.abs(entry.balance).toLocaleString("en-US")} {entry.currency}</td></tr>)}</tbody>
               </table>
               <div className="supplier-print-total"><span>{balanceLabel}</span><strong>{formatCurrencyMap(currentBalances, { absolute: true })}</strong></div>
             </>
@@ -851,7 +841,7 @@ export default function SupplierDetail() {
                 <div><span>{t.reference}</span><strong>{printMode.entry?.reference || printMode.payment?.reference || "—"}</strong></div>
                 <div><span>{t.paymentDate}</span><strong>{formatDateTime(printMode.payment?.date || printMode.payment?.createdAt)}</strong></div>
                 <div><span>{t.transactionType}</span><strong>{numeric(printMode.payment?.amount) < 0 ? t.debitWithdrawal : t.creditPayment}</strong></div>
-                <div><span>{t.amount}</span><strong>{Math.abs(numeric(printMode.payment?.amount)).toLocaleString(undefined,{maximumFractionDigits:2})} {String(printMode.payment?.currency || currencyCode).toUpperCase()}</strong></div>
+                <div><span>{t.amount}</span><strong>{Math.abs(numeric(printMode.payment?.amount)).toLocaleString("en-US",{maximumFractionDigits:2})} {String(printMode.payment?.currency || currencyCode).toUpperCase()}</strong></div>
                 <div><span>{t.paymentDescription}</span><strong>{printMode.payment?.description || t.manualPayment}</strong></div>
               </div>
               <div className="supplier-payment-receipt-signatures"><span>{t.supplierLabel}: ____________________</span><span>{t.payment}: ____________________</span></div>

@@ -1893,6 +1893,7 @@ body.dark-mode .purchase-supplier-info-panel{
   }
 }
 
+
 /* Single-line purchase items on desktop. Keep every field aligned with its label. */
 @media (min-width: 1101px) {
  .purchase-entry-page .purchase-item-row.purchase-keyboard-row {
@@ -2169,4 +2170,72 @@ body.dark-mode .purchase-supplier-info-panel{
   width: 100%;
   min-height: 0;
   height: 36px;
+}
+
+/* Keep the supplier picker, info button and add button aligned in the purchase header. */
+.purchase-entry-page .purchase-top-meta-supplier .purchase-select-with-add.purchase-supplier-control:not(.is-quick-entry) {
+  display: grid !important;
+  grid-template-columns: 34px minmax(0, 1fr) 34px !important;
+  align-items: stretch !important;
+  gap: 6px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+.purchase-entry-page .purchase-top-meta-supplier .purchase-supplier-control:not(.is-quick-entry) > .purchase-supplier-info-toggle {
+  grid-column: 1 !important;
+  width: 34px !important;
+  min-width: 34px !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  padding: 0 !important;
+  display: grid !important;
+  place-items: center !important;
+}
+.purchase-entry-page .purchase-top-meta-supplier .purchase-supplier-control:not(.is-quick-entry) > .supplier-search-select {
+  grid-column: 2 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+.purchase-entry-page .purchase-top-meta-supplier .purchase-supplier-control:not(.is-quick-entry) .supplier-search-trigger {
+  width: 100% !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  box-sizing: border-box !important;
+  padding: 0 9px !important;
+  border-radius: 7px !important;
+}
+.purchase-entry-page .purchase-top-meta-supplier .purchase-supplier-control:not(.is-quick-entry) > .purchase-inline-supplier-add {
+  grid-column: 3 !important;
+  width: 34px !important;
+  min-width: 34px !important;
+  height: 34px !important;
+  min-height: 34px !important;
+}
+@media (max-width: 640px) {
+  .purchase-entry-page .purchase-top-meta-supplier .purchase-supplier-control:not(.is-quick-entry) > .purchase-supplier-info-toggle,
+  .purchase-entry-page .purchase-top-meta-supplier .purchase-supplier-control:not(.is-quick-entry) .supplier-search-trigger,
+  .purchase-entry-page .purchase-top-meta-supplier .purchase-supplier-control:not(.is-quick-entry) > .purchase-inline-supplier-add {
+    height: 38px !important;
+    min-height: 38px !important;
+  }
+}
+
+/* Keep the purchase column labels visible while the items page scrolls. */
+.app.purchase-entry-fullscreen .page-content {
+  overflow-x: auto !important;
+}
+.purchase-entry-page.purchase-carton-entry .purchase-items-card,
+.purchase-entry-page.purchase-carton-entry .purchase-carton-grid {
+  overflow: visible !important;
+}
+.purchase-entry-page.purchase-carton-entry .purchase-carton-grid-head {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 30 !important;
+  box-shadow: 0 3px 8px rgba(15, 23, 42, .16);
+}
+@media (min-width: 1101px) and (max-width: 1450px) {
+  .purchase-entry-page.purchase-carton-entry .purchase-items-list {
+    min-width: 0 !important;
+  }
 }

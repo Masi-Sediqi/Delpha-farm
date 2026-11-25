@@ -437,7 +437,7 @@ export default function CashFlow() {
   const decimals = Math.max(0, Math.min(6, Number(currencyDecimals?.[activeCurrency] ?? 2)));
   const money = (value, currency = activeCurrency) => {
     const digits = Math.max(0, Math.min(6, Number(currencyDecimals?.[currency] ?? 2)));
-    return `${numeric(value).toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits })} ${currency}`;
+    return `${numeric(value).toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits })} ${currency}`;
   };
 
   const openCreate = () => {
@@ -522,9 +522,9 @@ export default function CashFlow() {
       </div>
 
       <section className="cash-flow-stats">
-        <article><span className="cash-flow-stat-icon in"><ArrowDownLeft size={20} /></span><div><small>{t.cashIn}</small><strong>{summary.cashIn.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })} <em>{activeCurrency}</em></strong></div></article>
-        <article><span className="cash-flow-stat-icon out"><ArrowUpRight size={20} /></span><div><small>{t.cashOut}</small><strong>{summary.cashOut.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })} <em>{activeCurrency}</em></strong></div></article>
-        <article className={balance < 0 ? "negative" : "positive"}><span className="cash-flow-stat-icon balance"><Wallet size={20} /></span><div><small>{t.balance}</small><strong>{Math.abs(balance).toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })} <em>{activeCurrency}</em></strong></div></article>
+        <article><span className="cash-flow-stat-icon in"><ArrowDownLeft size={20} /></span><div><small>{t.cashIn}</small><strong>{summary.cashIn.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })} <em>{activeCurrency}</em></strong></div></article>
+        <article><span className="cash-flow-stat-icon out"><ArrowUpRight size={20} /></span><div><small>{t.cashOut}</small><strong>{summary.cashOut.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })} <em>{activeCurrency}</em></strong></div></article>
+        <article className={balance < 0 ? "negative" : "positive"}><span className="cash-flow-stat-icon balance"><Wallet size={20} /></span><div><small>{t.balance}</small><strong>{Math.abs(balance).toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })} <em>{activeCurrency}</em></strong></div></article>
       </section>
 
       <section className="cash-flow-card">
@@ -577,7 +577,7 @@ export default function CashFlow() {
                 <label><span><CalendarDays size={15} />{t.entryDate}</span><ShamsiDateInput value={form.date} onChange={(event) => setForm((current) => ({ ...current, date: event.target.value }))} /></label>
                 <label><span>{t.entryType}</span><select value={form.direction} onChange={(event) => setForm((current) => ({ ...current, direction: event.target.value }))}><option value="in">{t.receipt}</option><option value="out">{t.payment}</option></select></label>
                 <label><span>{t.currency}</span><select value={form.currency} onChange={(event) => setForm((current) => ({ ...current, currency: event.target.value }))}>{currencyCodes.map((code) => <option key={code} value={code}>{code}</option>)}</select></label>
-                <label><span>{t.amount}</span><input type="number" min="0" step="0.01" value={form.amount} onChange={(event) => setForm((current) => ({ ...current, amount: event.target.value }))} autoFocus /></label>
+                <label><span>{t.amount}</span><input type="number" lang="en" min="0" step="0.01" value={form.amount} onChange={(event) => setForm((current) => ({ ...current, amount: event.target.value }))} autoFocus /></label>
                 <label className="cash-flow-span-2"><span>{t.accountReference}</span><input value={form.reference} onChange={(event) => setForm((current) => ({ ...current, reference: event.target.value }))} placeholder={t.accountPlaceholder} /></label>
                 <label className="cash-flow-span-2"><span>{t.notes}</span><textarea rows="4" value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} placeholder={t.notesPlaceholder} /></label>
               </div>

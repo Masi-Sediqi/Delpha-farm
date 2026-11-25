@@ -548,7 +548,7 @@ export default function GeneralJournal() {
                 <label><span>{t.date}</span><ShamsiDateInput  value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required /></label>
                 <label><span>{t.reference}</span><input value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} placeholder={t.refPlaceholder} /></label>
                 <label><span>{t.currency}</span><select value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })}>{currencies.map((code) => <option key={code}>{code}</option>)}</select></label>
-                <label><span>{t.amount}</span><input type="number" min="0" step="any" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required /></label>
+                <label><span>{t.amount}</span><input type="number" lang="en" min="0" step="any" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required /></label>
                 <label><span>{t.debitAccount}</span><input value={form.debitAccount} onChange={(e) => setForm({ ...form, debitAccount: e.target.value })} placeholder={t.accountPlaceholder} required /></label>
                 <label><span>{t.creditAccount}</span><input value={form.creditAccount} onChange={(e) => setForm({ ...form, creditAccount: e.target.value })} placeholder={t.accountPlaceholder} required /></label>
                 <label className="general-journal-wide"><span>{t.description}</span><textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder={t.descriptionPlaceholder} /></label>

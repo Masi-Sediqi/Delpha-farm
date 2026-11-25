@@ -216,7 +216,7 @@ export default function PayablesBatch() {
   }, [paymentRows]);
 
   const totalText = Object.entries(totalByCurrency)
-    .map(([currency, value]) => `${num(value).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency}`)
+    .map(([currency, value]) => `${num(value).toLocaleString("en-US", { maximumFractionDigits: 2 })} ${currency}`)
     .join(" · ") || "0 AFN";
 
   const addSupplier = (supplier) => {
@@ -363,7 +363,7 @@ export default function PayablesBatch() {
 
                 <div className={`payables-payment-balance ${state}`}>
                   <span>{t.balance}</span>
-                  <strong>{Math.abs(remainingBalance).toLocaleString(undefined, { maximumFractionDigits: 2 })} {supplierCurrency(supplier)}</strong>
+                  <strong>{Math.abs(remainingBalance).toLocaleString("en-US", { maximumFractionDigits: 2 })} {supplierCurrency(supplier)}</strong>
                   <small>{stateText}</small>
                 </div>
 
@@ -375,7 +375,7 @@ export default function PayablesBatch() {
                         if (node) amountRefs.current.set(id, node);
                         else amountRefs.current.delete(id);
                       }}
-                      type="number"
+                      type="number" lang="en"
                       min="0"
                       step="0.01"
                       value={amounts[id] ?? ""}
@@ -422,7 +422,7 @@ export default function PayablesBatch() {
                     <small>{supplier.phone || supplier.phoneNumber || supplier.contactPerson || "—"}</small>
                   </span>
                   <span className="result-balance">
-                    {Math.abs(num(balanceMap.get(String(supplier.id)))).toLocaleString(undefined, { maximumFractionDigits: 2 })} {supplierCurrency(supplier)}
+                    {Math.abs(num(balanceMap.get(String(supplier.id)))).toLocaleString("en-US", { maximumFractionDigits: 2 })} {supplierCurrency(supplier)}
                   </span>
                   <span className="result-add"><Plus size={14} />{t.add}</span>
                 </button>

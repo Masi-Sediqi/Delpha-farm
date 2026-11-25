@@ -432,7 +432,7 @@ export default function CustomersRegistry({ modalOnly = false, onClose, onSaved,
                   </td>
                   <td><strong>{item.phone}</strong></td>
                   <td>{item.address || "—"}</td>
-                  <td>{Number(item.openingBalance || 0).toLocaleString()}</td>
+                  <td>{Number(item.openingBalance || 0).toLocaleString("en-US")}</td>
                   <td><span className={`customer-status ${item.status}`}>{item.status === "inactive" ? t.inactive : t.active}</span></td>
                   <td>
                     <div className="customer-row-actions">
@@ -501,7 +501,7 @@ export default function CustomersRegistry({ modalOnly = false, onClose, onSaved,
                   <div className="customer-form-grid">
                     <label className="customer-field customer-span-4"><span>{t.currency}</span><select value={form.currency} onChange={(e) => change("currency", e.target.value)}><option value="AFN">AFN</option><option value="USD">USD</option><option value="INR">INR</option><option value="EUR">EUR</option></select></label>
                     <label className="customer-field customer-span-4"><span>{t.balanceSide}</span><select value={form.balanceSide} onChange={(e) => change("balanceSide", e.target.value)}><option value="ours">{t.ourReceivable}</option><option value="customer">{t.customerReceivable}</option></select></label>
-                    <label className="customer-field customer-span-4"><span>{t.openingBalance}</span><input type="number" min="0" step="any" value={form.openingBalance} onChange={(e) => change("openingBalance", e.target.value)} /></label>
+                    <label className="customer-field customer-span-4"><span>{t.openingBalance}</span><input type="number" lang="en" min="0" step="any" value={form.openingBalance} onChange={(e) => change("openingBalance", e.target.value)} /></label>
                     <label className="customer-field customer-span-4"><span>{t.openingBalanceDate}</span><ShamsiDateInput required={Number(form.openingBalance || 0) !== 0} value={form.openingBalanceDate} onChange={(e) => change("openingBalanceDate", e.target.value)} /></label>
                     <label className="customer-field customer-span-4"><span>{t.status}</span><select value={form.status} onChange={(e) => change("status", e.target.value)}><option value="active">{t.active}</option><option value="inactive">{t.inactive}</option></select></label>
                     <label className="customer-field customer-span-2"><span>{t.notes}</span><textarea rows="4" value={form.notes} onChange={(e) => change("notes", e.target.value)} /></label>

@@ -94,7 +94,7 @@ export default function SaleReturns() {
    <div className="returns-head"><div><h1>{t.title}</h1><p>{t.sub}</p></div><button className="returns-primary" type="button" disabled={!loaded} onClick={open}><RotateCcw size={17}/>{t.new}</button></div>
    <section className="returns-card"><div className="returns-card-head"><h2>{t.records}</h2><div className="returns-search"><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t.search}/></div></div>
      <div className="returns-table"><table><thead><tr><th>{t.returnNo}</th><th>{t.date}</th><th>{t.customer}</th><th>{t.invoice}</th><th>{t.total}</th><th>نوع تصفیه</th></tr></thead>
-       <tbody>{filtered.map((row) => <tr key={row.id}><td>{row.returnNo}</td><td>{formatAfghanDate(row.returnDate)}</td><td>{customerName(row.customerId)}</td><td>{sales.find((item) => String(item.id) === String(row.saleId))?.invoiceNumber || "—"}</td><td>{n(row.totalAmount).toLocaleString(undefined, { maximumFractionDigits: 6 })} {row.currency || sales.find((item) => String(item.id) === String(row.saleId))?.currency || "AFN"}</td><td>{row.refundMode === "cash" ? "پرداخت نقدی" : "ثبت در حساب مشتری"}</td></tr>)}
+       <tbody>{filtered.map((row) => <tr key={row.id}><td>{row.returnNo}</td><td>{formatAfghanDate(row.returnDate)}</td><td>{customerName(row.customerId)}</td><td>{sales.find((item) => String(item.id) === String(row.saleId))?.invoiceNumber || "—"}</td><td>{n(row.totalAmount).toLocaleString("en-US", { maximumFractionDigits: 6 })} {row.currency || sales.find((item) => String(item.id) === String(row.saleId))?.currency || "AFN"}</td><td>{row.refundMode === "cash" ? "پرداخت نقدی" : "ثبت در حساب مشتری"}</td></tr>)}
        {!filtered.length && <tr><td colSpan="6" className="returns-empty">{t.empty}</td></tr>}</tbody></table></div>
    </section>
    {show && createPortal(<div className="returns-overlay"><form className="returns-modal" onSubmit={save}>
@@ -107,13 +107,13 @@ export default function SaleReturns() {
        <label className="returns-wide"><span>تصفیهٔ مبلغ برگشت</span><select value={refundMode} onChange={(e) => setRefundMode(e.target.value)}><option value="account">ثبت در حساب مشتری</option><option value="cash">پرداخت نقدی به مشتری</option></select></label>
        <label className="returns-wide"><span>{t.notes}</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t.notesPh}/></label>
      </div><div className="returns-items"><h3>{t.returnItems}</h3>{rows.map((row) => <div className="returns-line sale-return-line" key={row.saleLineId}>
-       <strong>{row.productName}<small>قیمت خالص فی دانه: {row.netPricePerPiece.toLocaleString(undefined, { maximumFractionDigits: 6 })} {currency}</small></strong>
+       <strong>{row.productName}<small>قیمت خالص فی دانه: {row.netPricePerPiece.toLocaleString("en-US", { maximumFractionDigits: 6 })} {currency}</small></strong>
        <label><span>{t.sold} (دانه)</span><input value={row.quantity} readOnly/></label>
        <label><span>{t.returned} (دانه)</span><input value={row.alreadyReturned} readOnly/></label>
        <label><span>واحد برگشت</span><select value={row.returnUnit} onChange={(e) => changeRow(row.saleLineId, { returnUnit: e.target.value, returnQty: "" })}><option value="piece">دانه</option>{row.cartonSize > 1 && <option value="carton">کارتن ({row.cartonSize} دانه)</option>}</select></label>
-       <label><span>{t.qty}</span><input type="number" min="0" step="any" max={row.remainingPieces / (row.returnUnit === "carton" ? row.cartonSize : 1)} value={row.returnQty} onChange={(e) => changeRow(row.saleLineId, { returnQty: e.target.value })}/></label>
-       <output>مبلغ برگشت: {returnAmount(row).toLocaleString(undefined, { maximumFractionDigits: 6 })} {currency}</output>
-     </div>)}</div><div className="returns-summary"><span>{t.total}</span><strong>{total.toLocaleString(undefined, { maximumFractionDigits: 6 })} {currency}</strong></div>
+       <label><span>{t.qty}</span><input type="number" lang="en" min="0" step="any" max={row.remainingPieces / (row.returnUnit === "carton" ? row.cartonSize : 1)} value={row.returnQty} onChange={(e) => changeRow(row.saleLineId, { returnQty: e.target.value })}/></label>
+       <output>مبلغ برگشت: {returnAmount(row).toLocaleString("en-US", { maximumFractionDigits: 6 })} {currency}</output>
+     </div>)}</div><div className="returns-summary"><span>{t.total}</span><strong>{total.toLocaleString("en-US", { maximumFractionDigits: 6 })} {currency}</strong></div>
      <p>{refundMode === "account" ? "مبلغ از باقی مشتری کم می‌شود؛ اگر حساب مشتری طلبکار شود، در تادیات نمایش داده می‌شود." : "مبلغ برگشت همزمان به‌عنوان پرداخت نقدی به مشتری در روزنامچه ثبت می‌شود."}</p>
      </div><div className="returns-footer"><button type="button" className="returns-secondary" disabled={busy} onClick={() => setShow(false)}>{t.cancel}</button><button type="submit" className="returns-primary" disabled={busy || !loaded}>{busy ? "در حال ثبت..." : t.save}</button></div>
    </form></div>, document.body)}

@@ -554,7 +554,7 @@ export default function Suppliers() {
 
             <div className="supplier-field">
               <label htmlFor="supplier-opening-balance">{t.openingBalance}</label>
-              <input id="supplier-opening-balance" type="number" min="0" step="any" value={form.openingBalance} onChange={(e) => updateField("openingBalance", e.target.value)} />
+              <input id="supplier-opening-balance" type="number" lang="en" min="0" step="any" value={form.openingBalance} onChange={(e) => updateField("openingBalance", e.target.value)} />
             </div>
 
             <div className="supplier-field">
@@ -628,7 +628,7 @@ export default function Suppliers() {
                   <td>{t[item.currency === "pkr" ? "inr" : item.currency] || String(item.currency === "pkr" ? "INR" : (item.currency || "—")).toUpperCase()}</td>
                   <td>{item.contactPerson || "—"}</td>
                   <td className="supplier-phone-cell"><span dir="ltr">{item.phone || "—"}</span></td>
-                  <td className={Number(item.openingBalance || 0) < 0 ? "negative-balance" : ""}>{Number(item.openingBalance || 0).toLocaleString()}</td>
+                  <td className={Number(item.openingBalance || 0) < 0 ? "negative-balance" : ""}>{Number(item.openingBalance || 0).toLocaleString("en-US")}</td>
                   <td><span className={`supplier-status ${item.status === "inactive" ? "inactive" : "active"}`}>{item.status === "inactive" ? t.inactive : t.active}</span></td>
                   <td>
                     <div className="suppliers-actions">

@@ -728,7 +728,7 @@ export default function Repair() {
                 <label>
                   Repair Cost
                   <input
-                    type="number"
+                    type="number" lang="en"
                     min="0"
                     value={resultForm.repairCost}
                     onChange={(event) => setResultForm((previous) => ({ ...previous, repairCost: event.target.value }))}
@@ -795,7 +795,7 @@ export default function Repair() {
                     <label>
                       Deposit Amount
                       <input
-                        type="number"
+                        type="number" lang="en"
                         min="0"
                         value={resultForm.depositAmount}
                         onChange={(event) => setResultForm((previous) => ({ ...previous, depositAmount: event.target.value }))}

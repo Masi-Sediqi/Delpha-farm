@@ -275,7 +275,7 @@ const productFormLabels = {
   ps: { tablet: "ټابلیټ", capsule: "کپسول", syrup: "شربت", suspension: "سسپنشن", injection: "پیچکاري", ampoule: "امپول", vial: "ویال", cream: "کریم", ointment: "مرهم", gel: "جېل", drops: "څاڅکي", "eye-drops": "د سترګو څاڅکي", "ear-drops": "د غوږ څاڅکي", "nasal-spray": "د پوزې سپرې", inhaler: "انهیلر", powder: "پوډر", sachet: "ساشه", suppository: "شیاف", lozenge: "مکیدونکی ټابلیټ", solution: "محلول", lotion: "لوشن", soap: "طبي صابون", shampoo: "طبي شامپو", "oral-solution": "خوراکي محلول" },
 };
 const numeric = (value) => Math.max(Number(value || 0), 0);
-const money = (value) => numeric(value).toLocaleString(undefined, { maximumFractionDigits: 2 });
+const money = (value) => numeric(value).toLocaleString("en-US", { maximumFractionDigits: 2 });
 
 
 function GaugePointer() {

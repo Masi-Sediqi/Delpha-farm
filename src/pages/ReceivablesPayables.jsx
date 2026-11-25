@@ -109,7 +109,7 @@ const translations = {
 };
 
 function amount(value, currency) {
-  return `${Math.abs(numeric(value)).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency}`;
+  return `${Math.abs(numeric(value)).toLocaleString("en-US", { maximumFractionDigits: 2 })} ${currency}`;
 }
 
 export default function ReceivablesPayables() {

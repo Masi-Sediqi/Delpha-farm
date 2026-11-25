@@ -84,7 +84,7 @@ export default function PrintReceivablesBatch() {
         </header>
         <div className="pb-print-meta">
           <div><span>{t.count}</span><b>{batch.payments?.length || 0}</b></div>
-          {Object.entries(totals).map(([code, value]) => <div key={code}><span>{t.total} {code}</span><b>{Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</b></div>)}
+          {Object.entries(totals).map(([code, value]) => <div key={code}><span>{t.total} {code}</span><b>{Number(value || 0).toLocaleString("en-US", { maximumFractionDigits: 2 })}</b></div>)}
         </div>
         <table>
           <thead><tr><th>#</th><th>{t.customer}</th><th>{t.currency}</th><th>{t.amount}</th><th>{t.note}</th></tr></thead>
@@ -94,7 +94,7 @@ export default function PrintReceivablesBatch() {
                 <td>{index + 1}</td>
                 <td>{row.customerName || "—"}</td>
                 <td>{row.currency || "AFN"}</td>
-                <td>{Number(row.amount || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
+                <td>{Number(row.amount || 0).toLocaleString("en-US", { maximumFractionDigits: 2 })}</td>
                 <td>{row.note || "—"}</td>
               </tr>
             ))}

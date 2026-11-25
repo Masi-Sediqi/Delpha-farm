@@ -587,7 +587,7 @@ export default function SalesRegister() {
     return acc;
   }, { sales: 0, paid: 0, due: 0 });
 
-  const money = (value) => numeric(value).toLocaleString(undefined, { maximumFractionDigits: 2 });
+  const money = (value) => numeric(value).toLocaleString("en-US", { maximumFractionDigits: 2 });
   const saleDiscount = (sale) => {
     if (sale?.discountAmount !== undefined && sale?.discountAmount !== null) return numeric(sale.discountAmount);
     if (Array.isArray(sale?.items)) {
@@ -842,10 +842,10 @@ export default function SalesRegister() {
                           <label><span>{t.group}</span><input value={item.group} readOnly /></label>
                           <label><span>{t.cartonSize}</span><input value={item.cartonSize} readOnly /></label>
                           <label><span>{t.currentStock}</span><input value={item.currentStock} readOnly /></label>
-                          <label><span>{t.cartons}</span><input type="number" min="0" step="1" value={item.cartons} onChange={(e) => updateItem(item.productId, "cartons", e.target.value)} /></label>
-                          <label><span>{t.quantity}</span><input type="number" min="1" max={item.currentStock} step="1" value={item.quantity} onChange={(e) => updateItem(item.productId, "quantity", e.target.value)} /></label>
-                          <label><span>{t.salePrice} ({currencyCode(item.currency)})</span><input type="number" min="0" step="0.01" value={item.salePrice} onChange={(e) => updateItem(item.productId, "salePrice", e.target.value)} /></label>
-                          <label><span>{t.discount}</span><input type="number" min="0" step="0.01" value={item.discount} onChange={(e) => updateItem(item.productId, "discount", e.target.value)} /></label>
+                          <label><span>{t.cartons}</span><input type="number" lang="en" min="0" step="1" value={item.cartons} onChange={(e) => updateItem(item.productId, "cartons", e.target.value)} /></label>
+                          <label><span>{t.quantity}</span><input type="number" lang="en" min="1" max={item.currentStock} step="1" value={item.quantity} onChange={(e) => updateItem(item.productId, "quantity", e.target.value)} /></label>
+                          <label><span>{t.salePrice} ({currencyCode(item.currency)})</span><input type="number" lang="en" min="0" step="0.01" value={item.salePrice} onChange={(e) => updateItem(item.productId, "salePrice", e.target.value)} /></label>
+                          <label><span>{t.discount}</span><input type="number" lang="en" min="0" step="0.01" value={item.discount} onChange={(e) => updateItem(item.productId, "discount", e.target.value)} /></label>
                           <label className="sales-register-line-total"><span>{t.lineTotal}</span><input value={lineTotal(item).toFixed(2)} readOnly /></label>
                         </div>
                       </article>
@@ -860,7 +860,7 @@ export default function SalesRegister() {
                   <button type="button" className={paymentMode === "cash" ? "active" : ""} onClick={() => setPaymentMode("cash")}><Wallet size={16} />{t.cash}</button>
                   <button type="button" className={paymentMode === "installment" ? "active" : ""} onClick={() => setPaymentMode("installment")}><CreditCard size={16} />{t.installment}</button>
                 </div>
-                <label><span>{t.paidAmount}</span><input type="number" min="0" step="0.01" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} /></label>
+                <label><span>{t.paidAmount}</span><input type="number" lang="en" min="0" step="0.01" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} /></label>
                 {customerId && availableCredit > 0 && <div className="sales-register-balance"><span>{t.availableCredit}</span><strong>{money(availableCredit)}</strong></div>}
                 {creditApplied > 0 && <div className="sales-register-balance"><span>{t.creditApplied}</span><strong>{money(creditApplied)}</strong></div>}
                 <div className="sales-register-balance"><span>{t.remaining}</span><strong>{money(remaining)}</strong></div>

@@ -1102,7 +1102,7 @@ const syncLinkedAssetName = async (previousAsset, nextAsset) => {
                 <div className="asset-form-group">
                   <label>Alert Quantity</label>
                   <input
-                    type="number"
+                    type="number" lang="en"
                     min="0"
                     name="alertQuantity"
                     value={formData.alertQuantity}

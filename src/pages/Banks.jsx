@@ -369,7 +369,7 @@ export default function Banks() {
     notify(t.transactionDeleted, "success");
   };
 
-  const money = (value, currency = currencyFilter === "ALL" ? "" : currencyFilter) => `${(Number(value || 0) || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}${currency ? ` ${currency}` : ""}`;
+  const money = (value, currency = currencyFilter === "ALL" ? "" : currencyFilter) => `${(Number(value || 0) || 0).toLocaleString("en-US", { maximumFractionDigits: 2 })}${currency ? ` ${currency}` : ""}`;
 
   return (
     <div className="banks-page" dir={direction}>
@@ -444,7 +444,7 @@ export default function Banks() {
                 <label><span>{t.accountName}</span><input value={bankForm.accountName} onChange={(e) => setBankForm({ ...bankForm, accountName: e.target.value })} /></label>
                 <label><span>{t.accountNumber}</span><input value={bankForm.accountNumber} onChange={(e) => setBankForm({ ...bankForm, accountNumber: e.target.value })} /></label>
                 <label><span>{t.currency}</span><select value={bankForm.currency} onChange={(e) => setBankForm({ ...bankForm, currency: e.target.value })}>{currencies.map((code) => <option key={code} value={code}>{code}</option>)}</select></label>
-                <label><span>{t.openingBalance}</span><input type="number" step="any" value={bankForm.openingBalance} onChange={(e) => setBankForm({ ...bankForm, openingBalance: e.target.value })} /></label>
+                <label><span>{t.openingBalance}</span><input type="number" lang="en" step="any" value={bankForm.openingBalance} onChange={(e) => setBankForm({ ...bankForm, openingBalance: e.target.value })} /></label>
                 <label><span>{t.status}</span><select value={bankForm.status} onChange={(e) => setBankForm({ ...bankForm, status: e.target.value })}><option value="Active">{t.active}</option><option value="Inactive">{t.inactive}</option></select></label>
                 <label className="bank-form-full"><span>{t.notes}</span><textarea rows="3" value={bankForm.notes} onChange={(e) => setBankForm({ ...bankForm, notes: e.target.value })} /></label>
               </div>
@@ -454,7 +454,7 @@ export default function Banks() {
                 <label><span>{t.bank}</span><select value={transactionForm.bankId} onChange={(e) => setTransactionForm({ ...transactionForm, bankId: e.target.value })}><option value="">{t.selectBank}</option>{banks.filter((bank) => bank.status !== "Inactive").map((bank) => <option key={bank.id} value={bank.id}>{bank.bankName} — {bank.accountName} ({bank.currency})</option>)}</select></label>
                 <label><span>{t.date}</span><ShamsiDateInput value={transactionForm.date} onChange={(event) => setTransactionForm({ ...transactionForm, date: event.target.value })} /></label>
                 <label><span>{t.type}</span><select value={transactionForm.type} onChange={(e) => setTransactionForm({ ...transactionForm, type: e.target.value })}><option value="deposit">{t.deposit}</option><option value="withdrawal">{t.withdrawal}</option></select></label>
-                <label><span>{t.amount}</span><input type="number" step="any" min="0" value={transactionForm.amount} onChange={(e) => setTransactionForm({ ...transactionForm, amount: e.target.value })} /></label>
+                <label><span>{t.amount}</span><input type="number" lang="en" step="any" min="0" value={transactionForm.amount} onChange={(e) => setTransactionForm({ ...transactionForm, amount: e.target.value })} /></label>
                 <label className="bank-form-full"><span>{t.reference}</span><input value={transactionForm.reference} onChange={(e) => setTransactionForm({ ...transactionForm, reference: e.target.value })} /></label>
                 <label className="bank-form-full"><span>{t.description}</span><textarea rows="3" value={transactionForm.description} onChange={(e) => setTransactionForm({ ...transactionForm, description: e.target.value })} /></label>
               </div>

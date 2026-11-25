@@ -322,7 +322,7 @@ const currencyRows = (map, { absolute = false } = {}) => {
 const CurrencyStack = ({ values, absolute = false }) => (
   <span className="customer-currency-stack">
     {currencyRows(values, { absolute }).map(({ code, value }) => (
-      <span key={code}><b>{value.toLocaleString(undefined, { maximumFractionDigits: 2 })}</b><em>{code}</em></span>
+      <span key={code}><b>{value.toLocaleString("en-US", { maximumFractionDigits: 2 })}</b><em>{code}</em></span>
     ))}
   </span>
 );
@@ -404,7 +404,7 @@ export default function CustomerDetail() {
         date: customer?.openingBalanceDate || customer?.createdAt || "",
         recordedAt: "",
         reference: "OPENING",
-        description: `${t.systemOpening} · ${numeric(openingBalance).toLocaleString()} ${currencyCode}`,
+        description: `${t.systemOpening} · ${numeric(openingBalance).toLocaleString("en-US")} ${currencyCode}`,
         kind: "opening",
         currency: currencyCode,
         debit: openingBalance > 0 ? openingBalance : 0,
@@ -431,7 +431,7 @@ export default function CustomerDetail() {
         recordedAt: sale.createdAt || sale.updatedAt || "",
         reference: sale.invoiceNumber || sale.id,
         description: [
-          `${t.systemSale} · ${sale.invoiceNumber || sale.id || "—"} · ${saleTotal.toLocaleString()} ${normalizeCurrency(sale.currency || customer?.currency || currencyCode)}`,
+          `${t.systemSale} · ${sale.invoiceNumber || sale.id || "—"} · ${saleTotal.toLocaleString("en-US")} ${normalizeCurrency(sale.currency || customer?.currency || currencyCode)}`,
           sale.notes,
         ].filter(Boolean).join(" — "),
         kind: "sale",
@@ -457,7 +457,7 @@ export default function CustomerDetail() {
         recordedAt: item.createdAt || item.updatedAt || "",
         reference: item.returnNo || item.id,
         description: [
-          `${t.systemSaleReturn} · ${item.returnNo || item.id || "—"} · ${numeric(item.totalAmount).toLocaleString()} ${normalizeCurrency(item.currency || linkedSale?.currency || customer?.currency || currencyCode)}`,
+          `${t.systemSaleReturn} · ${item.returnNo || item.id || "—"} · ${numeric(item.totalAmount).toLocaleString("en-US")} ${normalizeCurrency(item.currency || linkedSale?.currency || customer?.currency || currencyCode)}`,
           item.notes,
         ].filter(Boolean).join(" — "),
         kind: "sale-return",
@@ -479,7 +479,7 @@ export default function CustomerDetail() {
         recordedAt: payment.createdAt || payment.updatedAt || "",
         reference: payment.reference || `PAY-${String(payment.id).slice(-6)}`,
         description: [
-          `${t.systemPayment} · ${payment.reference || `PAY-${String(payment.id).slice(-6)}`} · ${numeric(payment.amount).toLocaleString()} ${normalizeCurrency(payment.currency || customer?.currency || currencyCode)}`,
+          `${t.systemPayment} · ${payment.reference || `PAY-${String(payment.id).slice(-6)}`} · ${numeric(payment.amount).toLocaleString("en-US")} ${normalizeCurrency(payment.currency || customer?.currency || currencyCode)}`,
           payment.description,
         ].filter(Boolean).join(" — "),
         kind: "manual-payment",
@@ -503,7 +503,7 @@ export default function CustomerDetail() {
         recordedAt: payment.createdAt || payment.updatedAt || "",
         reference: payment.reference || payment.id,
         description: [
-          `${payment.direction === "in" ? t.systemPayment : t.systemCashTransaction} · ${payment.reference || payment.id || "—"} · ${amount.toLocaleString()} ${normalizeCurrency(payment.currency || currencyCode)}`,
+          `${payment.direction === "in" ? t.systemPayment : t.systemCashTransaction} · ${payment.reference || payment.id || "—"} · ${amount.toLocaleString("en-US")} ${normalizeCurrency(payment.currency || currencyCode)}`,
           payment.description,
         ].filter(Boolean).join(" — "),
         kind: "cash-journal",
@@ -775,7 +775,7 @@ export default function CustomerDetail() {
               </label>
               <label>
                 <span><BadgeDollarSign size={15} />{t.amount}</span>
-                <input autoFocus type="number" min="0" step="any" value={paymentForm.amount} onChange={(e) => setPaymentForm((prev) => ({ ...prev, amount: e.target.value }))} />
+                <input autoFocus type="number" lang="en" min="0" step="any" value={paymentForm.amount} onChange={(e) => setPaymentForm((prev) => ({ ...prev, amount: e.target.value }))} />
               </label>
               <label>
                 <span><BadgeDollarSign size={15} />{t.currency}</span>
@@ -846,8 +846,8 @@ export default function CustomerDetail() {
                   <div><span><Mail size={15} />{t.email}</span><strong>{customer.email || "—"}</strong></div>
                   {customer.customerType === "business" && <div><span><Building2 size={15} />{t.company}</span><strong>{customer.companyName || "—"}</strong></div>}
                   <div><span><MapPin size={15} />{t.address}</span><strong>{fullAddress}</strong></div>
-                  <div><span><Wallet size={15} />{t.openingBalance}</span><strong>{numeric(customer.openingBalance).toLocaleString()} {currencyCode}</strong></div>
-                  <div><span><BadgeDollarSign size={15} />{t.creditLimit}</span><strong>{numeric(customer.creditLimit).toLocaleString()} {currencyCode}</strong></div>
+                  <div><span><Wallet size={15} />{t.openingBalance}</span><strong>{numeric(customer.openingBalance).toLocaleString("en-US")} {currencyCode}</strong></div>
+                  <div><span><BadgeDollarSign size={15} />{t.creditLimit}</span><strong>{numeric(customer.creditLimit).toLocaleString("en-US")} {currencyCode}</strong></div>
                   <div className="notes"><span><FileText size={15} />{t.notes}</span><strong>{customer.notes || "—"}</strong></div>
                 </div>
               </div>
@@ -866,10 +866,10 @@ export default function CustomerDetail() {
                         <td>{formatDateTime(entry.date, entry.recordedAt || entry.date)}</td>
                         <td><span className="customer-ledger-reference">{entry.reference || "—"}</span></td>
                         <td><span title={entry.description} className={`customer-ledger-description ${entry.kind || ""}`}>{entry.description}</span></td>
-                        <td className="customer-ledger-debit">{entry.debit ? `${entry.debit.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${entry.currency}` : "—"}</td>
-                        <td className="customer-ledger-credit">{entry.credit ? <span className="customer-ledger-badge paid">{entry.credit.toLocaleString(undefined, { maximumFractionDigits: 2 })} {entry.currency}</span> : "—"}</td>
-                        <td className="customer-ledger-remaining">{entry.kind === "sale" ? entry.overpaid > 0 ? <span className="customer-ledger-badge paid customer-ledger-advance">{numeric(entry.overpaid).toLocaleString(undefined, { maximumFractionDigits: 2 })} {entry.currency}</span> : <span className={`customer-ledger-badge remaining ${numeric(entry.remaining) <= 0 ? "settled" : ""}`}>{numeric(entry.remaining).toLocaleString(undefined, { maximumFractionDigits: 2 })} {entry.currency}</span> : "—"}</td>
-                        <td className={entry.balance > 0 ? "customer-ledger-balance receivable" : entry.balance < 0 ? "customer-ledger-balance owe" : "customer-ledger-balance"}><span>{Math.abs(entry.balance).toLocaleString(undefined, { maximumFractionDigits: 2 })} {entry.currency}</span><small>{entry.balance > 0 ? t.customerOwes : entry.balance < 0 ? t.youOweCustomer : t.settled}</small></td>
+                        <td className="customer-ledger-debit">{entry.debit ? `${entry.debit.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${entry.currency}` : "—"}</td>
+                        <td className="customer-ledger-credit">{entry.credit ? <span className="customer-ledger-badge paid">{entry.credit.toLocaleString("en-US", { maximumFractionDigits: 2 })} {entry.currency}</span> : "—"}</td>
+                        <td className="customer-ledger-remaining">{entry.kind === "sale" ? entry.overpaid > 0 ? <span className="customer-ledger-badge paid customer-ledger-advance">{numeric(entry.overpaid).toLocaleString("en-US", { maximumFractionDigits: 2 })} {entry.currency}</span> : <span className={`customer-ledger-badge remaining ${numeric(entry.remaining) <= 0 ? "settled" : ""}`}>{numeric(entry.remaining).toLocaleString("en-US", { maximumFractionDigits: 2 })} {entry.currency}</span> : "—"}</td>
+                        <td className={entry.balance > 0 ? "customer-ledger-balance receivable" : entry.balance < 0 ? "customer-ledger-balance owe" : "customer-ledger-balance"}><span>{Math.abs(entry.balance).toLocaleString("en-US", { maximumFractionDigits: 2 })} {entry.currency}</span><small>{entry.balance > 0 ? t.customerOwes : entry.balance < 0 ? t.youOweCustomer : t.settled}</small></td>
                         <td><div className="customer-ledger-actions">
                           {entry.kind === "manual-payment" && <button type="button" className="edit" onClick={() => editLedgerEntry(entry)} aria-label={t.edit} title={t.edit}><Edit3 size={14} /></button>}
                           {entry.kind === "manual-payment" && <button type="button" className="delete" onClick={() => deleteLedgerEntry(entry)} aria-label={t.delete} title={t.delete}><Trash2 size={14} /></button>}
@@ -888,7 +888,7 @@ export default function CustomerDetail() {
             <div className="customer-tab-panel">
               <div className="customer-detail-section-head ledger"><ShoppingCart size={18} /><div><h2>{t.tabSales}</h2><p>{saleRows.length}</p></div></div>
               <div className="customer-detail-ledger-wrap"><table><thead><tr><th>{t.date}</th><th>{t.reference}</th><th>{t.items}</th><th>{t.saleTotal}</th><th>{t.paidAtSale}</th><th>{t.remainingDebt}</th></tr></thead><tbody>
-                {saleRows.length ? saleRows.map((sale) => <tr key={`sale-tab-${sale.id}`}><td>{formatDateTime(sale.saleDate || sale.createdAt)}</td><td><span className="customer-ledger-reference">{sale.invoiceNumber || sale.id || "—"}</span></td><td>{numeric(sale.itemCount || (sale.items || []).length)}</td><td className="customer-ledger-debit">{numeric(sale.totalAmount).toLocaleString(undefined,{maximumFractionDigits:2})} {normalizeCurrency(sale.currency || customer?.currency || currencyCode)}</td><td className="customer-ledger-credit">{numeric(sale.paidAmount).toLocaleString(undefined,{maximumFractionDigits:2})} {normalizeCurrency(sale.currency || customer?.currency || currencyCode)}</td><td className={numeric(sale.remainingAmount)>0?"customer-ledger-remaining owe":"customer-ledger-remaining"}>{numeric(sale.remainingAmount).toLocaleString(undefined,{maximumFractionDigits:2})} {normalizeCurrency(sale.currency || customer?.currency || currencyCode)}</td></tr>) : <tr><td colSpan="6" className="customer-ledger-empty">{t.noSales}</td></tr>}
+                {saleRows.length ? saleRows.map((sale) => <tr key={`sale-tab-${sale.id}`}><td>{formatDateTime(sale.saleDate || sale.createdAt)}</td><td><span className="customer-ledger-reference">{sale.invoiceNumber || sale.id || "—"}</span></td><td>{numeric(sale.itemCount || (sale.items || []).length)}</td><td className="customer-ledger-debit">{numeric(sale.totalAmount).toLocaleString("en-US",{maximumFractionDigits:2})} {normalizeCurrency(sale.currency || customer?.currency || currencyCode)}</td><td className="customer-ledger-credit">{numeric(sale.paidAmount).toLocaleString("en-US",{maximumFractionDigits:2})} {normalizeCurrency(sale.currency || customer?.currency || currencyCode)}</td><td className={numeric(sale.remainingAmount)>0?"customer-ledger-remaining owe":"customer-ledger-remaining"}>{numeric(sale.remainingAmount).toLocaleString("en-US",{maximumFractionDigits:2})} {normalizeCurrency(sale.currency || customer?.currency || currencyCode)}</td></tr>) : <tr><td colSpan="6" className="customer-ledger-empty">{t.noSales}</td></tr>}
               </tbody></table></div>
             </div>
           )}
@@ -897,7 +897,7 @@ export default function CustomerDetail() {
             <div className="customer-tab-panel">
               <div className="customer-detail-section-head ledger"><Wallet size={18} /><div><h2>{t.tabPayments}</h2><p>{paymentRows.length}</p></div></div>
               <div className="customer-detail-ledger-wrap"><table><thead><tr><th>{t.date}</th><th>{t.reference}</th><th>{t.paymentSource}</th><th>{t.description}</th><th>{t.amountPaid}</th><th>{t.actions}</th></tr></thead><tbody>
-                {paymentRows.length ? paymentRows.map((entry) => <tr key={`payment-tab-${entry.id}`}><td>{formatDateTime(entry.date)}</td><td><span className="customer-ledger-reference">{entry.reference || "—"}</span></td><td><span className={`customer-ledger-description ${entry.kind}`}>{entry.kind === "sale-payment" ? t.salePayment : t.manualPayment}</span></td><td>{entry.description}</td><td className="customer-ledger-credit">{numeric(entry.amount).toLocaleString(undefined,{maximumFractionDigits:2})} {entry.currency}</td><td><div className="customer-ledger-actions">{entry.kind === "manual-payment" && <button type="button" className="edit" onClick={() => editLedgerEntry({ ...entry, kind: "manual-payment" })} aria-label={t.edit}><Edit3 size={14}/></button>}{entry.kind === "manual-payment" && <button type="button" className="delete" onClick={() => deleteLedgerEntry({ ...entry, kind: "manual-payment" })} aria-label={t.delete}><Trash2 size={14}/></button>}</div></td></tr>) : <tr><td colSpan="6" className="customer-ledger-empty">{t.noPayments}</td></tr>}
+                {paymentRows.length ? paymentRows.map((entry) => <tr key={`payment-tab-${entry.id}`}><td>{formatDateTime(entry.date)}</td><td><span className="customer-ledger-reference">{entry.reference || "—"}</span></td><td><span className={`customer-ledger-description ${entry.kind}`}>{entry.kind === "sale-payment" ? t.salePayment : t.manualPayment}</span></td><td>{entry.description}</td><td className="customer-ledger-credit">{numeric(entry.amount).toLocaleString("en-US",{maximumFractionDigits:2})} {entry.currency}</td><td><div className="customer-ledger-actions">{entry.kind === "manual-payment" && <button type="button" className="edit" onClick={() => editLedgerEntry({ ...entry, kind: "manual-payment" })} aria-label={t.edit}><Edit3 size={14}/></button>}{entry.kind === "manual-payment" && <button type="button" className="delete" onClick={() => deleteLedgerEntry({ ...entry, kind: "manual-payment" })} aria-label={t.delete}><Trash2 size={14}/></button>}</div></td></tr>) : <tr><td colSpan="6" className="customer-ledger-empty">{t.noPayments}</td></tr>}
               </tbody></table></div>
             </div>
           )}
@@ -919,7 +919,7 @@ export default function CustomerDetail() {
             <div className="customer-tab-panel">
               <div className="customer-detail-section-head ledger"><FileText size={18} /><div><h2>{t.tabActivity}</h2><p>{activityRows.length}</p></div></div>
               <div className="customer-activity-list">
-                {activityRows.length ? activityRows.map((entry) => <div className="customer-activity-item" key={entry.id}><span className={`customer-activity-dot ${entry.kind}`}></span><div><strong>{entry.description}</strong><small>{formatDateTime(entry.date)} · {entry.reference || "—"}</small></div><b>{numeric(entry.amount).toLocaleString(undefined,{maximumFractionDigits:2})} {entry.currency}</b></div>) : <div className="customer-ledger-empty">{t.noActivity}</div>}
+                {activityRows.length ? activityRows.map((entry) => <div className="customer-activity-item" key={entry.id}><span className={`customer-activity-dot ${entry.kind}`}></span><div><strong>{entry.description}</strong><small>{formatDateTime(entry.date)} · {entry.reference || "—"}</small></div><b>{numeric(entry.amount).toLocaleString("en-US",{maximumFractionDigits:2})} {entry.currency}</b></div>) : <div className="customer-ledger-empty">{t.noActivity}</div>}
               </div>
             </div>
           )}

@@ -297,6 +297,7 @@ function App() {
     ? "route-dashboard"
     : `route-${location.pathname.replace(/^\/+/, "").replace(/[^a-zA-Z0-9]+/g, "-") || "dashboard"}`;
   const isSaleEntryRoute = location.pathname === "/sales/new" || /^\/sales\/[^/]+\/edit$/.test(location.pathname);
+  const isPurchaseEntryRoute = location.pathname === "/purchasing/new" || /^\/purchasing\/[^/]+\/edit$/.test(location.pathname);
 
   // Keep the active view across refreshes without modifying the browser URL.
   useEffect(() => {
@@ -400,7 +401,7 @@ function App() {
   const hasFullAdmin = effectiveAccounts.some((account) => String(account.role || "").toLowerCase() === "admin");
   const currentUser = IS_DEMO
     ? (!hasFullAdmin || bootstrapSession ? defaultAdminAccount : effectiveAccounts.find((account) => String(account.id) === String(sessionId)))
-    : (serverUser ? { ...serverUser, permissions: String(serverUser.role || "").toLowerCase() === "admin" ? createFullPermissions() : (serverUser.permissions || {}) } : serverSetupRequired ? defaultAdminAccount : null);
+    : (serverUser ? { ...serverUser, permissions: String(serverUser.role || "").toLowerCase() === "admin" ? createFullPermissions() : (serverUser.permissions || {}) } : null);
 
   useEffect(() => {
     window.addEventListener("company-settings-updated", loadSettings);
@@ -632,13 +633,14 @@ function App() {
           onLogin={login}
           company={company}
           isDemo={IS_DEMO}
+          setupRequired={!IS_DEMO && serverSetupRequired}
         />
       </Suspense>
     );
   } else {
     appContent = (
       <div
-        className={`app app-${appDirection} ${sidebarCollapsed ? "sidebar-collapsed" : ""} ${isSaleEntryRoute ? "sale-entry-fullscreen" : ""}`}
+        className={`app app-${appDirection} ${sidebarCollapsed ? "sidebar-collapsed" : ""} ${isSaleEntryRoute ? "sale-entry-fullscreen" : ""} ${isPurchaseEntryRoute ? "purchase-entry-fullscreen" : ""}`}
         dir={appDirection}
         data-direction={appDirection}
         data-language={appLanguage}

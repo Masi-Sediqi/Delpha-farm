@@ -8,7 +8,7 @@ import "./PrintSale.css";
 
 const languageKey = "afghan-power-language";
 const n = (value) => Math.max(Number(value || 0), 0);
-const money = (value) => n(value).toLocaleString(undefined, { maximumFractionDigits: 2 });
+const money = (value) => n(value).toLocaleString("en-US", { maximumFractionDigits: 2 });
 
 const labels = {
   en: {

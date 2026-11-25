@@ -1755,7 +1755,7 @@ const saveCustomerPayment = async (event) => {
                         <label className="customer-buyback-price-field">
                           <span>Purchase Price</span>
                         <input
-                          type="number"
+                          type="number" lang="en"
                           min="0"
                           value={
                             buybackForm.purchasePrices[id] ??
@@ -1795,7 +1795,7 @@ const saveCustomerPayment = async (event) => {
                 <label className="customer-buyback-field">
                   Paid Amount
                   <input
-                    type="number"
+                    type="number" lang="en"
                     min="0"
                     max={buybackTotal}
                     value={buybackForm.paidAmount}
@@ -1885,7 +1885,7 @@ const saveCustomerPayment = async (event) => {
                 <div>
                   <label>Package Price</label>
                   <input
-                    type="number"
+                    type="number" lang="en"
                     min="0"
                     name="packagePrice"
                     value={editPackageForm.packagePrice}
@@ -1896,7 +1896,7 @@ const saveCustomerPayment = async (event) => {
                 <div>
                   <label>Paid Amount</label>
                   <input
-                    type="number"
+                    type="number" lang="en"
                     min="0"
                     name="paidAmount"
                     value={editPackageForm.paidAmount}
@@ -2011,7 +2011,7 @@ const saveCustomerPayment = async (event) => {
                 <div>
                   <label>Amount</label>
                   <input
-                    type="number"
+                    type="number" lang="en"
                     min="1"
                     name="amount"
                     value={paymentForm.amount}

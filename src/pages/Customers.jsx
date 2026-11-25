@@ -1098,7 +1098,7 @@ const saveIssueDevice = async (event) => {
               <div className="customer-form-group">
                 <label>Sale Price</label>
                 <input
-                  type="number"
+                  type="number" lang="en"
                   min="0"
                   name="salePrice"
                   value={issueDeviceForm.salePrice}
@@ -1110,7 +1110,7 @@ const saveIssueDevice = async (event) => {
               <div className="customer-form-group">
                 <label>Paid Amount</label>
                 <input
-                  type="number"
+                  type="number" lang="en"
                   min="0"
                   name="paidAmount"
                   value={issueDeviceForm.paidAmount}
@@ -1146,7 +1146,7 @@ const saveIssueDevice = async (event) => {
               <div className="customer-form-group">
                 <label>Security Deposit Amount</label>
                 <input
-                  type="number"
+                  type="number" lang="en"
                   min="0"
                   name="depositAmount"
                   value={issueDeviceForm.depositAmount}

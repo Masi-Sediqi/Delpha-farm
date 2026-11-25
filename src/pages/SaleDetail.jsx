@@ -93,7 +93,7 @@ const translations = {
 };
 
 const numeric = (value) => Math.max(Number(value || 0), 0);
-const money = (value) => numeric(value).toLocaleString(undefined, { maximumFractionDigits: 2 });
+const money = (value) => numeric(value).toLocaleString("en-US", { maximumFractionDigits: 2 });
 
 export default function SaleDetail({ autoPrint = false }) {
   const { saleId } = useParams();

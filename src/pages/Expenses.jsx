@@ -237,8 +237,8 @@ export default function Expenses() {
       </header>
 
       <section className="expenses-stats">
-        <article><span><WalletCards size={19} /></span><div><small>{t.totalExpenses}</small><strong>{totalExpenses.toLocaleString()}</strong></div></article>
-        <article><span><CalendarDays size={19} /></span><div><small>{t.thisMonth}</small><strong>{monthExpenses.toLocaleString()}</strong></div></article>
+        <article><span><WalletCards size={19} /></span><div><small>{t.totalExpenses}</small><strong>{totalExpenses.toLocaleString("en-US")}</strong></div></article>
+        <article><span><CalendarDays size={19} /></span><div><small>{t.thisMonth}</small><strong>{monthExpenses.toLocaleString("en-US")}</strong></div></article>
         <article><span><ReceiptText size={19} /></span><div><small>{t.transactions}</small><strong>{expenses.length}</strong></div></article>
       </section>
 
@@ -256,7 +256,7 @@ export default function Expenses() {
                   <td>{formatAfghanDate(String(expense.date || expense.createdAt || "—").slice(0, 10))}</td>
                   <td><span className="expenses-category-badge"><Tag size={13} />{expenseCategoryText(expense)}</span></td>
                   <td className="expenses-description">{expense.description || "—"}</td>
-                  <td className="expenses-money">{numeric(expense.amount).toLocaleString()} <small>{expense.currency}</small></td>
+                  <td className="expenses-money">{numeric(expense.amount).toLocaleString("en-US")} <small>{expense.currency}</small></td>
                   <td><div className="expenses-row-actions"><button type="button" onClick={() => openExpense(expense)} title={t.edit}><Edit3 size={14} /></button><button type="button" className="danger" onClick={() => deleteExpense(expense)} title={t.delete}><Trash2 size={14} /></button></div></td>
                 </tr>
               ))}
@@ -274,7 +274,7 @@ export default function Expenses() {
                 <label><span>{t.date}</span><ShamsiDateInput value={expenseForm.date} onChange={(event) => setExpenseForm((current) => ({ ...current, date: event.target.value }))} /></label>
                 <label><span>{t.category}</span><div className="expenses-category-control"><select value={expenseForm.categoryId} onChange={(event) => setExpenseForm((current) => ({ ...current, categoryId: event.target.value }))}><option value="">{t.selectCategory}</option>{categories.map((item) => <option key={item.id} value={item.id}>{categoryLabel(item)}</option>)}</select><button type="button" title={t.addCategory} onClick={() => setShowCategoryModal(true)}><Plus size={16} /></button></div></label>
                 <label><span>{t.currency}</span><select value={expenseForm.currency} onChange={(event) => setExpenseForm((current) => ({ ...current, currency: event.target.value }))}>{currencyCodes.map((code) => <option key={code} value={code}>{code}</option>)}</select></label>
-                <label><span>{t.amount}</span><input type="number" min="0" step="0.01" value={expenseForm.amount} onChange={(event) => setExpenseForm((current) => ({ ...current, amount: event.target.value }))} /></label>
+                <label><span>{t.amount}</span><input type="number" lang="en" min="0" step="0.01" value={expenseForm.amount} onChange={(event) => setExpenseForm((current) => ({ ...current, amount: event.target.value }))} /></label>
                 <label className="expenses-span-2"><span>{t.description}</span><textarea rows="4" value={expenseForm.description} onChange={(event) => setExpenseForm((current) => ({ ...current, description: event.target.value }))} placeholder={t.descriptionPlaceholder} /></label>
               </div>
               <footer className="expenses-modal-footer"><button type="button" className="expenses-secondary" onClick={closeExpense}>{t.cancel}</button><button type="submit" className="expenses-primary">{editingExpenseId ? t.update : t.save}</button></footer>

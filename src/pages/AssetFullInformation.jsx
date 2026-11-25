@@ -4879,7 +4879,7 @@ const handleEditPurchaseBillImageChange = (event) => {
                                 <label>
                                     Quantity ({purchaseUsageUnit})
                                     <ShamsiDateInput
-                                        type="number"
+                                        type="number" lang="en"
                                         min="1"
                                         value={purchaseForm.quantity}
                                         onChange={(event) => {
@@ -5082,7 +5082,7 @@ const handleEditPurchaseBillImageChange = (event) => {
                                 <label>
                                     Quantity ({purchaseUsageUnit})
                                     <input
-                                        type="number"
+                                        type="number" lang="en"
                                         min="1"
                                         value={purchaseRecordForm.quantity}
                                         onChange={(event) => {
@@ -5411,7 +5411,7 @@ const handleEditPurchaseBillImageChange = (event) => {
                                       Quantity ({purchaseUsageUnit})
 
                                       <ShamsiDateInput
-                                        type="number"
+                                        type="number" lang="en"
                                         min="1"
                                         max={currentStock}
                                         value={wasteForm.quantity}
@@ -5541,7 +5541,7 @@ const handleEditPurchaseBillImageChange = (event) => {
                                                                 onClick={(event) => event.stopPropagation()}
                                                             >
                                                                 <input
-                                                                    type="number"
+                                                                    type="number" lang="en"
                                                                     min="0"
                                                                     value={rowSalePrice}
                                                                     placeholder="Sale Price"
@@ -5566,7 +5566,7 @@ const handleEditPurchaseBillImageChange = (event) => {
                                                                 onClick={(event) => event.stopPropagation()}
                                                             >
                                                                 <input
-                                                                    type="number"
+                                                                    type="number" lang="en"
                                                                     min="0"
                                                                     value={rowDepositPrice}
                                                                     placeholder="Deposit"
@@ -5845,7 +5845,7 @@ const handleEditPurchaseBillImageChange = (event) => {
                                         Quantity ({purchaseUsageUnit})
 
                                         <input
-                                            type="number"
+                                            type="number" lang="en"
                                             min="1"
                                             max={currentStock}
                                             value={transferForm.quantity}
@@ -6373,7 +6373,7 @@ const handleEditPurchaseBillImageChange = (event) => {
                                 <label>
                                     Repair Cost
                                     <input
-                                        type="number"
+                                        type="number" lang="en"
                                         min="0"
                                         step="any"
                                         value={repairResultForm.repairCost}
@@ -6389,7 +6389,7 @@ const handleEditPurchaseBillImageChange = (event) => {
                                 <label>
                                     Paid Amount
                                     <input
-                                        type="number"
+                                        type="number" lang="en"
                                         min="0"
                                         max={Number(repairResultForm.repairCost || 0)}
                                         step="any"
@@ -6692,7 +6692,7 @@ const handleEditPurchaseBillImageChange = (event) => {
                 <label>
                     Quantity ({purchaseUsageUnit})
                     <ShamsiDateInput
-                        type="number"
+                        type="number" lang="en"
                         min="1"
                         step="1"
                         value={
@@ -6735,7 +6735,7 @@ const handleEditPurchaseBillImageChange = (event) => {
                 <label>
                     Purchase Price
                     <input
-                        type="number"
+                        type="number" lang="en"
                         min="0"
                         step="any"
                         value={
@@ -6781,7 +6781,7 @@ const handleEditPurchaseBillImageChange = (event) => {
                 <label>
                     Paid Amount
                     <input
-                        type="number"
+                        type="number" lang="en"
                         min="0"
                         step="any"
                         max={
@@ -7098,7 +7098,7 @@ const handleEditPurchaseBillImageChange = (event) => {
                 <label>
                     Quantity ({purchaseUsageUnit})
                     <ShamsiDateInput
-                        type="number"
+                        type="number" lang="en"
                         min="1"
                         step={isIndividualAsset ? "1" : "any"}
                         value={editMovementForm.quantity || ""}
@@ -7287,7 +7287,7 @@ const handleEditPurchaseBillImageChange = (event) => {
                     <label>
                         Quantity ({purchaseUsageUnit})
                         <ShamsiDateInput
-                            type="number"
+                            type="number" lang="en"
                             min="1"
                             max={editWasteMaxQuantity}
                             value={editMovementForm.quantity || ""}
@@ -7615,7 +7615,7 @@ const handleEditPurchaseBillImageChange = (event) => {
                     <label>
                         Quantity ({purchaseUsageUnit})
                         <input
-                            type="number"
+                            type="number" lang="en"
                             min="1"
                             value={editMovementForm.quantity || ""}
                             onChange={(event) =>

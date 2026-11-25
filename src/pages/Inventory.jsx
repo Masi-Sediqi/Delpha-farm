@@ -488,8 +488,8 @@ export default function Inventory() {
         <div className="inventory-adjust-table-wrap"><table className="inventory-adjust-table"><thead><tr><th>نام جنس</th><th>موجود</th><th>افزودن +</th><th>کسر -</th><th>تفصیلات</th><th></th></tr></thead><tbody>{adjustRows.map((row) => <tr key={row.id}>
           <td><PartySearchSelect records={products} partyType="product" portal language={language} placeholder="انتخاب جنس..." value={row.productId} onChange={(id) => updateAdjustmentRow(row.id, { productId: id })}/></td>
           <td>{row.productId ? getProductStock(stockMovements, row.productId, 0).toLocaleString("en-US") : "0"}</td>
-          <td><input aria-label="افزودن" type="number" min="0" step="1" value={row.add} onChange={(event) => updateAdjustmentRow(row.id, { add: event.target.value, subtract: event.target.value ? "" : row.subtract })}/></td>
-          <td><input aria-label="کسر" type="number" min="0" step="1" value={row.subtract} onChange={(event) => updateAdjustmentRow(row.id, { subtract: event.target.value, add: event.target.value ? "" : row.add })}/></td>
+          <td><input aria-label="افزودن" type="number" lang="en" min="0" step="1" value={row.add} onChange={(event) => updateAdjustmentRow(row.id, { add: event.target.value, subtract: event.target.value ? "" : row.subtract })}/></td>
+          <td><input aria-label="کسر" type="number" lang="en" min="0" step="1" value={row.subtract} onChange={(event) => updateAdjustmentRow(row.id, { subtract: event.target.value, add: event.target.value ? "" : row.add })}/></td>
           <td><textarea aria-label="تفصیلات" rows="2" maxLength={300} value={row.details} onChange={(event) => updateAdjustmentRow(row.id, { details: event.target.value })}/></td>
           <td><button type="button" aria-label="حذف ردیف" onClick={() => setAdjustRows((rows) => rows.length === 1 ? [newAdjustmentRow()] : rows.filter((item) => item.id !== row.id))}><X size={15}/></button></td>
         </tr>)}</tbody></table></div>

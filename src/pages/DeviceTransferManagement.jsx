@@ -1668,7 +1668,7 @@ const deleteTransferRecord = async () => {
               <label>
                 Withdraw Amount
                 <input
-                  type="number"
+                  type="number" lang="en"
                   min="0"
                   name="refundAmount"
                   value={form.refundAmount}
@@ -1804,7 +1804,7 @@ const deleteTransferRecord = async () => {
                         "1"
                       ) : (
                         <input
-                          type="number"
+                          type="number" lang="en"
                           min="1"
                           max={row.availableQuantity}
                           value={rowQuantities[row.rowKey] || row.defaultQuantity || 1}
@@ -1823,7 +1823,7 @@ const deleteTransferRecord = async () => {
                     {isCustomerSale && (
                       <td>
                         <input
-                          type="number"
+                          type="number" lang="en"
                           min="0"
                           value={
                             rowSalePrices[row.rowKey] ??
@@ -1865,7 +1865,7 @@ const deleteTransferRecord = async () => {
                     {isCustomerWaste && (
                       <td>
                         <input
-                          type="number"
+                          type="number" lang="en"
                           min="0"
                           value={
                             rowDamageAmounts[row.rowKey] ??
@@ -1885,7 +1885,7 @@ const deleteTransferRecord = async () => {
                     {isCustomerWaste && (
                       <td>
                         <input
-                          type="number"
+                          type="number" lang="en"
                           min="0"
                           max={Number(
                             rowDamageAmounts[row.rowKey] ??
