@@ -47,7 +47,7 @@ export async function writeBrowserCollection(name, items, previousItems = null) 
   const revision = collectionRevisions.get(name);
   if (revision == null) throw new Error(`Collection ${name} was not loaded from the server.`);
 
-  const protectedCollection = ["salesRegister", "purchases", "purchaseItems", "products", "trashPurchases"].includes(name);
+  const protectedCollection = ["salesRegister", "purchases", "purchaseItems", "products", "trashPurchases", "partyCashTransactions"].includes(name);
   const requiresPassword = protectedCollection && containsRemovedRecords(previousItems, items);
   const adminPassword = requiresPassword ? await requestAdminDeletionPassword() : null;
   if (requiresPassword && !adminPassword) throw new Error("حذف لغو شد. رمز ادمین لازم است.");

@@ -16,7 +16,7 @@ const translations = {
     employee: "Employee",
     inactive: "Inactive",
     permissions: "Permissions",
-    actionLabels: ["View", "Full details", "Create", "Edit", "Delete", "Return", "Print"],
+    actionLabels: ["View", "Full details", "Create", "Edit", "Delete", "Return", "Print", "Payment", "Complete payment", "Bill", "PDF export", "Excel export", "Restore"],
     loading: "Loading accounts…",
     loadError: "Unable to load accounts.",
     retry: "Retry",
@@ -69,7 +69,7 @@ const translations = {
     employee: "کارمند",
     inactive: "غیرفعال",
     permissions: "صلاحیت‌ها",
-    actionLabels: ["مشاهده", "معلومات کامل", "ثبت", "ویرایش", "حذف", "برگشت", "چاپ"],
+    actionLabels: ["مشاهده", "معلومات کامل", "ثبت", "ویرایش", "حذف", "برگشت", "چاپ", "پرداخت", "پرداخت مکمل", "بل", "خروجی PDF", "خروجی Excel", "بازیابی"],
     loading: "در حال بارگیری اکونت‌ها…",
     loadError: "بارگیری اکونت‌ها ممکن نشد.",
     retry: "تلاش دوباره",
@@ -122,7 +122,7 @@ const translations = {
     employee: "کارکوونکی",
     inactive: "غیرفعال",
     permissions: "صلاحیتونه",
-    actionLabels: ["کتل", "بشپړ معلومات", "ثبت", "سمون", "حذف", "بېرته ستنول", "چاپ"],
+    actionLabels: ["کتل", "بشپړ معلومات", "ثبت", "سمون", "حذف", "بېرته ستنول", "چاپ", "تادیه", "بشپړه تادیه", "بل", "PDF صادرول", "Excel صادرول", "بیا راګرځول"],
     loading: "اکونټونه بارېږي…",
     loadError: "اکونټونه بار نه شول.",
     retry: "بیا هڅه",
@@ -402,26 +402,33 @@ export default function Accounts({ accounts: demoAccounts = [], setAccounts, cur
           </label>
           {!IS_DEMO && <details className="account-manager-permissions">
             <summary>{t.permissions}</summary>
-            <table>
-              <thead><tr><th scope="col">{t.permissions}</th>{t.actionLabels.map((label) => <th scope="col" key={label}>{label}</th>)}</tr></thead>
-              <tbody>{PERMISSION_MODULES.filter((module) => module.actions.length).map(({ key, labels, actions }) => (
-                <tr key={key}><th scope="row">{labels[language] || labels.en}</th>
-                  {PERMISSION_ACTIONS.map((action, index) => <td key={action}>{actions.includes(action) ? <input type="checkbox"
-                    aria-label={`${labels[language] || labels.en} · ${t.actionLabels[index]}`}
-                    checked={Boolean(form.permissions?.[key]?.[action])}
-                    onChange={(event) => {
-                      const checked = event.target.checked;
-                      setForm((prev) => ({
-                        ...prev,
-                        permissions: {
-                          ...prev.permissions,
-                          [key]: { ...prev.permissions?.[key], [action]: checked },
-                        },
-                      }));
-                    }} /> : "—"}</td>)}
-                </tr>
-              ))}</tbody>
-            </table>
+            <div className="account-manager-permission-list">
+              {PERMISSION_MODULES.filter((module) => module.actions.length).map(({ key, labels, actions }) => (
+                <section className="account-manager-permission-module" key={key}>
+                  <h3>{labels[language] || labels.en}</h3>
+                  <div className="account-manager-permission-options">
+                    {actions.map((action) => {
+                      const label = t.actionLabels[PERMISSION_ACTIONS.indexOf(action)] || action;
+                      return <label className="account-manager-permission-option" key={action}>
+                        <input type="checkbox"
+                          checked={Boolean(form.permissions?.[key]?.[action])}
+                          onChange={(event) => {
+                            const checked = event.target.checked;
+                            setForm((prev) => ({
+                              ...prev,
+                              permissions: {
+                                ...prev.permissions,
+                                [key]: { ...prev.permissions?.[key], [action]: checked },
+                              },
+                            }));
+                          }} />
+                        <span>{label}</span>
+                      </label>;
+                    })}
+                  </div>
+                </section>
+              ))}
+            </div>
           </details>}
           <div className="account-manager-form-actions">
             <button type="button" className="secondary" onClick={closeModal}>{t.cancel}</button>

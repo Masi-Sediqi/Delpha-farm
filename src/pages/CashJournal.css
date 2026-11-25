@@ -21,3 +21,6 @@
 .cash-journal-modal .journal-side-controls {
   flex-wrap: wrap;
 }
+
+.cash-journal-table tbody tr.keyboard-active{outline:2px solid #6d5dfc;outline-offset:-2px;background:rgba(109,93,252,.1)}
+

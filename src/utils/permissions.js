@@ -1,24 +1,24 @@
-export const PERMISSION_ACTIONS = ["view", "details", "create", "edit", "delete", "return", "print"];
+export const PERMISSION_ACTIONS = ["view", "details", "create", "edit", "delete", "return", "print", "pay", "completePayment", "bill", "exportPdf", "exportExcel", "restore"];
 
 export const PERMISSION_MODULES = [
   { key: "dashboard", actions: ["view"], labels: { en: "Dashboard", fa: "داشبورد", ps: "ډشبورد" } },
   { key: "suppliers", actions: ["view", "details", "create", "edit", "delete", "print"], labels: { en: "Suppliers", fa: "تأمین‌کننده‌گان", ps: "عرضه کوونکي" } },
   { key: "products", actions: ["view", "details", "create", "edit", "delete", "print"], labels: { en: "Products", fa: "محصولات", ps: "محصولات" } },
   { key: "purchasing", actions: ["view", "details", "create", "edit", "print"], labels: { en: "Purchasing", fa: "خریداری", ps: "پېرود" } },
-  { key: "payables", actions: ["view", "print"], labels: { en: "Payables", fa: "تادیات", ps: "تادیات" } },
+  { key: "payables", actions: ["view", "details", "pay", "completePayment", "print", "bill", "exportPdf", "exportExcel"], labels: { en: "Payables", fa: "تادیات", ps: "تادیات" } },
   { key: "customers", actions: ["view", "details", "create", "edit", "delete", "return", "print"], labels: { en: "Customers", fa: "مشتریان", ps: "پېرودونکي" } },
   { key: "sales", actions: ["view", "details", "create", "edit", "delete", "return", "print"], labels: { en: "Sales", fa: "فروشات", ps: "خرڅلاو" } },
-  { key: "receivables", actions: ["view", "print"], labels: { en: "Receivables", fa: "طلبات", ps: "طلبات" } },
-  { key: "saleReturns", actions: ["view", "create", "return"], labels: { en: "Sale Returns", fa: "برگشت فروش", ps: "د خرڅلاو بېرته ستنول" } },
-  { key: "inventory", actions: ["view", "print"], labels: { en: "Inventory", fa: "موجودی", ps: "موجودي" } },
-  { key: "expenses", actions: ["view", "print"], labels: { en: "Expenses", fa: "مصارف", ps: "مصارف" } },
+  { key: "receivables", actions: ["view", "details", "pay", "completePayment", "print", "bill", "exportPdf", "exportExcel"], labels: { en: "Receivables", fa: "طلبات", ps: "طلبات" } },
+  { key: "saleReturns", actions: ["view", "create", "return", "print"], labels: { en: "Sale Returns", fa: "برگشت فروش", ps: "د خرڅلاو بېرته ستنول" } },
+  { key: "inventory", actions: ["view", "print", "exportPdf", "exportExcel"], labels: { en: "Inventory", fa: "موجودی", ps: "موجودي" } },
+  { key: "expenses", actions: ["view", "create", "edit", "delete", "print"], labels: { en: "Expenses", fa: "مصارف", ps: "مصارف" } },
   { key: "accounts", actions: [], labels: { en: "Accounts", fa: "اکونت‌ها", ps: "اکونټونه" } },
-  { key: "cashJournal", actions: ["view", "delete", "print"], labels: { en: "Cash Journal", fa: "روزنامچه / نقدی", ps: "نغدي ورځپاڼه" } },
-  { key: "banks", actions: ["view", "print"], labels: { en: "Banks", fa: "بانک‌ها", ps: "بانکونه" } },
-  { key: "cashCount", actions: ["view", "create", "edit", "delete"], labels: { en: "Cash Count", fa: "شمارش نقدی", ps: "نغدي شمېرنه" } },
-  { key: "generalJournal", actions: ["view", "create", "delete"], labels: { en: "General Journal", fa: "روزنامچه عمومی", ps: "عمومي ورځپاڼه" } },
-  { key: "reports", actions: ["view", "print"], labels: { en: "Reports", fa: "گزارشات", ps: "راپورونه" } },
-  { key: "trash", actions: ["view"], labels: { en: "Trash", fa: "سطل زباله", ps: "د کثافاتو ټوکرۍ" } },
+  { key: "cashJournal", actions: ["view", "create", "edit", "delete", "print"], labels: { en: "Cash Journal", fa: "روزنامچه / نقدی", ps: "نغدي ورځپاڼه" } },
+  { key: "banks", actions: ["view", "create", "edit", "delete", "print"], labels: { en: "Banks", fa: "بانک‌ها", ps: "بانکونه" } },
+  { key: "cashCount", actions: ["view", "create", "edit", "delete", "print"], labels: { en: "Cash Count", fa: "شمارش نقدی", ps: "نغدي شمېرنه" } },
+  { key: "generalJournal", actions: ["view", "create", "edit", "delete", "print"], labels: { en: "General Journal", fa: "روزنامچه عمومی", ps: "عمومي ورځپاڼه" } },
+  { key: "reports", actions: ["view", "print", "exportPdf", "exportExcel"], labels: { en: "Reports", fa: "گزارشات", ps: "راپورونه" } },
+  { key: "trash", actions: ["view", "restore", "delete"], labels: { en: "Trash", fa: "سطل زباله", ps: "د کثافاتو ټوکرۍ" } },
   { key: "settings", actions: ["view", "edit"], labels: { en: "Settings", fa: "تنظیمات", ps: "تنظیمات" } },
 ];
 

@@ -60,7 +60,7 @@ const translations = {
     currentPieces: "Current pieces",
     receivedPieces: "Received pieces",
     issuedPieces: "Issued pieces",
-    search: "Search medicine, group or manufacturer...",
+    search: "Search medicine, carton size or manufacturer...",
     all: "All",
     available: "Available",
     empty: "Out of stock",
@@ -68,13 +68,12 @@ const translations = {
     batches: "Batches",
     movements: "Movements",
     product: "Medicine",
-    group: "Group",
+    cartonSize: "Carton Size",
     manufacturer: "Manufacturer",
     currentStock: "Current Stock",
     totalIn: "Total In",
     totalOut: "Total Out",
-    batchCount: "Batches",
-    nearestExpiry: "Nearest Expiry",
+    purchaseCurrency: "Purchase Currency",
     purchasePrice: "Purchase Price",
     salePrice: "Sale Price",
     status: "Status",
@@ -118,7 +117,7 @@ const translations = {
     currentPieces: "دانه فعلی",
     receivedPieces: "دانه داخل",
     issuedPieces: "دانه خارج",
-    search: "جستجوی دوا، گروپ یا شرکت سازنده...",
+    search: "جستجوی دوا، سایز کارتن یا شرکت سازنده...",
     all: "همه",
     available: "موجود",
     empty: "خلاص شده",
@@ -126,13 +125,12 @@ const translations = {
     batches: "بچ‌ها",
     movements: "حرکات موجودی",
     product: "نام دوا",
-    group: "گروپ",
+    cartonSize: "سایز کارتن",
     manufacturer: "شرکت سازنده",
     currentStock: "موجودی فعلی",
     totalIn: "مجموع داخل",
     totalOut: "مجموع خارج",
-    batchCount: "تعداد بچ",
-    nearestExpiry: "نزدیک‌ترین انقضا",
+    purchaseCurrency: "ارز خرید",
     purchasePrice: "قیمت خرید",
     salePrice: "قیمت فروش",
     status: "حالت",
@@ -176,7 +174,7 @@ const translations = {
     currentPieces: "اوسنۍ دانې",
     receivedPieces: "داخل دانې",
     issuedPieces: "خارج دانې",
-    search: "د درمل، ګروپ یا تولیدوونکي لټون...",
+    search: "د درمل، کارتن سایز یا تولیدوونکي لټون...",
     all: "ټول",
     available: "موجود",
     empty: "خلاص",
@@ -184,13 +182,12 @@ const translations = {
     batches: "بچونه",
     movements: "د موجودۍ حرکتونه",
     product: "درمل",
-    group: "ګروپ",
+    cartonSize: "د کارتن سایز",
     manufacturer: "تولیدوونکی",
     currentStock: "اوسنۍ موجودي",
     totalIn: "ټول داخل",
     totalOut: "ټول خارج",
-    batchCount: "بچونه",
-    nearestExpiry: "نږدې ختمېدو نېټه",
+    purchaseCurrency: "د پېرود اسعار",
     purchasePrice: "د پېرود بیه",
     salePrice: "د خرڅلاو بیه",
     status: "حالت",
@@ -532,26 +529,29 @@ export default function Inventory() {
         {activeTab === "products" && viewMode === "record" && (
           <div className="inventory-table-wrap">
             <table>
-              <thead><tr><th>{t.product}</th><th>{t.group}</th><th>{t.manufacturer}</th><th>{t.currentStock}</th><th>{t.totalIn}</th><th>{t.totalOut}</th><th>{t.batchCount}</th><th>{t.nearestExpiry}</th><th>{t.status}</th></tr></thead>
+              <thead><tr><th>{t.product}</th><th>{t.cartonSize}</th><th>{t.manufacturer}</th><th>{t.currentStock}</th><th>{t.totalIn}</th><th>{t.totalOut}</th><th>{t.purchaseCurrency}</th><th>{t.purchasePrice}</th><th>{t.salePrice}</th><th>{t.status}</th></tr></thead>
               <tbody>
                 {filteredRows.length ? filteredRows.map((row) => {
                   const current = formatQuantityPair(row.stock, row.product, language);
                   const totalIn = formatQuantityPair(row.totals.quantityIn, row.product, language);
                   const totalOut = formatQuantityPair(row.totals.quantityOut, row.product, language);
+                  const purchaseCurrency = String(row.product.purchaseCurrency || row.product.unit || "AFN").toUpperCase();
+                  const saleCurrency = String(row.product.saleCurrency || row.product.unit || "AFN").toUpperCase();
                   return (
                     <tr key={row.product.id} className="inventory-clickable-row" onClick={() => navigate(`/product-detail/${row.product.id}`)}>
                       <td><div className="inventory-product-cell"><span className="inventory-product-mark"><Boxes size={16} /></span><div><strong>{row.product.productName || "—"}</strong><small>{row.product.description || ""}</small></div></div></td>
-                      <td>{row.group}</td>
-                      <td>{row.manufacturer}</td>
+                      <td>{row.product.cartonSize || row.product.piecesPerUnit || "—"}</td>
+                      <td className="inventory-manufacturer-cell">{row.manufacturer}</td>
                       <td><div className="inventory-qty-pair"><strong className={row.stock > 0 ? "inventory-stock-positive" : "inventory-stock-zero"}>{current.mainText} {current.label}</strong><small>{current.piecesText} {t.pieces}</small></div></td>
                       <td><div className="inventory-qty-pair"><strong>{totalIn.mainText} {totalIn.label}</strong><small>{totalIn.piecesText} {t.pieces}</small></div></td>
                       <td><div className="inventory-qty-pair"><strong>{totalOut.mainText} {totalOut.label}</strong><small>{totalOut.piecesText} {t.pieces}</small></div></td>
-                      <td>{row.activeBatches.length.toLocaleString("en-US")}</td>
-                      <td>{row.nearestExpiry || "—"}</td>
+                      <td>{purchaseCurrency}</td>
+                      <td><div className="inventory-qty-pair"><strong>{Number(row.product.purchasePrice || 0).toLocaleString("en-US")}</strong><small>{purchaseCurrency}</small></div></td>
+                      <td><div className="inventory-qty-pair"><strong>{Number(row.product.salePrice || 0).toLocaleString("en-US")}</strong><small>{saleCurrency}</small></div></td>
                       <td><span className={`inventory-status ${row.stock > 0 ? "is-in" : "is-out"}`}>{row.stock > 0 ? t.inStock : t.noStock}</span></td>
                     </tr>
                   );
-                }) : <tr><td colSpan="9" className="inventory-empty">{t.noData}</td></tr>}
+                }) : <tr><td colSpan="10" className="inventory-empty">{t.noData}</td></tr>}
               </tbody>
             </table>
           </div>

@@ -545,7 +545,7 @@ const canReadCollection = (user, name) => {
   return Boolean(moduleName && hasPermission(user, moduleName));
 };
 // Destructive operations are re-authorized server-side, including for Admin sessions.
-const protectedDeletionCollections = new Set(["salesRegister", "purchases", "purchaseItems", "products", "trashPurchases"]);
+const protectedDeletionCollections = new Set(["salesRegister", "purchases", "purchaseItems", "products", "trashPurchases", "partyCashTransactions"]);
 const deletionAttempts = new Map();
 const removesProtectedRecords = (name, before, after) => {
   if (!protectedDeletionCollections.has(name) || !Array.isArray(before) || !Array.isArray(after)) return false;
