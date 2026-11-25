@@ -50,6 +50,7 @@ const labelsByLanguage = {
     balanceSide: "Balance Type",
     ourReceivable: "Our Receivable",
     customerReceivable: "Customer Receivable",
+    noReceivable: "None",
     openingBalanceDate: "Opening Balance Date",
     creditLimit: "Credit Limit",
     status: "Status",
@@ -118,6 +119,7 @@ const labelsByLanguage = {
     balanceSide: "حالت بیلانس",
     ourReceivable: "طلب ما",
     customerReceivable: "طلب مشتری",
+    noReceivable: "هیچ‌کدام",
     openingBalanceDate: "تاریخ بیلانس افتتاحیه",
     creditLimit: "حد اعتبار",
     status: "حالت",
@@ -186,6 +188,7 @@ const labelsByLanguage = {
     balanceSide: "د بیلانس حالت",
     ourReceivable: "زموږ طلب",
     customerReceivable: "د پېرودونکي طلب",
+    noReceivable: "هېڅ‌یو نه",
     openingBalanceDate: "د افتتاحي بیلانس نېټه",
     creditLimit: "د اعتبار حد",
     status: "حالت",
@@ -291,7 +294,7 @@ export default function CustomersRegistry({ modalOnly = false, onClose, onSaved,
       ...blankForm,
       ...item,
       openingBalance: Math.abs(Number(item.openingBalance || 0)),
-      balanceSide: Number(item.openingBalance || 0) < 0 ? "customer" : "ours",
+      balanceSide: Number(item.openingBalance || 0) < 0 ? "customer" : Number(item.openingBalance || 0) > 0 ? "ours" : "none",
       openingBalanceDate: item.openingBalanceDate || item.createdAt?.slice(0, 10) || "",
     });
     setFieldErrors({});
@@ -358,7 +361,7 @@ export default function CustomersRegistry({ modalOnly = false, onClose, onSaved,
       companyName: form.companyName.trim(),
       phone: form.phone.trim(),
       address: form.address.trim(),
-      openingBalance: Math.abs(Number(form.openingBalance || 0)) * (balanceSide === "customer" ? -1 : 1),
+      openingBalance: balanceSide === "none" ? 0 : Math.abs(Number(form.openingBalance || 0)) * (balanceSide === "customer" ? -1 : 1),
       updatedAt: new Date().toISOString(),
     };
 
@@ -500,7 +503,7 @@ export default function CustomersRegistry({ modalOnly = false, onClose, onSaved,
                   <div className="customer-section-title"><Building2 size={18} /><span>{t.balance}</span></div>
                   <div className="customer-form-grid">
                     <label className="customer-field customer-span-4"><span>{t.currency}</span><select value={form.currency} onChange={(e) => change("currency", e.target.value)}><option value="AFN">AFN</option><option value="USD">USD</option><option value="INR">INR</option><option value="EUR">EUR</option></select></label>
-                    <label className="customer-field customer-span-4"><span>{t.balanceSide}</span><select value={form.balanceSide} onChange={(e) => change("balanceSide", e.target.value)}><option value="ours">{t.ourReceivable}</option><option value="customer">{t.customerReceivable}</option></select></label>
+                    <label className="customer-field customer-span-4"><span>{t.balanceSide}</span><select value={form.balanceSide} onChange={(e) => { const side = e.target.value; change("balanceSide", side); if (side === "none") change("openingBalance", "0"); }}><option value="ours">{t.ourReceivable}</option><option value="customer">{t.customerReceivable}</option><option value="none">{t.noReceivable}</option></select></label>
                     <label className="customer-field customer-span-4"><span>{t.openingBalance}</span><input type="number" lang="en" min="0" step="any" value={form.openingBalance} onChange={(e) => change("openingBalance", e.target.value)} /></label>
                     <label className="customer-field customer-span-4"><span>{t.openingBalanceDate}</span><ShamsiDateInput required={Number(form.openingBalance || 0) !== 0} value={form.openingBalanceDate} onChange={(e) => change("openingBalanceDate", e.target.value)} /></label>
                     <label className="customer-field customer-span-4"><span>{t.status}</span><select value={form.status} onChange={(e) => change("status", e.target.value)}><option value="active">{t.active}</option><option value="inactive">{t.inactive}</option></select></label>

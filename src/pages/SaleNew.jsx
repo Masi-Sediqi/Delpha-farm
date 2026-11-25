@@ -76,7 +76,6 @@ const text = {
     customerPlaceholder: "Enter customer name",
     customerInfo: "Customer information",
     customerBalance: "Current customer balance",
-    previousBalance: "Previous balance",
     customerOwes: "Customer owes",
     customerCredit: "Customer credit",
     customerAdvance: "Customer advance / credit",
@@ -153,7 +152,6 @@ const text = {
     customerPlaceholder: "نام مشتری را وارد کنید",
     customerInfo: "معلومات مشتری",
     customerBalance: "بیلانس فعلی حساب مشتری",
-    previousBalance: "باقی گذشته",
     customerOwes: "قرضداری مشتری",
     customerCredit: "بستانکاری مشتری",
     customerAdvance: "بستانکاری مشتری از این فروش",
@@ -230,7 +228,6 @@ const text = {
     customerPlaceholder: "د پېرودونکي نوم ولیکئ",
     customerInfo: "د پېرودونکي معلومات",
     customerBalance: "د پېرودونکي اوسنی بیلانس",
-    previousBalance: "پخوانی پاتې حساب",
     customerOwes: "د پېرودونکي پور",
     customerCredit: "د پېرودونکي اعتبار",
     customerAdvance: "د دې خرڅلاو له مخې د پېرودونکي اضافه تادیه",
@@ -1233,12 +1230,6 @@ function SaleNew() {
             <div className="purchase-summary-row"><span>{t.paid}</span><strong>{formatAmount(paid, currency)} {currency}</strong></div>
             <div className={`purchase-summary-row ${remaining > 0 ? "has-debt" : ""}`}><span>{t.remaining}</span><strong>{formatAmount(remaining, currency)} {currency}</strong></div>
             {customerAdvance > 0 && <div className="purchase-summary-row sale-customer-advance"><span>{t.customerAdvance}</span><strong>{formatAmount(customerAdvance, currency)} {currency}</strong></div>}
-            <div className="purchase-summary-row">
-              <span>{t.previousBalance}</span>
-              <strong dir="ltr">{selectedCustomer
-                ? `${formatAmount(selectedCustomer.openingBalance, accountCurrency(selectedCustomer.currency || selectedCustomer.currencyCode))} ${accountCurrency(selectedCustomer.currency || selectedCustomer.currencyCode)}`
-                : "—"}</strong>
-            </div>
             {selectedCustomer && customerBalances.map(({ currency: code, balance }) => {
               const amount = Number(formatAmountInput(balance, code));
               return <div className="purchase-summary-row sale-current-customer-balance" key={`balance-${code}`}>

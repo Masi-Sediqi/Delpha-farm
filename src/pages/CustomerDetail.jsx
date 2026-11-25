@@ -107,22 +107,14 @@ const translations = {
     tabInfo: "Information",
     tabSales: "Sales",
     tabPayments: "Payments",
-    tabProfit: "Profit",
-    tabActivity: "Activity",
     items: "Items",
     saleTotal: "Sale Total",
     paidAtSale: "Paid at Sale",
     remainingDebt: "Remaining",
     amountPaid: "Amount Paid",
     paymentSource: "Source",
-    returnTotal: "Sale Returns",
-    netSales: "Net Sales",
-    estimatedCost: "Estimated Cost",
-    estimatedProfit: "Estimated Profit",
     noSales: "No sales have been recorded for this customer.",
     noPayments: "No payments have been recorded for this customer.",
-    noActivity: "No activity has been recorded for this customer.",
-    profitInfo: "Estimated profit from this customer based on recorded sale prices, purchase prices and sale returns.",
     customerMissing: "Customer not found.",
   },
   fa: {
@@ -192,22 +184,14 @@ const translations = {
     tabInfo: "معلومات",
     tabSales: "فروشات",
     tabPayments: "پرداخت ها",
-    tabProfit: "سود",
-    tabActivity: "فعالیت",
     items: "اقلام",
     saleTotal: "مجموع فروش",
     paidAtSale: "پرداخت هنگام فروش",
     remainingDebt: "باقی مانده",
     amountPaid: "مبلغ پرداخت",
     paymentSource: "منبع",
-    returnTotal: "برگشت فروش",
-    netSales: "فروش خالص",
-    estimatedCost: "قیمت تمام شده تخمینی",
-    estimatedProfit: "سود تخمینی",
     noSales: "برای این مشتری هنوز فروشی ثبت نشده است.",
     noPayments: "برای این مشتری هنوز پرداختی ثبت نشده است.",
-    noActivity: "برای این مشتری هنوز فعالیتی ثبت نشده است.",
-    profitInfo: "سود تخمینی این مشتری بر اساس قیمت فروش، قیمت خرید و برگشت های ثبت شده محاسبه می شود.",
     customerMissing: "مشتری پیدا نشد.",
   },
   ps: {
@@ -277,22 +261,14 @@ const translations = {
     tabInfo: "معلومات",
     tabSales: "خرڅلاو",
     tabPayments: "تادیات",
-    tabProfit: "ګټه",
-    tabActivity: "فعالیت",
     items: "توکي",
     saleTotal: "د خرڅلاو ټول",
     paidAtSale: "د خرڅلاو پر مهال تادیه",
     remainingDebt: "پاتې",
     amountPaid: "تادیه شوی مبلغ",
     paymentSource: "سرچینه",
-    returnTotal: "د خرڅلاو بېرته ستنول",
-    netSales: "خالص خرڅلاو",
-    estimatedCost: "اټکلي تمام شوی قیمت",
-    estimatedProfit: "اټکلي ګټه",
     noSales: "د دې پېرودونکي لپاره تر اوسه خرڅلاو نشته.",
     noPayments: "د دې پېرودونکي لپاره تر اوسه تادیه نشته.",
-    noActivity: "د دې پېرودونکي لپاره تر اوسه فعالیت نشته.",
-    profitInfo: "د دې پېرودونکي اټکلي ګټه د ثبت شوو د خرڅلاو بیو، پېرود بیو او بېرته ستنولو پر بنسټ محاسبه کېږي.",
     customerMissing: "پېرودونکی ونه موندل شو.",
   },
 };
@@ -341,7 +317,6 @@ export default function CustomerDetail() {
   const [customers] = useJsonCollection("customerRegistry");
   const [sales] = useJsonCollection("salesRegister");
   const [saleReturns] = useJsonCollection("saleReturns");
-  const [saleReturnItems] = useJsonCollection("saleReturnItems");
   const [payments, setPayments] = useJsonCollection("customerPayments");
   const [partyCashTransactions] = useJsonCollection("partyCashTransactions");
   const [language, setLanguage] = useState(() => localStorage.getItem(languageKey) || "en");
@@ -596,75 +571,6 @@ export default function CustomerDetail() {
     return rows.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
   }, [customerSales, customerPayments, customer, currencyCode, t.salePayment, t.manualPayment]);
 
-  const customerReturnItems = useMemo(
-    () => saleReturnItems.filter((item) => customerReturns.some((ret) => String(ret.id) === String(item.saleReturnId))),
-    [saleReturnItems, customerReturns]
-  );
-
-  const profitSummary = useMemo(() => {
-    const summary = {};
-    const ensure = (code) => {
-      if (!summary[code]) summary[code] = { grossSales: 0, returnsTotal: 0, netSales: 0, netCost: 0, profit: 0 };
-      return summary[code];
-    };
-    customerSales.forEach((sale) => {
-      const code = normalizeCurrency(sale.currency || customer?.currency || currencyCode);
-      const row = ensure(code);
-      row.grossSales += numeric(sale.totalAmount);
-      row.netCost += (Array.isArray(sale.items) ? sale.items : []).reduce((sum, item) => sum + numeric(item.quantity) * numeric(item.purchasePrice), 0);
-    });
-    customerReturns.forEach((item) => {
-      const linkedSale = customerSales.find((sale) => String(sale.id) === String(item.saleId));
-      const code = normalizeCurrency(item.currency || linkedSale?.currency || customer?.currency || currencyCode);
-      ensure(code).returnsTotal += numeric(item.totalAmount);
-    });
-    customerReturnItems.forEach((item) => {
-      const sale = customerSales.find((row) => String(row.id) === String(item.saleId));
-      const code = normalizeCurrency(sale?.currency || customer?.currency || currencyCode);
-      const saleItem = (sale?.items || []).find((row) => String(row.productId) === String(item.productId));
-      ensure(code).netCost -= numeric(item.quantity) * numeric(saleItem?.purchasePrice);
-    });
-    Object.values(summary).forEach((row) => {
-      row.netCost = Math.max(row.netCost, 0);
-      row.netSales = row.grossSales - row.returnsTotal;
-      row.profit = row.netSales - row.netCost;
-    });
-    return summary;
-  }, [customerSales, customerReturns, customerReturnItems, customer, currencyCode]);
-
-  const profitMetricMap = (key) => Object.fromEntries(Object.entries(profitSummary).map(([code, row]) => [code, numeric(row[key])]));
-  const activityRows = useMemo(() => {
-    const rows = [];
-    customerSales.forEach((sale) => rows.push({
-      id: `activity-sale-${sale.id}`,
-      date: sale.saleDate || sale.createdAt || "",
-      reference: sale.invoiceNumber || sale.id,
-      description: sale.notes || t.sale,
-      amount: numeric(sale.totalAmount),
-      kind: "sale",
-      currency: normalizeCurrency(sale.currency || customer?.currency || currencyCode),
-    }));
-    customerReturns.forEach((item) => rows.push({
-      id: `activity-return-${item.id}`,
-      date: item.returnDate || item.date || item.createdAt || "",
-      reference: item.returnNo || item.id,
-      description: item.notes || t.saleReturn,
-      amount: numeric(item.totalAmount),
-      kind: "sale-return",
-      currency: normalizeCurrency(item.currency || customerSales.find((sale) => String(sale.id) === String(item.saleId))?.currency || customer?.currency || currencyCode),
-    }));
-    customerPayments.forEach((payment) => rows.push({
-      id: `activity-payment-${payment.id}`,
-      date: payment.date || payment.createdAt || "",
-      reference: payment.reference || `PAY-${String(payment.id).slice(-6)}`,
-      description: payment.description || t.manualPayment,
-      amount: numeric(payment.amount),
-      kind: "manual-payment",
-      currency: normalizeCurrency(payment.currency || customer?.currency || currencyCode),
-    }));
-    return rows.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-  }, [customerSales, customerReturns, customerPayments, customer, currencyCode, t.sale, t.saleReturn, t.manualPayment]);
-
   const openPaymentModal = () => {
     setEditingPaymentId(null);
     setPaymentForm({ date: today(), amount: "", currency: String(normalizeCurrency(location.state?.paymentCurrency || preferredPaymentCurrency)).toLowerCase(), description: "" });
@@ -828,8 +734,6 @@ export default function CustomerDetail() {
               ["ledger", t.tabLedger],
               ["sales", t.tabSales],
               ["payments", t.tabPayments],
-              ["profit", t.tabProfit],
-              ["activity", t.tabActivity],
             ].map(([key, label]) => (
               <button key={key} type="button" role="tab" aria-selected={activeTab === key} className={activeTab === key ? "active" : ""} onClick={() => setActiveTab(key)}>{label}</button>
             ))}
@@ -902,27 +806,6 @@ export default function CustomerDetail() {
             </div>
           )}
 
-          {activeTab === "profit" && (
-            <div className="customer-tab-panel customer-profit-panel">
-              <div className="customer-detail-section-head ledger"><BadgeDollarSign size={18} /><div><h2>{t.tabProfit}</h2><p>{t.profitInfo}</p></div></div>
-              <div className="customer-profit-grid">
-                <article><span>{t.totalSales}</span><strong><CurrencyStack values={profitMetricMap("grossSales")} /></strong></article>
-                <article><span>{t.returnTotal}</span><strong><CurrencyStack values={profitMetricMap("returnsTotal")} /></strong></article>
-                <article><span>{t.netSales}</span><strong><CurrencyStack values={profitMetricMap("netSales")} /></strong></article>
-                <article><span>{t.estimatedCost}</span><strong><CurrencyStack values={profitMetricMap("netCost")} /></strong></article>
-                <article className="wide"><span>{t.estimatedProfit}</span><strong><CurrencyStack values={profitMetricMap("profit")} /></strong></article>
-              </div>
-            </div>
-          )}
-
-          {activeTab === "activity" && (
-            <div className="customer-tab-panel">
-              <div className="customer-detail-section-head ledger"><FileText size={18} /><div><h2>{t.tabActivity}</h2><p>{activityRows.length}</p></div></div>
-              <div className="customer-activity-list">
-                {activityRows.length ? activityRows.map((entry) => <div className="customer-activity-item" key={entry.id}><span className={`customer-activity-dot ${entry.kind}`}></span><div><strong>{entry.description}</strong><small>{formatDateTime(entry.date)} · {entry.reference || "—"}</small></div><b>{numeric(entry.amount).toLocaleString("en-US",{maximumFractionDigits:2})} {entry.currency}</b></div>) : <div className="customer-ledger-empty">{t.noActivity}</div>}
-              </div>
-            </div>
-          )}
         </section>
       </div>
 

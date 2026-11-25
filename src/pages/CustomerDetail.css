@@ -35,24 +35,8 @@ body[data-theme="black-white"] .customer-detail-payment-btn,body[data-theme="bla
 .customer-detail-tabs button:hover{color:var(--text-primary,#172033);border-color:color-mix(in srgb,var(--text-primary,#172033) 22%,var(--border-color,#dfe3e8))}
 .customer-detail-tabs button.active{background:#17191d;color:#fff;border-color:#17191d;box-shadow:0 5px 14px rgba(17,24,39,.12)}
 .customer-tab-panel{min-width:0}
-.customer-profit-panel{padding-bottom:14px}
-.customer-profit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:0 14px 14px}
-.customer-profit-grid article{display:flex;flex-direction:column;gap:7px;border:1px solid var(--border-color,#e4e7ec);border-radius:12px;padding:14px;background:var(--card-bg,#fff)}
-.customer-profit-grid article.wide{grid-column:1/-1}
-.customer-profit-grid span{font-size:11px;font-weight:750;color:var(--text-secondary,#667085)}
-@media screen{
-.customer-profit-grid span{font-size:13px}}
-.customer-profit-grid strong{font-size:18px;line-height:1.2}
-.customer-profit-grid strong.positive{color:#047857}.customer-profit-grid strong.negative{color:#b91c1c}
-.customer-activity-list{display:grid;gap:0;padding:0 14px 14px}
-.customer-activity-item{display:grid;grid-template-columns:12px minmax(0,1fr) auto;gap:10px;align-items:center;padding:12px 2px;border-bottom:1px solid var(--border-color,#edf0f3)}
-.customer-activity-item:last-child{border-bottom:0}
-.customer-activity-dot{width:9px;height:9px;border-radius:50%;background:#94a3b8}
-.customer-activity-dot.sale{background:#10b981}.customer-activity-dot.manual-payment{background:#2563eb}.customer-activity-dot.sale-return{background:#f59e0b}
-.customer-activity-item div{display:grid;gap:3px}.customer-activity-item strong{font-size:12px}.customer-activity-item small{font-size:10.5px;color:var(--text-secondary,#667085)}@media screen{
-.customer-activity-item small{font-size:12.5px}}.customer-activity-item b{font-size:12px;white-space:nowrap}
 body[data-theme="black-white"] .customer-detail-tabs button.active{background:#fff;color:#080808;border-color:#fff}
-@media(max-width:760px){.customer-detail-tabs{overflow-x:auto;flex-wrap:nowrap}.customer-detail-tabs button{white-space:nowrap}.customer-profit-grid{grid-template-columns:1fr}.customer-profit-grid article.wide{grid-column:1}.customer-activity-item{grid-template-columns:10px minmax(0,1fr)}.customer-activity-item b{grid-column:2;justify-self:start}}
+@media(max-width:760px){.customer-detail-tabs{overflow-x:auto;flex-wrap:nowrap}.customer-detail-tabs button{white-space:nowrap}}
 
 /* Multi-currency customer totals */
 .customer-currency-stack{display:flex;flex-direction:column;align-items:flex-start;gap:3px;line-height:1.1}

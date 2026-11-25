@@ -421,3 +421,27 @@ body.dark-mode .payables-action-trigger { background: #202020; border-color: #3a
 
 .account-statement-footer{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:12px;padding:14px 17px;border:1px solid var(--border-color,#dbe4e8);border-radius:12px;background:var(--card-bg,#f6faf8);font-size:12px;color:var(--text-primary,#142536)}
 .account-statement-footer strong{font-weight:900}
+
+/* Receivables can have either a customer debt or a customer credit. */
+.receivables-stats { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.receivables-state-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 190px;
+  padding: 5px 9px;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.4;
+  white-space: normal;
+}
+.receivables-state-pill.is-ours { color: #047857; background: #ecfdf5; border-color: #a7f3d0; }
+.receivables-state-pill.is-customer { color: #b45309; background: #fffbeb; border-color: #fcd34d; }
+.payables-stat-card.is-customer-credit::after { background: #f59e0b; }
+.payables-balance-pill.is-customer-credit { color: #b45309; background: #fffbeb; border-color: #fcd34d; }
+body.dark-mode .receivables-state-pill.is-ours { color: #6ee7b7; background: rgba(16, 185, 129, .12); border-color: rgba(16, 185, 129, .3); }
+body.dark-mode .receivables-state-pill.is-customer,
+body.dark-mode .payables-balance-pill.is-customer-credit { color: #fcd34d; background: rgba(245, 158, 11, .12); border-color: rgba(245, 158, 11, .3); }
+@media (max-width: 1100px) { .receivables-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
