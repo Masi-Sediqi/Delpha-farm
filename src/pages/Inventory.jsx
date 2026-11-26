@@ -1,6 +1,6 @@
 import PartySearchSelect from "../components/PartySearchSelect";
 import { createPortal } from "react-dom";
-import { formatAfghanDate } from "../utils/afghanDate";
+import { afghanToGregorian, formatAfghanDate } from "../utils/afghanDate";
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -14,7 +14,7 @@ import {
   CalendarClock,
   BarChart3,
   Table2,
-  SlidersHorizontal, X, Plus, Minus, PackagePlus,
+  SlidersHorizontal, X, Plus, Minus, PackagePlus, FileSpreadsheet,
 } from "lucide-react";
 import { notify } from "../utils/notify";
 import { todayDateValue } from "../utils/afghanDate";
@@ -100,6 +100,15 @@ const translations = {
     purchaseReturn: "Purchase Return",
     saleReturn: "Sale Return",
     adjustment: "Adjustment",
+    inventoryReport: "Inventory Report",
+    flowIn: "In",
+    flowOut: "Out",
+    flowBoth: "Both",
+    reportDate: "Date",
+    reportDetails: "Details",
+    reportReady: "Excel report downloaded.",
+    reportEmpty: "No inventory movements found for this medicine and direction.",
+    reportError: "Could not create the Excel report.",
   },
   fa: {
     title: "موجودی",
@@ -157,6 +166,15 @@ const translations = {
     purchaseReturn: "برگشت خرید",
     saleReturn: "برگشت فروش",
     adjustment: "اصلاح موجودی",
+    inventoryReport: "راپور موجودی",
+    flowIn: "آمد",
+    flowOut: "رفت",
+    flowBoth: "هر دو",
+    reportDate: "تاریخ",
+    reportDetails: "تفصیلات",
+    reportReady: "راپور Excel دانلود شد.",
+    reportEmpty: "برای این دوا و جهت انتخاب‌شده حرکتی ثبت نشده است.",
+    reportError: "ساخت راپور Excel ناموفق شد.",
   },
   ps: {
     title: "موجودي",
@@ -214,6 +232,15 @@ const translations = {
     purchaseReturn: "د پېرود بېرته ستنول",
     saleReturn: "د خرڅلاو بېرته ستنول",
     adjustment: "د موجودۍ اصلاح",
+    inventoryReport: "د موجودۍ راپور",
+    flowIn: "داخل",
+    flowOut: "خارج",
+    flowBoth: "دواړه",
+    reportDate: "نېټه",
+    reportDetails: "تفصیلات",
+    reportReady: "د Excel راپور ښکته شو.",
+    reportEmpty: "د دې درمل او ټاکل شوي لوري لپاره د موجودۍ حرکت نشته.",
+    reportError: "د Excel راپور جوړ نه شو.",
   },
 };
 
@@ -224,6 +251,16 @@ const movementLabelKey = (type = "") => {
   if (type === "sale-return") return "saleReturn";
   if (type === "opening") return "opening";
   return "adjustment";
+};
+
+const movementOrderValue = (movement) => {
+  const raw = String(movement?.movementDate || movement?.createdAt || "").trim();
+  const afghan = raw.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+  if (afghan && Number(afghan[1]) < 1700) {
+    const gregorian = afghanToGregorian(afghan[1], afghan[2], afghan[3]);
+    if (gregorian) return Date.parse(`${gregorian}T00:00:00Z`) || 0;
+  }
+  return Date.parse(raw) || 0;
 };
 
 const unitLabels = {
@@ -289,6 +326,8 @@ export default function Inventory() {
   const [activeTab, setActiveTab] = useState("products");
   const [viewMode, setViewMode] = useState("record");
   const [adjustOpen, setAdjustOpen] = useState(false);
+  const [reportMenu, setReportMenu] = useState(null);
+  const [reportExporting, setReportExporting] = useState(false);
   useEffect(() => {
     if (!adjustOpen) return undefined;
     const previousOverflow = document.body.style.overflow;
@@ -362,6 +401,128 @@ export default function Inventory() {
 
   const t = translations[language] || translations.en;
   const direction = rtlLanguages.has(language) ? "rtl" : "ltr";
+
+  useEffect(() => {
+    if (!reportMenu) return undefined;
+    const closeOutside = (event) => {
+      if (event.target.closest?.(".inventory-product-report-menu, .inventory-product-report-trigger")) return;
+      setReportMenu(null);
+    };
+    const closeEscape = (event) => { if (event.key === "Escape") setReportMenu(null); };
+    document.addEventListener("pointerdown", closeOutside);
+    window.addEventListener("keydown", closeEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      window.removeEventListener("keydown", closeEscape);
+    };
+  }, [reportMenu]);
+
+  const downloadInventoryExcel = async ({ title, subtitle, headers, rows, filename }) => {
+    if (reportExporting) return;
+    setReportExporting(true);
+    try {
+      const { default: ExcelJS } = await import("exceljs");
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet(title.replace(/[\\/*?:\[\]]/g, " ").slice(0, 31) || "Inventory", { views: [{ rightToLeft: direction === "rtl" }] });
+      worksheet.addRow([title]);
+      worksheet.mergeCells(1, 1, 1, headers.length);
+      worksheet.addRow([subtitle]);
+      worksheet.mergeCells(2, 1, 2, headers.length);
+      worksheet.addRow([]);
+      worksheet.addRow(headers);
+      rows.forEach((values) => worksheet.addRow(values));
+      worksheet.getRow(1).font = { bold: true, size: 16, color: { argb: "FFFFFFFF" } };
+      worksheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF08735A" } };
+      worksheet.getRow(2).font = { italic: true, color: { argb: "FF475569" } };
+      worksheet.getRow(4).font = { bold: true, color: { argb: "FFFFFFFF" } };
+      worksheet.getRow(4).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF334155" } };
+      worksheet.columns = headers.map(() => ({ width: 20 }));
+      worksheet.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4, column: headers.length } };
+      worksheet.views = [{ rightToLeft: direction === "rtl", state: "frozen", ySplit: 4 }];
+      const data = await workbook.xlsx.writeBuffer();
+      const url = URL.createObjectURL(new Blob([data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+      notify(t.reportReady, "success");
+    } catch (error) {
+      console.error("Inventory Excel report failed", error);
+      notify(t.reportError, "error");
+    } finally {
+      setReportExporting(false);
+    }
+  };
+
+  const exportCurrentInventory = () => {
+    if (!filteredRows.length) return notify(t.noData, "warning");
+    return downloadInventoryExcel({
+      title: t.inventoryReport,
+      subtitle: t.stockOverviewHint,
+      headers: [t.product, t.cartonSize, t.manufacturer, t.currentPieces, t.receivedPieces, t.issuedPieces, t.purchaseCurrency, t.purchasePrice, t.salePrice, t.status],
+      rows: filteredRows.map((row) => [
+        row.product.productName || "—",
+        row.product.cartonSize || row.product.piecesPerUnit || "—",
+        row.manufacturer,
+        stockNumber(row.stock),
+        stockNumber(row.totals.quantityIn),
+        stockNumber(row.totals.quantityOut),
+        String(row.product.purchaseCurrency || row.product.unit || "AFN").toUpperCase(),
+        Number(row.product.purchasePrice || 0),
+        Number(row.product.salePrice || 0),
+        row.stock > 0 ? t.inStock : t.noStock,
+      ]),
+      filename: `inventory-report-${todayDateValue().replaceAll("/", "-")}.xlsx`,
+    });
+  };
+
+  const openProductReportMenu = (event, productId) => {
+    event.stopPropagation();
+    const rect = event.currentTarget.getBoundingClientRect();
+    const width = 112;
+    const left = direction === "rtl" ? rect.left : rect.right - width;
+    setReportMenu({ productId, top: Math.min(rect.bottom + 4, window.innerHeight - 118), left: Math.max(8, Math.min(left, window.innerWidth - width - 8)) });
+  };
+
+  const exportProductMovements = (productId, flow) => {
+    const product = products.find((item) => String(item.id) === String(productId));
+    if (!product) return;
+    let balance = 0;
+    const allMovements = stockMovements
+      .filter((movement) => String(movement.productId) === String(productId))
+      .sort((a, b) => movementOrderValue(a) - movementOrderValue(b) || String(a.createdAt || "").localeCompare(String(b.createdAt || "")))
+      .map((movement) => {
+        balance += stockNumber(movement.quantityIn) - stockNumber(movement.quantityOut);
+        return { movement, balance };
+      });
+    const selected = allMovements.filter(({ movement }) => flow === "both"
+      || (flow === "in" && stockNumber(movement.quantityIn) > 0)
+      || (flow === "out" && stockNumber(movement.quantityOut) > 0));
+    if (!selected.length) return notify(t.reportEmpty, "warning");
+    const name = product.productName || "medicine";
+    const safeName = name.replace(/[\\/:*?"<>|]+/g, "-").slice(0, 60);
+    const flowLabel = flow === "in" ? t.flowIn : flow === "out" ? t.flowOut : t.flowBoth;
+    return downloadInventoryExcel({
+      title: `${t.inventoryReport} · ${name}`,
+      subtitle: `${t.movementType}: ${flowLabel}`,
+      headers: [t.reportDate, t.movementType, t.reference, t.batchNo, t.expiryDate, t.stockIn, t.stockOut, t.balance, t.reportDetails],
+      rows: selected.map(({ movement, balance: runningBalance }) => [
+        formatAfghanDate(movement.movementDate || movement.createdAt?.slice?.(0, 10) || "—"),
+        t[movementLabelKey(movement.referenceType)],
+        movement.referenceNumber || movement.referenceId || "—",
+        movement.batchNo || "—",
+        movement.expiryDate ? formatAfghanDate(movement.expiryDate) : "—",
+        stockNumber(movement.quantityIn),
+        stockNumber(movement.quantityOut),
+        runningBalance,
+        movement.note || movement.description || movement.notes || "—",
+      ]),
+      filename: `inventory-movements-${safeName}-${flowLabel}-${todayDateValue().replaceAll("/", "-")}.xlsx`,
+    });
+  };
 
   useEffect(() => {
     const syncLanguage = () => setLanguage(localStorage.getItem(languageKey) || "en");
@@ -473,14 +634,11 @@ export default function Inventory() {
         </div>
       </header>
 
-      <div className="inventory-report-actions">
-        <button type="button" onClick={() => navigate("/reports?inventoryFlow=sales")}>راپور رفت</button>
-        <button type="button" onClick={() => navigate("/reports?inventoryFlow=purchases")}>راپور آمد</button>
-      </div>
       <div className="inventory-adjust-actions">
         <button type="button" onClick={() => navigate("/products")}><Boxes size={17}/> مدیریت محصولات</button>
         <button type="button" onClick={() => navigate("/products?new=1")}><PackagePlus size={17}/> جنس جدید</button>
         <button type="button" onClick={() => setAdjustOpen(true)}><SlidersHorizontal size={17}/> اصلاح موجودی</button>
+        <button className="inventory-stock-report-button" type="button" disabled={reportExporting} onClick={exportCurrentInventory}><FileSpreadsheet size={17}/>{reportExporting ? "..." : t.inventoryReport}</button>
       </div>
       {adjustOpen && createPortal(<div className="inventory-adjust-overlay"><section className="inventory-adjust-dialog" role="dialog" aria-modal="true" aria-label="اصلاح موجودی" dir="rtl">
         <header><h2>اصلاح موجودی جنس</h2><button type="button" aria-label="بستن" onClick={() => setAdjustOpen(false)}><X size={20}/></button></header>
@@ -496,6 +654,9 @@ export default function Inventory() {
         <button className="inventory-adjust-add-row" type="button" onClick={() => setAdjustRows((rows) => [...rows, newAdjustmentRow()])}><Plus size={16}/> افزودن ردیف</button>
         <footer><button type="button" onClick={() => setAdjustOpen(false)}>انصراف</button><button type="button" disabled={adjustSaving} onClick={saveAdjustment}>{adjustSaving ? "در حال ثبت..." : "ثبت اصلاح موجودی"}</button></footer>
       </section></div>, document.body)}
+      {reportMenu && createPortal(<div className="inventory-product-report-menu" role="menu" style={{ top: reportMenu.top, left: reportMenu.left }}>
+        {[["out", t.flowOut], ["in", t.flowIn], ["both", t.flowBoth]].map(([flow, label]) => <button type="button" role="menuitem" key={flow} disabled={reportExporting} onClick={() => { const productId = reportMenu.productId; setReportMenu(null); exportProductMovements(productId, flow); }}>{label}</button>)}
+      </div>, document.body)}
       <section className="inventory-stats">
         <article><span className="inventory-stat-icon"><Layers3 /></span><div><small>{t.totalProducts}</small><strong>{summary.totalProducts.toLocaleString("en-US")}</strong></div></article>
         <article><span className="inventory-stat-icon is-positive"><PackageCheck /></span><div><small>{t.availableProducts}</small><strong>{summary.availableProducts.toLocaleString("en-US")}</strong></div></article>
@@ -539,7 +700,7 @@ export default function Inventory() {
                   const saleCurrency = String(row.product.saleCurrency || row.product.unit || "AFN").toUpperCase();
                   return (
                     <tr key={row.product.id} className="inventory-clickable-row" onClick={() => navigate(`/product-detail/${row.product.id}`)}>
-                      <td><div className="inventory-product-cell"><span className="inventory-product-mark"><Boxes size={16} /></span><div><strong>{row.product.productName || "—"}</strong><small>{row.product.description || ""}</small></div></div></td>
+                      <td><div className="inventory-product-cell"><button type="button" className="inventory-product-report-trigger" aria-label={t.inventoryReport} title={t.inventoryReport} onClick={(event) => openProductReportMenu(event, row.product.id)}><FileSpreadsheet size={16}/></button><span className="inventory-product-mark"><Boxes size={16} /></span><div><strong>{row.product.productName || "—"}</strong><small>{row.product.description || ""}</small></div></div></td>
                       <td>{row.product.cartonSize || row.product.piecesPerUnit || "—"}</td>
                       <td className="inventory-manufacturer-cell">{row.manufacturer}</td>
                       <td><div className="inventory-qty-pair"><strong className={row.stock > 0 ? "inventory-stock-positive" : "inventory-stock-zero"}>{current.mainText} {current.label}</strong><small>{current.piecesText} {t.pieces}</small></div></td>

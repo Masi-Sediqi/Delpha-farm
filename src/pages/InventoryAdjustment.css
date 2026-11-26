@@ -66,6 +66,14 @@
   .inventory-adjust-dialog > footer button { flex:1; padding:10px 8px; }
 }
 
-.inventory-report-actions { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin:8px 0 16px; }
-.inventory-report-actions button { border:1px solid var(--border-color,#dbe2ea); border-radius:8px; background:var(--card-bg,#fff); color:var(--text-primary,#172b26); padding:10px 20px; font:inherit; font-weight:700; cursor:pointer; }
-.inventory-report-actions button:hover { background:var(--hover-bg,#eef5f1); }
+.inventory-stock-report-button { background:#6750d8!important; color:#fff!important; }
+.inventory-stock-report-button:hover { background:#5741c3!important; }
+.inventory-stock-report-button:disabled { opacity:.6; cursor:wait; }
+.inventory-product-report-trigger { width:29px;height:29px;flex:0 0 29px;display:grid;place-items:center;border:1px solid #d8cef9;border-radius:8px;background:#f5f3ff;color:#6d4bd1;cursor:pointer; }
+.inventory-product-report-trigger:hover { background:#ece7ff;border-color:#b9a8f1; }
+.inventory-product-report-menu { position:fixed;z-index:2147483001;width:112px;padding:4px;border:1px solid var(--border-color,#dbe2ea);border-radius:9px;background:var(--card-bg,#fff);color:var(--text-primary,#172033);box-shadow:0 12px 30px rgba(15,23,42,.2);display:grid;gap:2px; }
+.inventory-product-report-menu button { min-height:29px;padding:4px 8px;border:0;border-radius:6px;background:transparent;color:inherit;font:inherit;font-size:12px;font-weight:750;text-align:start;cursor:pointer; }
+.inventory-product-report-menu button:hover { background:rgba(103,80,216,.1);color:#5b40c1; }
+.inventory-product-report-menu button:disabled { opacity:.5;cursor:wait; }
+body[data-theme="dark"] .inventory-product-report-trigger { background:rgba(139,116,255,.14);border-color:rgba(167,139,250,.35);color:#c4b5fd; }
+body[data-theme="dark"] .inventory-product-report-menu { background:#171a21;border-color:#394150;color:#f1f5f9; }
