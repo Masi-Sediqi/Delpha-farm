@@ -277,10 +277,11 @@ const productUnitInfo = (product, language = "en") => {
 
 const formatQuantityPair = (pieces, product, language) => {
   const value = stockNumber(pieces);
-  const { multiplier, label } = productUnitInfo(product, language);
+  const { multiplier } = productUnitInfo(product, language);
   const mainUnits = value / multiplier;
   const mainText = Number.isInteger(mainUnits) ? mainUnits.toLocaleString("en-US") : mainUnits.toLocaleString("en-US", { maximumFractionDigits: 2 });
-  return { mainText, piecesText: value.toLocaleString("en-US"), label };
+  const cartonLabel = unitLabels[language]?.carton || unitLabels.en.carton;
+  return { mainText, piecesText: value.toLocaleString("en-US"), label: cartonLabel };
 };
 
 
