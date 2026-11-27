@@ -317,6 +317,9 @@ export default function Inventory() {
   const navigate = useNavigate();
   const [products] = useJsonCollection("products");
   const [stockMovements, setStockMovements] = useJsonCollection("stockMovements");
+  const [sales] = useJsonCollection("salesRegister");
+  const [purchases] = useJsonCollection("purchases");
+  const [purchaseItems] = useJsonCollection("purchaseItems");
   const [manufacturers] = useJsonCollection("manufacturers");
   const [productGroups] = useJsonCollection("productGroups");
   const [productCountries] = useJsonCollection("countries");
@@ -417,28 +420,39 @@ export default function Inventory() {
     };
   }, [reportMenu]);
 
-  const downloadInventoryExcel = async ({ title, subtitle, headers, rows, filename }) => {
+  const downloadInventoryExcel = async ({ title, subtitle, headers, rows, filename, reportSheets }) => {
     if (reportExporting) return;
     setReportExporting(true);
     try {
       const { default: ExcelJS } = await import("exceljs");
       const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet(title.replace(/[\\/*?:\[\]]/g, " ").slice(0, 31) || "Inventory", { views: [{ rightToLeft: direction === "rtl" }] });
-      worksheet.addRow([title]);
-      worksheet.mergeCells(1, 1, 1, headers.length);
-      worksheet.addRow([subtitle]);
-      worksheet.mergeCells(2, 1, 2, headers.length);
-      worksheet.addRow([]);
-      worksheet.addRow(headers);
-      rows.forEach((values) => worksheet.addRow(values));
-      worksheet.getRow(1).font = { bold: true, size: 16, color: { argb: "FFFFFFFF" } };
-      worksheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF08735A" } };
-      worksheet.getRow(2).font = { italic: true, color: { argb: "FF475569" } };
-      worksheet.getRow(4).font = { bold: true, color: { argb: "FFFFFFFF" } };
-      worksheet.getRow(4).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF334155" } };
-      worksheet.columns = headers.map(() => ({ width: 20 }));
-      worksheet.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4, column: headers.length } };
-      worksheet.views = [{ rightToLeft: direction === "rtl", state: "frozen", ySplit: 4 }];
+      const sheets = reportSheets || [{ title, subtitle, headers, rows }];
+      sheets.forEach((sheetData, index) => {
+        const sheetTitle = sheetData.title || title;
+        const worksheet = workbook.addWorksheet(sheetTitle.replace(/[\\/*?:\[\]]/g, " ").slice(0, 31) || `Inventory ${index + 1}`, { views: [{ rightToLeft: direction === "rtl" }] });
+        worksheet.addRow([sheetTitle]);
+        worksheet.mergeCells(1, 1, 1, sheetData.headers.length);
+        let headerRow = 2;
+        if (sheetData.subtitle) {
+          worksheet.addRow([sheetData.subtitle]);
+          worksheet.mergeCells(2, 1, 2, sheetData.headers.length);
+          worksheet.addRow([]);
+          headerRow = 4;
+        }
+        worksheet.addRow(sheetData.headers);
+        sheetData.rows.forEach((values) => worksheet.addRow(values));
+        worksheet.getRow(1).font = { bold: true, size: 16, color: { argb: "FFFFFFFF" } };
+        worksheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF08735A" } };
+        if (sheetData.subtitle) worksheet.getRow(2).font = { italic: true, color: { argb: "FF475569" } };
+        worksheet.getRow(headerRow).font = { bold: true, color: { argb: "FFFFFFFF" } };
+        worksheet.getRow(headerRow).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF334155" } };
+        worksheet.columns = (sheetData.widths || sheetData.headers.map(() => 20)).map((width) => ({ width }));
+        worksheet.autoFilter = { from: { row: headerRow, column: 1 }, to: { row: headerRow, column: sheetData.headers.length } };
+        worksheet.views = [{ rightToLeft: direction === "rtl", state: "frozen", ySplit: headerRow }];
+        (sheetData.dateColumns || []).forEach((column) => {
+          worksheet.getColumn(column).numFmt = "yyyy-mm-dd";
+        });
+      });
       const data = await workbook.xlsx.writeBuffer();
       const url = URL.createObjectURL(new Blob([data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
       const link = document.createElement("a");
@@ -504,22 +518,48 @@ export default function Inventory() {
     if (!selected.length) return notify(t.reportEmpty, "warning");
     const name = product.productName || "medicine";
     const safeName = name.replace(/[\\/:*?"<>|]+/g, "-").slice(0, 60);
+    const country = countryNameById(productCountries, product.countryId, language, product.madeIn || "—");
+    const company = manufacturerName(product);
+    const gregorianDate = (movement) => {
+      const raw = String(movement.movementDate || movement.createdAt || "").slice(0, 10);
+      return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(`${raw}T00:00:00.000Z`) : null;
+    };
+    const saleFor = (movement) => sales.find((row) => String(row.id) === String(movement.referenceId));
+    const purchaseFor = (movement) => purchases.find((row) => String(row.id) === String(movement.referenceId));
+    const saleItemFor = (movement, sale) => sale?.items?.find((item) => String(item.productId) === String(productId));
+    const purchaseItemFor = (movement) => purchaseItems.find((item) => String(item.purchaseId) === String(movement.referenceId) && String(item.productId) === String(productId));
+    const groupMovements = (rows, quantityField) => {
+      const groups = new Map();
+      rows.forEach(({ movement }) => {
+        const key = `${movement.referenceType || ""}:${movement.referenceId || movement.referenceNumber || movement.id}`;
+        const existing = groups.get(key);
+        if (existing) existing.quantity += stockNumber(movement[quantityField]);
+        else groups.set(key, { movement, quantity: stockNumber(movement[quantityField]) });
+      });
+      return [...groups.values()];
+    };
+    const outgoingRows = groupMovements(selected.filter(({ movement }) => stockNumber(movement.quantityOut) > 0), "quantityOut").map(({ movement, quantity }) => {
+      const sale = saleFor(movement);
+      const item = saleItemFor(movement, sale);
+      const unitPrice = stockNumber(item?.salePrice ?? movement.unitPrice ?? product.salePrice);
+      const discountPercent = stockNumber(item?.discountPercent);
+      const totalPrice = item?.lineTotal != null ? stockNumber(item.lineTotal) : unitPrice * quantity * (1 - discountPercent / 100);
+      const date = gregorianDate(movement);
+      const account = sale?.customerName || (movement.referenceType === "adjustment" ? t.adjustment : "—");
+      return [movement.referenceNumber || sale?.invoiceNumber || "—", account, date, formatAfghanDate(movement.movementDate || movement.createdAt?.slice?.(0, 10) || "—"), name, country, company, unitPrice, discountPercent, totalPrice, quantity, quantity];
+    });
+    const incomingRows = groupMovements(selected.filter(({ movement }) => stockNumber(movement.quantityIn) > 0), "quantityIn").map(({ movement, quantity }) => {
+      const purchase = purchaseFor(movement);
+      const item = purchaseItemFor(movement);
+      const date = gregorianDate(movement);
+      return [movement.referenceNumber || purchase?.cardNumber || purchase?.billNumber || "—", purchase?.supplierName || (movement.referenceType === "opening" ? t.opening : "—"), date, formatAfghanDate(movement.movementDate || movement.createdAt?.slice?.(0, 10) || "—"), name, country, company, stockNumber(item?.purchasePrice ?? movement.unitCost ?? product.purchasePrice), quantity, quantity];
+    });
+    const outReport = { title: "راپور فروش یا رفت جنس", headers: ["Invoice No", "Account Name", "Date-M", "Date-S", "Item Name Dari", "Made", "Company", "Unit Price", "Disc %", "Total Price", "Qty", "Total Out"], rows: outgoingRows, widths: [16, 32, 14, 14, 30, 16, 22, 14, 12, 16, 12, 14], dateColumns: [3] };
+    const inReport = { title: "راپور خرید یا آمد جنس", headers: ["Purchase Bill No", "Account Name", "Date-M", "Date-S", "Item Name Dari", "Made", "Company", "Unit Cost", "Qty", "Total In"], rows: incomingRows, widths: [20, 32, 14, 14, 30, 16, 22, 14, 12, 14], dateColumns: [3] };
     const flowLabel = flow === "in" ? t.flowIn : flow === "out" ? t.flowOut : t.flowBoth;
     return downloadInventoryExcel({
       title: `${t.inventoryReport} · ${name}`,
-      subtitle: `${t.movementType}: ${flowLabel}`,
-      headers: [t.reportDate, t.movementType, t.reference, t.batchNo, t.expiryDate, t.stockIn, t.stockOut, t.balance, t.reportDetails],
-      rows: selected.map(({ movement, balance: runningBalance }) => [
-        formatAfghanDate(movement.movementDate || movement.createdAt?.slice?.(0, 10) || "—"),
-        t[movementLabelKey(movement.referenceType)],
-        movement.referenceNumber || movement.referenceId || "—",
-        movement.batchNo || "—",
-        movement.expiryDate ? formatAfghanDate(movement.expiryDate) : "—",
-        stockNumber(movement.quantityIn),
-        stockNumber(movement.quantityOut),
-        runningBalance,
-        movement.note || movement.description || movement.notes || "—",
-      ]),
+      reportSheets: flow === "both" ? [outReport, inReport] : [flow === "in" ? inReport : outReport],
       filename: `inventory-movements-${safeName}-${flowLabel}-${todayDateValue().replaceAll("/", "-")}.xlsx`,
     });
   };
